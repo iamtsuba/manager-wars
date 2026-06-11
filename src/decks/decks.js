@@ -220,41 +220,91 @@ function renderDeckField(container, builder, positions, ctx) {
   const field = document.getElementById('deck-field')
   if (!field) return
 
-  const lines = [
-    positions.filter(p => p.startsWith('ATT')),
-    positions.filter(p => p.startsWith('MIL')),
-    positions.filter(p => p.startsWith('DEF')),
-    positions.filter(p => p.startsWith('GK')),
-  ]
+  const LINES_ORDER = ['ATT','MIL','DEF','GK']
+  const lineGroups = LINES_ORDER.map(role => positions.filter(p => p.startsWith(role)))
 
-  field.innerHTML = lines.map(line => `
-    <div style="display:flex;justify-content:center;gap:8px;margin-bottom:10px">
-      ${line.map(pos => {
-        const cardId = builder.slots[pos]
-        const card   = cardId ? builder.playerCards.find(c => c.id === cardId) : null
-        const role   = pos.replace(/\d+/, '')
-        const color  = JOB_COLORS[role]
+  // ── Calcul des liens entre deux joueurs adjacents ──────
+  function linkColor(pA, pB) {
+    if (!pA || !pB) return null
+    const sameCountry = pA.country_code && pB.country_code && pA.country_code === pB.country_code
+    const sameClub    = pA.club_id && pB.club_id && pA.club_id === pB.club_id
+    if (sameCountry && sameClub) return '#1A6B3C'  // Vert : pays + club
+    if (sameCountry || sameClub)  return '#D4A017'  // Jaune : pays OU club
+    return '#222'                                    // Noir : aucun lien
+  }
 
-        if (card) {
-          const p    = card.player
-          const note = role==='GK'?p.note_g : role==='DEF'?p.note_d : role==='MIL'?p.note_m : p.note_a
-          const portrait = getPortrait(p)
-          return `<div class="formation-slot filled" data-pos="${pos}"
-            style="border-color:${color};background:${color};cursor:pointer;position:relative;width:60px;height:60px">
-            ${portrait
-              ? `<img src="${portrait}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:6px;opacity:0.7">`
-              : ''}
-            <div style="position:relative;z-index:1;font-size:16px;font-weight:900;color:#fff;text-shadow:0 1px 3px #0008">${note}</div>
-            <div style="position:relative;z-index:1;font-size:7px;color:#fff;text-shadow:0 1px 2px #0008;max-width:54px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.surname_encoded}</div>
+  // ── Note d'un joueur à son poste ───────────────────────
+  function noteAt(p, role) {
+    if (!p) return 0
+    return Number(role==='GK'?p.note_g : role==='DEF'?p.note_d : role==='MIL'?p.note_m : p.note_a) || 0
+  }
+
+  // ── Calcul note de ligne + bonus liens ─────────────────
+  function lineStats(line) {
+    const players = line.map(pos => {
+      const id = builder.slots[pos]
+      const card = id ? builder.playerCards.find(c => c.id === id) : null
+      return card ? card.player : null
+    })
+    const role = line[0]?.replace(/\d+/, '') || 'ATT'
+    const total = players.reduce((s, p) => s + noteAt(p, role), 0)
+    let linkBonus = 0
+    for (let i = 0; i < players.length - 1; i++) {
+      const c = linkColor(players[i], players[i+1])
+      if (c && c !== '#222') linkBonus++
+    }
+    return { total, linkBonus }
+  }
+
+  // ── Rendu HTML ─────────────────────────────────────────
+  field.innerHTML = lineGroups.map(line => {
+    const role = line[0]?.replace(/\d+/, '') || 'ATT'
+    const { total, linkBonus } = lineStats(line)
+    const players = line.map(pos => {
+      const id = builder.slots[pos]
+      return id ? builder.playerCards.find(c => c.id === id) : null
+    })
+
+    return `
+    <div style="margin-bottom:6px">
+      <!-- Ligne de joueurs avec liens -->
+      <div style="display:flex;align-items:center;justify-content:center;gap:0">
+        ${line.map((pos, idx) => {
+          const card = players[idx]
+          const color = JOB_COLORS[role]
+          const linkC = idx < line.length - 1 ? linkColor(players[idx]?.player, players[idx+1]?.player) : null
+
+          const slotHtml = card ? (() => {
+            const p = card.player
+            const note = noteAt(p, role)
+            const portrait = getPortrait(p)
+            return `<div class="formation-slot filled" data-pos="${pos}"
+              style="border-color:${color};background:${color};cursor:pointer;position:relative;width:60px;height:60px;flex-shrink:0">
+              ${portrait ? `<img src="${portrait}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:6px;opacity:0.75">` : ''}
+              <div style="position:relative;z-index:1;font-size:16px;font-weight:900;color:#fff;text-shadow:0 1px 3px #0008;line-height:1">${note}</div>
+              <div style="position:relative;z-index:1;font-size:7px;color:#fff;text-shadow:0 1px 2px #0008;max-width:54px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:2px">${p.surname_encoded}</div>
+            </div>`
+          })() : `<div class="formation-slot" data-pos="${pos}"
+            style="border-color:rgba(255,255,255,0.4);cursor:pointer;width:60px;height:60px;flex-shrink:0">
+            <div style="font-size:9px;color:rgba(255,255,255,0.7)">${role}</div>
+            <div style="font-size:18px;color:rgba(255,255,255,0.5)">+</div>
           </div>`
-        }
-        return `<div class="formation-slot" data-pos="${pos}"
-          style="border-color:rgba(255,255,255,0.4);cursor:pointer;width:60px;height:60px">
-          <div style="font-size:9px;color:rgba(255,255,255,0.7)">${role}</div>
-          <div style="font-size:18px;color:rgba(255,255,255,0.5)">+</div>
-        </div>`
-      }).join('')}
-    </div>`).join('')
+
+          const linkHtml = linkC ? `<div style="
+            width:16px;height:4px;border-radius:2px;background:${linkC};
+            flex-shrink:0;opacity:0.9;box-shadow:0 0 4px ${linkC}
+          "></div>` : ''
+
+          return slotHtml + linkHtml
+        }).join('')}
+      </div>
+      <!-- Note de ligne -->
+      <div style="text-align:center;color:rgba(255,255,255,0.7);font-size:10px;margin-top:3px">
+        <span style="font-weight:700;color:#fff">${total}</span>
+        ${linkBonus > 0 ? `<span style="color:#D4A017">(+${linkBonus} lien${linkBonus>1?'s':''})</span>` : ''}
+      </div>
+    </div>`
+  }).join('')
 
   field.querySelectorAll('.formation-slot').forEach(el => {
     el.addEventListener('click', () => openPlayerSelector(el.dataset.pos, builder, container, ctx))
@@ -266,17 +316,32 @@ function openPlayerSelector(position, builder, container, ctx) {
   const { openModal, closeModal } = ctx
   const role = position.replace(/\d+/, '')
 
-  // Petit 3 : exclure les joueurs déjà placés ailleurs
-  const usedElsewhere = Object.entries(builder.slots)
-    .filter(([pos, id]) => pos !== position && id)
-    .map(([,id]) => id)
-  const usedAsSub = builder.subs
+  // Exclure les joueurs déjà placés (par player_id pour éviter les doublons)
+  const currentCardId = builder.slots[position]
+  const currentCard = currentCardId ? builder.playerCards.find(c => c.id === currentCardId) : null
+  const currentPlayerId = currentCard?.player?.id
 
+  // Player IDs déjà utilisés ailleurs (titulaires + remplaçants), sauf le slot courant
+  const usedPlayerIds = new Set()
+  Object.entries(builder.slots).forEach(([pos, id]) => {
+    if (pos === position || !id) return
+    const c = builder.playerCards.find(c => c.id === id)
+    if (c?.player?.id) usedPlayerIds.add(c.player.id)
+  })
+  builder.subs.forEach(id => {
+    const c = builder.playerCards.find(c => c.id === id)
+    if (c?.player?.id) usedPlayerIds.add(c.player.id)
+  })
+
+  // Dédupliquer par player_id (garder une seule carte par joueur dans la liste)
+  const seenPlayerIds = new Set()
   const eligible = builder.playerCards.filter(c => {
     const p = c.player
-    return (p.job === role || p.job2 === role) &&
-           !usedElsewhere.includes(c.id) &&
-           !usedAsSub.includes(c.id)
+    if (!(p.job === role || p.job2 === role)) return false
+    if (usedPlayerIds.has(p.id)) return false
+    if (seenPlayerIds.has(p.id)) return false
+    seenPlayerIds.add(p.id)
+    return true
   })
 
   eligible.sort((a, b) => {
@@ -347,9 +412,25 @@ function openPlayerSelector(position, builder, container, ctx) {
 // ── Sélecteur remplaçant ──────────────────────────────────
 function openSubSelector(builder, container, ctx) {
   const { openModal, closeModal } = ctx
-  const usedAll = [...Object.values(builder.slots).filter(Boolean), ...builder.subs]
+  // Exclure par player_id (unicité stricte)
+  const usedPlayerIds = new Set()
+  Object.values(builder.slots).filter(Boolean).forEach(id => {
+    const c = builder.playerCards.find(c => c.id === id)
+    if (c?.player?.id) usedPlayerIds.add(c.player.id)
+  })
+  builder.subs.forEach(id => {
+    const c = builder.playerCards.find(c => c.id === id)
+    if (c?.player?.id) usedPlayerIds.add(c.player.id)
+  })
 
-  const available = builder.playerCards.filter(c => !usedAll.includes(c.id))
+  // Dédupliquer par player_id
+  const seenSubIds = new Set()
+  const available = builder.playerCards.filter(c => {
+    if (usedPlayerIds.has(c.player?.id)) return false
+    if (seenSubIds.has(c.player?.id)) return false
+    seenSubIds.add(c.player?.id)
+    return true
+  })
 
   openModal('Ajouter un remplaçant',
     `<div style="max-height:60vh;overflow-y:auto;display:flex;flex-direction:column;gap:8px">

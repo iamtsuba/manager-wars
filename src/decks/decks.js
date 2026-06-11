@@ -221,90 +221,200 @@ function renderDeckField(container, builder, positions, ctx) {
   if (!field) return
 
   const LINES_ORDER = ['ATT','MIL','DEF','GK']
-  const lineGroups = LINES_ORDER.map(role => positions.filter(p => p.startsWith(role)))
+  const lineGroups  = LINES_ORDER.map(role => positions.filter(p => p.startsWith(role)))
+  const struct      = FORMATIONS[builder.formation] || FORMATIONS['4-4-2']
 
-  // ── Calcul des liens entre deux joueurs adjacents ──────
-  function linkColor(pA, pB) {
-    if (!pA || !pB) return null
-    const sameCountry = pA.country_code && pB.country_code && pA.country_code === pB.country_code
-    const sameClub    = pA.club_id && pB.club_id && pA.club_id === pB.club_id
-    if (sameCountry && sameClub) return '#1A6B3C'  // Vert : pays + club
-    if (sameCountry || sameClub)  return '#D4A017'  // Jaune : pays OU club
-    return '#222'                                    // Noir : aucun lien
+  // ── Colonne logique d'un slot dans sa ligne ────────────
+  // Ex : MIL2 sur 5 milieux → getCols(5)[1] = 1
+  function getLogicalCol(pos) {
+    const role = pos.replace(/\d+/, '')
+    const num  = parseInt(pos.replace(/\D/g, '')) - 1  // 0-based
+    return getColsForLine(struct[role] || 1)[num] ?? 1
+  }
+  function getColsForLine(n) {
+    if (n === 1) return [1]
+    if (n === 2) return [0, 2]
+    if (n === 3) return [0, 1, 2]
+    if (n === 4) return [0, 1, 1, 2]
+    if (n === 5) return [0, 1, 1, 1, 2]
+    return [1]
   }
 
-  // ── Note d'un joueur à son poste ───────────────────────
+  // ── Données joueur d'un slot ───────────────────────────
+  function slotPlayer(pos) {
+    const id = builder.slots[pos]
+    if (!id) return null
+    const card = builder.playerCards.find(c => c.id === id)
+    return card?.player || null
+  }
+
+  // ── Couleur d'un lien entre deux joueurs ──────────────
+  function linkColor(pA, pB) {
+    if (!pA || !pB) return '#333'
+    const sc = pA.country_code && pB.country_code && pA.country_code === pB.country_code
+    const sk = pA.club_id && pB.club_id && pA.club_id === pB.club_id
+    if (sc && sk) return '#1A6B3C'
+    if (sc || sk)  return '#D4A017'
+    return '#333'
+  }
+
+  // ── Note au poste ──────────────────────────────────────
   function noteAt(p, role) {
     if (!p) return 0
-    return Number(role==='GK'?p.note_g : role==='DEF'?p.note_d : role==='MIL'?p.note_m : p.note_a) || 0
+    return Number(role==='GK'?p.note_g : role==='DEF'?p.note_d : role==='MIL'?p.note_m : p.note_a)||0
   }
 
-  // ── Calcul note de ligne + bonus liens ─────────────────
+  // ── Stats ligne ────────────────────────────────────────
   function lineStats(line) {
-    const players = line.map(pos => {
-      const id = builder.slots[pos]
-      const card = id ? builder.playerCards.find(c => c.id === id) : null
-      return card ? card.player : null
-    })
-    const role = line[0]?.replace(/\d+/, '') || 'ATT'
-    const total = players.reduce((s, p) => s + noteAt(p, role), 0)
-    let linkBonus = 0
-    for (let i = 0; i < players.length - 1; i++) {
-      const c = linkColor(players[i], players[i+1])
-      if (c && c !== '#222') linkBonus++
+    const role = line[0]?.replace(/\d+/,'') || 'ATT'
+    let total = 0, linkBonus = 0
+    line.forEach(pos => { total += noteAt(slotPlayer(pos), role) })
+    for (let i = 0; i < line.length - 1; i++) {
+      const c = linkColor(slotPlayer(line[i]), slotPlayer(line[i+1]))
+      if (c !== '#333') linkBonus++
     }
     return { total, linkBonus }
   }
 
-  // ── Rendu HTML ─────────────────────────────────────────
-  field.innerHTML = lineGroups.map(line => {
-    const role = line[0]?.replace(/\d+/, '') || 'ATT'
+  // ── Rendu ──────────────────────────────────────────────
+  // Chaque slot : 64px de large. Lien H : 14px. Lien V : rendu après.
+  const SLOT_W = 60, SLOT_H = 60, LINK_W = 14, SLOT_MARGIN = 6
+
+  field.innerHTML = `<div id="deck-terrain" style="position:relative;display:inline-block;width:100%">
+    <div id="deck-rows" style="display:flex;flex-direction:column;gap:0;align-items:center;padding:8px 0"></div>
+    <svg id="deck-links-svg" style="position:absolute;inset:0;pointer-events:none;overflow:visible" width="100%" height="100%"></svg>
+  </div>`
+
+  const rowsEl = document.getElementById('deck-rows')
+
+  // Rendu des lignes + recueil des positions DOM
+  lineGroups.forEach((line, li) => {
+    const role = line[0]?.replace(/\d+/,'') || 'ATT'
     const { total, linkBonus } = lineStats(line)
-    const players = line.map(pos => {
-      const id = builder.slots[pos]
-      return id ? builder.playerCards.find(c => c.id === id) : null
+    const rowEl = document.createElement('div')
+    rowEl.style.cssText = 'display:flex;align-items:center;justify-content:center;gap:0;position:relative'
+    rowEl.dataset.lineIdx = li
+
+    line.forEach((pos, idx) => {
+      const p     = slotPlayer(pos)
+      const color = JOB_COLORS[role]
+      const note  = p ? noteAt(p, role) : null
+      const portrait = p ? getPortrait(p) : null
+
+      const slotEl = document.createElement('div')
+      slotEl.className = p ? 'formation-slot filled' : 'formation-slot'
+      slotEl.dataset.pos = pos
+      slotEl.dataset.lineIdx = li
+      slotEl.dataset.slotIdx = idx
+      slotEl.style.cssText = `
+        border-color:${p?color:'rgba(255,255,255,0.4)'};
+        background:${p?color:'transparent'};
+        cursor:pointer;position:relative;
+        width:${SLOT_W}px;height:${SLOT_H}px;flex-shrink:0;
+      `
+      if (p && portrait) {
+        const img = document.createElement('img')
+        img.src = portrait
+        img.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:6px;opacity:0.75'
+        slotEl.appendChild(img)
+      }
+      if (p) {
+        slotEl.innerHTML += `
+          <div style="position:relative;z-index:1;font-size:16px;font-weight:900;color:#fff;text-shadow:0 1px 3px #0008;line-height:1">${note}</div>
+          <div style="position:relative;z-index:1;font-size:7px;color:#fff;text-shadow:0 1px 2px #0008;max-width:54px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:2px">${p.surname_encoded}</div>
+        `
+      } else {
+        slotEl.innerHTML = `
+          <div style="font-size:9px;color:rgba(255,255,255,0.7)">${role}</div>
+          <div style="font-size:18px;color:rgba(255,255,255,0.5)">+</div>
+        `
+      }
+      rowEl.appendChild(slotEl)
+
+      // Lien horizontal entre slots adjacents
+      if (idx < line.length - 1) {
+        const pNext = slotPlayer(line[idx+1])
+        const lc = linkColor(p, pNext)
+        const linkEl = document.createElement('div')
+        linkEl.style.cssText = `
+          width:${LINK_W}px;height:4px;border-radius:2px;
+          background:${lc};flex-shrink:0;
+          box-shadow:0 0 4px ${lc === '#333' ? 'none' : lc};
+          opacity:${lc==='#333'?'0.4':'0.95'};
+        `
+        rowEl.appendChild(linkEl)
+      }
     })
 
-    return `
-    <div style="margin-bottom:6px">
-      <!-- Ligne de joueurs avec liens -->
-      <div style="display:flex;align-items:center;justify-content:center;gap:0">
-        ${line.map((pos, idx) => {
-          const card = players[idx]
-          const color = JOB_COLORS[role]
-          const linkC = idx < line.length - 1 ? linkColor(players[idx]?.player, players[idx+1]?.player) : null
+    rowsEl.appendChild(rowEl)
 
-          const slotHtml = card ? (() => {
-            const p = card.player
-            const note = noteAt(p, role)
-            const portrait = getPortrait(p)
-            return `<div class="formation-slot filled" data-pos="${pos}"
-              style="border-color:${color};background:${color};cursor:pointer;position:relative;width:60px;height:60px;flex-shrink:0">
-              ${portrait ? `<img src="${portrait}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:6px;opacity:0.75">` : ''}
-              <div style="position:relative;z-index:1;font-size:16px;font-weight:900;color:#fff;text-shadow:0 1px 3px #0008;line-height:1">${note}</div>
-              <div style="position:relative;z-index:1;font-size:7px;color:#fff;text-shadow:0 1px 2px #0008;max-width:54px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:2px">${p.surname_encoded}</div>
-            </div>`
-          })() : `<div class="formation-slot" data-pos="${pos}"
-            style="border-color:rgba(255,255,255,0.4);cursor:pointer;width:60px;height:60px;flex-shrink:0">
-            <div style="font-size:9px;color:rgba(255,255,255,0.7)">${role}</div>
-            <div style="font-size:18px;color:rgba(255,255,255,0.5)">+</div>
-          </div>`
+    // Note de ligne
+    const statsEl = document.createElement('div')
+    statsEl.style.cssText = 'text-align:center;color:rgba(255,255,255,0.7);font-size:10px;margin:2px 0 6px'
+    statsEl.innerHTML = `<span style="font-weight:700;color:#fff">${total}</span>
+      ${linkBonus > 0 ? `<span style="color:#D4A017">(+${linkBonus} lien${linkBonus>1?'s':''})</span>` : ''}`
+    rowsEl.appendChild(statsEl)
+  })
 
-          const linkHtml = linkC ? `<div style="
-            width:16px;height:4px;border-radius:2px;background:${linkC};
-            flex-shrink:0;opacity:0.9;box-shadow:0 0 4px ${linkC}
-          "></div>` : ''
+  // ── Liens verticaux via SVG après render DOM ──────────
+  // On attend que le DOM soit rendu puis on trace les liens V
+  requestAnimationFrame(() => {
+    const svg = document.getElementById('deck-links-svg')
+    const terrain = document.getElementById('deck-terrain')
+    if (!svg || !terrain) return
 
-          return slotHtml + linkHtml
-        }).join('')}
-      </div>
-      <!-- Note de ligne -->
-      <div style="text-align:center;color:rgba(255,255,255,0.7);font-size:10px;margin-top:3px">
-        <span style="font-weight:700;color:#fff">${total}</span>
-        ${linkBonus > 0 ? `<span style="color:#D4A017">(+${linkBonus} lien${linkBonus>1?'s':''})</span>` : ''}
-      </div>
-    </div>`
-  }).join('')
+    const terrainRect = terrain.getBoundingClientRect()
+    svg.setAttribute('height', terrainRect.height)
+
+    for (let li = 0; li < lineGroups.length - 1; li++) {
+      const lineA = lineGroups[li]
+      const lineB = lineGroups[li + 1]
+      const roleA = lineA[0]?.replace(/\d+/,'') || 'ATT'
+      const roleB = lineB[0]?.replace(/\d+/,'') || 'DEF'
+
+      // Colonnes logiques de chaque ligne
+      const colsA = getColsForLine(struct[roleA]||1)
+      const colsB = getColsForLine(struct[roleB]||1)
+
+      // Pour chaque colonne logique partagée entre les deux lignes
+      for (let logCol = 0; logCol <= 2; logCol++) {
+        const idxA = colsA.indexOf(logCol)
+        const idxB = colsB.indexOf(logCol)
+        if (idxA === -1 || idxB === -1) continue
+
+        const posA = lineA[idxA]
+        const posB = lineB[idxB]
+        if (!posA || !posB) continue
+
+        const pA = slotPlayer(posA)
+        const pB = slotPlayer(posB)
+        const lc = linkColor(pA, pB)
+
+        // Trouver les éléments DOM
+        const elA = field.querySelector(`[data-pos="${posA}"]`)
+        const elB = field.querySelector(`[data-pos="${posB}"]`)
+        if (!elA || !elB) continue
+
+        const rA = elA.getBoundingClientRect()
+        const rB = elB.getBoundingClientRect()
+        const off = terrainRect
+
+        const x1 = rA.left - off.left + rA.width / 2
+        const y1 = rA.top  - off.top  + rA.height
+        const x2 = rB.left - off.left + rB.width / 2
+        const y2 = rB.top  - off.top
+
+        const line = document.createElementNS('http://www.w3.org/2000/svg','line')
+        line.setAttribute('x1', x1); line.setAttribute('y1', y1)
+        line.setAttribute('x2', x2); line.setAttribute('y2', y2)
+        line.setAttribute('stroke', lc)
+        line.setAttribute('stroke-width', '4')
+        line.setAttribute('stroke-linecap', 'round')
+        line.setAttribute('opacity', lc === '#333' ? '0.35' : '0.9')
+        svg.appendChild(line)
+      }
+    }
+  })
 
   field.querySelectorAll('.formation-slot').forEach(el => {
     el.addEventListener('click', () => openPlayerSelector(el.dataset.pos, builder, container, ctx))

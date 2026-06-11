@@ -13,7 +13,7 @@ function getPortrait(p) {
   const url = typeof import.meta !== 'undefined' ? import.meta.env?.VITE_SUPABASE_URL : ''
   if (!url || !p?.skin || !p?.hair) return null
   const key = p.hair === 'chauve' ? `${p.skin}-chauve-rase` : `${p.skin}-${p.hair}-${p.hair_length}`
-  return `${url}/storage/v1/object/public/assets/tetes/${key}.jpg`
+  return `${url}/storage/v1/object/public/assets/tetes/${key}.png`
 }
 
 export async function renderDecks(container, ctx) {

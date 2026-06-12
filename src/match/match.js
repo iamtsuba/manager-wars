@@ -3,6 +3,7 @@ import {
   GC_DEFS, getNoteForRole, getColsForCount, calcAttack, calcDefense,
   calcMidfieldDuel, resolveDuel, aiSelectPlayers, getRewards
 } from './game-logic.js'
+import { FORMATION_LINKS, FORMATION_POSITIONS, linkColor } from './formation-links.js'
 
 const FORMATIONS = {
   '4-4-2': { GK:1, DEF:4, MIL:4, ATT:2 },
@@ -61,15 +62,6 @@ function getColsForLine(n) {
   if (n===4) return [0,1,1,2]
   if (n===5) return [0,1,1,1,2]
   return [1]
-}
-
-function linkColor(pA, pB) {
-  if (!pA || !pB) return '#333'
-  const sc = pA.country_code && pB.country_code && pA.country_code === pB.country_code
-  const sk = pA.club_id && pB.club_id && pA.club_id === pB.club_id
-  if (sc && sk) return '#1A6B3C'
-  if (sc || sk)  return '#D4A017'
-  return '#333'
 }
 
 // ── Tirage du Boost ───────────────────────────────────────
@@ -392,44 +384,109 @@ function showMidfieldAnimation(container, game, ctx) {
   }, 1200)
 }
 
-// ── TERRAIN DU MATCH ─────────────────────────────────────
-function renderTeam(team, formation, isPhase, selectedIds) {
-  const struct   = FORMATIONS[formation] || FORMATIONS['4-4-2']
-  const LINES    = ['ATT','MIL','DEF','GK']
-  const SLOT_W   = 54
+// ── TERRAIN DU MATCH (SVG pur avec liens formation) ──────
+function buildTeamSVG(team, formation, phase, selectedIds, W=310, H=310) {
+  const FPOS   = FORMATION_POSITIONS[formation] || {}
+  const FLINKS = FORMATION_LINKS[formation]     || []
+  const R      = 26
 
-  return LINES.map(role => {
+  // Construire slots map positionnel : pos → player
+  const slots = {}
+  const LINES = ['ATT','MIL','DEF','GK']
+  for (const role of LINES) {
     const players = team[role] || []
-    if (!players.length) return ''
+    players.forEach((p, i) => { slots[`${role}${i+1}`] = p })
+  }
 
-    return `<div style="display:flex;align-items:center;justify-content:center;gap:0;margin-bottom:4px">
-      ${players.map((p, idx) => {
-        const selectable = isPhase && !p.used
-        const isSelected = selectedIds.includes(p.cardId)
-        const note       = isPhase === 'attack' ? getNoteForRole(p,'ATT')
-                         : isPhase === 'defense' ? (role==='GK'?getNoteForRole(p,'GK'):getNoteForRole(p,'DEF'))
-                         : getNoteForRole(p, role)
-        const portrait   = getPortrait(p)
-        const lc         = idx < players.length-1 && role === 'MIL'
-                           ? linkColor(p, players[idx+1]) : null
+  function px(pos) {
+    const p = FPOS[pos]; return p ? { x:p.x*W, y:p.y*H } : null
+  }
 
-        const noteDisplay = note + (p.boost||0)
+  let svg = ''
 
-        return `
-        <div class="match-slot ${selectable?'selectable':''} ${isSelected?'selected':''} ${p.used?'used':''}"
-          data-card-id="${p.cardId}" data-role="${role}"
-          style="width:${SLOT_W}px;height:${SLOT_W}px;flex-shrink:0;position:relative;overflow:hidden">
-          ${portrait?`<img src="${portrait}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:${p.used?0.2:0.6}">`:''}
-          ${p.boost?`<div style="position:absolute;top:2px;right:2px;background:#87CEEB;color:#000;border-radius:4px;font-size:7px;font-weight:900;padding:1px 3px;z-index:3">+${p.boost}</div>`:''}
-          <div class="slot-note" style="position:relative;z-index:2;color:${p.used?'#555':'#fff'}">${p.used?'–':noteDisplay}</div>
-          <div class="slot-name" style="position:relative;z-index:2">${p.name}</div>
-        </div>
-        ${lc?`<div style="width:10px;height:3px;border-radius:2px;background:${lc};flex-shrink:0;opacity:${lc==='#333'?0.3:0.9}"></div>`:''}
-        `
-      }).join('')}
-    </div>`
-  }).join('')
+  // 1. Liens
+  for (const [posA, posB] of FLINKS) {
+    const a = px(posA), b = px(posB)
+    if (!a || !b) continue
+    const pA = slots[posA], pB = slots[posB]
+    const lc = linkColor(pA, pB)
+    const op = lc === '#ff3333' ? 0.25 : 0.9
+    const fw = lc !== '#ff3333' ? `filter="url(#glow${lc.replace('#','').slice(0,6)})"` : ''
+    svg += `<line x1="${a.x.toFixed(1)}" y1="${a.y.toFixed(1)}" x2="${b.x.toFixed(1)}" y2="${b.y.toFixed(1)}"
+      stroke="${lc}" stroke-width="3.5" stroke-linecap="round" opacity="${op}" ${fw}/>`
+  }
+
+  // 2. Joueurs
+  for (const [pos, p] of Object.entries(slots)) {
+    const c = px(pos)
+    if (!c) continue
+    const role = pos.replace(/[0-9]/g,'')
+    const JC   = {GK:'#111',DEF:'#bb2020',MIL:'#D4A017',ATT:'#1A6B3C'}
+    const bg   = JC[role] || '#555'
+
+    const selectable = (phase==='attack' && ['MIL','ATT'].includes(role) && !p.used)
+                    || (phase==='defense' && ['GK','DEF','MIL'].includes(role) && !p.used)
+    const isSelected = selectedIds.includes(p.cardId)
+
+    let note
+    if      (phase==='attack')  note = role==='MIL'?Number(p.note_m)||0 : Number(p.note_a)||0
+    else if (phase==='defense') note = role==='GK'?Number(p.note_g)||0 : role==='MIL'?Number(p.note_m)||0 : Number(p.note_d)||0
+    else                        note = Number(role==='GK'?p.note_g : role==='DEF'?p.note_d : role==='MIL'?p.note_m : p.note_a)||0
+    note = (note + (p.boost||0))
+
+    const borderColor = isSelected ? '#FFD700' : selectable ? 'rgba(255,255,255,0.7)' : 'rgba(255,255,255,0.25)'
+    const borderWidth = isSelected ? 3 : 2
+    const fillOpacity = p.used ? 0.25 : 1
+
+    const portrait = getPortrait(p)
+
+    if (portrait) {
+      svg += `<defs><clipPath id="mc-${pos}"><circle cx="${c.x}" cy="${c.y}" r="${R}"/></clipPath></defs>`
+    }
+
+    svg += `<circle cx="${c.x}" cy="${c.y}" r="${R}" fill="${bg}" opacity="${fillOpacity}"
+      stroke="${borderColor}" stroke-width="${borderWidth}"/>`
+
+    if (portrait && !p.used) {
+      svg += `<image href="${portrait}" x="${c.x-R}" y="${c.y-R}" width="${R*2}" height="${R*2}"
+        clip-path="url(#mc-${pos})" preserveAspectRatio="xMidYMid slice" opacity="0.8"/>`
+      svg += `<circle cx="${c.x}" cy="${c.y}" r="${R}" fill="${bg}" opacity="0.35"
+        stroke="${borderColor}" stroke-width="${borderWidth}"/>`
+    }
+
+    if (p.boost) {
+      svg += `<rect x="${c.x+R-10}" y="${c.y-R}" width="14" height="10" rx="3" fill="#87CEEB"/>
+        <text x="${c.x+R-3}" y="${c.y-R+8}" text-anchor="middle" font-size="7" fill="#000" font-weight="900">+${p.boost}</text>`
+    }
+
+    svg += `<text x="${c.x}" y="${c.y-1}" text-anchor="middle" font-size="12" font-weight="900"
+      fill="${p.used?'#555':'white'}" font-family="Arial Black,Arial">${p.used?'–':note}</text>
+    <text x="${c.x}" y="${c.y+11}" text-anchor="middle" font-size="6" fill="rgba(255,255,255,${p.used?0.3:0.8})"
+      font-family="Arial">${(p.name||'').slice(0,8)}</text>`
+
+    if (selectable) {
+      svg += `<circle cx="${c.x}" cy="${c.y}" r="${R}" fill="rgba(255,255,255,0.08)"
+        class="match-slot-hit ${isSelected?'selected':''}" data-card-id="${p.cardId}" data-role="${role}"
+        style="cursor:pointer"/>`
+    }
+  }
+
+  const glowDefs = `<defs>
+    <filter id="glow00ff88"><feGaussianBlur stdDeviation="2.5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+    <filter id="glowFFD700"><feGaussianBlur stdDeviation="2.5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  </defs>`
+
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="display:block;max-width:360px;margin:0 auto">
+    ${glowDefs}${svg}
+  </svg>`
 }
+
+function renderTeam(team, formation, phase, selectedIds) {
+  return `<div id="match-terrain-wrap" style="position:relative;padding:0 4px">
+    ${buildTeamSVG(team, formation, phase, selectedIds)}
+  </div>`
+}
+
 
 // ── RENDU PRINCIPAL DU MATCH ──────────────────────────────
 function renderGame(container, game, ctx) {
@@ -466,7 +523,6 @@ function renderGame(container, game, ctx) {
     <!-- Terrain -->
     <div class="match-field" id="match-field" style="position:relative">
       ${renderTeam(game.homeTeam, game.formation, game.phase, selectedIds)}
-      <svg id="match-vlinks-svg" style="position:absolute;inset:0;pointer-events:none;overflow:visible;width:100%;height:100%"></svg>
     </div>
 
     <!-- Barre d'outils : GC + Boost + Remplacements -->
@@ -516,7 +572,7 @@ function renderGame(container, game, ctx) {
 
   renderMatchActions(container, game, ctx)
 
-  container.querySelectorAll('.match-slot.selectable').forEach(el => {
+  container.querySelectorAll('.match-slot-hit').forEach(el => {
     el.addEventListener('click', () => toggleSelect(el, game, container, ctx))
   })
 
@@ -534,9 +590,6 @@ function renderGame(container, game, ctx) {
 
   const log = document.getElementById('match-log')
   if (log) log.scrollTop = log.scrollHeight
-
-  // Liens verticaux en match (après render DOM)
-  requestAnimationFrame(() => drawMatchVerticalLinks(game.homeTeam, game.formation))
 }
 
 // ── ACTIONS ───────────────────────────────────────────────
@@ -888,22 +941,9 @@ async function finishMatch(container, game, ctx) {
 }
 
 function showAITeam(game, ctx) {
-  const lines = ['ATT','MIL','DEF','GK']
   ctx.openModal('Équipe adverse (IA)',
     `<div style="background:#0a3d1e;padding:12px;border-radius:8px">
-      ${lines.map(role => {
-        const players = game.aiTeam[role]||[]
-        if (!players.length) return ''
-        return `<div style="display:flex;justify-content:center;gap:6px;margin-bottom:8px">
-          ${players.map(p => {
-            const note = getNoteForRole(p,role)
-            return `<div class="match-slot ${p.used?'used':''}" style="cursor:default">
-              <div class="slot-note">${p.used?'–':note}</div>
-              <div class="slot-name">${p.name}</div>
-            </div>`
-          }).join('')}
-        </div>`
-      }).join('')}
+      ${buildTeamSVG(game.aiTeam, game.formation, null, [], 300, 300)}
     </div>`,
     `<button class="btn btn-primary" onclick="document.getElementById('modal-overlay').classList.add('hidden')">Fermer</button>`
   )

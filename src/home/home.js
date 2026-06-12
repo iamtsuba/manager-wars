@@ -36,29 +36,31 @@ export async function renderHome(container, { state, navigate, toast }) {
         </div>
       </div>
 
+      <!-- Ranked -->
+      <div class="ranked-banner">
+        <img src="${import.meta.env.BASE_URL}icons/badge-legendary.png" alt="" class="ranked-icon">
+        <img src="${import.meta.env.BASE_URL}icons/badge-ranked.png" alt="Ranked" class="ranked-text">
+      </div>
+
       <!-- Jeu -->
       <div>
         <div class="section-title">🎮 Jouer</div>
-        <div class="action-grid">
-          <div class="action-card highlight" data-action="match-ai">
-            <div class="icon">🤖</div>
-            <div class="label">Vs IA</div>
-            <div class="sub">Entraînement</div>
+        <div class="play-grid">
+          <div class="play-card" data-action="match-ai">
+            <img src="${import.meta.env.BASE_URL}icons/badge-ai.png" alt="" class="play-icon">
+            <img src="${import.meta.env.BASE_URL}icons/badge-matchia-txt.png" alt="Match IA" class="play-text" onerror="this.style.display='none'">
           </div>
-          <div class="action-card" data-action="match-random">
-            <div class="icon">🌍</div>
-            <div class="label">Aléatoire</div>
-            <div class="sub">1v1</div>
+          <div class="play-card" data-action="match-random">
+            <img src="${import.meta.env.BASE_URL}icons/badge-vs.png" alt="" class="play-icon">
+            <img src="${import.meta.env.BASE_URL}icons/badge-random.png" alt="Match Random" class="play-text">
           </div>
-          <div class="action-card" data-action="match-friend">
-            <div class="icon">🤝</div>
-            <div class="label">Ami</div>
-            <div class="sub">Défi</div>
+          <div class="play-card" data-action="match-friend">
+            <img src="${import.meta.env.BASE_URL}icons/badge-championship.png" alt="" class="play-icon">
+            <img src="${import.meta.env.BASE_URL}icons/badge-matchfriend.png" alt="Match Friend" class="play-text">
           </div>
-          <div class="action-card" data-action="championship">
-            <div class="icon">🏆</div>
-            <div class="label">Championnat</div>
-            <div class="sub">Ligue</div>
+          <div class="play-card" data-action="championship">
+            <img src="${import.meta.env.BASE_URL}icons/badge-trophy.png" alt="" class="play-icon">
+            <img src="${import.meta.env.BASE_URL}icons/badge-minileague-txt.png" alt="Mini League" class="play-text" onerror="this.style.display='none'">
           </div>
         </div>
       </div>
@@ -147,6 +149,10 @@ export async function renderHome(container, { state, navigate, toast }) {
   // Actions jeu
   container.querySelectorAll('[data-action]').forEach(el => {
     el.addEventListener('click', () => {
+      // Effet visuel : +20% luminosité au clic
+      el.classList.add('tapped')
+      setTimeout(() => el.classList.remove('tapped'), 200)
+
       const action = el.dataset.action
       if (action === 'championship') { toast('Championnats — bientôt disponibles', 'info'); return }
       if (action === 'match-random') { toast('Matchmaking aléatoire — bientôt disponible', 'info'); return }

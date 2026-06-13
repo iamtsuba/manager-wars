@@ -13,6 +13,7 @@ import { renderBoosters }   from './boosters/boosters.js'
 import { renderMatch }      from './match/match.js'
 import { renderMarket }     from './market/market.js'
 import { renderRankings }   from './rankings/rankings.js'
+import { setFormationLinksOverrides } from './match/formation-links.js'
 
 // ── État global ───────────────────────────────────────────
 export const state = {
@@ -214,6 +215,18 @@ async function init() {
   state.user = session.user
   await refreshProfile()
   hideLoader()
+
+  // Charger les liens de formation personnalisés depuis l'admin (si définis)
+  try {
+    const { data: overridesRows } = await supabase
+      .from('formation_links_overrides')
+      .select('formation, links')
+    const overrides = {}
+    ;(overridesRows || []).forEach(row => { overrides[row.formation] = row.links })
+    setFormationLinksOverrides(overrides)
+  } catch (e) {
+    console.warn('Impossible de charger les overrides de formation:', e)
+  }
 
   if (!state.profile) {
     renderSetup(document.getElementById('app'), { state, navigate: async () => { await refreshProfile(); launchApp() }, toast, refreshProfile })

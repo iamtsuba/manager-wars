@@ -541,7 +541,7 @@ function openFormationModal(card, allFormationCards, ctx, openModal) {
       const a = px(posA), b = px(posB)
       if (!a || !b) continue
       svg += `<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}"
-        stroke="rgba(255,255,255,0.35)" stroke-width="2" stroke-dasharray="4,3"/>`
+        stroke="#FFD700" stroke-width="2.5" stroke-dasharray="4,3" opacity="0.85"/>`
     }
 
     // ── Postes ──

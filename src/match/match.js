@@ -309,7 +309,7 @@ async function renderDeckSelect(container, ctx, matchMode) {
       <!-- Terrain preview : contraindre la largeur du SVG pour contrôler hauteur+largeur -->
       <div id="deck-swipe-zone" style="flex:1;min-height:0;overflow:hidden;position:relative;touch-action:pan-y;display:flex;align-items:center;justify-content:center">
         ${team
-          ? `<div style="width:min(88vw, calc(100dvh - 430px));overflow:hidden;flex-shrink:0">${renderTeam(team, formation, null, [], 240, 240)}</div>`
+          ? `<div style="width:min(97vw, calc(100dvh - 430px));overflow:hidden;flex-shrink:0">${renderTeam(team, formation, null, [], 270, 270)}</div>`
           : `<div style="display:flex;align-items:center;justify-content:center;height:100%;opacity:.4;flex-direction:column;gap:8px">
               <div style="font-size:32px">⚠️</div>
               <div>Deck incomplet (${starters.length}/11)</div>
@@ -571,36 +571,41 @@ function buildTeamSVG(team, formation, phase, selectedIds, W=310, H=310) {
         <text x="${c.x+R-3}" y="${c.y-R+8}" text-anchor="middle" font-size="7" fill="#000" font-weight="900">+${p.boost}</text>`
     }
 
-    // Nom au centre (seulement si pas grisé)
-    if (!p.used) {
-      svg += `<text x="${c.x}" y="${c.y+10}" text-anchor="middle" font-size="6" fill="rgba(255,255,255,0.75)"
-        font-family="Arial">${(p.name||'').slice(0,8)}</text>`
+    if (p.used) {
+      // Grisé : juste un tiret au centre
+      svg += `<text x="${c.x}" y="${c.y+2}" text-anchor="middle" dominant-baseline="central"
+        font-size="14" font-weight="900" fill="rgba(255,255,255,0.15)" font-family="Arial Black">–</text>`
     } else {
-      svg += `<text x="${c.x}" y="${c.y+2}" text-anchor="middle" font-size="13" font-weight="900"
-        fill="rgba(255,255,255,0.15)" font-family="Arial Black,Arial">–</text>`
-    }
+      // ① Note : cercle blanc AU-DESSUS du joueur (centré)
+      const ny = (c.y - R - 9).toFixed(1)
+      svg += `<circle cx="${c.x.toFixed(1)}" cy="${ny}" r="9" fill="white" stroke="rgba(0,0,0,0.3)" stroke-width="0.8"/>`
+      svg += `<text x="${c.x.toFixed(1)}" y="${ny}" text-anchor="middle" dominant-baseline="central"
+        font-size="9" font-weight="900" fill="#111" font-family="Arial Black">${note}</text>`
 
-    if (!p.used) {
-      // Badge note : cercle or en haut à droite
-      const bx = (c.x + R * 0.68).toFixed(1)
-      const by = (c.y - R * 0.68).toFixed(1)
-      svg += `<circle cx="${bx}" cy="${by}" r="9" fill="#D4A017" stroke="#000" stroke-width="0.8"/>`
-      svg += `<text x="${bx}" y="${by}" text-anchor="middle" dominant-baseline="central" font-size="8" font-weight="900" fill="#000" font-family="Arial Black">${note}</text>`
-
-      // Drapeau pays : cercle en bas à gauche
-      const flx = (c.x - R * 0.68).toFixed(1)
-      const fly = (c.y + R * 0.68).toFixed(1)
+      // ② Drapeau pays : cercle haut-DROITE (chevauche le cercle)
+      const frx = (c.x + R * 0.72).toFixed(1)
+      const fry = (c.y - R * 0.72).toFixed(1)
       const flag = countryFlag(p.country_code)
-      svg += `<circle cx="${flx}" cy="${fly}" r="9" fill="rgba(0,0,0,0.55)" stroke="rgba(255,255,255,0.15)" stroke-width="0.8"/>`
-      svg += `<text x="${flx}" y="${fly}" text-anchor="middle" dominant-baseline="central" font-size="8">${flag}</text>`
+      svg += `<circle cx="${frx}" cy="${fry}" r="8.5" fill="rgba(0,0,0,0.6)" stroke="rgba(255,255,255,0.2)" stroke-width="0.8"/>`
+      svg += `<text x="${frx}" y="${fry}" text-anchor="middle" dominant-baseline="central" font-size="7.5">${flag}</text>`
 
-      // Club : cercle en bas à droite
-      const clx = (c.x + R * 0.68).toFixed(1)
-      const cly = (c.y + R * 0.68).toFixed(1)
+      // ③ Club : cercle haut-GAUCHE (chevauche le cercle)
+      const fcx = (c.x - R * 0.72).toFixed(1)
+      const fcy = (c.y - R * 0.72).toFixed(1)
       if (p.clubName) {
-        svg += `<circle cx="${clx}" cy="${cly}" r="9" fill="rgba(20,20,60,0.8)" stroke="rgba(255,255,255,0.15)" stroke-width="0.8"/>`
-        svg += `<text x="${clx}" y="${cly}" text-anchor="middle" dominant-baseline="central" font-size="6" font-weight="700" fill="rgba(255,255,255,0.9)">${(p.clubName||'').slice(0,3).toUpperCase()}</text>`
+        svg += `<circle cx="${fcx}" cy="${fcy}" r="8.5" fill="rgba(10,20,60,0.75)" stroke="rgba(255,255,255,0.2)" stroke-width="0.8"/>`
+        svg += `<text x="${fcx}" y="${fcy}" text-anchor="middle" dominant-baseline="central"
+          font-size="5.5" font-weight="700" fill="rgba(255,255,255,0.9)">${(p.clubName||'').slice(0,3).toUpperCase()}</text>`
       }
+
+      // ④ Nom : rectangle blanc arrondi EN-DESSOUS du joueur
+      const nameStr = (p.name||'').slice(0,9)
+      const nameW   = Math.max(nameStr.length * 4.5, 28)
+      const nameY   = c.y + R + 3
+      svg += `<rect x="${(c.x - nameW/2).toFixed(1)}" y="${nameY.toFixed(1)}" width="${nameW.toFixed(1)}" height="11" rx="3" ry="3"
+        fill="rgba(255,255,255,0.88)" stroke="rgba(0,0,0,0.1)" stroke-width="0.5"/>`
+      svg += `<text x="${c.x.toFixed(1)}" y="${(nameY+5.5).toFixed(1)}" text-anchor="middle" dominant-baseline="central"
+        font-size="6" font-weight="700" fill="#111" font-family="Arial">${nameStr}</text>`
     }
 
     if (selectable) {
@@ -610,7 +615,7 @@ function buildTeamSVG(team, formation, phase, selectedIds, W=310, H=310) {
     }
   }
 
-  const PAD = R + 4
+  const PAD = R + 20  // espace pour note au-dessus + nom en-dessous
   return `<svg viewBox="${-PAD} ${-PAD} ${W+PAD*2} ${H+PAD*2}" width="100%" style="display:block;width:100%;max-width:380px;margin:0 auto">
     ${svg}
   </svg>`
@@ -727,7 +732,7 @@ function renderGame(container, game, ctx) {
     </div>
 
     <!-- ZONE ACTIONS -->
-    <div id="last-action-zone" style="background:rgba(0,0,0,0.3);flex-shrink:0;overflow:hidden">
+    <div id="last-action-zone" style="background:rgba(0,0,0,0.3);flex-shrink:0;overflow:hidden;max-height:82px">
       ${(()=>{
         // Attaque IA en cours → panel visuel rouge
         if (game.phase === 'defense' && game.pendingAttack) {
@@ -780,7 +785,7 @@ function renderGame(container, game, ctx) {
 
     <!-- BOUTON HISTORIQUE -->
     <button id="toggle-history" style="width:100%;padding:3px 10px;background:rgba(0,0,0,0.15);border:none;border-bottom:1px solid rgba(255,255,255,0.05);color:rgba(255,255,255,0.3);font-size:9px;cursor:pointer;letter-spacing:1px;flex-shrink:0;text-transform:uppercase">
-      ▼  Historique complet (${game.log.length} actions)
+      ▼ Historique (${game.log.length})
     </button>
 
     <!-- ZONE CENTRALE : REMPLAÇANTS + TERRAIN -->
@@ -811,8 +816,8 @@ function renderGame(container, game, ctx) {
 
       <!-- Terrain -->
       <div style="flex:1;overflow:hidden;min-width:0;display:flex;align-items:flex-start;justify-content:center" id="match-field">
-        <div style="width:min(calc(100vw - 52px), calc(100dvh - 470px));overflow:hidden;flex-shrink:0">
-          ${renderTeam(game.homeTeam, game.formation, game.phase, selectedIds, 280, 280)}
+        <div style="width:min(calc(100vw - 52px), calc(100dvh - 370px));overflow:hidden;flex-shrink:0">
+          ${renderTeam(game.homeTeam, game.formation, game.phase, selectedIds, 300, 300)}
         </div>
       </div>
     </div>
@@ -871,6 +876,16 @@ function renderGame(container, game, ctx) {
       }
     </div>
   </div>`
+
+  // ── Ajuster la hauteur du match screen dynamiquement ─────
+  requestAnimationFrame(() => {
+    const ms = container.querySelector('.match-screen')
+    if (!ms) return
+    const topOffset = ms.getBoundingClientRect().top
+    const navbarH   = document.querySelector('.bottom-nav, nav, [class*="nav"]')?.offsetHeight || 60
+    const availH    = Math.round(window.innerHeight - topOffset - navbarH)
+    if (availH > 150) ms.style.height = availH + 'px'
+  })
 
   // ── Events ────────────────────────────────────────────────
   document.getElementById('match-quit')?.addEventListener('click', () => {
@@ -1122,10 +1137,15 @@ function showSubAnimation(outPlayer, inPlayer, callback) {
     </div>
   `
   document.body.appendChild(overlay)
-  setTimeout(() => {
+  let subDismissed = false
+  const subDismiss = () => {
+    if (subDismissed) return
+    subDismissed = true
     overlay.remove()
-    callback()
-  }, 2000)
+    setTimeout(() => callback(), 50)
+  }
+  overlay.addEventListener('click', subDismiss)
+  setTimeout(subDismiss, 2000)
 }
 
 // ── TOAST MATCH ───────────────────────────────────────────
@@ -1382,9 +1402,15 @@ function showGoalAnimation(miniPlayers, homeScore, aiScore, isHome, callback) {
   </div>` : ''}
   <div style="font-size:11px;color:rgba(255,255,255,0.3);margin-top:8px;animation:scoreIn 0.3s ease 1.4s both;position:relative;z-index:1">Appuyer pour continuer</div>`
   document.body.appendChild(overlay)
-  const dismiss = () => { overlay.remove(); callback() }
-  overlay.addEventListener('click', dismiss)
-  setTimeout(dismiss, 3500)
+  let goalDismissed = false
+  const goalDismiss = () => {
+    if (goalDismissed) return
+    goalDismissed = true
+    overlay.remove()
+    setTimeout(() => callback(), 50)
+  }
+  overlay.addEventListener('click', goalDismiss)
+  setTimeout(goalDismiss, 3500)
 }
 
 // ── FIN DE MATCH ──────────────────────────────────────────

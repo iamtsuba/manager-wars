@@ -69,6 +69,8 @@ function playerFromCard(card) {
     note_a: Number(p.note_a)||0,
     rarity: p.rarity,
     skin: p.skin, hair: p.hair, hair_length: p.hair_length,
+    clubName: p.clubs?.encoded_name || null,
+    clubLogo: p.clubs?.logo_url || null,
     boost: 0,
     used: false,
     _line: null, _col: null,
@@ -286,7 +288,7 @@ async function renderDeckSelect(container, ctx, matchMode) {
     const complete = starters.length >= 11
 
     container.innerHTML = `
-    <div id="deck-select-screen" style="display:flex;flex-direction:column;height:calc(100vh - 130px);overflow:hidden;background:#0a3d1e;color:#fff">
+    <div id="deck-select-screen" style="display:flex;flex-direction:column;height:calc(100dvh - 130px);overflow:hidden;background:#0a3d1e;color:#fff">
 
       <!-- Header -->
       <div style="padding:10px 16px;background:rgba(0,0,0,0.4);text-align:center;flex-shrink:0">
@@ -307,7 +309,7 @@ async function renderDeckSelect(container, ctx, matchMode) {
       <!-- Terrain preview : contraindre la largeur du SVG pour contrôler hauteur+largeur -->
       <div id="deck-swipe-zone" style="flex:1;min-height:0;overflow:hidden;position:relative;touch-action:pan-y;display:flex;align-items:center;justify-content:center">
         ${team
-          ? `<div style="width:min(88vw, calc(100vh - 430px));overflow:hidden;flex-shrink:0">${renderTeam(team, formation, null, [], 240, 240)}</div>`
+          ? `<div style="width:min(88vw, calc(100dvh - 430px));overflow:hidden;flex-shrink:0">${renderTeam(team, formation, null, [], 240, 240)}</div>`
           : `<div style="display:flex;align-items:center;justify-content:center;height:100%;opacity:.4;flex-direction:column;gap:8px">
               <div style="font-size:32px">⚠️</div>
               <div>Deck incomplet (${starters.length}/11)</div>
@@ -481,6 +483,16 @@ function showMidfieldAnimation(container, game, ctx) {
   }, 1200)
 }
 
+// ── Helper : drapeau emoji depuis code pays ──────────────
+function countryFlag(code) {
+  if (!code || code.length < 2) return '🌍'
+  try {
+    const A = 0x1F1E6
+    return String.fromCodePoint(A + code.charCodeAt(0) - 65) +
+           String.fromCodePoint(A + code.charCodeAt(1) - 65)
+  } catch { return '🌍' }
+}
+
 // ── TERRAIN SVG (liens : double ligne, pas de filter url) ─
 function buildTeamSVG(team, formation, phase, selectedIds, W=310, H=310) {
   const FPOS   = FORMATION_POSITIONS[formation] || {}
@@ -559,10 +571,37 @@ function buildTeamSVG(team, formation, phase, selectedIds, W=310, H=310) {
         <text x="${c.x+R-3}" y="${c.y-R+8}" text-anchor="middle" font-size="7" fill="#000" font-weight="900">+${p.boost}</text>`
     }
 
-    svg += `<text x="${c.x}" y="${c.y-1}" text-anchor="middle" font-size="12" font-weight="900"
-      fill="${p.used?'rgba(255,255,255,0.2)':'white'}" font-family="Arial Black,Arial">${p.used?'–':note}</text>
-    <text x="${c.x}" y="${c.y+11}" text-anchor="middle" font-size="6" fill="rgba(255,255,255,${p.used?0.2:0.8})"
-      font-family="Arial">${(p.name||'').slice(0,8)}</text>`
+    // Nom au centre (seulement si pas grisé)
+    if (!p.used) {
+      svg += `<text x="${c.x}" y="${c.y+10}" text-anchor="middle" font-size="6" fill="rgba(255,255,255,0.75)"
+        font-family="Arial">${(p.name||'').slice(0,8)}</text>`
+    } else {
+      svg += `<text x="${c.x}" y="${c.y+2}" text-anchor="middle" font-size="13" font-weight="900"
+        fill="rgba(255,255,255,0.15)" font-family="Arial Black,Arial">–</text>`
+    }
+
+    if (!p.used) {
+      // Badge note : cercle or en haut à droite
+      const bx = (c.x + R * 0.68).toFixed(1)
+      const by = (c.y - R * 0.68).toFixed(1)
+      svg += `<circle cx="${bx}" cy="${by}" r="9" fill="#D4A017" stroke="#000" stroke-width="0.8"/>`
+      svg += `<text x="${bx}" y="${by}" text-anchor="middle" dominant-baseline="central" font-size="8" font-weight="900" fill="#000" font-family="Arial Black">${note}</text>`
+
+      // Drapeau pays : cercle en bas à gauche
+      const flx = (c.x - R * 0.68).toFixed(1)
+      const fly = (c.y + R * 0.68).toFixed(1)
+      const flag = countryFlag(p.country_code)
+      svg += `<circle cx="${flx}" cy="${fly}" r="9" fill="rgba(0,0,0,0.55)" stroke="rgba(255,255,255,0.15)" stroke-width="0.8"/>`
+      svg += `<text x="${flx}" y="${fly}" text-anchor="middle" dominant-baseline="central" font-size="8">${flag}</text>`
+
+      // Club : cercle en bas à droite
+      const clx = (c.x + R * 0.68).toFixed(1)
+      const cly = (c.y + R * 0.68).toFixed(1)
+      if (p.clubName) {
+        svg += `<circle cx="${clx}" cy="${cly}" r="9" fill="rgba(20,20,60,0.8)" stroke="rgba(255,255,255,0.15)" stroke-width="0.8"/>`
+        svg += `<text x="${clx}" y="${cly}" text-anchor="middle" dominant-baseline="central" font-size="6" font-weight="700" fill="rgba(255,255,255,0.9)">${(p.clubName||'').slice(0,3).toUpperCase()}</text>`
+      }
+    }`
 
     if (selectable) {
       svg += `<circle cx="${c.x}" cy="${c.y}" r="${R}" fill="rgba(255,255,255,0.08)"
@@ -674,7 +713,7 @@ function renderGame(container, game, ctx) {
     #match-history-panel.open { transform:translateY(0); }
   </style>
 
-  <div class="match-screen" style="display:flex;flex-direction:column;height:100%;overflow:hidden;background:#0a3d1e;position:relative">
+  <div class="match-screen" style="display:flex;flex-direction:column;height:calc(100dvh - 130px);overflow:hidden;background:#0a3d1e;position:relative">
 
     <!-- SCORE BAR -->
     <div style="display:flex;align-items:center;padding:8px 10px;background:rgba(0,0,0,0.5);gap:6px;flex-shrink:0">
@@ -771,8 +810,8 @@ function renderGame(container, game, ctx) {
       </div>
 
       <!-- Terrain -->
-      <div style="flex:1;overflow:hidden;min-width:0;display:flex;align-items:center;justify-content:center" id="match-field">
-        <div style="width:min(calc(100vw - 50px), calc(100vh - 420px));overflow:hidden;flex-shrink:0">
+      <div style="flex:1;overflow:hidden;min-width:0;display:flex;align-items:flex-start;justify-content:center" id="match-field">
+        <div style="width:min(calc(100vw - 52px), calc(100dvh - 470px));overflow:hidden;flex-shrink:0">
           ${renderTeam(game.homeTeam, game.formation, game.phase, selectedIds, 280, 280)}
         </div>
       </div>
@@ -1197,26 +1236,35 @@ function openSubstitution(container, game, ctx, preferredSubId = null) {
 
     document.getElementById('sub-confirm')?.addEventListener('click', () => {
       if (!selectedGrayedId || !selectedSubId) return
-      const role    = selectedGrayedLine
-      const teamLine = game.homeTeam[role] || []
-      const idx     = teamLine.findIndex(p => p.cardId === selectedGrayedId)
-      const subPlayer = game.homeSubs.find(s => s.cardId === selectedSubId)
-      const outPlayer = idx !== -1 ? { ...teamLine[idx] } : null
-
-      if (idx !== -1 && subPlayer) {
-        const inPlayer = { ...subPlayer, _line: role, _col: teamLine[idx]._col, used: false, boost: 0 }
-        game.homeTeam[role].splice(idx, 1, inPlayer)
-        game.usedSubIds.push(selectedSubId)
-        game.subsUsed++
-        game.log.push({
-          type: 'sub', subSide: 'home',
-          outPlayer: { name:outPlayer.name, firstname:outPlayer.firstname, note:getNoteForRole(outPlayer, role), portrait:getPortrait(outPlayer), job:outPlayer.job },
-          inPlayer:  { name:subPlayer.name, firstname:subPlayer.firstname, note:getNoteForRole(subPlayer, role), portrait:getPortrait(subPlayer), job:subPlayer.job },
-          text: `🔄 ${subPlayer.firstname} ${subPlayer.name} remplace ${outPlayer.firstname} ${outPlayer.name}`,
-        })
-        overlay.remove()
-        showSubAnimation(outPlayer, subPlayer, () => renderGame(container, game, ctx))
+      // Chercher le joueur dans TOUTES les lignes (robuste même si _line manque)
+      let foundRole = null
+      let foundIdx  = -1
+      for (const [role, players] of Object.entries(game.homeTeam)) {
+        const idx = (players||[]).findIndex(p => p.cardId === selectedGrayedId)
+        if (idx !== -1) { foundRole = role; foundIdx = idx; break }
       }
+      const subPlayer = game.homeSubs.find(s => s.cardId === selectedSubId)
+      if (foundIdx === -1 || !foundRole || !subPlayer) {
+        showGameToast('Erreur remplacement — réessaie', 'rgba(180,0,0,0.9)')
+        overlay.remove()
+        renderGame(container, game, ctx)
+        return
+      }
+      const outPlayer = { ...game.homeTeam[foundRole][foundIdx] }
+      const inPlayer  = { ...subPlayer, _line: foundRole, _col: outPlayer._col, used: false, boost: 0 }
+      game.homeTeam[foundRole].splice(foundIdx, 1, inPlayer)
+      if (!game.usedSubIds) game.usedSubIds = []
+      game.usedSubIds.push(selectedSubId)
+      game.subsUsed++
+      game.selected = []  // reset selection
+      game.log.push({
+        type: 'sub', subSide: 'home',
+        outPlayer: { name:outPlayer.name, firstname:outPlayer.firstname, note:getNoteForRole(outPlayer, foundRole), portrait:getPortrait(outPlayer), job:outPlayer.job },
+        inPlayer:  { name:subPlayer.name, firstname:subPlayer.firstname, note:getNoteForRole(subPlayer, foundRole), portrait:getPortrait(subPlayer), job:subPlayer.job },
+        text: `🔄 ${subPlayer.firstname} ${subPlayer.name} remplace ${outPlayer.firstname} ${outPlayer.name}`,
+      })
+      overlay.remove()
+      showSubAnimation(outPlayer, subPlayer, () => renderGame(container, game, ctx))
     })
   }
 

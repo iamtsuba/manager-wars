@@ -286,26 +286,26 @@ async function renderDeckSelect(container, ctx, matchMode) {
     const complete = starters.length >= 11
 
     container.innerHTML = `
-    <div class="match-screen" style="display:flex;flex-direction:column;min-height:100vh;background:#0a3d1e;color:#fff">
+    <div id="deck-select-screen" style="display:flex;flex-direction:column;height:100vh;overflow:hidden;background:#0a3d1e;color:#fff">
 
       <!-- Header -->
-      <div style="padding:12px 16px;background:rgba(0,0,0,0.4);text-align:center;flex-shrink:0">
+      <div style="padding:10px 16px;background:rgba(0,0,0,0.4);text-align:center;flex-shrink:0">
         <div style="font-size:10px;opacity:.6;letter-spacing:2px;text-transform:uppercase">Match vs IA — ${matchMode.replace('vs_ai_','').toUpperCase()}</div>
-        <div style="font-size:18px;font-weight:900;margin-top:2px">Choisis ton deck</div>
+        <div style="font-size:17px;font-weight:900;margin-top:2px">Choisis ton deck</div>
       </div>
 
       <!-- Navigation deck -->
-      <div style="display:flex;align-items:center;gap:8px;padding:10px 8px;flex-shrink:0">
-        <button id="prev-deck" style="width:48px;height:48px;border-radius:50%;background:rgba(255,255,255,${currentIdx===0?'0.05':'0.15'});border:2px solid rgba(255,255,255,${currentIdx===0?'0.1':'0.3'});color:${currentIdx===0?'rgba(255,255,255,0.2)':'#fff'};font-size:22px;cursor:${currentIdx===0?'default':'pointer'};flex-shrink:0">◀</button>
+      <div style="display:flex;align-items:center;gap:8px;padding:8px;flex-shrink:0">
+        <button id="prev-deck" style="width:46px;height:46px;border-radius:50%;background:rgba(255,255,255,${currentIdx===0?'0.05':'0.15'});border:2px solid rgba(255,255,255,${currentIdx===0?'0.1':'0.3'});color:${currentIdx===0?'rgba(255,255,255,0.2)':'#fff'};font-size:20px;cursor:${currentIdx===0?'default':'pointer'};flex-shrink:0">◀</button>
         <div style="flex:1;text-align:center">
-          <div style="font-size:20px;font-weight:900">${deck.name}</div>
+          <div style="font-size:19px;font-weight:900">${deck.name}</div>
           <div style="font-size:11px;opacity:.6;margin-top:2px">${formation} · ${starters.length}/11 ${deck.is_active?'· ⭐ Actif':''}</div>
         </div>
-        <button id="next-deck" style="width:48px;height:48px;border-radius:50%;background:rgba(255,255,255,${currentIdx===decks.length-1?'0.05':'0.15'});border:2px solid rgba(255,255,255,${currentIdx===decks.length-1?'0.1':'0.3'});color:${currentIdx===decks.length-1?'rgba(255,255,255,0.2)':'#fff'};font-size:22px;cursor:${currentIdx===decks.length-1?'default':'pointer'};flex-shrink:0">▶</button>
+        <button id="next-deck" style="width:46px;height:46px;border-radius:50%;background:rgba(255,255,255,${currentIdx===decks.length-1?'0.05':'0.15'});border:2px solid rgba(255,255,255,${currentIdx===decks.length-1?'0.1':'0.3'});color:${currentIdx===decks.length-1?'rgba(255,255,255,0.2)':'#fff'};font-size:20px;cursor:${currentIdx===decks.length-1?'default':'pointer'};flex-shrink:0">▶</button>
       </div>
 
-      <!-- Terrain preview -->
-      <div style="flex:1;padding:0;overflow:hidden;min-height:0">
+      <!-- Terrain preview (flex:1 = prend tout l'espace restant) -->
+      <div id="deck-swipe-zone" style="flex:1;min-height:0;overflow:hidden;position:relative;touch-action:pan-y">
         ${team
           ? renderTeam(team, formation, null, [])
           : `<div style="display:flex;align-items:center;justify-content:center;height:100%;opacity:.4;flex-direction:column;gap:8px">
@@ -317,18 +317,18 @@ async function renderDeckSelect(container, ctx, matchMode) {
 
       <!-- Indicateurs pagination -->
       ${decks.length > 1 ? `
-      <div style="display:flex;justify-content:center;gap:6px;padding:6px;flex-shrink:0">
+      <div style="display:flex;justify-content:center;gap:6px;padding:4px;flex-shrink:0">
         ${decks.map((_,i)=>`<div style="width:7px;height:7px;border-radius:50%;background:${i===currentIdx?'#FFD700':'rgba(255,255,255,0.25)'}"></div>`).join('')}
       </div>` : ''}
 
-      <!-- Boutons -->
-      <div style="padding:12px 16px 20px;flex-shrink:0;display:flex;flex-direction:column;gap:8px">
-        <button id="validate-deck" style="width:100%;padding:16px;border-radius:12px;border:none;
-          background:${complete?'var(--green, #1A6B3C)':'rgba(255,255,255,0.1)'};
+      <!-- Boutons TOUJOURS VISIBLES -->
+      <div style="padding:10px 14px 16px;flex-shrink:0;display:flex;flex-direction:column;gap:8px;background:rgba(0,0,0,0.2)">
+        <button id="validate-deck" style="width:100%;padding:15px;border-radius:12px;border:none;
+          background:${complete?'#1A6B3C':'rgba(255,255,255,0.08)'};
           color:${complete?'#fff':'rgba(255,255,255,0.3)'};font-size:16px;font-weight:900;cursor:${complete?'pointer':'default'}">
           ${complete?'✅ Valider ce deck':'⚠️ Deck incomplet'}
         </button>
-        <button id="cancel-deck-select" style="width:100%;padding:12px;border-radius:12px;border:1px solid rgba(255,255,255,0.2);background:transparent;color:rgba(255,255,255,.5);font-size:14px;cursor:pointer">
+        <button id="cancel-deck-select" style="width:100%;padding:11px;border-radius:12px;border:1px solid rgba(255,255,255,0.2);background:transparent;color:rgba(255,255,255,.5);font-size:14px;cursor:pointer">
           Annuler
         </button>
       </div>
@@ -345,6 +345,24 @@ async function renderDeckSelect(container, ctx, matchMode) {
       ctx.navigate('match', { matchMode, deckId: deck.id })
     })
     document.getElementById('cancel-deck-select')?.addEventListener('click', () => navigate('home'))
+
+    // Swipe tactile gauche/droite
+    const swipeZone = document.getElementById('deck-swipe-zone')
+    if (swipeZone) {
+      let touchStartX = 0
+      let touchStartY = 0
+      swipeZone.addEventListener('touchstart', e => {
+        touchStartX = e.touches[0].clientX
+        touchStartY = e.touches[0].clientY
+      }, { passive: true })
+      swipeZone.addEventListener('touchend', e => {
+        const dx = e.changedTouches[0].clientX - touchStartX
+        const dy = e.changedTouches[0].clientY - touchStartY
+        if (Math.abs(dx) < 40 || Math.abs(dx) < Math.abs(dy)) return // trop petit ou scroll vertical
+        if (dx < 0 && currentIdx < decks.length - 1) { currentIdx++; renderPreview() }
+        else if (dx > 0 && currentIdx > 0) { currentIdx--; renderPreview() }
+      }, { passive: true })
+    }
   }
 
   renderPreview()

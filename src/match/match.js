@@ -673,7 +673,7 @@ function renderLogEntry(entry) {
     const isHome = entry.subSide === 'home'
     return `
     <div style="display:flex;align-items:center;gap:4px;${isHome?'flex-direction:row-reverse':''};background:rgba(255,255,255,0.04);border-radius:8px;padding:5px 8px;border:1px solid rgba(255,255,255,0.07)">
-      <div style="font-size:9px;color:rgba(255,255,255,0.4);flex-shrink:0">${isHome?game?.clubName||'Vous':'IA'}</div>
+      <div style="font-size:9px;color:rgba(255,255,255,0.4);flex-shrink:0">${isHome?entry.clubName||'Vous':'IA'}</div>
       ${renderMiniPlayer(entry.outPlayer||{}, true)}
       <div style="font-size:16px;flex-shrink:0">🔄</div>
       ${renderMiniPlayer(entry.inPlayer||{})}

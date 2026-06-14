@@ -1,4 +1,4 @@
-import{s as $,l as Y,F as ee,b as ve,c as ue,d as et}from"./formation-links-BD9zicgB.js";function _e(t,{navigate:e,toast:i}){t.innerHTML=`
+import{s as $,l as Y,F as ee,b as ve,c as ue,d as et}from"./formation-links-qYdm3O6d.js";function _e(t,{navigate:e,toast:i}){t.innerHTML=`
   <div class="auth-screen" style="animation:fadeIn 0.4s ease">
     <div class="auth-box">
       <div class="logo">⚽</div>
@@ -900,7 +900,8 @@ import{s as $,l as Y,F as ee,b as ve,c as ue,d as et}from"./formation-links-BD9z
             clubs(encoded_name,logo_url)))`).eq("deck_id",d).order("slot_order")]),p=(f||[]).filter(m=>{var E;return m.is_starter&&((E=m.card)==null?void 0:E.player)}).map(m=>ge(m.card)),u=(f||[]).filter(m=>{var E;return!m.is_starter&&((E=m.card)==null?void 0:E.player)}).map(m=>ge(m.card));if(p.length<11){Ue(t,"⚠️",`Deck incomplet (${p.length}/11).`,"Compléter",()=>o("decks"));return}const y=(f||[]).find(m=>{var E;return((E=m.card)==null?void 0:E.card_type)==="formation"}),w=(c==null?void 0:c.formation)||((v=y==null?void 0:y.card)==null?void 0:v.formation)||"4-4-2",{data:h}=await $.from("cards").select("id,gc_type").eq("owner_id",i.profile.id).eq("card_type","game_changer"),k=Ve(p,w),b=await Mt(w),{data:g}=await $.from("matches").insert({home_id:i.profile.id,away_id:null,mode:s,home_deck_id:d,status:"in_progress"}).select().single(),x={matchId:g==null?void 0:g.id,mode:s,difficulty:l,formation:w,homeTeam:k,aiTeam:b,homeSubs:u,subsUsed:0,maxSubs:Math.min(u.length,3),homeScore:0,aiScore:0,gcCards:h||[],usedGc:[],boostCard:null,boostUsed:!1,phase:"midfield",attacker:null,round:0,selected:[],pendingAttack:null,log:[],modifiers:{home:{},ai:{}},clubName:i.profile.club_name||"Vous"};Bt(t,x,e)}async function Ct(t,e,i){const{state:o,navigate:r}=e;t.innerHTML='<div style="padding:40px;text-align:center;color:#aaa">⚽ Chargement...</div>';const{data:n}=await $.from("decks").select("id,name,is_active,formation").eq("owner_id",o.profile.id).order("created_at",{ascending:!1});if(!n||n.length===0){Ue(t,"📋","Aucun deck. Crée un deck avant de jouer !","Créer un deck",()=>r("decks"));return}const a=n.map(c=>c.id),{data:l}=await $.from("deck_cards").select(`deck_id, position, is_starter, slot_order,
       card:cards(id,card_type,formation,
         player:players(id,firstname,surname_encoded,country_code,club_id,job,job2,
-          note_g,note_d,note_m,note_a,rarity,skin,hair,hair_length))`).in("deck_id",a).order("slot_order");let s=0;function d(){var b,g,x,v,m;const c=n[s],f=(l||[]).filter(E=>E.deck_id===c.id),p=f.filter(E=>{var _;return E.is_starter&&((_=E.card)==null?void 0:_.player)}).map(E=>ge(E.card)),u=f.find(E=>{var _;return((_=E.card)==null?void 0:_.card_type)==="formation"}),y=c.formation||((b=u==null?void 0:u.card)==null?void 0:b.formation)||"4-4-2",w=p.length>=11?Ve(p,y):null,h=p.length>=11;t.innerHTML=`
+          note_g,note_d,note_m,note_a,rarity,skin,hair,hair_length,
+          clubs(encoded_name,logo_url)))`).in("deck_id",a).order("slot_order");let s=0;function d(){var b,g,x,v,m;const c=n[s],f=(l||[]).filter(E=>E.deck_id===c.id),p=f.filter(E=>{var _;return E.is_starter&&((_=E.card)==null?void 0:_.player)}).map(E=>ge(E.card)),u=f.find(E=>{var _;return((_=E.card)==null?void 0:_.card_type)==="formation"}),y=c.formation||((b=u==null?void 0:u.card)==null?void 0:b.formation)||"4-4-2",w=p.length>=11?Ve(p,y):null,h=p.length>=11;t.innerHTML=`
     <div id="deck-select-screen" style="display:flex;flex-direction:column;height:calc(100dvh - 130px);overflow:hidden;background:#0a3d1e;color:#fff">
 
       <!-- Header -->
@@ -921,7 +922,7 @@ import{s as $,l as Y,F as ee,b as ve,c as ue,d as et}from"./formation-links-BD9z
 
       <!-- Terrain preview : contraindre la largeur du SVG pour contrôler hauteur+largeur -->
       <div id="deck-swipe-zone" style="flex:1;min-height:0;overflow:hidden;position:relative;touch-action:pan-y;display:flex;align-items:center;justify-content:center">
-        ${w?`<div style="width:min(97vw, calc(100dvh - 430px));overflow:hidden;flex-shrink:0">${Je(w,y,null,[],270,270)}</div>`:`<div style="display:flex;align-items:center;justify-content:center;height:100%;opacity:.4;flex-direction:column;gap:8px">
+        ${w?`<div style="width:min(98vw, calc(100dvh - 400px));overflow:hidden;flex-shrink:0">${Je(w,y,null,[],285,285)}</div>`:`<div style="display:flex;align-items:center;justify-content:center;height:100%;opacity:.4;flex-direction:column;gap:8px">
               <div style="font-size:32px">⚠️</div>
               <div>Deck incomplet (${p.length}/11)</div>
              </div>`}

@@ -1034,7 +1034,7 @@ import{s as k,l as J,F as ee,b as ve,c as ue,d as et}from"./formation-links-BD9z
       ${t.isGoal?`<div style="text-align:center;font-size:11px;color:#FFD700;font-weight:900;margin-top:3px">${t.homeScored?"⚽ BUT !":"⚽ BUT IA !"}</div>`:""}
     </div>`}if(t.type==="sub"){const e=t.subSide==="home";return`
     <div style="display:flex;align-items:center;gap:4px;${e?"flex-direction:row-reverse":""};background:rgba(255,255,255,0.04);border-radius:8px;padding:5px 8px;border:1px solid rgba(255,255,255,0.07)">
-      <div style="font-size:9px;color:rgba(255,255,255,0.4);flex-shrink:0">${e?(game==null?void 0:game.clubName)||"Vous":"IA"}</div>
+      <div style="font-size:9px;color:rgba(255,255,255,0.4);flex-shrink:0">${e?t.clubName||"Vous":"IA"}</div>
       ${ne(t.outPlayer||{},!0)}
       <div style="font-size:16px;flex-shrink:0">🔄</div>
       ${ne(t.inPlayer||{})}

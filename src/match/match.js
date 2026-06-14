@@ -272,7 +272,8 @@ async function renderDeckSelect(container, ctx, matchMode) {
     .select(`deck_id, position, is_starter, slot_order,
       card:cards(id,card_type,formation,
         player:players(id,firstname,surname_encoded,country_code,club_id,job,job2,
-          note_g,note_d,note_m,note_a,rarity,skin,hair,hair_length))`)
+          note_g,note_d,note_m,note_a,rarity,skin,hair,hair_length,
+          clubs(encoded_name,logo_url)))`)
     .in('deck_id', deckIds)
     .order('slot_order')
 
@@ -309,7 +310,7 @@ async function renderDeckSelect(container, ctx, matchMode) {
       <!-- Terrain preview : contraindre la largeur du SVG pour contrôler hauteur+largeur -->
       <div id="deck-swipe-zone" style="flex:1;min-height:0;overflow:hidden;position:relative;touch-action:pan-y;display:flex;align-items:center;justify-content:center">
         ${team
-          ? `<div style="width:min(97vw, calc(100dvh - 430px));overflow:hidden;flex-shrink:0">${renderTeam(team, formation, null, [], 270, 270)}</div>`
+          ? `<div style="width:min(98vw, calc(100dvh - 400px));overflow:hidden;flex-shrink:0">${renderTeam(team, formation, null, [], 285, 285)}</div>`
           : `<div style="display:flex;align-items:center;justify-content:center;height:100%;opacity:.4;flex-direction:column;gap:8px">
               <div style="font-size:32px">⚠️</div>
               <div>Deck incomplet (${starters.length}/11)</div>

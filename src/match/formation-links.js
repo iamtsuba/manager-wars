@@ -397,12 +397,13 @@ export function getCandidateLinks(formation, maxDist = 0.4) {
  * Couleur d'un lien selon affinité pays/club
  */
 export function linkColor(pA, pB) {
-  if (!pA || !pB) return '#cc2222'          // rouge : case vide ou aucun lien
+  if (!pA || !pB) return '#cc2222'
+  const isLegend = pA.rarity === 'légende' || pB.rarity === 'légende'
   const sc = pA.country_code && pB.country_code && pA.country_code === pB.country_code
   const sk = pA.club_id && pB.club_id && pA.club_id === pB.club_id
-  if (sc && sk) return '#00ff88'            // vert flashy : pays + club
-  if (sc || sk)  return '#FFD700'           // jaune flashy : pays OU club
-  return '#ff3333'                          // rouge : aucun lien
+  if (sc && sk) return '#00ff88'            // vert : pays + club = +2
+  if (sc || sk || isLegend) return '#FFD700' // jaune : pays OU club OU légende = +1
+  return '#ff3333'                           // rouge : aucun lien
 }
 
 /**
@@ -496,9 +497,9 @@ export const FORMATION_POSITIONS = {
   },
 
   '4-4-2': {
-    ATT1:{x:0.32,y:0.05}, ATT2:{x:0.68,y:0.05},
-    MIL1:{x:0.08,y:0.35}, MIL2:{x:0.34,y:0.42}, MIL3:{x:0.66,y:0.42}, MIL4:{x:0.92,y:0.35},
-    DEF1:{x:0.08,y:0.68}, DEF2:{x:0.34,y:0.70}, DEF3:{x:0.66,y:0.70}, DEF4:{x:0.92,y:0.68},
+    ATT1:{x:0.40,y:0.05}, ATT2:{x:0.60,y:0.05},
+    MIL1:{x:0.08,y:0.35}, MIL2:{x:0.37,y:0.42}, MIL3:{x:0.63,y:0.42}, MIL4:{x:0.92,y:0.35},
+    DEF1:{x:0.08,y:0.68}, DEF2:{x:0.37,y:0.70}, DEF3:{x:0.63,y:0.70}, DEF4:{x:0.92,y:0.68},
     GK1: {x:0.50,y:0.92},
   },
 
@@ -538,9 +539,9 @@ export const FORMATION_POSITIONS = {
   },
 
   '3-5-2': {
-    ATT1:{x:0.30,y:0.04}, ATT2:{x:0.70,y:0.04},
-    MIL1:{x:0.50,y:0.23}, MIL2:{x:0.05,y:0.36}, MIL3:{x:0.32,y:0.44}, MIL4:{x:0.68,y:0.44}, MIL5:{x:0.95,y:0.36},
-    DEF1:{x:0.16,y:0.66}, DEF2:{x:0.50,y:0.66}, DEF3:{x:0.84,y:0.66},
+    ATT1:{x:0.35,y:0.04}, ATT2:{x:0.65,y:0.04},
+    MIL1:{x:0.50,y:0.25}, MIL2:{x:0.05,y:0.35}, MIL3:{x:0.35,y:0.42}, MIL4:{x:0.65,y:0.42}, MIL5:{x:0.95,y:0.35},
+    DEF1:{x:0.22,y:0.65}, DEF2:{x:0.50,y:0.65}, DEF3:{x:0.78,y:0.65},
     GK1: {x:0.50,y:0.90},
   },
 

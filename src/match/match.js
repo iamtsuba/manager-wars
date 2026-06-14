@@ -304,8 +304,8 @@ async function renderDeckSelect(container, ctx, matchMode) {
         <button id="next-deck" style="width:46px;height:46px;border-radius:50%;background:rgba(255,255,255,${currentIdx===decks.length-1?'0.05':'0.15'});border:2px solid rgba(255,255,255,${currentIdx===decks.length-1?'0.1':'0.3'});color:${currentIdx===decks.length-1?'rgba(255,255,255,0.2)':'#fff'};font-size:20px;cursor:${currentIdx===decks.length-1?'default':'pointer'};flex-shrink:0">▶</button>
       </div>
 
-      <!-- Terrain preview (flex:1 = prend tout l'espace restant) -->
-      <div id="deck-swipe-zone" style="flex:1;min-height:0;overflow:hidden;position:relative;touch-action:pan-y">
+      <!-- Terrain preview : hauteur plafonnée pour que les boutons restent visibles -->
+      <div id="deck-swipe-zone" style="flex:1;min-height:0;max-height:calc(100vh - 310px);overflow:hidden;position:relative;touch-action:pan-y">
         ${team
           ? renderTeam(team, formation, null, [])
           : `<div style="display:flex;align-items:center;justify-content:center;height:100%;opacity:.4;flex-direction:column;gap:8px">

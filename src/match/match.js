@@ -530,10 +530,13 @@ function buildTeamSVG(team, formation, phase, selectedIds, W=310, H=310) {
     }
   }
 
-  // 2. Joueurs
+  // 2. Cartes joueurs (style carte à la FUT)
+  const CW = 48, CH = 64, NAMEH = 13, BOTHH = 16
+  const rarityBorder = { normal:'#aaaaaa', pépite:'#D4A017', papyte:'#111111', légende:'#7a28b8' }
+
   for (const [pos, p] of Object.entries(slots)) {
     const c = px(pos)
-    if (!c) continue
+    if (!c || !p) continue
     const role = pos.replace(/[0-9]/g,'')
     const bg   = JOB_COLORS[role] || '#555'
 
@@ -544,78 +547,65 @@ function buildTeamSVG(team, formation, phase, selectedIds, W=310, H=310) {
     let note
     if      (phase==='attack')  note = role==='MIL'?Number(p.note_m)||0 : Number(p.note_a)||0
     else if (phase==='defense') note = role==='GK'?Number(p.note_g)||0 : role==='MIL'?Number(p.note_m)||0 : Number(p.note_d)||0
-    else                        note = Number(role==='GK'?p.note_g : role==='DEF'?p.note_d : role==='MIL'?p.note_m : p.note_a)||0
+    else                        note = Number(role==='GK'?p.note_g:role==='DEF'?p.note_d:role==='MIL'?p.note_m:p.note_a)||0
     note = note + (p.boost||0)
 
-    const borderColor = isSelected ? '#FFD700' : selectable ? 'rgba(255,255,255,0.7)' : 'rgba(255,255,255,0.25)'
-    const borderWidth = isSelected ? 3 : 2
-    const fillOpacity = p.used ? 0.2 : 1
+    const rx0 = (c.x - CW/2).toFixed(1)
+    const ry0 = (c.y - CH/2).toFixed(1)
+    const cardOp  = p.used ? 0.25 : 1
+    const rarity  = rarityBorder[p?.rarity] || rarityBorder.normal
+    const bStroke = isSelected ? '#ffffff' : rarity
+    const bWidth  = isSelected ? 3 : (p?.rarity==='légende'||p?.rarity==='pépite' ? 2.5 : 2)
 
+    // Clip portrait à la zone centrale (sans nom ni bas)
+    const portH = CH - NAMEH - BOTHH
+    svg += `<defs><clipPath id="cp-${pos}"><rect x="${rx0}" y="${(c.y - CH/2 + NAMEH).toFixed(1)}" width="${CW}" height="${portH}"/></clipPath></defs>`
+
+    // Fond
+    svg += `<rect x="${rx0}" y="${ry0}" width="${CW}" height="${CH}" rx="5" fill="${bg}" opacity="${cardOp}"/>`
+
+    // Portrait
     const portrait = getPortrait(p)
-    if (portrait) {
-      svg += `<defs><clipPath id="mc-${pos}"><circle cx="${c.x}" cy="${c.y}" r="${R}"/></clipPath></defs>`
-    }
-
-    svg += `<circle cx="${c.x}" cy="${c.y}" r="${R}" fill="${bg}" opacity="${fillOpacity}"
-      stroke="${borderColor}" stroke-width="${borderWidth}"/>`
-
     if (portrait && !p.used) {
-      svg += `<image href="${portrait}" x="${c.x-R}" y="${c.y-R}" width="${R*2}" height="${R*2}"
-        clip-path="url(#mc-${pos})" preserveAspectRatio="xMidYMid slice" opacity="0.8"/>`
-      svg += `<circle cx="${c.x}" cy="${c.y}" r="${R}" fill="${bg}" opacity="0.3"
-        stroke="${borderColor}" stroke-width="${borderWidth}"/>`
+      svg += `<image href="${portrait}" x="${rx0}" y="${(c.y - CH/2 + NAMEH).toFixed(1)}" width="${CW}" height="${portH}" clip-path="url(#cp-${pos})" preserveAspectRatio="xMidYMin slice"/>`
     }
 
-    if (p.boost) {
-      svg += `<rect x="${c.x+R-10}" y="${c.y-R}" width="14" height="10" rx="3" fill="#87CEEB"/>
-        <text x="${c.x+R-3}" y="${c.y-R+8}" text-anchor="middle" font-size="7" fill="#000" font-weight="900">+${p.boost}</text>`
-    }
+    // Barre nom (haut, fond blanc)
+    svg += `<rect x="${rx0}" y="${ry0}" width="${CW}" height="${NAMEH}" rx="4" fill="rgba(255,255,255,0.92)"/>`
+    svg += `<text x="${c.x.toFixed(1)}" y="${(c.y - CH/2 + 8.5).toFixed(1)}" text-anchor="middle" dominant-baseline="central" font-size="6.5" font-weight="900" fill="#111" font-family="Arial Black,Arial">${(p.name||'').slice(0,9)}</text>`
+
+    // Bande bas (fond blanc)
+    const by0 = (c.y + CH/2 - BOTHH).toFixed(1)
+    svg += `<rect x="${rx0}" y="${by0}" width="${CW}" height="${BOTHH}" fill="rgba(255,255,255,0.92)"/>`
 
     if (p.used) {
-      // Grisé : juste un tiret au centre
-      svg += `<text x="${c.x}" y="${c.y+2}" text-anchor="middle" dominant-baseline="central"
-        font-size="14" font-weight="900" fill="rgba(255,255,255,0.15)" font-family="Arial Black">–</text>`
+      svg += `<text x="${c.x.toFixed(1)}" y="${(c.y + CH/2 - BOTHH/2).toFixed(1)}" text-anchor="middle" dominant-baseline="central" font-size="13" font-weight="900" fill="rgba(0,0,0,0.4)" font-family="Arial Black">–</text>`
     } else {
-      // ① Note : cercle blanc AU-DESSUS du joueur (centré)
-      const ny = (c.y - R - 9).toFixed(1)
-      svg += `<circle cx="${c.x.toFixed(1)}" cy="${ny}" r="9" fill="white" stroke="rgba(0,0,0,0.3)" stroke-width="0.8"/>`
-      svg += `<text x="${c.x.toFixed(1)}" y="${ny}" text-anchor="middle" dominant-baseline="central"
-        font-size="9" font-weight="900" fill="#111" font-family="Arial Black">${note}</text>`
-
-      // ② Drapeau pays : cercle haut-DROITE (chevauche le cercle)
-      const frx = (c.x + R * 0.72).toFixed(1)
-      const fry = (c.y - R * 0.72).toFixed(1)
-      const flag = countryFlag(p.country_code)
-      svg += `<circle cx="${frx}" cy="${fry}" r="8.5" fill="rgba(0,0,0,0.6)" stroke="rgba(255,255,255,0.2)" stroke-width="0.8"/>`
-      svg += `<text x="${frx}" y="${fry}" text-anchor="middle" dominant-baseline="central" font-size="7.5">${flag}</text>`
-
-      // ③ Club : cercle haut-GAUCHE (chevauche le cercle)
-      const fcx = (c.x - R * 0.72).toFixed(1)
-      const fcy = (c.y - R * 0.72).toFixed(1)
+      // Drapeau pays (gauche)
+      svg += `<text x="${(c.x - 13).toFixed(1)}" y="${(c.y + CH/2 - BOTHH/2).toFixed(1)}" text-anchor="middle" dominant-baseline="central" font-size="10">${countryFlag(p.country_code)}</text>`
+      // Note (centre)
+      svg += `<text x="${c.x.toFixed(1)}" y="${(c.y + CH/2 - BOTHH/2).toFixed(1)}" text-anchor="middle" dominant-baseline="central" font-size="12" font-weight="900" fill="#111" font-family="Arial Black">${note}</text>`
+      // Club (droite, 3 lettres)
       if (p.clubName) {
-        svg += `<circle cx="${fcx}" cy="${fcy}" r="8.5" fill="rgba(10,20,60,0.75)" stroke="rgba(255,255,255,0.2)" stroke-width="0.8"/>`
-        svg += `<text x="${fcx}" y="${fcy}" text-anchor="middle" dominant-baseline="central"
-          font-size="5.5" font-weight="700" fill="rgba(255,255,255,0.9)">${(p.clubName||'').slice(0,3).toUpperCase()}</text>`
+        svg += `<text x="${(c.x + 14).toFixed(1)}" y="${(c.y + CH/2 - BOTHH/2).toFixed(1)}" text-anchor="middle" dominant-baseline="central" font-size="5.5" font-weight="700" fill="#333">${(p.clubName||'').slice(0,3).toUpperCase()}</text>`
       }
-
-      // ④ Nom : rectangle blanc arrondi EN-DESSOUS du joueur
-      const nameStr = (p.name||'').slice(0,9)
-      const nameW   = Math.max(nameStr.length * 4.5, 28)
-      const nameY   = c.y + R + 3
-      svg += `<rect x="${(c.x - nameW/2).toFixed(1)}" y="${nameY.toFixed(1)}" width="${nameW.toFixed(1)}" height="11" rx="3" ry="3"
-        fill="rgba(255,255,255,0.88)" stroke="rgba(0,0,0,0.1)" stroke-width="0.5"/>`
-      svg += `<text x="${c.x.toFixed(1)}" y="${(nameY+5.5).toFixed(1)}" text-anchor="middle" dominant-baseline="central"
-        font-size="6" font-weight="700" fill="#111" font-family="Arial">${nameStr}</text>`
+      // Boost badge
+      if (p.boost) {
+        svg += `<rect x="${(c.x+CW/2-12).toFixed(1)}" y="${(c.y-CH/2).toFixed(1)}" width="14" height="10" rx="3" fill="#87CEEB"/>`
+        svg += `<text x="${(c.x+CW/2-5).toFixed(1)}" y="${(c.y-CH/2+6).toFixed(1)}" text-anchor="middle" font-size="7" fill="#000" font-weight="900">+${p.boost}</text>`
+      }
     }
 
+    // Bordure rareté (+ surbrillance si sélectionné)
+    svg += `<rect x="${rx0}" y="${ry0}" width="${CW}" height="${CH}" rx="5" fill="${isSelected?'rgba(255,255,255,0.12)':'none'}" stroke="${bStroke}" stroke-width="${bWidth}" opacity="${cardOp}"/>`
+
+    // Zone cliquable (invisible)
     if (selectable) {
-      svg += `<circle cx="${c.x}" cy="${c.y}" r="${R}" fill="rgba(255,255,255,0.08)"
-        class="match-slot-hit ${isSelected?'selected':''}" data-card-id="${p.cardId}" data-role="${role}"
-        style="cursor:pointer"/>`
+      svg += `<rect x="${rx0}" y="${ry0}" width="${CW}" height="${CH}" rx="5" fill="rgba(0,0,0,0.01)" class="match-slot-hit ${isSelected?'selected':''}" data-card-id="${p.cardId}" data-role="${role}" style="cursor:pointer"/>`
     }
   }
 
-  const PAD = R + 20  // espace pour note au-dessus + nom en-dessous
+  const PAD = 38  // marge pour cartes rectangulaires
   return `<svg viewBox="${-PAD} ${-PAD} ${W+PAD*2} ${H+PAD*2}" width="100%" style="display:block;width:100%;max-width:380px;margin:0 auto">
     ${svg}
   </svg>`

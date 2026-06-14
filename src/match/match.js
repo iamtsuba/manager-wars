@@ -601,7 +601,7 @@ function buildTeamSVG(team, formation, phase, selectedIds, W=310, H=310) {
         svg += `<circle cx="${clx}" cy="${cly}" r="9" fill="rgba(20,20,60,0.8)" stroke="rgba(255,255,255,0.15)" stroke-width="0.8"/>`
         svg += `<text x="${clx}" y="${cly}" text-anchor="middle" dominant-baseline="central" font-size="6" font-weight="700" fill="rgba(255,255,255,0.9)">${(p.clubName||'').slice(0,3).toUpperCase()}</text>`
       }
-    }`
+    }
 
     if (selectable) {
       svg += `<circle cx="${c.x}" cy="${c.y}" r="${R}" fill="rgba(255,255,255,0.08)"

@@ -464,7 +464,14 @@ function showMidfieldAnimation(container, game, ctx) {
     }
 
     game.attacker = homeWins ? 'home' : 'ai'
-    game.log.push({ text:`Duel milieu : ${game.clubName} ${homeTotal} – ${aiTotal} IA → ${homeWins ? game.clubName+' attaque' : 'IA attaque'}`, type:'info' })
+    game.log.push({
+      type: 'duel',
+      title: 'Milieu de Terrain',
+      homePlayers: homeMils.map(p => ({ name:p.name, note:getNoteForRole(p,'MIL'), portrait:getPortrait(p), job:p.job })),
+      aiPlayers:   aiMils.map(p   => ({ name:p.name, note:getNoteForRole(p,'MIL'), portrait:getPortrait(p), job:p.job })),
+      homeTotal, aiTotal,
+      text: `Duel milieu : ${game.clubName} ${homeTotal} – ${aiTotal} IA → ${homeWins ? game.clubName+' attaque' : 'IA attaque'}`,
+    })
 
     setTimeout(() => {
       game.phase = game.attacker === 'home' ? 'attack' : 'ai-attack'
@@ -576,6 +583,63 @@ function renderTeam(team, formation, phase, selectedIds, W=300, H=300) {
   </div>`
 }
 
+
+// ── RENDU MINI JOUEUR (zone action) ──────────────────────
+function renderMiniPlayer(p, grayed=false) {
+  const portrait = p.portrait || null
+  const jobColor = { GK:'#111', DEF:'#bb2020', MIL:'#D4A017', ATT:'#1A6B3C' }[p.job] || '#555'
+  return `
+  <div style="text-align:center;flex-shrink:0;width:38px">
+    <div style="width:38px;height:38px;border-radius:50%;background:${jobColor};position:relative;overflow:hidden;
+      border:2px solid rgba(255,255,255,${grayed?'0.2':'0.5'});opacity:${grayed?0.4:1};margin:0 auto">
+      ${portrait ? `<img src="${portrait}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover">` : ''}
+      <div style="position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,0.65);font-size:9px;color:#fff;font-weight:900;text-align:center;line-height:1.4">${p.note}</div>
+    </div>
+    <div style="font-size:7px;color:rgba(255,255,255,0.5);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${(p.name||'').slice(0,7)}</div>
+  </div>`
+}
+
+function renderLogEntry(entry) {
+  if (entry.type === 'duel') {
+    const hw = entry.homeTotal >= entry.aiTotal
+    return `
+    <div style="background:rgba(255,255,255,0.05);border-radius:8px;padding:5px 6px;border:1px solid rgba(255,255,255,0.08)">
+      <div style="text-align:center;font-size:9px;font-weight:700;letter-spacing:1px;color:rgba(255,255,255,0.5);margin-bottom:4px">${(entry.title||'DUEL').toUpperCase()}</div>
+      <div style="display:flex;align-items:center;gap:3px">
+        <!-- Joueurs domicile -->
+        <div style="flex:1;display:flex;gap:2px;justify-content:flex-end;flex-wrap:wrap">
+          ${(entry.homePlayers||[]).map(p=>renderMiniPlayer(p)).join('')}
+        </div>
+        <!-- Score -->
+        <div style="text-align:center;padding:0 6px;flex-shrink:0">
+          <div style="font-size:${hw?20:14}px;font-weight:900;color:${hw?'#FFD700':'rgba(255,255,255,0.4)'};line-height:1">${entry.homeTotal}</div>
+          <div style="font-size:8px;color:rgba(255,255,255,0.3);margin:1px 0">VS</div>
+          <div style="font-size:${!hw?20:14}px;font-weight:900;color:${!hw?'#ff6b6b':'rgba(255,255,255,0.4)'};line-height:1">${entry.aiTotal}</div>
+        </div>
+        <!-- Joueurs IA -->
+        <div style="flex:1;display:flex;gap:2px;justify-content:flex-start;flex-wrap:wrap">
+          ${(entry.aiPlayers||[]).map(p=>renderMiniPlayer(p)).join('')}
+        </div>
+      </div>
+      ${entry.isGoal ? `<div style="text-align:center;font-size:11px;color:#FFD700;font-weight:900;margin-top:3px">${entry.homeScored?'⚽ BUT !':'⚽ BUT IA !'}</div>` : ''}
+    </div>`
+  }
+
+  if (entry.type === 'sub') {
+    const isHome = entry.subSide === 'home'
+    return `
+    <div style="display:flex;align-items:center;gap:4px;${isHome?'flex-direction:row-reverse':''};background:rgba(255,255,255,0.04);border-radius:8px;padding:5px 8px;border:1px solid rgba(255,255,255,0.07)">
+      <div style="font-size:9px;color:rgba(255,255,255,0.4);flex-shrink:0">${isHome?game?.clubName||'Vous':'IA'}</div>
+      ${renderMiniPlayer(entry.outPlayer||{}, true)}
+      <div style="font-size:16px;flex-shrink:0">🔄</div>
+      ${renderMiniPlayer(entry.inPlayer||{})}
+    </div>`
+  }
+
+  // Info / goal simple
+  return `<div style="font-size:11px;color:${entry.type==='goal'?'#FFD700':'rgba(255,255,255,0.65)'};font-weight:${entry.type==='goal'?700:400};padding:3px 2px">${entry.text||''}</div>`
+}
+
 // ── RENDU PRINCIPAL DU MATCH (layout mobile refonte) ──────
 function renderGame(container, game, ctx) {
   const selectedIds = game.selected.map(s => s.cardId)
@@ -623,20 +687,17 @@ function renderGame(container, game, ctx) {
       <button id="view-ai" style="width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.3);color:#fff;font-size:16px;cursor:pointer;flex-shrink:0">👁</button>
     </div>
 
-    <!-- DERNIÈRE ACTION -->
-    <div id="last-action-zone" style="padding:6px 10px;background:rgba(0,0,0,0.25);min-height:40px;flex-shrink:0;display:flex;align-items:center">
-      ${lastLog
-        ? `<span style="font-size:12px;color:${lastLog.type==='goal'?'#FFD700':'rgba(255,255,255,0.8)'};font-weight:${lastLog.type==='goal'?'900':'400'}">${lastLog.text}</span>`
-        : `<span style="font-size:11px;color:rgba(255,255,255,0.3)">En attente du premier action...</span>`
+    <!-- ZONE ACTIONS RICHES (3 derniers faits) -->
+    <div id="last-action-zone" style="padding:5px 8px;background:rgba(0,0,0,0.3);flex-shrink:0;display:flex;flex-direction:column;gap:4px;max-height:${game.log.length===0?'36px':'160px'};overflow:hidden">
+      ${game.log.length === 0
+        ? `<span style="font-size:11px;color:rgba(255,255,255,0.3);padding:4px 2px">⏳ Match en cours...</span>`
+        : game.log.slice(-3).reverse().map(e => renderLogEntry(e)).join('')
       }
-      ${game.phase === 'defense' && game.pendingAttack
-        ? `<span style="margin-left:8px;background:rgba(255,80,80,0.2);border:1px solid #ff6b6b;border-radius:6px;padding:2px 7px;font-size:11px;color:#ff6b6b;font-weight:700">IA attaque ${game.pendingAttack.total}</span>`
-        : ''}
     </div>
 
     <!-- BOUTON HISTORIQUE -->
-    <button id="toggle-history" style="width:100%;padding:4px 10px;background:rgba(0,0,0,0.15);border:none;border-bottom:1px solid rgba(255,255,255,0.05);color:rgba(255,255,255,0.35);font-size:10px;cursor:pointer;letter-spacing:1px;flex-shrink:0">
-      ▼  VOIR L'HISTORIQUE (${game.log.length})
+    <button id="toggle-history" style="width:100%;padding:3px 10px;background:rgba(0,0,0,0.15);border:none;border-bottom:1px solid rgba(255,255,255,0.05);color:rgba(255,255,255,0.3);font-size:9px;cursor:pointer;letter-spacing:1px;flex-shrink:0;text-transform:uppercase">
+      ▼  Historique complet (${game.log.length} actions)
     </button>
 
     <!-- ZONE CENTRALE : REMPLAÇANTS + TERRAIN -->
@@ -663,8 +724,10 @@ function renderGame(container, game, ctx) {
       </div>
 
       <!-- Terrain -->
-      <div style="flex:1;overflow:hidden;min-width:0;align-self:flex-start;max-height:min(calc(100vh - 340px), calc(100vw - 50px))" id="match-field">
-        ${renderTeam(game.homeTeam, game.formation, game.phase, selectedIds, 280, 280)}
+      <div style="flex:1;overflow:hidden;min-width:0;display:flex;align-items:flex-start;justify-content:center" id="match-field">
+        <div style="width:min(calc(100vw - 50px), calc(100vh - 350px));overflow:hidden;flex-shrink:0">
+          ${renderTeam(game.homeTeam, game.formation, game.phase, selectedIds, 280, 280)}
+        </div>
       </div>
     </div>
 
@@ -803,13 +866,27 @@ function confirmDefense(container, game, ctx) {
     if (p) p.used = true
   })
   const result = resolveDuel(game.pendingAttack.total, calc.total, game.modifiers.home)
+  const duelEntryDef = {
+    type: 'duel',
+    title: 'Défense',
+    aiPlayers:   (game.pendingAttack.players||[]).map(p => ({ name:p.name, note:p._line==='MIL'?p.note_m:p.note_a, portrait:getPortrait(p), job:p.job })),
+    homePlayers: game.selected.map(s => { const pp = (game.homeTeam[s._role]||[]).find(x=>x.cardId===s.cardId)||s; return { name:pp.name, note:pp._line==='GK'?pp.note_g:pp._line==='MIL'?pp.note_m:pp.note_d, portrait:getPortrait(pp), job:pp.job } }),
+    homeTotal: calc.total,
+    aiTotal: game.pendingAttack.total,
+    isGoal: false, homeScored: false,
+    text: '',
+  }
   if (result.shielded) {
-    game.log.push({ text:`🛡️ Bouclier ! But annulé.`, type:'info' })
+    duelEntryDef.text = '🛡️ Bouclier ! But annulé.'
+    game.log.push(duelEntryDef)
   } else if (result.goal) {
     game.aiScore++
-    game.log.push({ text:`⚽ BUT IA ! (${game.pendingAttack.total} > ${calc.total})`, type:'goal' })
+    duelEntryDef.isGoal = true; duelEntryDef.homeScored = false
+    duelEntryDef.text = `⚽ BUT IA ! (${game.pendingAttack.total} > ${calc.total})`
+    game.log.push(duelEntryDef)
   } else {
-    game.log.push({ text:`🧤 Défense réussie ! (${calc.total} ≥ ${game.pendingAttack.total})`, type:'info' })
+    duelEntryDef.text = `🧤 Défense réussie ! (${calc.total} ≥ ${game.pendingAttack.total})`
+    game.log.push(duelEntryDef)
   }
   game.selected = []
   game.modifiers.home = {}
@@ -837,13 +914,27 @@ function aiDefend(container, game, ctx) {
   const defVal = selected.length > 0 ? calcDefense(selected, game.modifiers.ai).total : 0
   selected.forEach(s => { s.used = true })
   const result = resolveDuel(game.pendingAttack.total, defVal, game.modifiers.ai)
+  const duelEntryAttack = {
+    type: 'duel',
+    title: 'Attaque',
+    homePlayers: (game.pendingAttack.players||[]).map(p => ({ name:p.name, note:p._line==='MIL'?p.note_m:p.note_a, portrait:getPortrait(p), job:p.job })),
+    aiPlayers:   selected.map(p => ({ name:p.name, note:p._line==='GK'?p.note_g:p._line==='MIL'?p.note_m:p.note_d, portrait:getPortrait(p), job:p.job })),
+    homeTotal: game.pendingAttack.total,
+    aiTotal: defVal,
+    isGoal: false, homeScored: false,
+    text: '',
+  }
   if (result.shielded) {
-    game.log.push({ text:`🛡️ Bouclier IA !`, type:'info' })
+    duelEntryAttack.text = '🛡️ Bouclier IA !'
+    game.log.push(duelEntryAttack)
   } else if (result.goal) {
     game.homeScore++
-    game.log.push({ text:`⚽ BUT ! (${game.pendingAttack.total} > ${defVal}) — ${game.selected?.map(p=>p.name).join(', ')||''}`, type:'goal' })
+    duelEntryAttack.isGoal = true; duelEntryAttack.homeScored = true
+    duelEntryAttack.text = `⚽ BUT ! (${game.pendingAttack.total} > ${defVal})`
+    game.log.push(duelEntryAttack)
   } else {
-    game.log.push({ text:`🧤 IA défend (${defVal} ≥ ${game.pendingAttack.total})`, type:'info' })
+    duelEntryAttack.text = `🧤 IA défend (${defVal} ≥ ${game.pendingAttack.total})`
+    game.log.push(duelEntryAttack)
   }
   game.modifiers.ai = {}
   game.pendingAttack = null
@@ -998,7 +1089,13 @@ function openSubstitution(container, game, ctx, preferredSubId = null) {
       team.splice(idx, 1, subPlayer)
       game.usedSubIds = [...(game.usedSubIds||[]), selectedSub]
       game.subsUsed++
-      game.log.push({ text:`🔄 ${subPlayer.firstname} ${subPlayer.name} remplace ${outPlayer?.firstname} ${outPlayer?.name}`, type:'info' })
+      game.log.push({
+        type: 'sub',
+        subSide: 'home',
+        outPlayer: { name:outPlayer?.name||'', firstname:outPlayer?.firstname||'', note: getNoteForRole(outPlayer, role), portrait:getPortrait(outPlayer), job:outPlayer?.job||role },
+        inPlayer:  { name:subPlayer.name, firstname:subPlayer.firstname, note: getNoteForRole(subPlayer, role), portrait:getPortrait(subPlayer), job:subPlayer.job },
+        text: `🔄 ${subPlayer.firstname} ${subPlayer.name} remplace ${outPlayer?.firstname} ${outPlayer?.name}`,
+      })
     }
     ctx.closeModal()
     // Animation remplacement

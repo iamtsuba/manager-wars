@@ -535,10 +535,11 @@ async function saveDeck(builder, ctx) {
   const matchingFormation = builder.formationCards.find(c => c.formation === builder.formation)
   const formationCardId   = matchingFormation?.id || builder.formationCardId
 
-  await supabase.from('decks').update({
+  const { error: deckUpdateError } = await supabase.from('decks').update({
     formation: builder.formation,
     formation_card_id: formationCardId || null
   }).eq('id', builder.deckId)
+  if (deckUpdateError) { toast(deckUpdateError.message, 'error'); return }
 
   await supabase.from('deck_cards').delete().eq('deck_id', builder.deckId)
 

@@ -26,8 +26,47 @@ function getPortrait(p) {
 const JOB_COLORS = { GK:'#111', DEF:'#bb2020', MIL:'#D4A017', ATT:'#1A6B3C' }
 const RAR_COLORS = { normal:'#ccc', pepite:'#D4A017', papyte:'#909090', legende:'#7a28b8' }
 
+// ── Convertir un booster DB en format UI ─────────────────
+function dbToUI(b) {
+  // Type dominant depuis les taux de drop
+  const typeCounts = {}
+  ;(b.rates||[]).forEach(r => {
+    typeCounts[r.card_type] = (typeCounts[r.card_type]||0) + Number(r.percentage||0)
+  })
+  const primaryType = Object.entries(typeCounts).sort((a,z)=>z[1]-a[1])[0]?.[0] || 'player'
+
+  const imgName = b.image_url || 'booster-players.png'
+  return {
+    id:        b.id,
+    img:       import.meta.env.BASE_URL + 'icons/' + imgName,
+    name:      b.name,
+    sub:       `${b.card_count} carte(s)`,
+    cost:      b.price_type === 'credits' ? (b.price_credits||0) : 0,
+    costLabel: b.price_type === 'credits'
+               ? `${(b.price_credits||0).toLocaleString('fr')} crédits`
+               : b.price_type === 'pub' ? '1 pub' : 'Gratuit',
+    cardCount: b.card_count || 5,
+    type:      primaryType,
+    isPub:     b.price_type === 'pub',
+    rates:     b.rates || [],
+    _raw:      b,
+  }
+}
+
 export async function renderBoosters(container, { state, navigate, toast }) {
   const credits = state.profile?.credits || 0
+  container.innerHTML = '<div class="page" style="padding:40px;text-align:center;color:#aaa">⏳ Chargement...</div>'
+
+  // Charger les boosters actifs depuis la DB
+  let ACTIVE_BOOSTERS = []
+  try {
+    const dbBoosters = await loadActiveBoosters()
+    ACTIVE_BOOSTERS = dbBoosters.map(dbToUI)
+  } catch(e) {
+    console.warn('Erreur chargement boosters DB, fallback hardcodé', e)
+  }
+  // Fallback si aucun booster en DB
+  if (!ACTIVE_BOOSTERS.length) ACTIVE_BOOSTERS = BOOSTERS.map(b => ({ ...b, rates:[], isPub: b.id==='players_pub' }))
 
   container.innerHTML = `
   <div class="page">
@@ -37,16 +76,15 @@ export async function renderBoosters(container, { state, navigate, toast }) {
     </div>
     <div class="page-body">
       <div class="booster-grid">
-        ${BOOSTERS.map(b => {
-          const canAfford = credits >= b.cost || b.cost === 0
-          const isPlayerBooster = b.id === 'players_std' || b.id === 'players_pub'
+        ${ACTIVE_BOOSTERS.map(b => {
+          const canAfford = b.cost === 0 || credits >= b.cost
           return `<div class="booster-card ${!canAfford ? 'disabled' : ''}" data-booster="${b.id}" style="position:relative">
-            ${isPlayerBooster ? `<button class="booster-info-btn" data-info="${b.id}"
+            <button class="booster-info-btn" data-booster-id="${b.id}"
               style="position:absolute;top:6px;right:6px;width:20px;height:20px;border-radius:50%;
               background:rgba(0,0,0,0.15);border:none;cursor:pointer;font-size:11px;font-weight:700;
               color:var(--gray-600);display:flex;align-items:center;justify-content:center;z-index:2"
-              onclick="event.stopPropagation()">ℹ</button>` : ''}
-            <div class="icon"><img src="${b.img}" alt="${b.name}" style="height:64px;width:auto;display:block;margin:0 auto"></div>
+              onclick="event.stopPropagation()">ℹ</button>
+            <div class="icon"><img src="${b.img}" alt="${b.name}" style="height:64px;width:auto;display:block;margin:0 auto" onerror="this.src='${import.meta.env.BASE_URL}icons/booster-players.png'"></div>
             <div class="name">${b.name}</div>
             <div class="desc">${b.sub}</div>
             <div class="cost">${b.costLabel}</div>
@@ -65,7 +103,7 @@ export async function renderBoosters(container, { state, navigate, toast }) {
 
   container.querySelectorAll('.booster-card:not(.disabled)').forEach(el => {
     el.addEventListener('click', async () => {
-      const booster = BOOSTERS.find(b => b.id === el.dataset.booster)
+      const booster = ACTIVE_BOOSTERS.find(b => b.id === el.dataset.booster)
       if (!booster) return
       el.style.opacity = '0.5'; el.style.pointerEvents = 'none'
       try {
@@ -77,11 +115,12 @@ export async function renderBoosters(container, { state, navigate, toast }) {
     })
   })
 
-  // Icône ℹ probabilités sur les boosters Players
+  // ℹ probabilités
   container.querySelectorAll('.booster-info-btn').forEach(btn => {
     btn.addEventListener('click', e => {
       e.stopPropagation()
-      showBoosterOdds()
+      const b = ACTIVE_BOOSTERS.find(x => x.id === btn.dataset.boosterId)
+      showBoosterOdds(b)
     })
   })
 }
@@ -91,7 +130,7 @@ async function openBooster(booster, { state, toast, navigate, container }) {
     toast('Crédits insuffisants', 'error'); return
   }
 
-  if (booster.id === 'players_pub') {
+  if (booster.isPub) {
     await showAdSimulation()
   }
 
@@ -105,12 +144,16 @@ async function openBooster(booster, { state, toast, navigate, container }) {
   const ownedFormations = new Set((existingCards||[]).filter(c => c.card_type === 'formation').map(c => c.formation))
 
   let newCards = []
-  if (booster.type === 'player') {
+  const type = booster.type || 'player'
+  if (type === 'player') {
     newCards = await openPlayersBooster(state.profile, booster.cardCount, booster.cost)
-  } else if (booster.type === 'game_changer') {
+  } else if (type === 'game_changer') {
     newCards = await openGCBooster(state.profile, booster.cardCount, booster.cost)
-  } else if (booster.type === 'formation') {
+  } else if (type === 'formation') {
     newCards = await openFormationBooster(state.profile, booster.cost)
+  } else {
+    // Type mixte DB : tirage carte par carte selon les taux
+    newCards = await openMixedBooster(state.profile, booster)
   }
 
   // Marquer les doublons (déjà possédés avant ce tirage)
@@ -166,6 +209,55 @@ function pickPlayer(pool, targetRarity) {
   }
   if (!candidates.length) candidates = pool
   return candidates[Math.floor(Math.random() * candidates.length)]
+}
+
+// ── Booster mixte DB (taux configurés en admin) ──────────
+async function openMixedBooster(profile, booster) {
+  if (booster.cost > 0) {
+    const { error } = await supabase.from('users')
+      .update({ credits: profile.credits - booster.cost }).eq('id', profile.id)
+    if (error) throw error
+  }
+  const { rollDropRate } = await import('./booster-engine.js')
+  const results = []
+  for (let i = 0; i < (booster.cardCount||5); i++) {
+    const rate = rollDropRate(booster.rates)
+    if (!rate) continue
+    if (rate.card_type === 'player') {
+      // Tirer un joueur selon la rareté/note configurée
+      let q = supabase.from('players')
+        .select('id,job,firstname,surname_encoded,country_code,club_id,rarity,note_g,note_d,note_m,note_a,skin,hair,hair_length,sell_price,clubs(encoded_name,logo_url)')
+        .eq('is_active', true)
+      if (rate.rarity) q = q.eq('rarity', rate.rarity)
+      const { data: pool } = await q
+      let filtered = pool || []
+      if (rate.note_min || rate.note_max) {
+        filtered = filtered.filter(p => {
+          const best = Math.max(Number(p.note_g)||0,Number(p.note_d)||0,Number(p.note_m)||0,Number(p.note_a)||0)
+          return (!rate.note_min || best >= rate.note_min) && (!rate.note_max || best <= rate.note_max)
+        })
+      }
+      if (!filtered.length) filtered = pool || []
+      if (!filtered.length) continue
+      const player = filtered[Math.floor(Math.random()*filtered.length)]
+      const { data: card } = await supabase.from('cards')
+        .insert({ owner_id:profile.id, player_id:player.id, card_type:'player' }).select().single()
+      if (card) results.push({ ...card, player })
+    } else if (rate.card_type === 'game_changer') {
+      const gcTypes = ['Ressusciter','Double attaque','Bouclier','Vol de note','Gel','Remplacement+']
+      const gc_type = gcTypes[Math.floor(Math.random()*gcTypes.length)]
+      const { data: card } = await supabase.from('cards')
+        .insert({ owner_id:profile.id, card_type:'game_changer', gc_type }).select().single()
+      if (card) results.push(card)
+    } else if (rate.card_type === 'formation') {
+      const formations = ['4-4-2','4-3-3','3-5-2','4-2-3-1','3-4-3']
+      const formation = formations[Math.floor(Math.random()*formations.length)]
+      const { data: cards } = await supabase.from('cards')
+        .insert({ owner_id:profile.id, card_type:'formation', formation }).select()
+      if (cards?.[0]) results.push(cards[0])
+    }
+  }
+  return results
 }
 
 async function openPlayersBooster(profile, count, cost) {
@@ -548,7 +640,40 @@ function buildCardFace(card) {
 }
 
 // ── Popup probabilités d'obtention ───────────────────────
-function showBoosterOdds() {
+function showBoosterOdds(booster) {
+  // Si le booster a des taux DB configurés, les afficher
+  if (booster?.rates?.length) {
+    const overlay = document.createElement('div')
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:4000;padding:16px'
+    const RARITY_COLORS = { normal:'#ccc', pépite:'#D4A017', papyte:'#909090', légende:'#7a28b8' }
+    const TYPE_LABELS = { player:'Joueur', formation:'Formation', game_changer:'Game Changer', game_helper:'Game Helper' }
+    overlay.innerHTML = `
+      <div style="background:#fff;border-radius:16px;padding:20px;max-width:360px;width:100%;max-height:80vh;overflow-y:auto">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+          <h3 style="font-size:16px;font-weight:700;margin:0">📦 ${booster.name} — Taux</h3>
+          <button id="odds-close" style="background:none;border:none;font-size:20px;cursor:pointer">✕</button>
+        </div>
+        ${booster.rates.map(r => `
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;border-radius:8px;background:#f5f5f5;margin-bottom:6px">
+          <div>
+            <span style="font-weight:700;font-size:13px">${TYPE_LABELS[r.card_type]||r.card_type}</span>
+            ${r.rarity ? `<span style="margin-left:6px;padding:1px 6px;border-radius:8px;background:${RARITY_COLORS[r.rarity]||'#eee'};color:#fff;font-size:10px;font-weight:700">${r.rarity}</span>`:''}
+            ${r.note_min||r.note_max ? `<span style="margin-left:4px;font-size:11px;color:#888">note ${r.note_min||''}–${r.note_max||''}</span>`:''}
+          </div>
+          <span style="font-size:18px;font-weight:900;color:#333">${Number(r.percentage).toFixed(1)}%</span>
+        </div>`).join('')}
+        <div style="margin-top:10px;text-align:center;font-size:11px;color:#aaa">Probabilités par carte tirée</div>
+      </div>`
+    document.body.appendChild(overlay)
+    overlay.addEventListener('click', e => { if (e.target===overlay) overlay.remove() })
+    document.getElementById('odds-close')?.addEventListener('click', () => overlay.remove())
+    return
+  }
+  // Sinon : popup probabilités hardcodées (fallback)
+  showHardcodedOdds()
+}
+
+function showHardcodedOdds() {
   const overlay = document.createElement('div')
   overlay.style.cssText = `position:fixed;inset:0;background:rgba(0,0,0,0.6);display:flex;
     align-items:center;justify-content:center;z-index:4000;padding:16px`

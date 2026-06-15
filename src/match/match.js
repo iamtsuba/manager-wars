@@ -484,6 +484,60 @@ function showMidfieldAnimation(container, game, ctx) {
   }, 1200)
 }
 
+// ── Helper : logo club ───────────────────────────────────────
+function getClubLogo(p) {
+  const url = import.meta?.env?.VITE_SUPABASE_URL || ''
+  if (!p?.clubLogo) return null
+  if (p.clubLogo.startsWith('http')) return p.clubLogo
+  return url ? `${url}/storage/v1/object/public/assets/clubs/${p.clubLogo}` : null
+}
+
+// ── Carte joueur HTML (hors SVG) ─────────────────────────────
+function renderMiniCardHTML(p, w=44, h=58) {
+  if (!p) return `<div style="width:${w}px;height:${h}px;border:1.5px dashed rgba(255,255,255,0.2);border-radius:5px"></div>`
+  const portrait = getPortrait(p)
+  const logoUrl  = getClubLogo(p)
+  const role     = p._line || p.job || 'MIL'
+  const jobColor = JOB_COLORS[role] || '#555'
+  const rarityBorder = { normal:'#aaa', pépite:'#D4A017', papyte:'#222', légende:'#7a28b8' }[p?.rarity] || '#aaa'
+  const note = (Number(getNoteForRole(p, role))||0) + (p.boost||0)
+  const flag = countryFlag(p?.country_code)
+  const nameH = Math.round(h*0.19), botH = Math.round(h*0.25), portH = h - Math.round(h*0.19) - Math.round(h*0.25)
+  const op = p?.used ? 0.28 : 1
+  return `<div style="width:${w}px;height:${h}px;border-radius:5px;border:2px solid ${rarityBorder};background:${jobColor};position:relative;overflow:hidden;flex-shrink:0;opacity:${op}">
+    <div style="position:absolute;top:0;left:0;right:0;height:${nameH}px;background:rgba(255,255,255,0.93);display:flex;align-items:center;justify-content:center;z-index:2">
+      <span style="font-size:${Math.max(5,Math.round(w/9))}px;font-weight:900;color:#111;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:${w-4}px">${(p?.name||'').slice(0,9)}</span>
+    </div>
+    ${portrait && !p?.used ? `<img src="${portrait}" style="position:absolute;top:${nameH}px;left:0;width:${w}px;height:${portH}px;object-fit:cover;object-position:top center">` : ''}
+    <div style="position:absolute;bottom:0;left:0;right:0;height:${botH}px;background:rgba(255,255,255,0.93);display:flex;align-items:center;justify-content:space-between;padding:0 3px;z-index:2">
+      <span style="font-size:${botH-4}px;line-height:1">${flag}</span>
+      <span style="font-size:${botH-2}px;font-weight:900;color:#111;font-family:Arial Black,Arial">${p?.used?'–':note}</span>
+      ${logoUrl ? `<img src="${logoUrl}" style="width:${botH-4}px;height:${botH-4}px;object-fit:contain">` : (p?.clubName ? `<span style="font-size:${Math.max(4,botH-8)}px;font-weight:700;color:#333">${(p.clubName||'').slice(0,3).toUpperCase()}</span>` : '')}
+    </div>
+  </div>`
+}
+
+// ── Ligne de cartes avec liens ───────────────────────────────
+function renderCardRow(players, accentColor, total) {
+  if (!players?.length) return ''
+  const shown = players.slice(0, 5)
+  let html = '<div style="display:flex;align-items:center;gap:0;flex-wrap:nowrap;overflow:hidden">'
+  shown.forEach((p, i) => {
+    html += renderMiniCardHTML(p, 40, 52)
+    if (i < shown.length - 1) {
+      const lc = linkColor(p, shown[i+1])
+      const noLink = lc === '#ff3333' || lc === '#cc2222'
+      html += `<div style="width:7px;height:3px;background:${noLink?'rgba(255,255,255,0.12)':lc};border-radius:2px;flex-shrink:0;margin:0 1px"></div>`
+    }
+  })
+  if (total !== undefined) {
+    const textColor = accentColor === '#00ff88' ? '#000' : '#fff'
+    html += `<div style="margin-left:6px;background:${accentColor};color:${textColor};border-radius:6px;padding:3px 8px;font-size:15px;font-weight:900;flex-shrink:0">${total}</div>`
+  }
+  html += '</div>'
+  return html
+}
+
 // ── Helper : drapeau emoji depuis code pays ──────────────
 function countryFlag(code) {
   if (!code || code.length < 2) return '🌍'

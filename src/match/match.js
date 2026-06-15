@@ -249,7 +249,7 @@ export async function renderMatch(container, ctx) {
     clubName: state.profile.club_name || 'Vous',
   }
 
-  showMidfieldAnimation(container, game, ctx)
+  showOpponentReveal(container, game, ctx)
 }
 
 // ── SÉLECTION DU DECK (refonte) ───────────────────────────
@@ -372,6 +372,22 @@ async function renderDeckSelect(container, ctx, matchMode) {
 }
 
 // ── ANIMATION DUEL MILIEU ─────────────────────────────────
+// ── POINT 6 : Reveal équipe adverse (5s) ─────────────────
+function showOpponentReveal(container, game, ctx) {
+  container.innerHTML = `
+  <div class="match-screen" style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;gap:20px;padding:24px;background:#0a3d1e">
+    <div style="font-size:11px;color:rgba(255,255,255,0.5);letter-spacing:3px;text-transform:uppercase">Équipe adverse</div>
+    <div style="font-size:20px;font-weight:900;color:#ff6b6b">IA (${game.difficulty.toUpperCase()})</div>
+    <div style="width:min(90vw,420px)">${buildTeamSVG(game.aiTeam, game.formation, null, [], 300, 300)}</div>
+    <div style="font-size:15px;color:rgba(255,255,255,0.7)">
+      <span class="loading-dots">Chargement</span>
+    </div>
+    <style>@keyframes ld{0%,20%{opacity:0.3}50%{opacity:1}80%,100%{opacity:0.3}}.loading-dots::after{content:'...';animation:ld 1.4s infinite}</style>
+  </div>`
+  setTimeout(() => showMidfieldAnimation(container, game, ctx), 5000)
+}
+
+// ── Midfield ─────────────────────────────────────────────
 function showMidfieldAnimation(container, game, ctx) {
   const homeMils = game.homeTeam.MIL || []
   const aiMils   = game.aiTeam.MIL   || []
@@ -476,12 +492,19 @@ function showMidfieldAnimation(container, game, ctx) {
       text: `Duel milieu : ${game.clubName} ${homeTotal} – ${aiTotal} IA → ${homeWins ? game.clubName+' attaque' : 'IA attaque'}`,
     })
 
-    setTimeout(() => {
-      game.phase = game.attacker === 'home' ? 'attack' : 'ai-attack'
-      renderGame(container, game, ctx)
-      if (game.attacker === 'ai') setTimeout(() => aiTurn(container, game, ctx), 1000)
-    }, 2800)
-  }, 1200)
+    // Ajouter bouton "Commencer le match" après affichage du résultat
+    if (elRes) {
+      const btn = document.createElement('button')
+      btn.textContent = '▶ Commencer le match'
+      btn.style.cssText = 'margin-top:20px;padding:14px 28px;border-radius:12px;border:none;background:#1A6B3C;color:#fff;font-size:16px;font-weight:900;cursor:pointer'
+      btn.addEventListener('click', () => {
+        game.phase = game.attacker === 'home' ? 'attack' : 'ai-attack'
+        renderGame(container, game, ctx)
+        if (game.attacker === 'ai') setTimeout(() => aiTurn(container, game, ctx), 800)
+      })
+      elRes.appendChild(btn)
+    }
+  }, 5000)
 }
 
 // ── Helper : logo club ───────────────────────────────────────
@@ -510,7 +533,7 @@ function renderMiniCardHTML(p, w=44, h=58) {
     </div>
     ${portrait && !p?.used ? `<img src="${portrait}" style="position:absolute;top:${nameH}px;left:0;width:${w}px;height:${portH}px;object-fit:cover;object-position:top center">` : ''}
     <div style="position:absolute;bottom:0;left:0;right:0;height:${botH}px;background:rgba(255,255,255,0.93);display:flex;align-items:center;justify-content:space-between;padding:0 3px;z-index:2">
-      <span style="font-size:${botH-4}px;line-height:1">${flag}</span>
+      ${flagImgUrl(p?.country_code) ? `<img src="${flagImgUrl(p.country_code)}" style="width:${botH+2}px;height:${botH-3}px;object-fit:cover;border-radius:1px">` : `<span style="font-size:${botH-4}px">${flag}</span>`}
       <span style="font-size:${botH-2}px;font-weight:900;color:#111;font-family:Arial Black,Arial">${p?.used?'–':note}</span>
       ${logoUrl ? `<img src="${logoUrl}" style="width:${botH-4}px;height:${botH-4}px;object-fit:contain">` : (p?.clubName ? `<span style="font-size:${Math.max(4,botH-8)}px;font-weight:700;color:#333">${(p.clubName||'').slice(0,3).toUpperCase()}</span>` : '')}
     </div>
@@ -539,6 +562,10 @@ function renderCardRow(players, accentColor, total) {
 }
 
 // ── Helper : drapeau emoji depuis code pays ──────────────
+function flagImgUrl(code) {
+  if (!code || code.length < 2) return null
+  return `https://flagcdn.com/24x18/${code.slice(0,2).toLowerCase()}.png`
+}
 function countryFlag(code) {
   if (!code || code.length < 2) return '🌍'
   try {
@@ -637,7 +664,9 @@ function buildTeamSVG(team, formation, phase, selectedIds, W=310, H=310) {
       svg += `<text x="${c.x.toFixed(1)}" y="${(c.y + CH/2 - BOTHH/2).toFixed(1)}" text-anchor="middle" dominant-baseline="central" font-size="13" font-weight="900" fill="rgba(0,0,0,0.4)" font-family="Arial Black">–</text>`
     } else {
       // Drapeau pays (gauche)
-      svg += `<text x="${(c.x - 13).toFixed(1)}" y="${(c.y + CH/2 - BOTHH/2).toFixed(1)}" text-anchor="middle" dominant-baseline="central" font-size="10">${countryFlag(p.country_code)}</text>`
+      const flagU = flagImgUrl(p.country_code)
+      if (flagU) svg += `<image href="${flagU}" x="${(c.x - 20).toFixed(1)}" y="${(c.y + CH/2 - BOTHH + 3).toFixed(1)}" width="13" height="10" preserveAspectRatio="xMidYMid slice"/>`
+      else svg += `<text x="${(c.x - 13).toFixed(1)}" y="${(c.y + CH/2 - BOTHH/2).toFixed(1)}" text-anchor="middle" dominant-baseline="central" font-size="10">${countryFlag(p.country_code)}</text>`
       // Note (centre)
       svg += `<text x="${c.x.toFixed(1)}" y="${(c.y + CH/2 - BOTHH/2).toFixed(1)}" text-anchor="middle" dominant-baseline="central" font-size="12" font-weight="900" fill="#111" font-family="Arial Black">${note}</text>`
       // Club (droite, 3 lettres)
@@ -664,7 +693,7 @@ function buildTeamSVG(team, formation, phase, selectedIds, W=310, H=310) {
   }
 
   const PAD = 38  // marge pour cartes rectangulaires
-  return `<svg viewBox="${-PAD} ${-PAD} ${W+PAD*2} ${H+PAD*2}" width="100%" style="display:block;width:100%;max-width:380px;margin:0 auto">
+  return `<svg viewBox="${-PAD} ${-PAD} ${W+PAD*2} ${H+PAD*2}" width="100%" style="display:block;width:100%;max-width:440px;margin:0 auto">
     ${svg}
   </svg>`
 }
@@ -849,22 +878,19 @@ function renderGame(container, game, ctx) {
           </div>` : ''}
       </div>
 
-      <!-- Bouton action principal -->
-      <div style="flex-shrink:0">
+      <!-- Bouton action principal (rectangulaire + chrono) -->
+      <div style="flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:3px">
         ${isFinished
-          ? `<button id="btn-results" style="width:68px;height:68px;border-radius:50%;background:linear-gradient(135deg,#D4A017,#FFD700);border:3px solid #FFD700;color:#000;font-size:28px;cursor:pointer;display:flex;align-items:center;justify-content:center">🏁</button>`
+          ? `<button id="btn-results" style="min-width:130px;padding:14px 16px;border-radius:14px;background:linear-gradient(135deg,#D4A017,#FFD700);border:none;color:#000;font-size:15px;font-weight:900;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px">🏁 Résultats</button>`
           : isAITurn
-          ? `<div style="width:68px;height:68px;border-radius:50%;background:rgba(255,255,255,0.08);border:3px solid rgba(255,255,255,0.15);color:rgba(255,255,255,0.3);font-size:26px;display:flex;align-items:center;justify-content:center">⏳</div>`
+          ? `<div style="min-width:130px;padding:14px 16px;border-radius:14px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);color:rgba(255,255,255,0.4);font-size:14px;display:flex;align-items:center;justify-content:center;gap:6px">⏳ Tour IA</div>`
           : isAttack
-          ? `<button id="btn-action" style="width:68px;height:68px;border-radius:50%;background:linear-gradient(135deg,#c47a00,#FFD700);border:3px solid #FFD700;color:#fff;font-size:28px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 0 20px rgba(255,215,0,0.4)" ${game.selected.length===0?'disabled style="opacity:0.4;cursor:default"':''}>⚔️</button>`
+          ? `<button id="btn-action" style="min-width:130px;padding:14px 16px;border-radius:14px;background:linear-gradient(135deg,#c47a00,#FFD700);border:none;color:#fff;font-size:15px;font-weight:900;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;box-shadow:0 0 18px rgba(255,215,0,0.4)" ${game.selected.length===0?'disabled style="opacity:0.45;cursor:default"':''}>⚔️ ATTAQUEZ <span id="match-timer" style="font-weight:900"></span></button>`
           : isDefense
-          ? `<button id="btn-action" style="width:68px;height:68px;border-radius:50%;background:linear-gradient(135deg,#1a4a8a,#3a7bd5);border:3px solid #87CEEB;color:#fff;font-size:28px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 0 20px rgba(135,206,235,0.4)" ${game.selected.length===0?'disabled style="opacity:0.4;cursor:default"':''}>🛡️</button>`
-          : `<div style="width:68px;height:68px;border-radius:50%;background:rgba(255,255,255,0.05);border:3px solid rgba(255,255,255,0.1)"></div>`
+          ? `<button id="btn-action" style="min-width:130px;padding:14px 16px;border-radius:14px;background:linear-gradient(135deg,#1a4a8a,#3a7bd5);border:none;color:#fff;font-size:15px;font-weight:900;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;box-shadow:0 0 18px rgba(135,206,235,0.4)" ${game.selected.length===0?'disabled style="opacity:0.45;cursor:default"':''}>🛡️ DÉFENDEZ <span id="match-timer" style="font-weight:900"></span></button>`
+          : `<div style="min-width:130px;padding:14px;border-radius:14px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1)"></div>`
         }
-        ${isAttack || isDefense ? `
-        <div style="text-align:center;font-size:8px;color:rgba(255,255,255,0.4);margin-top:3px">
-          ${game.selected.length}/3
-        </div>` : ''}
+        ${isAttack || isDefense ? `<div style="font-size:9px;color:rgba(255,255,255,0.4)">${game.selected.length}/3 sélectionné(s)</div>` : ''}
       </div>
     </div>
   </div>
@@ -912,8 +938,40 @@ function renderGame(container, game, ctx) {
     </div>
   </div>`
 
-  // ── Ajuster la hauteur du match screen dynamiquement ─────
-
+  // ── CHRONO (point 7) ─────────────────────────────────────
+  if (game._timerInt) { clearInterval(game._timerInt); game._timerInt = null }
+  const isPlayerTurn = (game.phase === 'attack' || game.phase === 'defense')
+  if (isPlayerTurn) {
+    let phase2 = false           // false = 30s vert, true = 15s rouge
+    let remaining = 30
+    const timerEl = () => document.getElementById('match-timer')
+    const paint = () => {
+      const el = timerEl()
+      if (!el) return
+      const mm = String(Math.floor(remaining/60)).padStart(2,'0')
+      const ss = String(remaining%60).padStart(2,'0')
+      el.textContent = ` ${mm}:${ss}`
+      el.style.color = phase2 ? '#ff2222' : '#ff9500'
+      el.style.fontWeight = '900'
+    }
+    paint()
+    game._timerInt = setInterval(() => {
+      remaining--
+      if (remaining < 0) {
+        if (!phase2) { phase2 = true; remaining = 15; paint() }
+        else {
+          clearInterval(game._timerInt); game._timerInt = null
+          // Forfait
+          game.homeScore = 0; game.aiScore = 3
+          const ov = document.createElement('div')
+          ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.92);z-index:1500;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;color:#fff;padding:24px;text-align:center'
+          ov.innerHTML = `<div style="font-size:56px">⏱️</div><div style="font-size:24px;font-weight:900;color:#ff4444">MATCH PERDU PAR FORFAIT</div><div style="font-size:14px;color:rgba(255,255,255,0.6)">Temps écoulé</div>`
+          document.body.appendChild(ov)
+          setTimeout(() => { ov.remove(); finishMatch(container, game, ctx) }, 2500)
+        }
+      } else paint()
+    }, 1000)
+  }
 
   // ── Events ────────────────────────────────────────────────
   document.getElementById('match-quit')?.addEventListener('click', () => {
@@ -943,7 +1001,7 @@ function renderGame(container, game, ctx) {
     el.addEventListener('click', () => toggleSelect(el, game, container, ctx))
   })
   container.querySelectorAll('.gc-mini').forEach(el => {
-    el.addEventListener('click', () => useGameChanger(el.dataset.gcId, el.dataset.gcType, container, game, ctx))
+    el.addEventListener('click', () => openGCDetail(el.dataset.gcId, el.dataset.gcType, container, game, ctx))
   })
   document.getElementById('boost-card')?.addEventListener('click', () => useBoost(container, game, ctx))
 
@@ -971,6 +1029,7 @@ function toggleSelect(el, game, container, ctx) {
 
 // ── ATTAQUE ───────────────────────────────────────────────
 function confirmAttack(container, game, ctx) {
+  if (game._timerInt) { clearInterval(game._timerInt); game._timerInt = null }
   const selected = game.selected.map(s=>({...s,_line:s._role}))
   const calc = calcAttack(selected, game.modifiers.home)
   game.pendingAttack = { ...calc, players:[...game.selected], side:'home' }
@@ -988,6 +1047,7 @@ function confirmAttack(container, game, ctx) {
 
 // ── DÉFENSE ───────────────────────────────────────────────
 function confirmDefense(container, game, ctx) {
+  if (game._timerInt) { clearInterval(game._timerInt); game._timerInt = null }
   const selected = game.selected.map(s=>({...s,_line:s._role}))
   const calc = calcDefense(selected, game.modifiers.home)
   game.selected.forEach(sel => {
@@ -1352,6 +1412,29 @@ function openSubstitution(container, game, ctx, preferredSubId = null) {
 }
 
 
+// ── GAME CHANGER : popup détail ───────────────────────────
+function openGCDetail(gcId, gcType, container, game, ctx) {
+  const def = GC_DEFS[gcType] || { icon:'⚡', desc:'Carte spéciale.' }
+  const overlay = document.createElement('div')
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.88);z-index:750;display:flex;align-items:center;justify-content:center;padding:24px'
+  overlay.innerHTML = `
+    <div style="background:linear-gradient(160deg,#2a0a52,#7a28b8);border:2px solid #9b59b6;border-radius:18px;padding:24px;max-width:320px;text-align:center;color:#fff">
+      <div style="font-size:52px;margin-bottom:10px">${def.icon}</div>
+      <div style="font-size:19px;font-weight:900;margin-bottom:8px">${gcType}</div>
+      <div style="font-size:13px;color:rgba(255,255,255,0.85);line-height:1.5;margin-bottom:20px">${def.desc}</div>
+      <div style="display:flex;gap:10px">
+        <button id="gc-back" style="flex:1;padding:12px;border-radius:10px;border:1px solid rgba(255,255,255,0.3);background:transparent;color:#fff;font-size:14px;cursor:pointer">Retour</button>
+        <button id="gc-use" style="flex:1;padding:12px;border-radius:10px;border:none;background:#FFD700;color:#000;font-size:14px;font-weight:900;cursor:pointer">Utiliser</button>
+      </div>
+    </div>`
+  document.body.appendChild(overlay)
+  overlay.querySelector('#gc-back')?.addEventListener('click', () => overlay.remove())
+  overlay.querySelector('#gc-use')?.addEventListener('click', () => {
+    overlay.remove()
+    useGameChanger(gcId, gcType, container, game, ctx)
+  })
+}
+
 // ── GAME CHANGER ──────────────────────────────────────────
 function useGameChanger(gcId, gcType, container, game, ctx) {
   if (game.usedGc.includes(gcId)) return
@@ -1475,6 +1558,7 @@ function showGoalAnimation(miniPlayers, homeScore, aiScore, isHome, callback) {
 
 // ── FIN DE MATCH ──────────────────────────────────────────
 async function finishMatch(container, game, ctx) {
+  if (game._timerInt) { clearInterval(game._timerInt); game._timerInt = null }
   game.phase = 'finished'
   const { state } = ctx
   const isWin  = game.homeScore > game.aiScore

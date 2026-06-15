@@ -1219,6 +1219,7 @@ function openSubstitution(container, game, ctx, preferredSubId = null) {
 
   let outIdx = 0
   let inIdx  = Math.max(0, availSubs.findIndex(s => s.cardId === preferredSubId))
+  let subConfirmDone = false
 
   const overlay = document.createElement('div')
   overlay.id = 'sub-overlay'

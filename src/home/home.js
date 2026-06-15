@@ -26,7 +26,9 @@ export async function renderHome(container, { state, navigate, toast }) {
           <h3 style="margin:0">${p.pseudo}</h3>
           <div class="level">Niveau ${p.level} · ${p.club_name}</div>
         </div>
-        <div class="hero-compact-spacer"></div>
+        <button class="nav-rankings-btn" id="nav-matches" title="Tous les matchs" style="background:rgba(255,255,255,0.15)">
+          <span style="font-size:22px">⚽</span>
+        </button>
       </div>
 
       <!-- Ranked (bouton) -->
@@ -105,6 +107,7 @@ export async function renderHome(container, { state, navigate, toast }) {
   })
 
   document.getElementById('nav-rankings')?.addEventListener('click', () => navigate('rankings'))
+  document.getElementById('nav-matches')?.addEventListener('click', () => navigate('matches'))
 
   // Actions jeu
   container.querySelectorAll('[data-action]').forEach(el => {

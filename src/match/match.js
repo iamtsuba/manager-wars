@@ -1029,8 +1029,15 @@ function toggleSelect(el, game, container, ctx) {
 }
 
 // ── ATTAQUE ───────────────────────────────────────────────
+// ── Mise à jour du dernier joueur actif ──────────────────
+function updateLastPlayer(game, ctx, playerId) {
+  if (!game.matchId) return
+  supabase.from('matches').update({ last_player_id: playerId }).eq('id', game.matchId).then(()=>{})
+}
+
 function confirmAttack(container, game, ctx) {
   if (game._timerInt) { clearInterval(game._timerInt); game._timerInt = null }
+  updateLastPlayer(game, ctx, ctx.state.profile.id)
   const selected = game.selected.map(s=>({...s,_line:s._role}))
   const calc = calcAttack(selected, game.modifiers.home)
   game.pendingAttack = { ...calc, players:[...game.selected], side:'home' }
@@ -1049,6 +1056,7 @@ function confirmAttack(container, game, ctx) {
 // ── DÉFENSE ───────────────────────────────────────────────
 function confirmDefense(container, game, ctx) {
   if (game._timerInt) { clearInterval(game._timerInt); game._timerInt = null }
+  updateLastPlayer(game, ctx, ctx.state.profile.id)
   const selected = game.selected.map(s=>({...s,_line:s._role}))
   const calc = calcDefense(selected, game.modifiers.home)
   game.selected.forEach(sel => {
@@ -1094,6 +1102,7 @@ function confirmDefense(container, game, ctx) {
 
 // ── IA ────────────────────────────────────────────────────
 function aiTurn(container, game, ctx) {
+  updateLastPlayer(game, ctx, null)
   const allAi = [...(game.aiTeam.MIL||[]),...(game.aiTeam.ATT||[])]
   const selected = aiSelectPlayers(allAi, 'attack', game.difficulty)
   if (!selected.length) { checkEnd(container, game, ctx); return }

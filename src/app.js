@@ -13,6 +13,7 @@ import { renderBoosters }   from './boosters/boosters.js'
 import { renderMatch }      from './match/match.js'
 import { renderMarket }     from './market/market.js'
 import { renderRankings }   from './rankings/rankings.js'
+import { renderMatches }    from './matches/matches.js'
 import { setFormationLinksOverrides } from './match/formation-links.js'
 
 // ── État global ───────────────────────────────────────────
@@ -105,6 +106,7 @@ async function renderPage() {
     case 'match':      await renderMatch(container, ctx);      break
     case 'market':     await renderMarket(container, ctx);     break
     case 'rankings':   await renderRankings(container, ctx);   break
+    case 'matches':    await renderMatches(container, ctx);    break
     default:           await renderHome(container, ctx);
   }
 }

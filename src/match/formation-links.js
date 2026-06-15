@@ -401,9 +401,11 @@ export function linkColor(pA, pB) {
   const isLegend = pA.rarity === 'légende' || pB.rarity === 'légende'
   const sc = pA.country_code && pB.country_code && pA.country_code === pB.country_code
   const sk = pA.club_id && pB.club_id && pA.club_id === pB.club_id
+  // Légende : lien minimum orange (club) avec tous, ou vert si le pays correspond
+  if (isLegend) return sc ? '#00ff88' : '#FFD700'
   if (sc && sk) return '#00ff88'            // vert : pays + club = +2
-  if (sc || sk || isLegend) return '#FFD700' // jaune : pays OU club OU légende = +1
-  return '#ff3333'                           // rouge : aucun lien
+  if (sc || sk) return '#FFD700'            // jaune : pays OU club = +1
+  return '#ff3333'                          // rouge : aucun lien
 }
 
 /**

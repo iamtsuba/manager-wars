@@ -1041,6 +1041,28 @@ function aiTurn(container, game, ctx) {
   selected.forEach(s => { s.used = true })
   game.log.push({ text:`🤖 IA attaque : ${calc.total} (${selected.map(p=>p.name).join(', ')})`, type:'info' })
   game.modifiers.ai = {}
+
+  // Si le joueur n'a aucun défenseur dispo (GK/DEF/MIL) ET aucun remplacement possible → but auto IA
+  const homeDefenders = [...(game.homeTeam.GK||[]),...(game.homeTeam.DEF||[]),...(game.homeTeam.MIL||[])].filter(p=>!p.used)
+  const availSubsNow  = (game.homeSubs||[]).filter(s => !(game.usedSubIds||[]).includes(s.cardId))
+  const canSubNow     = availSubsNow.length > 0 && game.subsUsed < game.maxSubs
+  if (homeDefenders.length === 0 && !canSubNow) {
+    game.aiScore++
+    const duelEntry = {
+      type:'duel', isGoal:true, homeScored:false,
+      aiPlayers: selected.map(p => ({ name:p.name, note:p._line==='MIL'?p.note_m:p.note_a, portrait:getPortrait(p), job:p.job, country_code:p.country_code, rarity:p.rarity, clubName:p.clubName, clubLogo:p.clubLogo })),
+      aiTotal: calc.total,
+      text:`⚽ BUT IA ! (aucun défenseur disponible)`,
+    }
+    game.log.push(duelEntry)
+    game.pendingAttack = null
+    renderGame(container, game, ctx)
+    showGoalAnimation(duelEntry.aiPlayers, game.homeScore, game.aiScore, false, () => {
+      nextTurn(container, game, ctx, 'home-attack')
+    })
+    return
+  }
+
   game.phase = 'defense'
   renderGame(container, game, ctx)
 }

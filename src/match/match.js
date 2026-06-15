@@ -766,7 +766,7 @@ function renderGame(container, game, ctx) {
     #match-history-panel.open { transform:translateY(0); }
   </style>
 
-  <div class="match-screen" style="display:flex;flex-direction:column;height:calc(100dvh - 130px);overflow:hidden;background:#0a3d1e;position:relative">
+  <div class="match-screen" style="display:flex;flex-direction:column;height:calc(100dvh - 130px);max-height:calc(100dvh - 130px);overflow:hidden;background:#0a3d1e;position:relative">
 
     <!-- SCORE BAR -->
     <div style="display:flex;align-items:center;padding:8px 10px;background:rgba(0,0,0,0.5);gap:6px;flex-shrink:0">
@@ -913,14 +913,7 @@ function renderGame(container, game, ctx) {
   </div>`
 
   // ── Ajuster la hauteur du match screen dynamiquement ─────
-  requestAnimationFrame(() => {
-    const ms = container.querySelector('.match-screen')
-    if (!ms) return
-    const topOffset = ms.getBoundingClientRect().top
-    const navbarH   = document.querySelector('.bottom-nav, nav, [class*="nav"]')?.offsetHeight || 60
-    const availH    = Math.round(window.innerHeight - topOffset - navbarH)
-    if (availH > 150) ms.style.height = availH + 'px'
-  })
+
 
   // ── Events ────────────────────────────────────────────────
   document.getElementById('match-quit')?.addEventListener('click', () => {
@@ -1177,7 +1170,7 @@ function showSubAnimation(outPlayer, inPlayer, callback) {
     if (subDismissed) return
     subDismissed = true
     overlay.remove()
-    setTimeout(() => callback(), 50)
+    callback()
   }
   overlay.addEventListener('click', subDismiss)
   setTimeout(subDismiss, 2000)
@@ -1285,17 +1278,29 @@ function openSubstitution(container, game, ctx, preferredSubId = null) {
       else if (dy > 0 && inIdx > 0)             { inIdx--; rebuild() }
     }, {passive:true})
 
-    document.getElementById('sub-confirm')?.addEventListener('click', () => {
+    let subConfirmDone = false
+    document.getElementById('sub-confirm')?.addEventListener('click', (ev) => {
+      ev.preventDefault(); ev.stopPropagation()
+      if (subConfirmDone) return   // évite double-fire sur mobile
+      subConfirmDone = true
+
       const outPlayer = grayedPlayers[outIdx]
       const subPlayer = availSubs[inIdx]
       if (!outPlayer || !subPlayer) return
+
       let foundRole = null, foundIdx = -1
       for (const [role, players] of Object.entries(game.homeTeam)) {
         const idx = (players||[]).findIndex(p => p.cardId === outPlayer.cardId)
         if (idx !== -1) { foundRole = role; foundIdx = idx; break }
       }
-      if (foundIdx === -1 || !foundRole) { showGameToast('Erreur remplacement','rgba(180,0,0,0.9)'); overlay.remove(); return }
-      const inPlayer = { ...subPlayer, _line:foundRole, _col:outPlayer._col, used:false, boost:0 }
+      if (foundIdx === -1 || !foundRole) {
+        showGameToast('Erreur : joueur introuvable', 'rgba(180,0,0,0.9)')
+        overlay.remove()
+        return
+      }
+
+      // Appliquer le remplacement
+      const inPlayer = { ...subPlayer, _line:foundRole, _col:outPlayer._col||0, used:false, boost:0 }
       game.homeTeam[foundRole].splice(foundIdx, 1, inPlayer)
       if (!game.usedSubIds) game.usedSubIds = []
       game.usedSubIds.push(subPlayer.cardId)
@@ -1303,12 +1308,13 @@ function openSubstitution(container, game, ctx, preferredSubId = null) {
       game.selected = []
       game.log.push({
         type:'sub', subSide:'home', clubName:game.clubName,
-        outPlayer:{ name:outPlayer.name, firstname:outPlayer.firstname, note:getNoteForRole(outPlayer,foundRole), portrait:getPortrait(outPlayer), job:outPlayer.job },
-        inPlayer: { name:subPlayer.name, firstname:subPlayer.firstname, note:getNoteForRole(subPlayer,foundRole), portrait:getPortrait(subPlayer), job:subPlayer.job },
+        outPlayer:{ name:outPlayer.name, firstname:outPlayer.firstname, note:getNoteForRole(outPlayer, foundRole), portrait:getPortrait(outPlayer), job:outPlayer.job, country_code:outPlayer.country_code, rarity:outPlayer.rarity, clubName:outPlayer.clubName, clubLogo:outPlayer.clubLogo },
+        inPlayer: { name:subPlayer.name, firstname:subPlayer.firstname, note:getNoteForRole(subPlayer, foundRole), portrait:getPortrait(subPlayer), job:subPlayer.job, country_code:subPlayer.country_code, rarity:subPlayer.rarity, clubName:subPlayer.clubName, clubLogo:subPlayer.clubLogo },
         text:`🔄 ${subPlayer.firstname} ${subPlayer.name} remplace ${outPlayer.firstname} ${outPlayer.name}`,
       })
+
       overlay.remove()
-      renderGame(container, game, ctx)
+      // Un seul renderGame, après l'animation
       showSubAnimation(outPlayer, subPlayer, () => renderGame(container, game, ctx))
     })
   }

@@ -609,7 +609,7 @@ function buildTeamSVG(team, formation, phase, selectedIds, W=310, H=310) {
     const ry0 = (c.y - CH/2).toFixed(1)
     const cardOp  = p.used ? 0.25 : 1
     const rarity  = rarityBorder[p?.rarity] || rarityBorder.normal
-    const bStroke = isSelected ? '#ffffff' : rarity
+    const bStroke = isSelected ? '#ff3030' : rarity
     const bWidth  = isSelected ? 3 : (p?.rarity==='légende'||p?.rarity==='pépite' ? 2.5 : 2)
 
     // Clip portrait à la zone centrale (sans nom ni bas)
@@ -787,14 +787,14 @@ function renderGame(container, game, ctx) {
           const atk = game.pendingAttack
           return `<div style="padding:5px 8px;background:rgba(180,30,30,0.2);border-left:3px solid #ff6b6b">
             <div style="font-size:8px;color:#ff6b6b;letter-spacing:2px;margin-bottom:4px;text-transform:uppercase">⚔️ IA ATTAQUE — Défendez !</div>
-            ${renderCardRow(atk.players||[], '#ff6b6b', atk.total)}
+            ${renderCardRow((atk.players||[]).map(p=>({...p,used:false})), '#ff6b6b', atk.total)}
           </div>`
         }
         if (game.phase === 'ai-defense' && game.pendingAttack) {
           const atk = game.pendingAttack
           return `<div style="padding:5px 8px;background:rgba(26,107,60,0.2);border-left:3px solid #00ff88">
             <div style="font-size:8px;color:#00ff88;letter-spacing:2px;margin-bottom:4px;text-transform:uppercase">⚔️ VOUS ATTAQUEZ</div>
-            ${renderCardRow(atk.players||[], '#00ff88', atk.total)}
+            ${renderCardRow((atk.players||[]).map(p=>({...p,used:false})), '#00ff88', atk.total)}
           </div>`
         }
         // Sinon : dernière action du log
@@ -1227,8 +1227,10 @@ function openSubstitution(container, game, ctx, preferredSubId = null) {
   function rebuild() {
     const outP = grayedPlayers[outIdx]
     const inP  = availSubs[inIdx]
-    const CARD_W = Math.min(130, Math.round((window.innerWidth - 80) / 2))
+    const CARD_W = Math.min(130, Math.round((window.innerWidth - 90) / 2))
     const CARD_H = Math.round(CARD_W * 1.35)
+
+    const arrowStyle = (disabled) => `background:rgba(255,255,255,0.12);border:none;color:${disabled?'rgba(255,255,255,0.2)':'#fff'};width:40px;height:40px;border-radius:50%;font-size:20px;cursor:${disabled?'default':'pointer'};flex-shrink:0`
 
     overlay.innerHTML = `
     <div style="display:flex;align-items:center;padding:12px 16px;background:rgba(0,0,0,0.5);flex-shrink:0">
@@ -1237,24 +1239,22 @@ function openSubstitution(container, game, ctx, preferredSubId = null) {
     </div>
     <div style="flex:1;display:flex;gap:0;overflow:hidden">
 
-      <!-- JOUEUR QUI SORT -->
-      <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:12px 8px;border-right:1px solid rgba(255,255,255,0.08)">
-        <div style="font-size:9px;color:#ff6b6b;letter-spacing:2px;text-transform:uppercase;font-weight:700">Joueur qui sort</div>
-        ${grayedPlayers.length > 1 ? `<button id="out-up" style="background:rgba(255,255,255,0.1);border:none;color:${outIdx===0?'rgba(255,255,255,0.2)':'#fff'};width:36px;height:36px;border-radius:50%;font-size:20px;cursor:pointer" ${outIdx===0?'disabled':''}>▲</button>` : ''}
-        <div style="transform:none">
-          ${renderMiniCardHTML({...outP, used:true}, CARD_W, CARD_H)}
-        </div>
-        ${grayedPlayers.length > 1 ? `<button id="out-down" style="background:rgba(255,255,255,0.1);border:none;color:${outIdx===grayedPlayers.length-1?'rgba(255,255,255,0.2)':'#fff'};width:36px;height:36px;border-radius:50%;font-size:20px;cursor:pointer" ${outIdx===grayedPlayers.length-1?'disabled':''}>▼</button>
-        <div style="font-size:10px;color:rgba(255,255,255,0.35)">${outIdx+1}/${grayedPlayers.length}</div>` : ''}
+      <!-- JOUEUR QUI ENTRE (gauche) -->
+      <div id="in-panel" style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:12px 6px;border-right:1px solid rgba(255,255,255,0.08)">
+        <div style="font-size:9px;color:#00ff88;letter-spacing:2px;text-transform:uppercase;font-weight:700">Joueur qui entre</div>
+        <button id="in-up" style="${arrowStyle(inIdx===0)}" ${inIdx===0?'disabled':''}>▲</button>
+        <div>${inP ? renderMiniCardHTML({...inP, used:false}, CARD_W, CARD_H) : '<div>—</div>'}</div>
+        <button id="in-down" style="${arrowStyle(inIdx>=availSubs.length-1)}" ${inIdx>=availSubs.length-1?'disabled':''}>▼</button>
+        <div style="font-size:10px;color:rgba(255,255,255,0.35)">${inIdx+1}/${availSubs.length}</div>
       </div>
 
-      <!-- JOUEUR QUI ENTRE -->
-      <div id="in-panel" style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:12px 8px">
-        <div style="font-size:9px;color:#00ff88;letter-spacing:2px;text-transform:uppercase;font-weight:700">Joueur qui entre</div>
-        <button id="in-up" style="background:rgba(255,255,255,0.1);border:none;color:${inIdx===0?'rgba(255,255,255,0.2)':'#fff'};width:36px;height:36px;border-radius:50%;font-size:20px;cursor:pointer" ${inIdx===0?'disabled':''}>▲</button>
-        <div id="in-card">${renderMiniCardHTML(inP, CARD_W, CARD_H)}</div>
-        <button id="in-down" style="background:rgba(255,255,255,0.1);border:none;color:${inIdx===availSubs.length-1?'rgba(255,255,255,0.2)':'#fff'};width:36px;height:36px;border-radius:50%;font-size:20px;cursor:pointer" ${inIdx===availSubs.length-1?'disabled':''}>▼</button>
-        <div style="font-size:10px;color:rgba(255,255,255,0.35)">${inIdx+1}/${availSubs.length}</div>
+      <!-- JOUEUR QUI SORT (droite) -->
+      <div id="out-panel" style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:12px 6px">
+        <div style="font-size:9px;color:#ff6b6b;letter-spacing:2px;text-transform:uppercase;font-weight:700">Joueur qui sort</div>
+        <button id="out-up" style="${arrowStyle(outIdx===0)}" ${outIdx===0?'disabled':''}>▲</button>
+        <div>${outP ? renderMiniCardHTML({...outP, used:true}, CARD_W, CARD_H) : '<div>—</div>'}</div>
+        <button id="out-down" style="${arrowStyle(outIdx>=grayedPlayers.length-1)}" ${outIdx>=grayedPlayers.length-1?'disabled':''}>▼</button>
+        <div style="font-size:10px;color:rgba(255,255,255,0.35)">${outIdx+1}/${grayedPlayers.length}</div>
       </div>
     </div>
     <div style="padding:12px 16px;background:rgba(0,0,0,0.4);flex-shrink:0">
@@ -1267,18 +1267,23 @@ function openSubstitution(container, game, ctx, preferredSubId = null) {
     document.getElementById('in-up')?.addEventListener('click',    () => { if(inIdx>0){inIdx--;rebuild()} })
     document.getElementById('in-down')?.addEventListener('click',  () => { if(inIdx<availSubs.length-1){inIdx++;rebuild()} })
 
-    // Swipe tactile sur panel droit
-    let ty0 = 0
-    const inPanel = document.getElementById('in-panel')
-    inPanel?.addEventListener('touchstart', e => { ty0 = e.touches[0].clientY }, {passive:true})
-    inPanel?.addEventListener('touchend',   e => {
-      const dy = e.changedTouches[0].clientY - ty0
-      if (Math.abs(dy) < 30) return
-      if (dy < 0 && inIdx < availSubs.length-1) { inIdx++; rebuild() }
-      else if (dy > 0 && inIdx > 0)             { inIdx--; rebuild() }
-    }, {passive:true})
+    // Swipe tactile vertical sur chaque panel
+    const bindSwipe = (panelId, getIdx, setIdx, maxLen) => {
+      const panel = document.getElementById(panelId)
+      if (!panel) return
+      let ty0 = 0
+      panel.addEventListener('touchstart', e => { ty0 = e.touches[0].clientY }, {passive:true})
+      panel.addEventListener('touchend', e => {
+        const dy = e.changedTouches[0].clientY - ty0
+        if (Math.abs(dy) < 30) return
+        const i = getIdx()
+        if (dy < 0 && i < maxLen-1) { setIdx(i+1); rebuild() }
+        else if (dy > 0 && i > 0)   { setIdx(i-1); rebuild() }
+      }, {passive:true})
+    }
+    bindSwipe('in-panel',  () => inIdx,  v => inIdx = v,  availSubs.length)
+    bindSwipe('out-panel', () => outIdx, v => outIdx = v, grayedPlayers.length)
 
-    let subConfirmDone = false
     document.getElementById('sub-confirm')?.addEventListener('click', (ev) => {
       ev.preventDefault(); ev.stopPropagation()
       if (subConfirmDone) return   // évite double-fire sur mobile

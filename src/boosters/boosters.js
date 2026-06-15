@@ -1,5 +1,5 @@
 import { supabase } from '../lib/supabase.js'
-
+import { loadActiveBoosters, drawCard } from './booster-engine.js'
 const BOOSTERS = [
   { id:'players_std',  img: import.meta.env.BASE_URL+'icons/booster-players.png',     name:'Players',       sub:'5 cartes joueurs',  cost:5000,  costLabel:'5 000 crédits', cardCount:5, type:'player' },
   { id:'players_pub',  img: import.meta.env.BASE_URL+'icons/booster-silver.png',       name:'Players (pub)', sub:'3 cartes joueurs',  cost:0,     costLabel:'1 pub',         cardCount:3, type:'player' },

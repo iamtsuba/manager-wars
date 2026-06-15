@@ -810,7 +810,7 @@ function renderGame(container, game, ctx) {
     </button>
 
     <!-- ZONE CENTRALE : REMPLAÇANTS + TERRAIN -->
-    <div style="display:flex;flex:1;min-height:0;overflow:hidden">
+    <div style="display:flex;flex-shrink:0;overflow:hidden">
 
       <!-- Colonne remplaçants (mini cartes) -->
       <div style="display:flex;flex-direction:column;gap:4px;padding:4px 2px;width:50px;align-items:center;overflow-y:auto;flex-shrink:0;background:rgba(0,0,0,0.15)">
@@ -824,8 +824,8 @@ function renderGame(container, game, ctx) {
       </div>
 
       <!-- Terrain -->
-      <div style="flex:1;overflow:hidden;min-width:0;display:flex;align-items:flex-start;justify-content:center" id="match-field">
-        <div style="width:min(calc(100vw - 56px), calc(100dvh - 370px));overflow:hidden;flex-shrink:0">
+      <div style="overflow:hidden;min-width:0;display:flex;align-items:flex-start;justify-content:center" id="match-field">
+        <div style="width:min(calc(100vw - 56px), calc(100dvh - 370px));aspect-ratio:1;overflow:hidden;flex-shrink:0">
           ${renderTeam(game.homeTeam, game.formation, game.phase, selectedIds, 300, 300)}
         </div>
       </div>

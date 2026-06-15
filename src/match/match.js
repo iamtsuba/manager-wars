@@ -1243,7 +1243,7 @@ function openSubstitution(container, game, ctx, preferredSubId = null) {
       <div id="in-panel" style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:12px 6px;border-right:1px solid rgba(255,255,255,0.08)">
         <div style="font-size:9px;color:#00ff88;letter-spacing:2px;text-transform:uppercase;font-weight:700">Joueur qui entre</div>
         <button id="in-up" style="${arrowStyle(inIdx===0)}" ${inIdx===0?'disabled':''}>▲</button>
-        <div>${inP ? renderMiniCardHTML({...inP, used:false}, CARD_W, CARD_H) : '<div>—</div>'}</div>
+        <div>${inP ? renderMiniCardHTML({...inP, used:false, boost:0}, CARD_W, CARD_H) : '<div>—</div>'}</div>
         <button id="in-down" style="${arrowStyle(inIdx>=availSubs.length-1)}" ${inIdx>=availSubs.length-1?'disabled':''}>▼</button>
         <div style="font-size:10px;color:rgba(255,255,255,0.35)">${inIdx+1}/${availSubs.length}</div>
       </div>
@@ -1252,7 +1252,7 @@ function openSubstitution(container, game, ctx, preferredSubId = null) {
       <div id="out-panel" style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:12px 6px">
         <div style="font-size:9px;color:#ff6b6b;letter-spacing:2px;text-transform:uppercase;font-weight:700">Joueur qui sort</div>
         <button id="out-up" style="${arrowStyle(outIdx===0)}" ${outIdx===0?'disabled':''}>▲</button>
-        <div>${outP ? renderMiniCardHTML({...outP, used:true}, CARD_W, CARD_H) : '<div>—</div>'}</div>
+        <div>${outP ? renderMiniCardHTML({...outP, used:false, boost:0}, CARD_W, CARD_H) : '<div>—</div>'}</div>
         <button id="out-down" style="${arrowStyle(outIdx>=grayedPlayers.length-1)}" ${outIdx>=grayedPlayers.length-1?'disabled':''}>▼</button>
         <div style="font-size:10px;color:rgba(255,255,255,0.35)">${outIdx+1}/${grayedPlayers.length}</div>
       </div>
@@ -1261,15 +1261,15 @@ function openSubstitution(container, game, ctx, preferredSubId = null) {
       <button id="sub-confirm" style="width:100%;padding:14px;border-radius:10px;border:none;background:#1A6B3C;color:#fff;font-size:15px;font-weight:900;cursor:pointer">✅ Confirmer</button>
     </div>`
 
-    document.getElementById('sub-close')?.addEventListener('click', () => overlay.remove())
-    document.getElementById('out-up')?.addEventListener('click',   () => { if(outIdx>0){outIdx--;rebuild()} })
-    document.getElementById('out-down')?.addEventListener('click', () => { if(outIdx<grayedPlayers.length-1){outIdx++;rebuild()} })
-    document.getElementById('in-up')?.addEventListener('click',    () => { if(inIdx>0){inIdx--;rebuild()} })
-    document.getElementById('in-down')?.addEventListener('click',  () => { if(inIdx<availSubs.length-1){inIdx++;rebuild()} })
+    overlay.querySelector('#sub-close')?.addEventListener('click', () => overlay.remove())
+    overlay.querySelector('#out-up')?.addEventListener('click',   () => { if(outIdx>0){outIdx--;rebuild()} })
+    overlay.querySelector('#out-down')?.addEventListener('click', () => { if(outIdx<grayedPlayers.length-1){outIdx++;rebuild()} })
+    overlay.querySelector('#in-up')?.addEventListener('click',    () => { if(inIdx>0){inIdx--;rebuild()} })
+    overlay.querySelector('#in-down')?.addEventListener('click',  () => { if(inIdx<availSubs.length-1){inIdx++;rebuild()} })
 
     // Swipe tactile vertical sur chaque panel
     const bindSwipe = (panelId, getIdx, setIdx, maxLen) => {
-      const panel = document.getElementById(panelId)
+      const panel = overlay.querySelector('#'+panelId)
       if (!panel) return
       let ty0 = 0
       panel.addEventListener('touchstart', e => { ty0 = e.touches[0].clientY }, {passive:true})
@@ -1284,7 +1284,7 @@ function openSubstitution(container, game, ctx, preferredSubId = null) {
     bindSwipe('in-panel',  () => inIdx,  v => inIdx = v,  availSubs.length)
     bindSwipe('out-panel', () => outIdx, v => outIdx = v, grayedPlayers.length)
 
-    document.getElementById('sub-confirm')?.addEventListener('click', (ev) => {
+    overlay.querySelector('#sub-confirm')?.addEventListener('click', (ev) => {
       ev.preventDefault(); ev.stopPropagation()
       if (subConfirmDone) return   // évite double-fire sur mobile
       subConfirmDone = true
@@ -1324,8 +1324,8 @@ function openSubstitution(container, game, ctx, preferredSubId = null) {
     })
   }
 
-  rebuild()
   document.body.appendChild(overlay)
+  rebuild()
 }
 
 

@@ -90,17 +90,17 @@ export async function renderBoostersConfig(container) {
               <input id="f-name" value="${sel.name}" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;font-size:14px;margin-top:4px;box-sizing:border-box">
             </div>
 
-            <div>
-              <label style="font-size:11px;color:#666;font-weight:700;letter-spacing:1px">IMAGE (fichier dans assets/boosters/)</label>
+            <div style="grid-column:1/-1">
+              <label style="font-size:11px;color:#666;font-weight:700;letter-spacing:1px">IMAGE</label>
               <div style="display:flex;gap:8px;align-items:center;margin-top:4px">
-                <input id="f-image-url" value="${sel.image_url||''}" placeholder="nom-du-fichier.png" style="flex:1;padding:8px;border:1px solid #ddd;border-radius:6px;font-size:13px">
-                <label style="background:#3498db;color:#fff;border-radius:6px;padding:6px 10px;cursor:pointer;font-size:12px;white-space:nowrap">
-                  📁 Upload
-                  <input type="file" id="f-image-file" accept="image/*" style="display:none">
-                </label>
+                <input id="f-image-url" value="${sel.image_url||''}" placeholder="ex: booster-players.png" style="flex:1;padding:8px;border:1px solid #ddd;border-radius:6px;font-size:13px">
+                <button id="btn-pick-icon" style="background:#3498db;color:#fff;border:none;border-radius:6px;padding:8px 12px;cursor:pointer;font-size:12px;white-space:nowrap">🖼️ Choisir</button>
               </div>
-              ${sel.image_url ? `<img src="${supabase.storage.from('assets').getPublicUrl('boosters/'+sel.image_url).data.publicUrl}" style="height:50px;margin-top:8px;border-radius:6px;object-fit:contain">` : ''}
-              <div id="upload-status" style="font-size:11px;color:#888;margin-top:4px"></div>
+              ${sel.image_url ? `<div style="margin-top:8px;display:flex;align-items:center;gap:8px">
+                <img src="${import.meta.env.BASE_URL}icons/${sel.image_url}" style="height:48px;object-fit:contain;border-radius:6px;background:#f0f0f0;padding:4px">
+                <span style="font-size:11px;color:#888">${sel.image_url}</span>
+              </div>` : ''}
+              <div id="icon-picker-grid" style="display:none;margin-top:10px;padding:12px;background:#f5f5f5;border-radius:8px;border:1px solid #ddd"></div>
             </div>
 
             <div>
@@ -212,7 +212,7 @@ export async function renderBoostersConfig(container) {
     })
 
     // Nouveau booster
-    document.getElementById('btn-new')?.addEventListener('click', async () => {
+    container.querySelector('#btn-new')?.addEventListener('click', async () => {
       const name = prompt('Nom du nouveau booster :')
       if (!name?.trim()) return
       const { data, error } = await supabase.from('booster_configs')
@@ -239,32 +239,56 @@ export async function renderBoostersConfig(container) {
     })
 
     // Annuler
-    document.getElementById('btn-cancel')?.addEventListener('click', () => {
+    container.querySelector('#btn-cancel')?.addEventListener('click', () => {
       selectedId = null; render()
     })
 
     // Type de prix → afficher/masquer crédits
-    document.getElementById('f-price-type')?.addEventListener('change', e => {
-      const cf = document.getElementById('credits-field')
+    container.querySelector('#f-price-type')?.addEventListener('change', e => {
+      const cf = container.querySelector('#credits-field')
       if (cf) cf.style.cssText = e.target.value!=='credits' ? 'opacity:0.4;pointer-events:none' : ''
     })
 
-    // Upload image
-    document.getElementById('f-image-file')?.addEventListener('change', async e => {
-      const file = e.target.files[0]; if (!file) return
-      const status = document.getElementById('upload-status')
-      status.textContent = '⏳ Upload en cours...'
-      const ext  = file.name.split('.').pop()
-      const fname = `booster-${selectedId}.${ext}`
-      const { error } = await supabase.storage.from('assets')
-        .upload(`boosters/${fname}`, file, { upsert:true, contentType: file.type })
-      if (error) { status.textContent = '❌ ' + error.message; return }
-      document.getElementById('f-image-url').value = fname
-      status.textContent = '✅ Uploadé : ' + fname
+    // Sélecteur d'icônes depuis public/icons (fichiers commençant par "booster")
+    container.querySelector('#btn-pick-icon')?.addEventListener('click', async () => {
+      const grid = container.querySelector('#icon-picker-grid')
+      if (!grid) return
+      if (grid.style.display !== 'none') { grid.style.display = 'none'; return }
+      grid.innerHTML = '<div style="text-align:center;padding:10px;color:#888;font-size:12px">⏳ Chargement des icônes...</div>'
+      grid.style.display = 'block'
+      try {
+        const res = await fetch('https://api.github.com/repos/iamtsuba/manager-wars/contents/public/icons')
+        const files = await res.json()
+        const boosterIcons = Array.isArray(files)
+          ? files.filter(f => f.name.startsWith('booster') && /\.(png|jpg|jpeg|webp|svg)$/i.test(f.name))
+          : []
+        if (!boosterIcons.length) {
+          grid.innerHTML = '<div style="text-align:center;padding:10px;color:#e74c3c;font-size:12px">Aucune icône booster trouvée dans public/icons/</div>'
+          return
+        }
+        const current = container.querySelector('#f-image-url')?.value
+        grid.innerHTML = `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(70px,1fr));gap:8px">
+          ${boosterIcons.map(f => `
+            <div class="icon-pick-item" data-name="${f.name}"
+              style="cursor:pointer;text-align:center;padding:6px;border-radius:6px;border:2px solid ${f.name===current?'#1A6B3C':'#ddd'};background:${f.name===current?'#f0f7f0':'#fff'}">
+              <img src="${import.meta.env.BASE_URL}icons/${f.name}" style="height:44px;width:100%;object-fit:contain">
+              <div style="font-size:8px;color:#666;margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${f.name.replace('.png','')}</div>
+            </div>`).join('')}
+        </div>`
+        grid.querySelectorAll('.icon-pick-item').forEach(item => {
+          item.addEventListener('click', () => {
+            const inp = container.querySelector('#f-image-url')
+            if (inp) inp.value = item.dataset.name
+            grid.style.display = 'none'
+          })
+        })
+      } catch(e) {
+        grid.innerHTML = `<div style="text-align:center;padding:10px;color:#e74c3c;font-size:12px">Erreur : ${e.message}<br><small>Vérifiez votre connexion ou les permissions GitHub API</small></div>`
+      }
     })
 
     // Ajouter ligne taux
-    document.getElementById('btn-add-rate')?.addEventListener('click', () => {
+    container.querySelector('#btn-add-rate')?.addEventListener('click', () => {
       editRates.push({ id:null, booster_id:selectedId, card_type:'player', rarity:'normal', note_min:1, note_max:10, percentage:10, sort_order:editRates.length })
       render()
     })
@@ -278,7 +302,7 @@ export async function renderBoostersConfig(container) {
     })
 
     // Enregistrer
-    document.getElementById('btn-save')?.addEventListener('click', async () => {
+    container.querySelector('#btn-save')?.addEventListener('click', async () => {
       const sel = (boosters||[]).find(b=>b.id===selectedId); if (!sel) return
 
       // Lire les valeurs depuis le DOM (les inputs peuvent avoir changé)
@@ -311,13 +335,13 @@ export async function renderBoostersConfig(container) {
 
       // Mettre à jour booster
       const updates = {
-        name:          document.getElementById('f-name')?.value?.trim() || sel.name,
-        image_url:     document.getElementById('f-image-url')?.value?.trim() || null,
-        price_type:    document.getElementById('f-price-type')?.value,
-        price_credits: Number(document.getElementById('f-price-credits')?.value)||0,
-        card_count:    Number(document.getElementById('f-card-count')?.value)||5,
-        is_active:     document.getElementById('f-active')?.checked,
-        sort_order:    Number(document.getElementById('f-sort')?.value)||0,
+        name:          container.querySelector('#f-name')?.value?.trim() || sel.name,
+        image_url:     container.querySelector('#f-image-url')?.value?.trim() || null,
+        price_type:    container.querySelector('#f-price-type')?.value,
+        price_credits: Number(container.querySelector('#f-price-credits')?.value)||0,
+        card_count:    Number(container.querySelector('#f-card-count')?.value)||5,
+        is_active:     container.querySelector('#f-active')?.checked,
+        sort_order:    Number(container.querySelector('#f-sort')?.value)||0,
       }
       const { error: e1 } = await supabase.from('booster_configs').update(updates).eq('id', selectedId)
       if (e1) { alert(e1.message); return }

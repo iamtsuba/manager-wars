@@ -42,7 +42,7 @@ export async function renderDecks(container, ctx) {
   container.innerHTML = '<div class="page" style="padding:40px;text-align:center;color:#aaa">⚽ Chargement...</div>'
 
   const { data: decks } = await supabase
-    .from('decks').select('id,name,formation_card_id,is_active')
+    .from('decks').select('id,name,formation_card_id')
     .eq('owner_id', state.profile.id).order('created_at', { ascending: false })
 
   container.innerHTML = `
@@ -54,15 +54,12 @@ export async function renderDecks(container, ctx) {
     <div class="page-body">
       <div style="display:grid;gap:10px">
         ${decks?.length > 0 ? decks.map(d => `
-          <div class="card-panel" style="display:flex;justify-content:space-between;align-items:center;padding:14px">
-            <div>
-              <div style="font-weight:700;font-size:14px">${d.name}
-                ${d.is_active ? '<span style="font-size:10px;background:var(--green);color:#fff;padding:2px 6px;border-radius:8px;margin-left:4px">ACTIF</span>' : ''}
-              </div>
-            </div>
-            <div style="display:flex;gap:6px">
-              ${!d.is_active ? `<button class="btn btn-ghost btn-sm" data-activate="${d.id}">Activer</button>` : ''}
-              <button class="btn btn-primary btn-sm" data-edit="${d.id}">✏️ Éditer</button>
+          <div class="card-panel" data-open-deck="${d.id}"
+            style="display:flex;justify-content:space-between;align-items:center;padding:14px;cursor:pointer">
+            <div style="font-weight:700;font-size:15px;flex:1">${d.name}</div>
+            <div style="display:flex;gap:6px" onclick="event.stopPropagation()">
+              <button class="btn btn-ghost btn-sm" data-rename="${d.id}" data-name="${d.name}">✏️</button>
+              <button class="btn btn-ghost btn-sm" style="color:var(--red,#c0392b)" data-delete="${d.id}" data-name="${d.name}">🗑️</button>
             </div>
           </div>`).join('')
         : '<div style="text-align:center;color:var(--gray-600);padding:40px">Aucun deck. Crée ton premier !</div>'}
@@ -77,22 +74,38 @@ export async function renderDecks(container, ctx) {
     const name = prompt('Nom du deck :', `Deck ${(decks?.length||0)+1}`)
     if (!name) return
     const { data, error } = await supabase.from('decks')
-      .insert({ owner_id: state.profile.id, name, is_active: !decks?.length })
+      .insert({ owner_id: state.profile.id, name })
       .select().single()
     if (error) { toast(error.message, 'error'); return }
     toast('Deck créé !', 'success')
     openDeckBuilder(data.id, container, ctx)
   })
 
-  container.querySelectorAll('[data-edit]').forEach(btn => {
-    btn.addEventListener('click', () => openDeckBuilder(btn.dataset.edit, container, ctx))
+  // Clic sur la carte → ouvre le builder
+  container.querySelectorAll('[data-open-deck]').forEach(el => {
+    el.addEventListener('click', () => openDeckBuilder(el.dataset.openDeck, container, ctx))
   })
 
-  container.querySelectorAll('[data-activate]').forEach(btn => {
+  // Renommer
+  container.querySelectorAll('[data-rename]').forEach(btn => {
     btn.addEventListener('click', async () => {
-      await supabase.from('decks').update({ is_active: false }).eq('owner_id', state.profile.id)
-      await supabase.from('decks').update({ is_active: true }).eq('id', btn.dataset.activate)
-      toast('Deck activé !', 'success')
+      const newName = prompt('Nouveau nom :', btn.dataset.name)
+      if (!newName || newName === btn.dataset.name) return
+      const { error } = await supabase.from('decks').update({ name: newName }).eq('id', btn.dataset.rename)
+      if (error) { toast(error.message, 'error'); return }
+      toast('Deck renommé !', 'success')
+      renderDecks(container, ctx)
+    })
+  })
+
+  // Supprimer
+  container.querySelectorAll('[data-delete]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      if (!confirm(`Supprimer le deck "${btn.dataset.name}" ? Cette action est irréversible.`)) return
+      await supabase.from('deck_cards').delete().eq('deck_id', btn.dataset.delete)
+      const { error } = await supabase.from('decks').delete().eq('id', btn.dataset.delete)
+      if (error) { toast(error.message, 'error'); return }
+      toast('Deck supprimé.', 'success')
       renderDecks(container, ctx)
     })
   })
@@ -535,11 +548,10 @@ async function saveDeck(builder, ctx) {
   const matchingFormation = builder.formationCards.find(c => c.formation === builder.formation)
   const formationCardId   = matchingFormation?.id || builder.formationCardId
 
-  const { error: deckUpdateError } = await supabase.from('decks').update({
+  await supabase.from('decks').update({
     formation: builder.formation,
     formation_card_id: formationCardId || null
   }).eq('id', builder.deckId)
-  if (deckUpdateError) { toast(deckUpdateError.message, 'error'); return }
 
   await supabase.from('deck_cards').delete().eq('deck_id', builder.deckId)
 

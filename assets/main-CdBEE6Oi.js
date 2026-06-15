@@ -1,4 +1,4 @@
-import{s as $,l as U,F as ie,b as we,c as ye,d as nt}from"./formation-links-D6LHnz5l.js";function Me(t,{navigate:e,toast:i}){t.innerHTML=`
+import{s as $,l as U,F as ie,b as we,c as ye,d as nt}from"./formation-links-CDBKB_z4.js";function Me(t,{navigate:e,toast:i}){t.innerHTML=`
   <div class="auth-screen" style="animation:fadeIn 0.4s ease">
     <div class="auth-box">
       <div class="logo">⚽</div>
@@ -943,15 +943,15 @@ import{s as $,l as U,F as ie,b as we,c as ye,d as nt}from"./formation-links-D6LH
         </button>
       </div>
     </div>`,(g=document.getElementById("prev-deck"))==null||g.addEventListener("click",()=>{s>0&&(s--,d())}),(x=document.getElementById("next-deck"))==null||x.addEventListener("click",()=>{s<n.length-1&&(s++,d())}),(v=document.getElementById("validate-deck"))==null||v.addEventListener("click",()=>{h&&e.navigate("match",{matchMode:i,deckId:c.id})}),(y=document.getElementById("cancel-deck-select"))==null||y.addEventListener("click",()=>r("home"));const E=document.getElementById("deck-swipe-zone");if(E){let w=0,_=0;E.addEventListener("touchstart",T=>{w=T.touches[0].clientX,_=T.touches[0].clientY},{passive:!0}),E.addEventListener("touchend",T=>{const A=T.changedTouches[0].clientX-w,z=T.changedTouches[0].clientY-_;Math.abs(A)<40||Math.abs(A)<Math.abs(z)||(A<0&&s<n.length-1?(s++,d()):A>0&&s>0&&(s--,d()))},{passive:!0})}}d()}function Gt(t,e,i){t.innerHTML=`
-  <div class="match-screen" style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;gap:20px;padding:24px;background:#0a3d1e">
-    <div style="font-size:11px;color:rgba(255,255,255,0.5);letter-spacing:3px;text-transform:uppercase">Équipe adverse</div>
+  <div class="match-screen" style="display:flex;flex-direction:column;align-items:center;justify-content:flex-start;min-height:100vh;gap:12px;padding:12px 16px;background:#0a3d1e">
+    <div style="font-size:11px;color:rgba(255,255,255,0.5);letter-spacing:3px;text-transform:uppercase;margin-top:8px">Équipe adverse</div>
     <div style="font-size:20px;font-weight:900;color:#ff6b6b">IA (${e.difficulty.toUpperCase()})</div>
     <div style="width:min(90vw,420px)">${Ie(e.aiTeam,e.formation,null,[],300,300)}</div>
     <div style="font-size:15px;color:rgba(255,255,255,0.7)">
       <span class="loading-dots">Chargement</span>
     </div>
     <style>@keyframes ld{0%,20%{opacity:0.3}50%{opacity:1}80%,100%{opacity:0.3}}.loading-dots::after{content:'...';animation:ld 1.4s infinite}</style>
-  </div>`,setTimeout(()=>Nt(t,e,i),5e3)}function Nt(t,e,i){const o=e.homeTeam.MIL||[],r=e.aiTeam.MIL||[];function n(p){return p.reduce((f,u)=>f+D(u,"MIL"),0)}function a(p){let f=0;for(let u=0;u<p.length-1;u++){const m=U(p[u],p[u+1]);m!=="#ff3333"&&m!=="#cc2222"&&f++}return f}const l=n(o)+a(o),s=n(r)+a(r),d=l>=s;function c(p,f,u){return`<div style="text-align:center">
+  </div>`,setTimeout(()=>Nt(t,e,i),5e3)}function Nt(t,e,i){const o=e.homeTeam.MIL||[],r=e.aiTeam.MIL||[];function n(p){return p.reduce((f,u)=>f+D(u,"MIL"),0)}function a(p){let f=0;for(let u=0;u<p.length-1;u++){const m=U(p[u],p[u+1]);m==="#00ff88"?f+=2:m==="#FFD700"&&(f+=1)}return f}const l=n(o)+a(o),s=n(r)+a(r),d=l>=s;function c(p,f,u){return`<div style="text-align:center">
       <div style="font-size:10px;color:rgba(255,255,255,0.5);letter-spacing:2px;margin-bottom:8px;text-transform:uppercase">${f}</div>
       <div style="display:flex;align-items:center;justify-content:center;gap:0">
         ${p.map((m,k)=>{const h=G(m),E=k<p.length-1?U(m,p[k+1]):null,b=E&&E!=="#ff3333"&&E!=="#cc2222";return`
@@ -967,7 +967,7 @@ import{s as $,l as U,F as ie,b as we,c as ye,d as nt}from"./formation-links-D6LH
         Score: ${n(p)} + ${a(p)} liens = <b style="color:#fff">${n(p)+a(p)}</b>
       </div>
     </div>`}t.innerHTML=`
-  <div class="match-screen" style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;gap:24px;padding:24px;background:#0a3d1e">
+  <div class="match-screen" style="display:flex;flex-direction:column;align-items:center;justify-content:flex-start;min-height:100vh;gap:14px;padding:16px;background:#0a3d1e;overflow-y:auto">
     <div style="text-align:center;color:#fff">
       <div style="font-size:11px;opacity:.5;letter-spacing:2px;text-transform:uppercase">Duel du milieu de terrain</div>
     </div>

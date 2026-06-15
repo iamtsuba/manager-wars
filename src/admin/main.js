@@ -6,7 +6,8 @@ import { pageCardBuilder }  from './pages/card-builder.js'
 import { pageUsers }        from './pages/users.js'
 import { pageMarket }       from './pages/market.js'
 import { pageImportExport } from './pages/import-export.js'
-import { pageFormations }   from './pages/formations.js'
+import { pageFormations }      from './pages/formations.js'
+import { renderBoostersConfig } from './pages/boosters-config.js'
 
 // ── Toast helper ──────────────────────────────────────────
 export function toast(msg, type = 'info') {
@@ -37,7 +38,8 @@ const PAGES = {
   users:        { title: 'Managers',           fn: pageUsers },
   market:       { title: 'Marché des transferts', fn: pageMarket },
   'import-export': { title: 'Import / Export CSV', fn: pageImportExport },
-  formations:   { title: 'Formations & Liens',  fn: pageFormations },
+  formations:          { title: 'Formations & Liens',  fn: pageFormations },
+  'boosters-config': { title: 'Boosters',              fn: renderBoostersConfig },
 }
 
 let currentPage = 'dashboard'

@@ -470,8 +470,8 @@ function showMidfieldAnimation(container, game, ctx) {
     game.log.push({
       type: 'duel',
       title: 'Milieu de Terrain',
-      homePlayers: homeMils.map(p => ({ name:p.name, note:getNoteForRole(p,'MIL'), portrait:getPortrait(p), job:p.job })),
-      aiPlayers:   aiMils.map(p   => ({ name:p.name, note:getNoteForRole(p,'MIL'), portrait:getPortrait(p), job:p.job })),
+      homePlayers: homeMils.map(p => ({ name:p.name, note:getNoteForRole(p,'MIL'), portrait:getPortrait(p), job:p.job, country_code:p.country_code, rarity:p.rarity, clubName:p.clubName, clubLogo:p.clubLogo })),
+      aiPlayers:   aiMils.map(p   => ({ name:p.name, note:getNoteForRole(p,'MIL'), portrait:getPortrait(p), job:p.job, country_code:p.country_code, rarity:p.rarity, clubName:p.clubName, clubLogo:p.clubLogo })),
       homeTotal, aiTotal,
       text: `Duel milieu : ${game.clubName} ${homeTotal} – ${aiTotal} IA → ${homeWins ? game.clubName+' attaque' : 'IA attaque'}`,
     })
@@ -495,12 +495,12 @@ function getClubLogo(p) {
 // ── Carte joueur HTML (hors SVG) ─────────────────────────────
 function renderMiniCardHTML(p, w=44, h=58) {
   if (!p) return `<div style="width:${w}px;height:${h}px;border:1.5px dashed rgba(255,255,255,0.2);border-radius:5px"></div>`
-  const portrait = getPortrait(p)
+  const portrait = (typeof p.portrait === 'string' && p.portrait.startsWith('http')) ? p.portrait : getPortrait(p)
   const logoUrl  = getClubLogo(p)
   const role     = p._line || p.job || 'MIL'
   const jobColor = JOB_COLORS[role] || '#555'
   const rarityBorder = { normal:'#aaa', pépite:'#D4A017', papyte:'#222', légende:'#7a28b8' }[p?.rarity] || '#aaa'
-  const note = (Number(getNoteForRole(p, role))||0) + (p.boost||0)
+  const note = p.note !== undefined ? Number(p.note)||0 : (Number(getNoteForRole(p, role))||0) + (p.boost||0)
   const flag = countryFlag(p?.country_code)
   const nameH = Math.round(h*0.19), botH = Math.round(h*0.25), portH = h - Math.round(h*0.19) - Math.round(h*0.25)
   const op = p?.used ? 0.28 : 1
@@ -1005,8 +1005,8 @@ function confirmDefense(container, game, ctx) {
   const duelEntryDef = {
     type: 'duel',
     title: 'Défense',
-    aiPlayers:   (game.pendingAttack.players||[]).map(p => ({ name:p.name, note:p._line==='MIL'?p.note_m:p.note_a, portrait:getPortrait(p), job:p.job })),
-    homePlayers: game.selected.map(s => { const pp = (game.homeTeam[s._role]||[]).find(x=>x.cardId===s.cardId)||s; return { name:pp.name, note:pp._line==='GK'?pp.note_g:pp._line==='MIL'?pp.note_m:pp.note_d, portrait:getPortrait(pp), job:pp.job } }),
+    aiPlayers:   (game.pendingAttack.players||[]).map(p => ({ name:p.name, note:p._line==='MIL'?p.note_m:p.note_a, portrait:getPortrait(p), job:p.job, country_code:p.country_code, rarity:p.rarity, clubName:p.clubName, clubLogo:p.clubLogo })),
+    homePlayers: game.selected.map(s => { const pp = (game.homeTeam[s._role]||[]).find(x=>x.cardId===s.cardId)||s; return { name:pp.name, note:pp._line==='GK'?pp.note_g:pp._line==='MIL'?pp.note_m:pp.note_d, portrait:getPortrait(pp), job:pp.job, country_code:pp.country_code, rarity:pp.rarity, clubName:pp.clubName, clubLogo:pp.clubLogo } }),
     homeTotal: calc.total,
     aiTotal: game.pendingAttack.total,
     isGoal: false, homeScored: false,
@@ -1061,8 +1061,8 @@ function aiDefend(container, game, ctx) {
   const duelEntryAttack = {
     type: 'duel',
     title: 'Attaque',
-    homePlayers: (game.pendingAttack.players||[]).map(p => ({ name:p.name, note:p._line==='MIL'?p.note_m:p.note_a, portrait:getPortrait(p), job:p.job })),
-    aiPlayers:   selected.map(p => ({ name:p.name, note:p._line==='GK'?p.note_g:p._line==='MIL'?p.note_m:p.note_d, portrait:getPortrait(p), job:p.job })),
+    homePlayers: (game.pendingAttack.players||[]).map(p => ({ name:p.name, note:p._line==='MIL'?p.note_m:p.note_a, portrait:getPortrait(p), job:p.job, country_code:p.country_code, rarity:p.rarity, clubName:p.clubName, clubLogo:p.clubLogo })),
+    aiPlayers:   selected.map(p => ({ name:p.name, note:p._line==='GK'?p.note_g:p._line==='MIL'?p.note_m:p.note_d, portrait:getPortrait(p), job:p.job, country_code:p.country_code, rarity:p.rarity, clubName:p.clubName, clubLogo:p.clubLogo })),
     homeTotal: game.pendingAttack.total,
     aiTotal: defVal,
     isGoal: false, homeScored: false,
@@ -1308,6 +1308,7 @@ function openSubstitution(container, game, ctx, preferredSubId = null) {
         text:`🔄 ${subPlayer.firstname} ${subPlayer.name} remplace ${outPlayer.firstname} ${outPlayer.name}`,
       })
       overlay.remove()
+      renderGame(container, game, ctx)
       showSubAnimation(outPlayer, subPlayer, () => renderGame(container, game, ctx))
     })
   }

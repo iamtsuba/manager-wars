@@ -398,7 +398,8 @@ export function getCandidateLinks(formation, maxDist = 0.4) {
  */
 export function linkColor(pA, pB) {
   if (!pA || !pB) return '#cc2222'
-  const isLegend = pA.rarity === 'légende' || pB.rarity === 'légende'
+  const isLeg = r => { const v = (r||'').toString().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,''); return v === 'legende' || v === 'legend' }
+  const isLegend = isLeg(pA.rarity) || isLeg(pB.rarity)
   const sc = pA.country_code && pB.country_code && pA.country_code === pB.country_code
   const sk = pA.club_id && pB.club_id && pA.club_id === pB.club_id
   // Légende : lien minimum orange (club) avec tous, ou vert si le pays correspond

@@ -375,8 +375,8 @@ async function renderDeckSelect(container, ctx, matchMode) {
 // ── POINT 6 : Reveal équipe adverse (5s) ─────────────────
 function showOpponentReveal(container, game, ctx) {
   container.innerHTML = `
-  <div class="match-screen" style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;gap:20px;padding:24px;background:#0a3d1e">
-    <div style="font-size:11px;color:rgba(255,255,255,0.5);letter-spacing:3px;text-transform:uppercase">Équipe adverse</div>
+  <div class="match-screen" style="display:flex;flex-direction:column;align-items:center;justify-content:flex-start;min-height:100vh;gap:12px;padding:12px 16px;background:#0a3d1e">
+    <div style="font-size:11px;color:rgba(255,255,255,0.5);letter-spacing:3px;text-transform:uppercase;margin-top:8px">Équipe adverse</div>
     <div style="font-size:20px;font-weight:900;color:#ff6b6b">IA (${game.difficulty.toUpperCase()})</div>
     <div style="width:min(90vw,420px)">${buildTeamSVG(game.aiTeam, game.formation, null, [], 300, 300)}</div>
     <div style="font-size:15px;color:rgba(255,255,255,0.7)">
@@ -399,7 +399,8 @@ function showMidfieldAnimation(container, game, ctx) {
     let bonus = 0
     for (let i = 0; i < mils.length-1; i++) {
       const c = linkColor(mils[i], mils[i+1])
-      if (c !== '#ff3333' && c !== '#cc2222') bonus++
+      if (c === '#00ff88') bonus += 2       // vert : +2
+      else if (c === '#FFD700') bonus += 1  // orange : +1
     }
     return bonus
   }
@@ -433,7 +434,7 @@ function showMidfieldAnimation(container, game, ctx) {
   }
 
   container.innerHTML = `
-  <div class="match-screen" style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;gap:24px;padding:24px;background:#0a3d1e">
+  <div class="match-screen" style="display:flex;flex-direction:column;align-items:center;justify-content:flex-start;min-height:100vh;gap:14px;padding:16px;background:#0a3d1e;overflow-y:auto">
     <div style="text-align:center;color:#fff">
       <div style="font-size:11px;opacity:.5;letter-spacing:2px;text-transform:uppercase">Duel du milieu de terrain</div>
     </div>

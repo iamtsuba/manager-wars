@@ -192,23 +192,23 @@ function renderBuilder(container, builder, ctx) {
     </div>
 
     <!-- Terrain -->
-    <div style="background:linear-gradient(180deg,#1a6b3c,#0a3d1e);padding:16px;min-height:280px">
+    <div style="background:linear-gradient(180deg,#1a6b3c,#0a3d1e);padding:0;position:relative">
       <div id="deck-field"></div>
     </div>
 
-    <!-- Remplaçants (Petit 4) -->
-    <div style="padding:12px 16px;background:#fff;border-top:1px solid var(--gray-200)">
-      <div style="font-size:12px;font-weight:700;margin-bottom:8px;color:var(--gray-600)">REMPLAÇANTS (${builder.subs.length}/5)</div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap" id="subs-list">
-        ${subPlayers.map(c => {
-          const p = c.player
-          return `<div style="display:flex;align-items:center;gap:6px;background:#f5f5f5;border-radius:8px;padding:4px 8px;font-size:12px">
-            <span style="background:${JOB_COLORS[p.job]};color:#fff;border-radius:4px;padding:1px 5px;font-size:10px;font-weight:700">${p.job}</span>
-            ${p.firstname} ${p.surname_encoded}
-            <button style="background:none;border:none;color:#c0392b;cursor:pointer;font-size:14px" data-remove-sub="${c.id}">✕</button>
+    <!-- Remplaçants → mini cartes -->
+    <div style="padding:10px 12px;background:rgba(0,0,0,0.25);border-top:1px solid rgba(255,255,255,0.1)">
+      <div style="font-size:11px;font-weight:700;margin-bottom:8px;color:rgba(255,255,255,0.6);letter-spacing:1px;text-transform:uppercase">Remplaçants (${builder.subs.length}/5)</div>
+      <div style="display:flex;gap:8px;align-items:flex-end;overflow-x:auto;padding-bottom:4px" id="subs-list">
+        ${subPlayers.map(card => {
+          const p = card.player
+          return `<div style="position:relative;flex-shrink:0">
+            ${renderMiniCardHTML(p, 44, 58)}
+            <button data-remove-sub="${card.id}"
+              style="position:absolute;top:-6px;right:-6px;width:18px;height:18px;background:#c0392b;border:none;border-radius:50%;color:#fff;font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;padding:0">✕</button>
           </div>`
         }).join('')}
-        ${builder.subs.length < 5 ? `<button class="btn btn-ghost btn-sm" id="add-sub-btn">+ Remplaçant</button>` : ''}
+        ${builder.subs.length < 5 ? `<div id="add-sub-btn" style="width:44px;height:58px;border:2px dashed rgba(255,255,255,0.3);border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:22px;color:rgba(255,255,255,0.4);cursor:pointer;flex-shrink:0">+</div>` : ''}
       </div>
     </div>
 
@@ -251,135 +251,84 @@ function renderBuilder(container, builder, ctx) {
 }
 
 function renderDeckField(container, builder, positions, ctx) {
-  const field = document.getElementById('deck-field')
+  const field = container.querySelector('#deck-field')
   if (!field) return
 
-  const formation = builder.formation
-  const FPOS      = FORMATION_POSITIONS[formation] || {}
-  const FLINKS    = getActiveLinks ? (getActiveLinks(formation) || FORMATION_LINKS[formation] || []) : (FORMATION_LINKS[formation] || [])
+  const FPOS   = FORMATION_POSITIONS[builder.formation] || {}
+  const FLINKS = getActiveLinks(builder.formation) || []
 
-  // Build slots map : pos → player
+  // Slots par position
   const slots = {}
-  positions.forEach(pos => {
-    const id   = builder.slots[pos]
-    const card = id ? builder.playerCards.find(c => c.id === id) : null
-    slots[pos]  = card?.player || null
-  })
+  for (const pos of positions) {
+    const cardId = builder.slots[pos]
+    const card   = cardId ? builder.playerCards.find(c => c.id === cardId) : null
+    slots[pos]   = card ? card.player : null
+  }
 
-  // ── Stats MIL pour badge ──────────────────────────────
-  const milPositions = positions.filter(p => p.startsWith('MIL'))
-  let milTotal = 0, milLinkBonus = 0
-  milPositions.forEach(pos => {
-    const p = slots[pos]
-    if (p) milTotal += Number(p.note_m)||0
-  })
-  FLINKS.forEach(([a,b]) => {
-    if (!a.startsWith('MIL') || !b.startsWith('MIL')) return
-    const c = linkColor(slots[a], slots[b])
-    if (c !== '#ff3333') milLinkBonus++
-  })
-
-  // ── Calcul de la taille SVG ───────────────────────────
-  const W = 320, H = 320
-  const R = 28   // rayon cercle joueur
-  const LINK_W = 4
+  const W=300, H=300, CW=48, CH=64, NAMEH=13, BOTHH=16, PAD=38
 
   function px(pos) {
-    const p = FPOS[pos]
-    if (!p) return null
-    return { x: p.x * W, y: p.y * H }
+    const p = FPOS[pos]; return p ? { x:p.x*W, y:p.y*H } : null
   }
 
-  // ── Générer le SVG ────────────────────────────────────
-  let svgContent = ''
+  let svg = ''
 
-  // 1. Liens d'abord (derrière les cercles)
+  // 1. Liens
   for (const [posA, posB] of FLINKS) {
-    const a = px(posA), b = px(posB)
-    if (!a || !b) continue
-    const pA = slots[posA], pB = slots[posB]
+    const a = px(posA), b = px(posB); if (!a||!b) continue
+    const pA = slots[posA] ? { ...slots[posA], club_id: slots[posA].club_id, country_code: slots[posA].country_code, rarity: slots[posA].rarity } : null
+    const pB = slots[posB] ? { ...slots[posB], club_id: slots[posB].club_id, country_code: slots[posB].country_code, rarity: slots[posB].rarity } : null
     const lc = linkColor(pA, pB)
-    const hasGlow = lc === '#00ff88' || lc === '#FFD700'
-    if (hasGlow) {
-      // Double ligne : halo large semi-transparent + trait fin par-dessus
-      svgContent += `<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}"
-        stroke="${lc}" stroke-width="${LINK_W * 3}" stroke-linecap="round" opacity="0.25"/>`
-      svgContent += `<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}"
-        stroke="${lc}" stroke-width="${LINK_W}" stroke-linecap="round" opacity="0.95"/>`
+    const noLink = lc === '#ff3333' || lc === '#cc2222'
+    if (!noLink) {
+      svg += `<line x1="${a.x.toFixed(1)}" y1="${a.y.toFixed(1)}" x2="${b.x.toFixed(1)}" y2="${b.y.toFixed(1)}" stroke="${lc}" stroke-width="8" stroke-linecap="round" opacity="0.2"/>`
+      svg += `<line x1="${a.x.toFixed(1)}" y1="${a.y.toFixed(1)}" x2="${b.x.toFixed(1)}" y2="${b.y.toFixed(1)}" stroke="${lc}" stroke-width="2.5" stroke-linecap="round" opacity="0.9"/>`
     } else {
-      const opacity = (lc === '#ff3333' || lc === '#cc2222') ? 0.75 : 0.9
-      svgContent += `<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}"
-        stroke="${lc}" stroke-width="${LINK_W}" stroke-linecap="round" opacity="${opacity}"/>`
+      svg += `<line x1="${a.x.toFixed(1)}" y1="${a.y.toFixed(1)}" x2="${b.x.toFixed(1)}" y2="${b.y.toFixed(1)}" stroke="${lc}" stroke-width="2.5" stroke-linecap="round" opacity="0.4"/>`
     }
   }
 
-  // 2. Joueurs
+  // 2. Cartes joueurs
   for (const pos of positions) {
-    const c = px(pos)
-    if (!c) continue
-    const p     = slots[pos]
-    const role  = pos.replace(/\d+/,'')
-    const jobColors = { GK:'#111', DEF:'#bb2020', MIL:'#D4A017', ATT:'#1A6B3C' }
-    const bg    = jobColors[role] || '#555'
-    const note  = p ? Number(role==='GK'?p.note_g : role==='DEF'?p.note_d : role==='MIL'?p.note_m : p.note_a)||0 : null
-    const name  = p ? (p.surname_encoded||'').slice(0,8).toUpperCase() : ''
+    const c = px(pos); if (!c) continue
+    const p    = slots[pos]
+    const role = pos.replace(/\d+/,'')
+    const bg   = JOB_COLORS[role] || '#555'
+    const x0   = (c.x - CW/2).toFixed(1)
+    const y0   = (c.y - CH/2).toFixed(1)
+    const rarityBorder = { normal:'#aaa', pépite:'#D4A017', papyte:'#222', légende:'#7a28b8' }[p?.rarity] || '#aaa'
 
     if (p) {
-      // Cercle rempli avec photo (via foreignObject si portrait, sinon couleur)
       const portrait = getPortrait(p)
-      const portrait_id = `portrait-${pos}`
+      const logoUrl  = getClubLogo(p)
+      const flag     = flagImgUrl(p.country_code)
+      const note     = Number(role==='GK'?p.note_g:role==='DEF'?p.note_d:role==='MIL'?p.note_m:p.note_a)||0
+      const portH    = CH - NAMEH - BOTHH
 
-      if (portrait) {
-        svgContent += `
-          <defs>
-            <clipPath id="clip-${pos}">
-              <circle cx="${c.x}" cy="${c.y}" r="${R}"/>
-            </clipPath>
-          </defs>
-          <image href="${portrait}" x="${c.x-R}" y="${c.y-R}" width="${R*2}" height="${R*2}"
-            clip-path="url(#clip-${pos})" preserveAspectRatio="xMidYMid slice" opacity="0.85"/>`
-      }
-      svgContent += `
-        <circle cx="${c.x}" cy="${c.y}" r="${R}" fill="${portrait?'transparent':bg}"
-          stroke="${bg}" stroke-width="2" ${!portrait?'':''}/>
-        <circle cx="${c.x}" cy="${c.y}" r="${R}" fill="${bg}" opacity="${portrait?'0.5':'1'}"
-          stroke="rgba(255,255,255,0.6)" stroke-width="2"/>
-        ${portrait?`<image href="${portrait}" x="${c.x-R}" y="${c.y-R}" width="${R*2}" height="${R*2}"
-          clip-path="url(#clip-${pos})" preserveAspectRatio="xMidYMid slice" opacity="0.9"/>` : ''}
-        <text x="${c.x}" y="${c.y-3}" text-anchor="middle" font-size="13" font-weight="900"
-          fill="white" font-family="Arial Black,Arial" style="text-shadow:0 1px 2px #000">${note}</text>
-        <text x="${c.x}" y="${c.y+11}" text-anchor="middle" font-size="6.5" fill="rgba(255,255,255,0.9)"
-          font-family="Arial">${name}</text>
-        <rect x="${c.x-R}" y="${c.y-R}" width="${R*2}" height="${R*2}"
-          fill="transparent" class="deck-slot-hit" data-pos="${pos}" style="cursor:pointer"/>`
+      svg += `<defs><clipPath id="dcp-${pos}"><rect x="${x0}" y="${(c.y-CH/2+NAMEH).toFixed(1)}" width="${CW}" height="${portH}"/></clipPath></defs>`
+      svg += `<rect x="${x0}" y="${y0}" width="${CW}" height="${CH}" rx="5" fill="${bg}"/>`
+      if (portrait) svg += `<image href="${portrait}" x="${x0}" y="${(c.y-CH/2+NAMEH).toFixed(1)}" width="${CW}" height="${portH}" clip-path="url(#dcp-${pos})" preserveAspectRatio="xMidYMin slice"/>`
+      svg += `<rect x="${x0}" y="${y0}" width="${CW}" height="${NAMEH}" fill="rgba(255,255,255,0.93)"/>`
+      svg += `<text x="${c.x.toFixed(1)}" y="${(c.y-CH/2+8.5).toFixed(1)}" text-anchor="middle" dominant-baseline="central" font-size="6.5" font-weight="900" fill="#111" font-family="Arial Black,Arial">${(p.surname_encoded||'').slice(0,9)}</text>`
+      const by0 = (c.y+CH/2-BOTHH).toFixed(1)
+      svg += `<rect x="${x0}" y="${by0}" width="${CW}" height="${BOTHH}" fill="rgba(255,255,255,0.93)"/>`
+      if (flag) svg += `<image href="${flag}" x="${(c.x-21).toFixed(1)}" y="${(c.y+CH/2-BOTHH+3).toFixed(1)}" width="13" height="10" preserveAspectRatio="xMidYMid slice"/>`
+      svg += `<text x="${c.x.toFixed(1)}" y="${(c.y+CH/2-BOTHH/2).toFixed(1)}" text-anchor="middle" dominant-baseline="central" font-size="12" font-weight="900" fill="#111" font-family="Arial Black">${note}</text>`
+      if (logoUrl) svg += `<image href="${logoUrl}" x="${(c.x+CW/2-14).toFixed(1)}" y="${(c.y+CH/2-BOTHH+2).toFixed(1)}" width="12" height="12" preserveAspectRatio="xMidYMid meet"/>`
+      svg += `<rect x="${x0}" y="${y0}" width="${CW}" height="${CH}" rx="5" fill="none" stroke="${rarityBorder}" stroke-width="2"/>`
     } else {
-      svgContent += `
-        <circle cx="${c.x}" cy="${c.y}" r="${R}" fill="rgba(255,255,255,0.08)"
-          stroke="rgba(255,255,255,0.3)" stroke-width="2" stroke-dasharray="4,3"/>
-        <text x="${c.x}" y="${c.y+6}" text-anchor="middle" font-size="16" fill="rgba(255,255,255,0.4)"
-          font-family="Arial">+</text>
-        <rect x="${c.x-R}" y="${c.y-R}" width="${R*2}" height="${R*2}"
-          fill="transparent" class="deck-slot-hit" data-pos="${pos}" style="cursor:pointer"/>`
+      // Slot vide
+      svg += `<rect x="${x0}" y="${y0}" width="${CW}" height="${CH}" rx="5" fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.35)" stroke-width="2" stroke-dasharray="5,3"/>`
+      svg += `<text x="${c.x.toFixed(1)}" y="${c.y.toFixed(1)}" text-anchor="middle" dominant-baseline="central" font-size="22" fill="rgba(255,255,255,0.35)">+</text>`
+      svg += `<text x="${c.x.toFixed(1)}" y="${(c.y+16).toFixed(1)}" text-anchor="middle" font-size="7" fill="rgba(255,255,255,0.3)">${role}</text>`
     }
+
+    // Zone cliquable
+    svg += `<rect x="${x0}" y="${y0}" width="${CW}" height="${CH}" rx="5" fill="rgba(0,0,0,0.01)" class="deck-slot-hit" data-pos="${pos}" style="cursor:pointer"/>`
   }
 
-  const glowDefs = '' // filtres supprimés (bug url(#id) SPA Chrome)
+  field.innerHTML = `<svg viewBox="${-PAD} ${-PAD} ${W+PAD*2} ${H+PAD*2}" width="100%" style="display:block;max-width:440px;margin:0 auto">${svg}</svg>`
 
-  field.innerHTML = `
-    <!-- Badge MIL -->
-    ${milPositions.length > 0 ? `
-    <div style="position:absolute;top:6px;right:8px;z-index:10;
-      background:rgba(212,160,23,0.95);color:#000;border-radius:8px;
-      padding:3px 10px;font-size:11px;font-weight:900;pointer-events:none">
-      MIL ${milTotal}${milLinkBonus > 0 ? ` +${milLinkBonus}` : ''} ⚡
-    </div>` : ''}
-
-    <svg viewBox="0 0 ${W} ${H}" width="100%" style="display:block;max-width:380px;margin:0 auto">
-      ${glowDefs}
-      ${svgContent}
-    </svg>`
-
-  // Events sur les slots
   field.querySelectorAll('.deck-slot-hit').forEach(el => {
     el.addEventListener('click', () => openPlayerSelector(el.dataset.pos, builder, container, ctx))
   })

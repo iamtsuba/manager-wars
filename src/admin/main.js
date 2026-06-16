@@ -8,6 +8,7 @@ import { pageMarket }       from './pages/market.js'
 import { pageImportExport } from './pages/import-export.js'
 import { pageFormations }      from './pages/formations.js'
 import { renderBoostersConfig } from './pages/boosters-config.js'
+import { renderGCCards }         from './pages/gc-cards.js'
 
 // ── Toast helper ──────────────────────────────────────────
 export function toast(msg, type = 'info') {
@@ -40,6 +41,7 @@ const PAGES = {
   'import-export': { title: 'Import / Export CSV', fn: pageImportExport },
   formations:          { title: 'Formations & Liens',  fn: pageFormations },
   'boosters-config': { title: 'Boosters',              fn: renderBoostersConfig },
+  'gc-cards':         { title: 'Game Changers',          fn: renderGCCards },
 }
 
 let currentPage = 'dashboard'

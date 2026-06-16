@@ -120,7 +120,7 @@ function buildTeam(starters, formation) {
 async function generateAITeam(formation, difficulty) {
   const { data: players } = await supabase
     .from('players')
-    .select('id,firstname,surname_encoded,country_code,club_id,job,job2,note_g,note_d,note_m,note_a,rarity,skin,hair,hair_length')
+    .select('id,firstname,surname_encoded,country_code,club_id,job,job2,note_g,note_d,note_m,note_a,rarity,skin,hair,hair_length,clubs(encoded_name,logo_url)')
     .eq('is_active', true).limit(60)
 
   if (!players || players.length < 11) return generateFakeAITeam(formation)
@@ -144,6 +144,7 @@ async function generateAITeam(formation, difficulty) {
         note_g:Number(p.note_g)||0, note_d:Number(p.note_d)||0,
         note_m:Number(p.note_m)||0, note_a:Number(p.note_a)||0,
         rarity:p.rarity, skin:p.skin, hair:p.hair, hair_length:p.hair_length,
+        clubName:p.clubs?.encoded_name||null, clubLogo:p.clubs?.logo_url||null,
         boost:0, used:false, _line:role,
       })
     }
@@ -227,6 +228,7 @@ export async function renderMatch(container, ctx) {
 
   const homeTeam = buildTeam(starters, formation)
   const aiTeam   = await generateAITeam(formation, difficulty)
+  const { data: gcDefs } = await supabase.from('gc_definitions').select('*').eq('is_active', true)
 
   const { data: match } = await supabase.from('matches').insert({
     home_id: state.profile.id, away_id:null, mode,
@@ -234,6 +236,7 @@ export async function renderMatch(container, ctx) {
   }).select().single()
 
   const game = {
+    gcDefs: gcDefs || [],
     matchId: match?.id, mode, difficulty, formation,
     homeTeam, aiTeam,
     homeSubs: subsRaw,
@@ -493,18 +496,33 @@ function showMidfieldAnimation(container, game, ctx) {
       text: `Duel milieu : ${game.clubName} ${homeTotal} – ${aiTotal} IA → ${homeWins ? game.clubName+' attaque' : 'IA attaque'}`,
     })
 
-    // Ajouter bouton "Commencer le match" après affichage du résultat
-    if (elRes) {
-      const btn = document.createElement('button')
-      btn.textContent = '▶ Commencer le match'
-      btn.style.cssText = 'margin-top:20px;padding:14px 28px;border-radius:12px;border:none;background:#1A6B3C;color:#fff;font-size:16px;font-weight:900;cursor:pointer'
-      btn.addEventListener('click', () => {
+    // Page résultat séparée
+    setTimeout(() => {
+      const boostVal = game.boostCard?.value
+      container.innerHTML = `
+      <div class="match-screen" style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100dvh;gap:20px;padding:24px;background:#0a3d1e;text-align:center">
+        <div style="font-size:64px">${homeWins ? '🏆' : '😤'}</div>
+        <div style="font-size:22px;font-weight:900;color:#fff;line-height:1.3">
+          ${homeWins
+            ? `⚽ ${game.clubName}<br>gagne le milieu de terrain !`
+            : `😔 L'IA gagne l'engagement !`}
+        </div>
+        ${boostVal && homeWins ? `
+        <div style="background:rgba(135,206,235,0.15);border:2px solid #87CEEB;border-radius:16px;padding:16px 32px">
+          <div style="font-size:10px;color:#87CEEB;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px">Carte Boost obtenue</div>
+          <div style="font-size:48px;font-weight:900;color:#87CEEB">+${boostVal}</div>
+          <div style="font-size:11px;color:rgba(135,206,235,0.7)">Applicable sur n'importe quel joueur</div>
+        </div>` : ''}
+        <button id="start-match-btn" style="margin-top:8px;padding:16px 40px;border-radius:14px;border:none;background:#1A6B3C;color:#fff;font-size:17px;font-weight:900;cursor:pointer;box-shadow:0 4px 20px rgba(0,0,0,0.3)">
+          ▶ Commencer le match
+        </button>
+      </div>`
+      document.getElementById('start-match-btn')?.addEventListener('click', () => {
         game.phase = game.attacker === 'home' ? 'attack' : 'ai-attack'
         renderGame(container, game, ctx)
         if (game.attacker === 'ai') setTimeout(() => aiTurn(container, game, ctx), 800)
       })
-      elRes.appendChild(btn)
-    }
+    }, 100)
   }, 5000)
 }
 
@@ -840,7 +858,7 @@ function renderGame(container, game, ctx) {
     </button>
 
     <!-- ZONE CENTRALE : REMPLAÇANTS + TERRAIN -->
-    <div style="display:flex;flex-shrink:0;overflow:hidden">
+    <div style="display:flex;flex:1;min-height:0;overflow:hidden">
 
       <!-- Colonne remplaçants (mini cartes) -->
       <div style="display:flex;flex-direction:column;gap:4px;padding:4px 2px;width:50px;align-items:center;overflow-y:auto;flex-shrink:0;background:rgba(0,0,0,0.15)">
@@ -854,8 +872,8 @@ function renderGame(container, game, ctx) {
       </div>
 
       <!-- Terrain -->
-      <div style="overflow:hidden;min-width:0;display:flex;align-items:flex-start;justify-content:center" id="match-field">
-        <div style="width:min(calc(100vw - 56px), calc(100dvh - 370px));aspect-ratio:1;overflow:hidden;flex-shrink:0">
+      <div style="overflow:hidden;min-width:0;flex:1;display:flex;align-items:stretch;justify-content:center" id="match-field">
+        <div style="height:100%;aspect-ratio:1;max-width:calc(100vw - 56px);overflow:hidden;flex-shrink:0">
           ${renderTeam(game.homeTeam, game.formation, game.phase, selectedIds, 300, 300)}
         </div>
       </div>
@@ -1446,31 +1464,181 @@ function openGCDetail(gcId, gcType, container, game, ctx) {
 }
 
 // ── GAME CHANGER ──────────────────────────────────────────
+// ── Picker joueurs pour les GC (BOOST/DEBUFF/GRAY/REVIVE) ─
+function openGCPicker(pool, count, label, container, game, onConfirm) {
+  const overlay = document.createElement('div')
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.9);z-index:900;display:flex;flex-direction:column;overflow:hidden'
+  let chosen = []
+
+  function rebuildPicker() {
+    overlay.innerHTML = `
+    <div style="padding:12px 16px;background:rgba(255,255,255,0.08);display:flex;align-items:center;gap:10px;flex-shrink:0">
+      <div style="flex:1;font-size:14px;font-weight:700;color:#fff">${label}</div>
+      <div style="font-size:12px;color:rgba(255,255,255,0.5)">${chosen.length}/${count}</div>
+      <button id="gc-picker-close" style="background:none;border:none;color:rgba(255,255,255,0.5);font-size:22px;cursor:pointer">✕</button>
+    </div>
+    <div style="flex:1;overflow-y:auto;padding:12px;display:flex;flex-wrap:wrap;gap:8px;align-content:flex-start">
+      ${pool.map(p => {
+        const role = p._line || p.job || 'MIL'
+        const bg   = ({ GK:'#111', DEF:'#bb2020', MIL:'#D4A017', ATT:'#1A6B3C' })[role] || '#555'
+        const note = getNoteForRole(p, role) + (p.boost||0)
+        const sel  = chosen.find(x => x.cardId === p.cardId)
+        return `<div class="gc-pick-item" data-cid="${p.cardId}"
+          style="width:80px;border-radius:8px;border:2.5px solid ${sel?'#FFD700':'rgba(255,255,255,0.25)'};background:${bg};overflow:hidden;cursor:pointer;flex-shrink:0;${p.used?'opacity:0.3;pointer-events:none':''}">
+          <div style="background:rgba(255,255,255,0.9);text-align:center;padding:2px;font-size:7px;font-weight:900;color:#111;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">${p.name||'?'}</div>
+          <div style="height:50px;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:900;color:#fff">${note}</div>
+          <div style="background:rgba(255,255,255,0.9);text-align:center;padding:2px;font-size:8px;font-weight:700;color:#333">${role}</div>
+        </div>`
+      }).join('')}
+    </div>
+    <div style="padding:12px;background:rgba(0,0,0,0.4);flex-shrink:0">
+      <button id="gc-picker-confirm" ${chosen.length===0?'disabled style="opacity:0.4"':''} style="width:100%;padding:13px;border-radius:10px;border:none;background:#7a28b8;color:#fff;font-size:15px;font-weight:900;cursor:pointer">
+        ✅ Confirmer (${chosen.length}/${count})
+      </button>
+    </div>`
+
+    overlay.querySelector('#gc-picker-close')?.addEventListener('click', () => overlay.remove())
+    overlay.querySelectorAll('.gc-pick-item').forEach(el => {
+      el.addEventListener('click', () => {
+        const cid = el.dataset.cid
+        const p   = pool.find(x => x.cardId === cid)
+        if (!p) return
+        const idx = chosen.findIndex(x => x.cardId === cid)
+        if (idx > -1) { chosen.splice(idx, 1) }
+        else if (chosen.length < count) { chosen.push(p) }
+        rebuildPicker()
+      })
+    })
+    overlay.querySelector('#gc-picker-confirm')?.addEventListener('click', () => {
+      overlay.remove()
+      onConfirm(chosen)
+    })
+  }
+  rebuildPicker()
+  document.body.appendChild(overlay)
+}
+
+// ── Moteur GC paramétrique ─────────────────────────────────
+const GC_ENGINE = {
+  BOOST_STAT({ value=2, target='home', count=1, roles=null }, game, container, ctx) {
+    const team = target === 'home' ? game.homeTeam : game.aiTeam
+    const pool = Object.entries(team).flatMap(([role, players]) =>
+      (!roles || roles.includes(role)) ? (players||[]).filter(p=>!p.used).map(p=>({...p,_line:role})) : [])
+    if (!pool.length) { ctx.toast('Aucun joueur disponible', 'error'); return true }
+    openGCPicker(pool, count, value>0?`⚡ +${value} à ${count} joueur(s)`:`💀 -${Math.abs(value)} à ${count} joueur(s)`, container, game, selected => {
+      selected.forEach(s => {
+        for (const r of ['GK','DEF','MIL','ATT']) {
+          const p=(game.homeTeam[r]||[]).find(pp=>pp.cardId===s.cardId)
+                ||(game.aiTeam[r]||[]).find(pp=>pp.cardId===s.cardId)
+          if(p){p.boost=(p.boost||0)+value;break}
+        }
+      })
+      game.log.push({text:`${value>0?'⚡':'💀'} ${Math.abs(value)>0?'+':''}${value} → ${selected.map(p=>p.name).join(', ')}`,type:'info'})
+      renderGame(container, game, ctx)
+    })
+    return true
+  },
+  DEBUFF_STAT(params, game, container, ctx) {
+    return GC_ENGINE.BOOST_STAT({...params, value:-Math.abs(params.value||2)}, game, container, ctx)
+  },
+  GRAY_PLAYER({ target='opponent', count=1, roles=null }, game, container, ctx) {
+    const team = target === 'opponent' ? game.aiTeam : game.homeTeam
+    const pool = Object.entries(team).flatMap(([role, players]) =>
+      (!roles||roles.includes(role)) ? (players||[]).filter(p=>!p.used).map(p=>({...p,_line:role})) : [])
+    if (!pool.length) { ctx.toast('Aucun joueur à griser', 'error'); return true }
+    openGCPicker(pool, count, `❄️ Griser ${count} joueur(s)`, container, game, selected => {
+      selected.forEach(s => {
+        for (const r of Object.keys(game.aiTeam).concat(Object.keys(game.homeTeam))) {
+          const arr = target==='opponent'?game.aiTeam[r]:game.homeTeam[r]
+          const p = (arr||[]).find(pp=>pp.cardId===s.cardId)
+          if(p){p.used=true;break}
+        }
+      })
+      game.log.push({text:`❄️ ${selected.map(p=>p.name).join(', ')} grisé(s) !`,type:'info'})
+      renderGame(container, game, ctx)
+    })
+    return true
+  },
+  REVIVE_PLAYER({ count=1 }, game, container, ctx) {
+    const pool = Object.entries(game.homeTeam).flatMap(([role, players]) =>
+      (players||[]).filter(p=>p.used).map(p=>({...p,_line:role})))
+    if (!pool.length) { ctx.toast('Aucun joueur à ressusciter', 'error'); return true }
+    openGCPicker(pool, count, '💫 Ressusciter', container, game, selected => {
+      selected.forEach(s => {
+        for (const r of ['GK','DEF','MIL','ATT']) {
+          const p=(game.homeTeam[r]||[]).find(pp=>pp.cardId===s.cardId)
+          if(p){p.used=false;break}
+        }
+      })
+      game.log.push({text:`💫 ${selected.map(p=>p.name).join(', ')} ressuscité(s) !`,type:'info'})
+      renderGame(container, game, ctx)
+    })
+    return true
+  },
+  REMOVE_GOAL(_p, game, container, ctx) {
+    if (game.aiScore <= 0) { ctx.toast('Aucun but adverse', 'error'); return false }
+    game.aiScore--
+    game.log.push({text:'🚫 But adverse retiré !',type:'info'})
+    return false
+  },
+  ADD_GOAL_DRAW(_p, game, container, ctx) {
+    game.modifiers = game.modifiers||{}
+    game.modifiers.home = game.modifiers.home||{}
+    game.modifiers.home.addGoalOnDraw = true
+    game.log.push({text:'⚽ +1 but si duel nul activé !',type:'info'})
+    return false
+  },
+  ADD_SUB({ count=1 }, game, container, ctx) {
+    game.maxSubs += count
+    game.log.push({text:`🔄 +${count} remplacement(s) débloqué(s)`,type:'info'})
+    return false
+  },
+}
+
+// ── useGameChanger : dispatch paramétrique ou legacy ───────
 function useGameChanger(gcId, gcType, container, game, ctx) {
   if (game.usedGc.includes(gcId)) return
   game.usedGc.push(gcId)
-  switch (gcType) {
-    case 'Double attaque': game.modifiers.home.doubleAttack=true; game.log.push({text:'⚡ Double attaque activée !',type:'info'}); break
-    case 'Bouclier': game.modifiers.home.shield=true; game.log.push({text:'🛡️ Bouclier activé !',type:'info'}); break
-    case 'Ressusciter': {
-      let revived=false
-      for (const r of ['ATT','MIL','DEF','GK']) {
-        const p=(game.homeTeam[r]||[]).find(pp=>pp.used)
-        if(p){p.used=false;revived=true;break}
+
+  // Chercher la définition DB en cache
+  const def = (game.gcDefs||[]).find(d => d.name === gcType)
+
+  let needsRerender = false
+
+  if (def?.effect_type && def.effect_type !== 'CUSTOM') {
+    // ── Système paramétrique ──
+    const handler = GC_ENGINE[def.effect_type]
+    if (handler) {
+      const async = handler(def.effect_params || {}, game, container, ctx)
+      if (!async) needsRerender = true  // effet synchrone → rerendre
+    } else {
+      ctx.toast(`Effet "${def.effect_type}" non implémenté`, 'error')
+      needsRerender = true
+    }
+  } else {
+    // ── Legacy hardcodé (fallback) ──
+    switch (gcType) {
+      case 'Double attaque': game.modifiers.home.doubleAttack=true; game.log.push({text:'⚡ Double attaque activée !',type:'info'}); break
+      case 'Bouclier': game.modifiers.home.shield=true; game.log.push({text:'🛡️ Bouclier activé !',type:'info'}); break
+      case 'Ressusciter': {
+        const pool=Object.entries(game.homeTeam).flatMap(([r,ps])=>(ps||[]).filter(p=>p.used).map(p=>({...p,_line:r})))
+        if(pool.length){pool[0].used=false;game.log.push({text:`💫 ${pool[0].name} ressuscité !`,type:'info'})}
+        else game.log.push({text:'💫 Aucun joueur à ressusciter',type:'info'})
+        break
       }
-      game.log.push({text:revived?'💫 Joueur ressuscité !':'💫 Aucun joueur à ressusciter',type:'info'})
-      break
+      case 'Vol de note': game.modifiers.ai.stolenNote=(game.modifiers.ai.stolenNote||0)+1; game.log.push({text:'🎯 -1 à la prochaine attaque IA',type:'info'}); break
+      case 'Gel': {
+        const ai=[...(game.aiTeam.ATT||[]),...(game.aiTeam.MIL||[])].filter(p=>!p.used)
+        if(ai.length){const b=ai.sort((a,b2)=>getNoteForRole(b2,'ATT')-getNoteForRole(a,'ATT'))[0];b.used=true;game.log.push({text:`❄️ ${b.name} (IA) gelé !`,type:'info'})}
+        break
+      }
+      case 'Remplacement+': game.maxSubs++; game.log.push({text:'🔄 +1 remplacement débloqué',type:'info'}); break
     }
-    case 'Vol de note': game.modifiers.ai.stolenNote=(game.modifiers.ai.stolenNote||0)+1; game.log.push({text:'🎯 -1 à la prochaine attaque IA',type:'info'}); break
-    case 'Gel': {
-      const ai=[...(game.aiTeam.ATT||[]),...(game.aiTeam.MIL||[])].filter(p=>!p.used)
-      if(ai.length){const b=ai.sort((a,b2)=>getNoteForRole(b2,'ATT')-getNoteForRole(a,'ATT'))[0];b.used=true;game.log.push({text:`❄️ ${b.name} (IA) gelé !`,type:'info'})}
-      break
-    }
-    case 'Remplacement+': game.maxSubs++; game.log.push({text:'🔄 +1 remplacement débloqué',type:'info'}); break
+    needsRerender = true
   }
-  supabase.from('cards').delete().eq('id',gcId).then(()=>{})
-  renderGame(container, game, ctx)
+
+  supabase.from('cards').delete().eq('id', gcId).then(()=>{})
+  if (needsRerender) renderGame(container, game, ctx)
 }
 
 // ── BOOST ─────────────────────────────────────────────────

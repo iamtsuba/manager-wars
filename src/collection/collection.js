@@ -235,9 +235,10 @@ export async function renderCollection(container, ctx) {
     <!-- Filtres -->
     <div id="col-filters" style="padding:10px 16px;background:#fff;border-bottom:1px solid var(--gray-200);display:flex;flex-direction:column;gap:8px"></div>
 
-    <!-- Grille cartes -->
-    <div class="page-body">
-      <div id="col-grid" style="width:100%;min-height:100px;user-select:none"></div>
+    <!-- Grande carte + strip -->
+    <div id="col-big" style="display:flex;justify-content:center;align-items:center;padding:12px 16px 8px;min-height:60px"></div>
+    <div class="page-body" style="padding:0">
+      <div id="col-grid" style="display:flex;overflow-x:auto;gap:8px;padding:8px 16px;-webkit-overflow-scrolling:touch;scrollbar-width:none"></div>
     </div>
   </div>`
 

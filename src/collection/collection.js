@@ -337,9 +337,25 @@ export async function renderCollection(container, ctx) {
     var sel = 0
 
     function repaint() {
-      bigZone.innerHTML = '<div style="max-height:100%;overflow:hidden;display:flex;align-items:center;justify-content:center">' + renderBigFn(items[sel]) + '</div>'
+      bigZone.innerHTML = '<div id="big-card-inner" style="display:inline-block;transform-origin:top center">' + renderBigFn(items[sel]) + '</div>'
       var bigEl = bigZone.querySelector('[data-card-id],[data-form-id],[data-gc-id]')
       if (bigEl) bigEl.addEventListener('click', function() { onBigClick(items[sel]) })
+      // Auto-scale pour que la carte rentre dans la zone disponible
+      requestAnimationFrame(function() {
+        var inner = document.getElementById('big-card-inner')
+        if (!inner || !bigZone) return
+        var availH = bigZone.clientHeight - 8
+        var availW = bigZone.clientWidth - 16
+        var cardH  = inner.offsetHeight
+        var cardW  = inner.offsetWidth
+        if (cardH > 0 && cardW > 0) {
+          var scaleH = availH / cardH
+          var scaleW = availW / cardW
+          var scale  = Math.min(scaleH, scaleW, 1)
+          inner.style.transform = 'scale(' + scale.toFixed(3) + ')'
+          inner.style.transformOrigin = 'top center'
+        }
+      })
 
       grid.innerHTML = items.map(function(item, i) {
         return '<div class="col-mini-item" data-idx="' + i + '" style="flex-shrink:0;cursor:pointer;border-radius:8px;border:2.5px solid ' + (i === sel ? borderColor : 'transparent') + ';transition:border-color .15s;overflow:hidden">' + renderMiniFn(item, i === sel) + '</div>'

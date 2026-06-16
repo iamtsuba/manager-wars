@@ -1,4 +1,4 @@
-import{s as x,g as fe,F as Y,a as ee,b as ve}from"./formation-links-CDBKB_z4.js";async function xe(e){const[{count:n},{count:t},{count:o},{count:u},{count:s}]=await Promise.all([x.from("players").select("*",{count:"exact",head:!0}),x.from("clubs").select("*",{count:"exact",head:!0}),x.from("users").select("*",{count:"exact",head:!0}),x.from("cards").select("*",{count:"exact",head:!0}),x.from("matches").select("*",{count:"exact",head:!0})]);e.innerHTML=`
+import{s as x,g as fe,F as Y,a as ee,b as ve}from"./formation-links-BrrCMBql.js";async function xe(e){const[{count:n},{count:t},{count:o},{count:u},{count:s}]=await Promise.all([x.from("players").select("*",{count:"exact",head:!0}),x.from("clubs").select("*",{count:"exact",head:!0}),x.from("users").select("*",{count:"exact",head:!0}),x.from("cards").select("*",{count:"exact",head:!0}),x.from("matches").select("*",{count:"exact",head:!0})]);e.innerHTML=`
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:24px">
       ${U("🃏","Joueurs (cartes)",n??"–","#1A6B3C")}
       ${U("🏟️","Clubs",t??"–","#D4A017")}

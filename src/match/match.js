@@ -308,7 +308,7 @@ function showGCSelection(container, gcCards, onConfirm) {
 
   function render() {
     container.innerHTML = `
-    <div style="display:flex;flex-direction:column;min-height:100dvh;background:linear-gradient(180deg,#0a1628,#1a0a2e);padding:16px;gap:14px">
+    <div style="display:flex;flex-direction:column;height:100%;min-height:100%;background:linear-gradient(180deg,#0a1628,#1a0a2e);padding:16px;gap:14px">
       <!-- Header -->
       <div style="text-align:center;padding-top:8px">
         <div style="font-size:11px;color:rgba(255,255,255,0.5);letter-spacing:3px;text-transform:uppercase;margin-bottom:4px">Avant le match</div>
@@ -489,7 +489,7 @@ async function renderDeckSelect(container, ctx, matchMode) {
 // ── POINT 6 : Reveal équipe adverse (5s) ─────────────────
 function showOpponentReveal(container, game, ctx) {
   container.innerHTML = `
-  <div class="match-screen" style="display:flex;flex-direction:column;align-items:center;justify-content:flex-start;min-height:100vh;gap:12px;padding:12px 16px;background:#0a3d1e">
+  <div class="match-screen" style="display:flex;flex-direction:column;align-items:center;justify-content:flex-start;height:100%;min-height:100%;gap:12px;padding:12px 16px;background:#0a3d1e;overflow-y:auto">
     <div style="font-size:11px;color:rgba(255,255,255,0.5);letter-spacing:3px;text-transform:uppercase;margin-top:8px">Équipe adverse</div>
     <div style="font-size:20px;font-weight:900;color:#ff6b6b">IA (${game.difficulty.toUpperCase()})</div>
     <div style="width:min(90vw,420px)">${buildTeamSVG(game.aiTeam, game.formation, null, [], 300, 300)}</div>
@@ -548,7 +548,7 @@ function showMidfieldAnimation(container, game, ctx) {
   }
 
   container.innerHTML = `
-  <div class="match-screen" style="display:flex;flex-direction:column;align-items:center;justify-content:flex-start;min-height:100vh;gap:14px;padding:16px;background:#0a3d1e;overflow-y:auto">
+  <div class="match-screen" style="display:flex;flex-direction:column;align-items:center;justify-content:flex-start;height:100%;min-height:100%;gap:14px;padding:16px;background:#0a3d1e;overflow-y:auto">
     <div style="text-align:center;color:#fff">
       <div style="font-size:11px;opacity:.5;letter-spacing:2px;text-transform:uppercase">Duel du milieu de terrain</div>
     </div>
@@ -611,7 +611,7 @@ function showMidfieldAnimation(container, game, ctx) {
     setTimeout(() => {
       const boostVal = game.boostCard?.value
       container.innerHTML = `
-      <div class="match-screen" style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100dvh;gap:20px;padding:24px;background:#0a3d1e;text-align:center">
+      <div class="match-screen" style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;min-height:100%;gap:20px;padding:24px;background:#0a3d1e;text-align:center">
         <div style="font-size:64px">${homeWins ? '🏆' : '😤'}</div>
         <div style="font-size:22px;font-weight:900;color:#fff;line-height:1.3">
           ${homeWins
@@ -983,8 +983,8 @@ function renderGame(container, game, ctx) {
       </div>
 
       <!-- Terrain -->
-      <div style="overflow:hidden;min-width:0;flex:1;display:flex;align-items:stretch;justify-content:center" id="match-field">
-        <div style="height:100%;aspect-ratio:1;max-width:calc(100vw - 56px);overflow:hidden;flex-shrink:0">
+      <div style="overflow:hidden;min-width:0;flex:1;min-height:0;display:flex;align-items:center;justify-content:center" id="match-field">
+        <div class="terrain-wrapper" style="overflow:hidden;flex-shrink:0">
           ${renderTeam(game.homeTeam, game.formation, game.phase, selectedIds, 300, 300)}
         </div>
       </div>
@@ -1067,6 +1067,18 @@ function renderGame(container, game, ctx) {
       }
     </div>
   </div>`
+
+  // ── Dimensionner le terrain exactement (hauteur disponible) ─
+  requestAnimationFrame(() => {
+    const mf = container.querySelector('#match-field')
+    const tw = container.querySelector('.terrain-wrapper')
+    if (!mf || !tw) return
+    const h = mf.clientHeight || mf.offsetHeight
+    const w = mf.clientWidth  || mf.offsetWidth
+    const size = Math.min(h, w) || 280
+    tw.style.width  = size + 'px'
+    tw.style.height = size + 'px'
+  })
 
   // ── CHRONO (point 7) ─────────────────────────────────────
   if (game._timerInt) { clearInterval(game._timerInt); game._timerInt = null }

@@ -237,7 +237,7 @@ export async function renderCollection(container, ctx) {
 
     <!-- Grille cartes -->
     <div class="page-body">
-      <div style="display:flex;flex-wrap:wrap;gap:10px;justify-content:flex-start" id="col-grid"></div>
+      <div id="col-grid" style="width:100%;min-height:100px;user-select:none"></div>
     </div>
   </div>`
 

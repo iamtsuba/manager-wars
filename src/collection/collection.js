@@ -347,36 +347,24 @@ export async function renderCollection(container, ctx) {
         return
       }
 
-      // Dédupliquer pour affichage : une seule carte par joueur avec badge
+      // Dédupliquer
       const seen = {}
       const deduped = []
       list.forEach(card => {
-        const pid = card.player.id
-        if (!seen[pid]) {
-          seen[pid] = true
-          deduped.push(card)
-        }
+        if (!seen[card.player.id]) { seen[card.player.id]=true; deduped.push(card) }
       })
 
-      grid.innerHTML = deduped.map(card => {
-        const count = countByPlayer[card.player.id] || 1
-        const badge = count > 1
-          ? `<div style="position:absolute;top:4px;right:4px;background:#1A6B3C;color:#fff;border-radius:10px;font-size:9px;font-weight:700;padding:1px 6px;z-index:3">×${count}</div>`
-          : ''
-        const forSale = playerCards.filter(c => c.player.id === card.player.id && c.is_for_sale).length
-        const saleBadge = forSale > 0
-          ? `<div style="position:absolute;top:4px;left:4px;background:#D4A017;color:#fff;border-radius:10px;font-size:9px;font-weight:700;padding:1px 5px;z-index:3">🏷️</div>`
-          : ''
-        return renderCard(card, badge + saleBadge)
-      }).join('')
+      renderCarousel(grid, deduped,
+        (card) => {
+          const count = countByPlayer[card.player.id] || 1
+          const badge = count > 1 ? `<div style="position:absolute;top:4px;right:4px;background:#1A6B3C;color:#fff;border-radius:10px;font-size:9px;font-weight:700;padding:1px 6px;z-index:3">×${count}</div>` : ''
+          const forSale = playerCards.filter(c => c.player.id === card.player.id && c.is_for_sale).length
+          const saleBadge = forSale > 0 ? `<div style="position:absolute;top:4px;left:4px;background:#D4A017;color:#fff;border-radius:10px;font-size:9px;font-weight:700;padding:1px 5px;z-index:3">🏷️</div>` : ''
+          return renderCard(card, badge + saleBadge)
+        },
+        (card) => openCardDetail(card, playerCards, countByPlayer, ctx)
+      )
     }
-
-    grid.querySelectorAll('[data-card-id]').forEach(el => {
-      el.addEventListener('click', () => {
-        const card = playerCards.find(c => c.id === el.dataset.cardId)
-        if (card) openCardDetail(card, playerCards, countByPlayer, ctx)
-      })
-    })
   }
 
   function renderFormationGrid(grid) {
@@ -387,42 +375,32 @@ export async function renderCollection(container, ctx) {
       return
     }
 
-    grid.innerHTML = formationsToShow.map(formation => {
-      const owned = ownedFormations.has(formation)
-      if (owned) {
-        const card  = formCards.find(c => c.formation === formation)
-        const count = formCards.filter(c => c.formation === formation).length
-        const badge = count > 1
-          ? `<div style="position:absolute;top:4px;right:4px;background:#0a3d1e;color:#fff;border-radius:10px;font-size:9px;font-weight:700;padding:1px 6px;z-index:3">×${count}</div>`
-          : ''
-        return `
-          <div data-form-id="${card.id}" style="
-            position:relative;background:linear-gradient(135deg,#1A6B3C,#2a8f52);border:2px solid #2a8f52;
-            border-radius:12px;padding:12px;color:#fff;min-width:100px;width:140px;flex-shrink:0;cursor:pointer;
-            display:flex;flex-direction:column;gap:4px;align-items:flex-start">
+    renderCarousel(grid, formationsToShow,
+      (formation) => {
+        const owned = ownedFormations.has(formation)
+        const card  = owned ? formCards.find(c => c.formation === formation) : null
+        const count = owned ? formCards.filter(c => c.formation === formation).length : 0
+        const badge = count > 1 ? `<div style="position:absolute;top:4px;right:4px;background:#0a3d1e;color:#fff;border-radius:10px;font-size:9px;font-weight:700;padding:1px 6px;z-index:3">×${count}</div>` : ''
+        if (owned && card) {
+          return `<div data-form-id="${card.id}" style="position:relative;background:linear-gradient(135deg,#1A6B3C,#2a8f52);border:2px solid #2a8f52;border-radius:16px;padding:24px 20px;color:#fff;display:flex;flex-direction:column;gap:8px;align-items:center;text-align:center;min-height:200px;justify-content:center">
             ${badge}
-            <div style="font-size:28px">🏟️</div>
-            <div style="font-size:8px;background:rgba(255,255,255,0.2);padding:2px 6px;border-radius:10px;width:fit-content;letter-spacing:.4px">FORMATION</div>
-            <div style="font-weight:900;font-size:18px">${formation}</div>
+            <div style="font-size:48px">🏟️</div>
+            <div style="font-size:10px;background:rgba(255,255,255,0.2);padding:3px 10px;border-radius:10px;letter-spacing:1px">FORMATION</div>
+            <div style="font-weight:900;font-size:24px">${formation}</div>
           </div>`
-      }
-      return `
-        <div style="
-          background:#ccc;border:2px solid #bbb;border-radius:12px;padding:12px;color:#888;
-          min-width:100px;width:140px;flex-shrink:0;display:flex;flex-direction:column;gap:4px;align-items:flex-start;
-          filter:grayscale(1);opacity:0.45">
-          <div style="font-size:28px">🏟️</div>
-          <div style="font-size:8px;background:rgba(0,0,0,0.1);padding:2px 6px;border-radius:10px;width:fit-content;letter-spacing:.4px">FORMATION</div>
-          <div style="font-weight:900;font-size:18px">${formation}</div>
+        }
+        return `<div style="background:#f0f0f0;border:2px solid #ddd;border-radius:16px;padding:24px 20px;color:#aaa;display:flex;flex-direction:column;gap:8px;align-items:center;text-align:center;min-height:200px;justify-content:center;filter:grayscale(1);opacity:0.45">
+          <div style="font-size:48px">🏟️</div>
+          <div style="font-size:10px;background:rgba(0,0,0,0.1);padding:3px 10px;border-radius:10px;letter-spacing:1px">FORMATION</div>
+          <div style="font-weight:900;font-size:22px">${formation}</div>
+          <div style="font-size:11px;margin-top:4px">Non possédée</div>
         </div>`
-    }).join('')
-
-    grid.querySelectorAll('[data-form-id]').forEach(el => {
-      el.addEventListener('click', () => {
-        const card = formCards.find(c => c.id === el.dataset.formId)
+      },
+      (formation) => {
+        const card = formCards.find(c => c.formation === formation)
         if (card) openFormationModal(card, formCards, ctx, openModal)
-      })
-    })
+      }
+    )
   }
 
   function renderGCGrid(grid) {
@@ -435,38 +413,31 @@ export async function renderCollection(container, ctx) {
 
     grid.innerHTML = typesToShow.map(type => {
       const owned = ownedGcTypes.has(type)
-      const gc = GC_DEFS[type] || { icon:'⚡', desc:'' }
-      if (owned) {
-        const card  = gcCards.find(c => c.gc_type === type)
-        const count = gcCards.filter(c => c.gc_type === type).length
-        const badge = count > 1
-          ? `<div style="position:absolute;top:4px;right:4px;background:#3d0a7a;color:#fff;border-radius:10px;font-size:9px;font-weight:700;padding:1px 6px;z-index:3">×${count}</div>`
-          : ''
-        return `
-          <div data-gc-id="${card.id}" data-gc-type="${type}" style="
-            position:relative;background:linear-gradient(135deg,#3d0a7a,#7a28b8);border:2px solid #9b59b6;
-            border-radius:12px;padding:12px;color:#fff;min-width:120px;width:140px;flex-shrink:0;cursor:pointer;
-            display:flex;flex-direction:column;gap:4px">
+    renderCarousel(grid, typesToShow,
+      (type) => {
+        const gc    = GC_DEFS[type] || { icon:'⚡', desc:'' }
+        const owned = ownedGcTypes.has(type)
+        const card  = owned ? gcCards.find(c => c.gc_type === type) : null
+        const count = owned ? gcCards.filter(c => c.gc_type === type).length : 0
+        const badge = count > 1 ? `<div style="position:absolute;top:6px;right:6px;background:#3d0a7a;color:#fff;border-radius:10px;font-size:10px;font-weight:700;padding:2px 8px;z-index:3">×${count}</div>` : ''
+        if (owned && card) {
+          return `<div data-gc-id="${card.id}" data-gc-type="${type}" style="position:relative;background:linear-gradient(135deg,#3d0a7a,#7a28b8);border:2px solid #9b59b6;border-radius:16px;padding:28px 20px;color:#fff;display:flex;flex-direction:column;gap:10px;align-items:center;text-align:center;min-height:220px;justify-content:center">
             ${badge}
-            <div style="font-size:28px">${gc.icon}</div>
-            <div style="font-size:8px;background:rgba(255,255,255,0.2);padding:2px 6px;border-radius:10px;width:fit-content;letter-spacing:.4px">GAME CHANGER</div>
-            <div style="font-weight:700;font-size:13px">${type}</div>
+            <div style="font-size:56px">${gc.icon}</div>
+            <div style="font-size:10px;background:rgba(255,255,255,0.2);padding:3px 10px;border-radius:10px;letter-spacing:1px">GAME CHANGER</div>
+            <div style="font-weight:900;font-size:20px">${type}</div>
+            <div style="font-size:12px;color:rgba(255,255,255,0.7);max-width:200px">${gc.desc}</div>
           </div>`
-      }
-      return `
-        <div style="
-          background:#ccc;border:2px solid #bbb;border-radius:12px;padding:12px;color:#888;
-          min-width:120px;width:140px;flex-shrink:0;display:flex;flex-direction:column;gap:4px;
-          filter:grayscale(1);opacity:0.45">
-          <div style="font-size:28px">${gc.icon}</div>
-          <div style="font-size:8px;background:rgba(0,0,0,0.1);padding:2px 6px;border-radius:10px;width:fit-content;letter-spacing:.4px">GAME CHANGER</div>
-          <div style="font-weight:700;font-size:13px">${type}</div>
+        }
+        return `<div style="background:#f0f0f0;border:2px solid #ddd;border-radius:16px;padding:28px 20px;color:#aaa;display:flex;flex-direction:column;gap:10px;align-items:center;text-align:center;min-height:220px;justify-content:center;filter:grayscale(1);opacity:0.45">
+          <div style="font-size:56px">${gc.icon}</div>
+          <div style="font-size:10px;background:rgba(0,0,0,0.1);padding:3px 10px;border-radius:10px;letter-spacing:1px">GAME CHANGER</div>
+          <div style="font-weight:900;font-size:18px">${type}</div>
+          <div style="font-size:11px;margin-top:4px">Non possédée</div>
         </div>`
-    }).join('')
-
-    grid.querySelectorAll('[data-gc-id]').forEach(el => {
-      el.addEventListener('click', () => openGCModal(el.dataset.gcType, openModal))
-    })
+      },
+      (type) => openGCModal(type, openModal)
+    )
   }
 
   // ── Onglets ──────────────────────────────────────────────

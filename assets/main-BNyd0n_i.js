@@ -977,7 +977,7 @@ import{s as $,l as ne,F as Be,b as _e,c as ot,d as It}from"./formation-links-Brr
         </button>
       </div>
     </div>`,(g=document.getElementById("prev-deck"))==null||g.addEventListener("click",()=>{r>0&&(r--,n())}),(w=document.getElementById("next-deck"))==null||w.addEventListener("click",()=>{r<o.length-1&&(r++,n())}),(A=document.getElementById("validate-deck"))==null||A.addEventListener("click",()=>{h&&t.navigate("match",{matchMode:i,deckId:c.id})}),(x=document.getElementById("cancel-deck-select"))==null||x.addEventListener("click",()=>d("home"));const _=document.getElementById("deck-swipe-zone");if(_){let v=0,k=0;_.addEventListener("touchstart",T=>{v=T.touches[0].clientX,k=T.touches[0].clientY},{passive:!0}),_.addEventListener("touchend",T=>{const L=T.changedTouches[0].clientX-v,j=T.changedTouches[0].clientY-k;Math.abs(L)<40||Math.abs(L)<Math.abs(j)||(L<0&&r<o.length-1?(r++,n()):L>0&&r>0&&(r--,n()))},{passive:!0})}}n()}function hi(e,t,i){e.innerHTML=`
-  <div class="match-screen" style="display:flex;flex-direction:column;align-items:center;justify-content:flex-start;height:100%;min-height:100%;gap:12px;padding:12px 16px;background:#0a3d1e;overflow-y:auto">
+  <div class="match-screen" style="display:flex;flex-direction:column;align-items:center;justify-content:flex-start;height:100%;overflow:hidden;gap:12px;padding:12px 16px;background:#0a3d1e;overflow-y:auto">
     <div style="font-size:11px;color:rgba(255,255,255,0.5);letter-spacing:3px;text-transform:uppercase;margin-top:8px">Équipe adverse</div>
     <div style="font-size:20px;font-weight:900;color:#ff6b6b">IA (${t.difficulty.toUpperCase()})</div>
     <div style="width:min(90vw,420px)">${Ge(t.aiTeam,t.formation,null,[],300,300)}</div>
@@ -1001,7 +1001,7 @@ import{s as $,l as ne,F as Be,b as _e,c as ot,d as It}from"./formation-links-Brr
         Score: ${o(p)} + ${s(p)} liens = <b style="color:#fff">${o(p)+s(p)}</b>
       </div>
     </div>`}e.innerHTML=`
-  <div class="match-screen" style="display:flex;flex-direction:column;align-items:center;justify-content:flex-start;height:100%;min-height:100%;gap:14px;padding:16px;background:#0a3d1e;overflow-y:auto">
+  <div class="match-screen" style="display:flex;flex-direction:column;align-items:center;justify-content:flex-start;height:100%;overflow:hidden;gap:14px;padding:16px;background:#0a3d1e;overflow-y:auto">
     <div style="text-align:center;color:#fff">
       <div style="font-size:11px;opacity:.5;letter-spacing:2px;text-transform:uppercase">Duel du milieu de terrain</div>
     </div>
@@ -1093,7 +1093,7 @@ import{s as $,l as ne,F as Be,b as _e,c as ot,d as It}from"./formation-links-Brr
       ${me(e.outPlayer||{},!0)}
       <div style="font-size:16px;flex-shrink:0">🔄</div>
       ${me(e.inPlayer||{})}
-    </div>`}return`<div style="font-size:11px;color:${e.type==="goal"?"#FFD700":"rgba(255,255,255,0.65)"};font-weight:${e.type==="goal"?700:400};padding:3px 2px">${e.text||""}</div>`}function R(e,t,i){var m,y,h,_,b,g,w,A;const a=t.selected.map(x=>x.cardId),d=t.usedSubIds||[],o=t.homeSubs.filter(x=>!d.includes(x.cardId));Object.values(t.homeTeam).flat().filter(x=>x.used).length>0&&o.length>0&&t.subsUsed<t.maxSubs,t.log[t.log.length-1];const l=t.phase==="ai-attack"||t.phase==="ai-defense",r=t.phase==="attack",n=t.phase==="defense",c=t.phase==="finished",p=t.gcCards.filter(x=>!t.usedGc.includes(x.id)),u=t.boostCard&&!t.boostUsed;if(e.innerHTML=`
+    </div>`}return`<div style="font-size:11px;color:${e.type==="goal"?"#FFD700":"rgba(255,255,255,0.65)"};font-weight:${e.type==="goal"?700:400};padding:3px 2px">${e.text||""}</div>`}function R(e,t,i){var m,y,h,_,b,g,w,A;const a=t.selected.map(x=>x.cardId),d=t.usedSubIds||[],o=t.homeSubs.filter(x=>!d.includes(x.cardId));Object.values(t.homeTeam).flat().filter(x=>x.used).length>0&&o.length>0&&t.subsUsed<t.maxSubs,t.log[t.log.length-1];const l=t.phase==="ai-attack"||t.phase==="ai-defense",r=t.phase==="attack",n=t.phase==="defense",c=t.phase==="finished",p=t.gcCards.filter(x=>!t.usedGc.includes(x.id)),u=t.boostCard&&!t.boostUsed;if(e.style.position="relative",e.style.overflow="hidden",e.innerHTML=`
   <style>
     @keyframes subSlideOut { from{transform:translateX(0);opacity:1} to{transform:translateX(-120%);opacity:0} }
     @keyframes subSlideIn  { from{transform:translateX(120%);opacity:0} to{transform:translateX(0);opacity:1} }
@@ -1108,7 +1108,7 @@ import{s as $,l as ne,F as Be,b as _e,c as ot,d as It}from"./formation-links-Brr
     #match-history-panel.open { transform:translateY(0); }
   </style>
 
-  <div class="match-screen" style="display:flex;flex-direction:column;height:calc(100dvh - 130px);max-height:calc(100dvh - 130px);overflow:hidden;background:#0a3d1e;position:relative">
+  <div class="match-screen" style="position:absolute;inset:0;display:flex;flex-direction:column;overflow:hidden;background:#0a3d1e">
 
     <!-- SCORE BAR -->
     <div style="display:flex;align-items:center;padding:8px 10px;background:rgba(0,0,0,0.5);gap:6px;flex-shrink:0">

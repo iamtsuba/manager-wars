@@ -157,6 +157,12 @@ export async function renderCollection(container, ctx) {
   const gcCards     = (cards||[]).filter(c => c.card_type === 'game_changer')
   const formCards   = (cards||[]).filter(c => c.card_type === 'formation')
 
+  // Définitions GC depuis la DB (image, couleur, effet)
+  const { data: gcDefinitions } = await supabase
+    .from('gc_definitions').select('name,gc_type,color,effect,image_url').eq('is_active', true)
+  const gcDefMap = {}
+  ;(gcDefinitions||[]).forEach(d => { gcDefMap[d.name] = d })
+
   const ALL_FORMATIONS = Object.keys(FORMATION_LINKS)
   const ALL_GC_TYPES   = Object.keys(GC_DEFS)
 
@@ -434,14 +440,37 @@ export async function renderCollection(container, ctx) {
       return
     }
 
-    const gcItems = typesToShow.map(type => ({ type, gc: GC_DEFS[type]||{icon:'⚡',desc:''}, owned: ownedGcTypes.has(type), card: gcCards.find(c=>c.gc_type===type)||null }))
+    const gcItems = typesToShow.map(type => ({ type, gc: GC_DEFS[type]||{icon:'⚡',desc:''}, def: gcDefMap[type]||null, owned: ownedGcTypes.has(type), card: gcCards.find(c=>c.gc_type===type)||null }))
     renderBigAndStrip(
       gcItems,
-      ({type, gc, owned, card}) => {
-        const count = owned ? gcCards.filter(c=>c.gc_type===type).length : 0
-        const badge = count>1?`<div style="position:absolute;top:4px;right:4px;background:#3d0a7a;color:#fff;border-radius:10px;font-size:9px;font-weight:700;padding:1px 6px;z-index:3">×${count}</div>`:''
-        if (owned && card) return `<div data-gc-id="${card.id}" data-gc-type="${type}" style="position:relative;background:linear-gradient(135deg,#3d0a7a,#7a28b8);border:3px solid #9b59b6;border-radius:16px;padding:28px 24px;color:#fff;text-align:center;cursor:pointer;min-width:200px">${badge}<div style="font-size:56px;margin-bottom:8px">${gc.icon}</div><div style="font-size:10px;background:rgba(255,255,255,0.2);padding:3px 12px;border-radius:10px;display:inline-block;margin-bottom:8px">GAME CHANGER</div><div style="font-weight:900;font-size:22px;margin-bottom:6px">${type}</div><div style="font-size:12px;color:rgba(255,255,255,0.75);max-width:200px;margin:0 auto">${gc.desc}</div></div>`
-        return `<div style="background:#f0f0f0;border:2px solid #ddd;border-radius:16px;padding:28px 24px;color:#aaa;text-align:center;min-width:200px;filter:grayscale(1);opacity:0.5"><div style="font-size:56px;margin-bottom:8px">${gc.icon}</div><div style="font-size:10px;background:rgba(0,0,0,0.1);padding:3px 12px;border-radius:10px;display:inline-block;margin-bottom:8px">GAME CHANGER</div><div style="font-weight:900;font-size:20px">${type}</div><div style="font-size:11px;margin-top:6px">Non possédée</div></div>`
+      ({type, gc, def, owned, card}) => {
+        const count  = owned ? gcCards.filter(c=>c.gc_type===type).length : 0
+        const badge  = count>1?`<div style="position:absolute;top:8px;right:8px;background:#3d0a7a;color:#fff;border-radius:10px;font-size:10px;font-weight:700;padding:2px 8px;z-index:3">×${count}</div>`:''
+        const isUltra= def?.gc_type==='ultra_game_changer'
+        const BG  = {purple:'linear-gradient(160deg,#4a0a8a,#7a28b8)',light_blue:'linear-gradient(160deg,#006080,#00bcd4)'}
+        const BORD= {purple:'#b06ce0',light_blue:'#00d4ef'}
+        const bg   = BG[def?.color]  ||BG.purple
+        const bord = BORD[def?.color]||BORD.purple
+        const effect = def?.effect||gc.desc||''
+        const imgUrl = def?.image_url ? `${import.meta.env.BASE_URL}icons/${def.image_url}` : null
+        if (owned && card) return `<div data-gc-id="${card.id}" data-gc-type="${type}" style="position:relative;width:200px;border-radius:16px;border:3px solid ${bord};background:${bg};display:flex;flex-direction:column;overflow:hidden;box-shadow:0 0 28px ${bord}66;cursor:pointer">
+          ${badge}
+          <div style="padding:10px 12px;background:rgba(255,255,255,0.14);text-align:center">
+            <div style="font-size:${type.length>14?10:13}px;font-weight:900;color:#fff;letter-spacing:.5px;text-transform:uppercase">${type}</div>
+            <div style="font-size:8px;color:rgba(255,255,255,0.55);margin-top:2px">${isUltra?'💎 ULTRA GC':'⚡ GAME CHANGER'}</div>
+          </div>
+          <div style="height:150px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.06)">
+            ${imgUrl?`<img src="${imgUrl}" style="max-width:120px;max-height:120px;object-fit:contain;border-radius:6px">`:`<span style="font-size:64px">${gc.icon}</span>`}
+          </div>
+          <div style="padding:10px 12px;background:rgba(0,0,0,0.35);text-align:center">
+            <div style="font-size:11px;color:rgba(255,255,255,0.9);line-height:1.4">${effect.slice(0,60)}</div>
+          </div>
+        </div>`
+        return `<div style="width:200px;border-radius:16px;border:2px solid #ddd;background:#f0f0f0;display:flex;flex-direction:column;overflow:hidden;filter:grayscale(1);opacity:0.5">
+          <div style="padding:10px 12px;background:rgba(0,0,0,0.05);text-align:center"><div style="font-size:13px;font-weight:900;color:#888;text-transform:uppercase">${type}</div></div>
+          <div style="height:150px;display:flex;align-items:center;justify-content:center"><span style="font-size:64px">${gc.icon}</span></div>
+          <div style="padding:10px;background:rgba(0,0,0,0.05);text-align:center"><div style="font-size:11px;color:#aaa">Non possédée</div></div>
+        </div>`
       },
       ({type, gc, owned}) => owned
         ? `<div style="background:linear-gradient(135deg,#3d0a7a,#7a28b8);border-radius:8px;padding:8px 6px;color:#fff;text-align:center;width:70px"><div style="font-size:22px">${gc.icon}</div><div style="font-size:7px;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${type}</div></div>`

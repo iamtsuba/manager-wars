@@ -246,7 +246,7 @@ export async function renderCollection(container, ctx) {
     <div id="col-filters" style="padding:10px 16px;background:#fff;border-bottom:1px solid var(--gray-200);display:flex;flex-direction:column;gap:8px"></div>
 
     <!-- Grande carte + strip -->
-    <div id="col-big" style="display:flex;justify-content:center;align-items:center;padding:8px 16px 4px;flex:1;overflow:hidden"></div>
+    <div id="col-big" style="display:flex;justify-content:center;align-items:flex-start;padding:8px 16px 4px;flex:1;overflow:visible"></div>
     <div style="flex-shrink:0;padding:0">
       <div id="col-grid" style="display:flex;overflow-x:auto;gap:8px;padding:8px 16px;-webkit-overflow-scrolling:touch;scrollbar-width:none"></div>
     </div>
@@ -343,22 +343,25 @@ export async function renderCollection(container, ctx) {
       // Auto-scale pour que la carte rentre dans la zone disponible
       requestAnimationFrame(function() {
         var inner = document.getElementById('big-card-inner')
+        var strip = document.getElementById('col-grid')
         if (!inner || !bigZone) return
-        var availH = bigZone.clientHeight - 8
-        var availW = bigZone.clientWidth - 16
-        var cardH  = inner.offsetHeight
-        var cardW  = inner.offsetWidth
-        if (cardH > 0 && cardW > 0) {
-          var scaleH = availH / cardH
-          var scaleW = availW / cardW
-          var scale  = Math.min(scaleH, scaleW, 1)
+        var totalH  = bigZone.parentElement ? bigZone.parentElement.clientHeight : window.innerHeight
+        var filtersH = document.getElementById('col-filters') ? document.getElementById('col-filters').offsetHeight : 80
+        var tabsH    = 60
+        var stripH   = strip ? strip.offsetHeight + 20 : 190
+        var availH   = totalH - filtersH - tabsH - stripH - 16
+        var availW   = bigZone.clientWidth - 24
+        var cardH    = inner.offsetHeight
+        var cardW    = inner.offsetWidth
+        if (cardH > 0 && cardW > 0 && availH > 40) {
+          var scale = Math.min(availH / cardH, availW / cardW, 1)
           inner.style.transform = 'scale(' + scale.toFixed(3) + ')'
           inner.style.transformOrigin = 'top center'
         }
       })
 
       grid.innerHTML = items.map(function(item, i) {
-        return '<div class="col-mini-item" data-idx="' + i + '" style="flex-shrink:0;cursor:pointer;border-radius:8px;border:2.5px solid ' + (i === sel ? borderColor : 'transparent') + ';transition:border-color .15s;overflow:hidden">' + renderMiniFn(item, i === sel) + '</div>'
+        return '<div class="col-mini-item" data-idx="' + i + '" style="flex-shrink:0;cursor:pointer;border-radius:8px;border:1.5px solid ' + (i === sel ? borderColor : 'transparent') + ';transition:border-color .15s;overflow:hidden">' + renderMiniFn(item, i === sel) + '</div>'
       }).join('')
 
       grid.querySelectorAll('.col-mini-item').forEach(function(el) {

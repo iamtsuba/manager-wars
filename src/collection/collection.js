@@ -220,22 +220,26 @@ export async function renderCollection(container, ctx) {
 
   container.innerHTML = `
   <div class="page">
-    <div class="page-header">
-      <h2>Ma collection</h2>
-      <p>${playerCards.length} carte(s) joueur · ${gcCards.length} Game Changer · ${formCards.length} Formation</p>
-    </div>
-
-    <!-- Onglets -->
-    <div style="display:flex;border-bottom:1px solid var(--gray-200);background:#fff">
-      <button class="col-tab-btn" data-tab="player" style="flex:1;padding:12px 4px;border:none;background:none;cursor:pointer;
-        font-size:13px;font-weight:700;border-bottom:3px solid ${activeTab==='player'?'var(--green)':'transparent'};
-        color:${activeTab==='player'?'var(--green)':'var(--gray-600)'}">Joueurs</button>
-      <button class="col-tab-btn" data-tab="formation" style="flex:1;padding:12px 4px;border:none;background:none;cursor:pointer;
-        font-size:13px;font-weight:700;border-bottom:3px solid ${activeTab==='formation'?'var(--green)':'transparent'};
-        color:${activeTab==='formation'?'var(--green)':'var(--gray-600)'}">Formations</button>
-      <button class="col-tab-btn" data-tab="gc" style="flex:1;padding:12px 4px;border:none;background:none;cursor:pointer;
-        font-size:13px;font-weight:700;border-bottom:3px solid ${activeTab==='gc'?'var(--green)':'transparent'};
-        color:${activeTab==='gc'?'var(--green)':'var(--gray-600)'}">Game Changer</button>
+    <!-- Onglets avec compteurs -->
+    <div style="display:flex;border-bottom:2px solid var(--gray-200);background:#fff">
+      <button class="col-tab-btn" data-tab="player" style="flex:1;padding:10px 4px;border:none;background:none;cursor:pointer;
+        border-bottom:3px solid ${activeTab==='player'?'var(--green)':'transparent'};
+        color:${activeTab==='player'?'var(--green)':'var(--gray-600)'}">
+        <div style="font-size:13px;font-weight:700">Joueurs</div>
+        <div style="font-size:11px;font-weight:400;opacity:0.7">(${playerCards.length})</div>
+      </button>
+      <button class="col-tab-btn" data-tab="formation" style="flex:1;padding:10px 4px;border:none;background:none;cursor:pointer;
+        border-bottom:3px solid ${activeTab==='formation'?'var(--green)':'transparent'};
+        color:${activeTab==='formation'?'var(--green)':'var(--gray-600)'}">
+        <div style="font-size:13px;font-weight:700">Formations</div>
+        <div style="font-size:11px;font-weight:400;opacity:0.7">(${formCards.length})</div>
+      </button>
+      <button class="col-tab-btn" data-tab="gc" style="flex:1;padding:10px 4px;border:none;background:none;cursor:pointer;
+        border-bottom:3px solid ${activeTab==='gc'?'var(--green)':'transparent'};
+        color:${activeTab==='gc'?'var(--green)':'var(--gray-600)'}">
+        <div style="font-size:13px;font-weight:700">Game Changer</div>
+        <div style="font-size:11px;font-weight:400;opacity:0.7">(${gcCards.length})</div>
+      </button>
     </div>
 
     <!-- Filtres -->
@@ -353,12 +357,17 @@ export async function renderCollection(container, ctx) {
   }
 
   function miniPlayerCard(card) {
+    var SCALE = 0.54
+    var W = Math.round(140*SCALE), H = Math.round(310*SCALE)
+    var inner
     if (!card || card._fake) {
       var p = card ? card.player : null
-      return p ? renderMissingCard(p) : ''
+      if (!p) return ''
+      inner = renderMissingCard(p)
+    } else {
+      inner = renderCard(card, '')
     }
-    var SCALE = 0.54
-    return '<div style="width:' + Math.round(140*SCALE) + 'px;height:' + Math.round(310*SCALE) + 'px;overflow:hidden;position:relative;flex-shrink:0"><div style="transform:scale(' + SCALE + ');transform-origin:top left;position:absolute;top:0;left:0;pointer-events:none">' + renderCard(card, '') + '</div></div>'
+    return '<div style="width:' + W + 'px;height:' + H + 'px;overflow:hidden;position:relative;flex-shrink:0"><div style="transform:scale(' + SCALE + ');transform-origin:top left;position:absolute;top:0;left:0;pointer-events:none">' + inner + '</div></div>'
   }
 
   function renderPlayerGrid(grid) {

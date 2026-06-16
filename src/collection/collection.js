@@ -317,9 +317,41 @@ export async function renderCollection(container, ctx) {
     }
   }
 
-  // Wrapper scroll-snap pour chaque carte
-  function snap(html) {
-    return '<div style="scroll-snap-align:center;flex-shrink:0">' + html + '</div>'
+  // ── Affichage big card + strip mini ─────────────────────
+  function renderBigAndStrip(items, renderBigFn, renderMiniFn, onBigClick, borderColor) {
+    borderColor = borderColor || '#7a28b8'
+    const grid    = document.getElementById('col-grid')
+    const bigZone = document.getElementById('col-big')
+    if (!grid || !bigZone) return
+    var sel = 0
+
+    function repaint() {
+      bigZone.innerHTML = renderBigFn(items[sel])
+      var bigEl = bigZone.querySelector('[data-card-id],[data-form-id],[data-gc-id]')
+      if (bigEl) bigEl.addEventListener('click', function() { onBigClick(items[sel]) })
+
+      grid.innerHTML = items.map(function(item, i) {
+        return '<div class="col-mini-item" data-idx="' + i + '" style="flex-shrink:0;cursor:pointer;border-radius:8px;border:2.5px solid ' + (i === sel ? borderColor : 'transparent') + ';transition:border-color .15s;overflow:hidden">' + renderMiniFn(item, i === sel) + '</div>'
+      }).join('')
+
+      grid.querySelectorAll('.col-mini-item').forEach(function(el) {
+        el.addEventListener('click', function() {
+          sel = Number(el.dataset.idx)
+          repaint()
+          el.scrollIntoView({ behavior:'smooth', block:'nearest', inline:'center' })
+        })
+      })
+    }
+    repaint()
+  }
+
+  function miniPlayerCard(card) {
+    if (!card || card._fake) {
+      var p = card ? card.player : null
+      return p ? renderMissingCard(p) : ''
+    }
+    var SCALE = 0.54
+    return '<div style="width:' + Math.round(140*SCALE) + 'px;height:' + Math.round(310*SCALE) + 'px;overflow:hidden;position:relative;flex-shrink:0"><div style="transform:scale(' + SCALE + ');transform-origin:top left;position:absolute;top:0;left:0;pointer-events:none">' + renderCard(card, '') + '</div></div>'
   }
 
   function renderPlayerGrid(grid) {

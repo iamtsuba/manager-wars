@@ -411,8 +411,6 @@ export async function renderCollection(container, ctx) {
       return
     }
 
-    grid.innerHTML = typesToShow.map(type => {
-      const owned = ownedGcTypes.has(type)
     renderCarousel(grid, typesToShow,
       (type) => {
         const gc    = GC_DEFS[type] || { icon:'⚡', desc:'' }

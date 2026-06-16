@@ -910,8 +910,6 @@ function renderGame(container, game, ctx) {
   const activeGCs = game.gcCards.filter(gc => !game.usedGc.includes(gc.id))
   const boostAvail = game.boostCard && !game.boostUsed
 
-  container.style.position = 'relative'
-  container.style.overflow  = 'hidden'
   container.innerHTML = `
   <style>
     @keyframes subSlideOut { from{transform:translateX(0);opacity:1} to{transform:translateX(-120%);opacity:0} }
@@ -927,7 +925,7 @@ function renderGame(container, game, ctx) {
     #match-history-panel.open { transform:translateY(0); }
   </style>
 
-  <div class="match-screen" style="position:absolute;inset:0;display:flex;flex-direction:column;overflow:hidden;background:#0a3d1e">
+  <div class="match-screen" style="display:flex;flex-direction:column;overflow:hidden;background:#0a3d1e">
 
     <!-- SCORE BAR -->
     <div style="display:flex;align-items:center;padding:8px 10px;background:rgba(0,0,0,0.5);gap:6px;flex-shrink:0">
@@ -1072,14 +1070,27 @@ function renderGame(container, game, ctx) {
 
   // ── Dimensionner le terrain exactement (hauteur disponible) ─
   requestAnimationFrame(() => {
+    // 1. Contraindre le match-screen à la hauteur exacte du container
+    const ms = container.querySelector('.match-screen')
+    if (ms) {
+      ms.style.height    = container.clientHeight + 'px'
+      ms.style.maxHeight = container.clientHeight + 'px'
+    }
+    // 2. Dimensionner le terrain (après que le layout soit recalculé)
     const mf = container.querySelector('#match-field')
     const tw = container.querySelector('.terrain-wrapper')
     if (!mf || !tw) return
-    const h = mf.clientHeight || mf.offsetHeight
-    const w = mf.clientWidth  || mf.offsetWidth
+    const h    = mf.clientHeight || mf.offsetHeight
+    const w    = mf.clientWidth  || mf.offsetWidth
     const size = Math.min(h, w) || 280
     tw.style.width  = size + 'px'
     tw.style.height = size + 'px'
+    // 3. Redimensionner le SVG lui-même (pas juste le wrapper)
+    const svg = tw.querySelector('svg')
+    if (svg) {
+      svg.setAttribute('width',  size)
+      svg.setAttribute('height', size)
+    }
   })
 
   // ── CHRONO (point 7) ─────────────────────────────────────

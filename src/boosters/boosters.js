@@ -331,7 +331,12 @@ async function openGCBooster(profile, count, cost) {
   })
   const { data: created, error: gcErr } = await supabase.from('cards').insert(inserts).select()
   if (gcErr) console.error('[Booster GC] Erreur insert:', gcErr.message, gcErr)
-  return created || []
+  // Attacher la définition complète pour le visuel
+  const withDefs = (created||[]).map(card => {
+    const def = dbGC?.find(d => d.name === card.gc_type || d.id === card.gc_definition_id)
+    return { ...card, _gcDef: def || null }
+  })
+  return withDefs
 }
 
 async function openFormationBooster(profile, cost) {
@@ -658,12 +663,29 @@ function buildCardFace(card) {
   }
 
   if (card.card_type === 'game_changer') {
-    const gc = GC_DEFS[card.gc_type] || { icon:'⚡', desc:'' }
-    return `<div style="width:140px;height:200px;background:linear-gradient(135deg,#3d0a7a,#7a28b8);border-radius:12px;border:3px solid #9b59b6;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:16px">
-      <div style="font-size:40px">${gc.icon}</div>
-      <div style="font-size:8px;background:rgba(255,255,255,0.2);color:#fff;padding:2px 8px;border-radius:10px;letter-spacing:.5px">GAME CHANGER</div>
-      <div style="font-weight:700;font-size:13px;color:#fff;text-align:center">${card.gc_type}</div>
-      <div style="font-size:10px;color:rgba(255,255,255,0.7);text-align:center">${gc.desc}</div>
+    const def  = card._gcDef
+    const BG   = { purple: 'linear-gradient(135deg,#3d0a7a,#7a28b8)', light_blue: 'linear-gradient(135deg,#006080,#00bcd4)' }
+    const BORD = { purple: '#9b59b6', light_blue: '#00bcd4' }
+    const bg   = BG[def?.color] || BG.purple
+    const bord = BORD[def?.color] || BORD.purple
+    const isUltra = def?.gc_type === 'ultra_game_changer'
+    const fallbackIcon = GC_DEFS[card.gc_type]?.icon || '⚡'
+    return `<div style="width:140px;height:200px;background:${bg};border-radius:12px;border:3px solid ${bord};display:flex;flex-direction:column;overflow:hidden;box-shadow:0 0 20px ${bord}66">
+      <!-- Nom -->
+      <div style="padding:6px 8px;background:rgba(255,255,255,0.12);text-align:center">
+        <div style="font-size:${def?.name && def.name.length > 12 ? 9 : 11}px;font-weight:900;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${def?.name || card.gc_type}</div>
+        <div style="font-size:7px;color:rgba(255,255,255,0.6);margin-top:1px">${isUltra ? '💎 ULTRA GC' : '⚡ GAME CHANGER'}</div>
+      </div>
+      <!-- Image ou icône -->
+      <div style="flex:1;display:flex;align-items:center;justify-content:center;padding:6px">
+        ${def?.image_url
+          ? `<img src="${import.meta.env.BASE_URL}icons/${def.image_url}" style="max-height:80px;max-width:110px;object-fit:contain">`
+          : `<div style="font-size:44px">${fallbackIcon}</div>`}
+      </div>
+      <!-- Effet -->
+      <div style="padding:6px 8px;background:rgba(0,0,0,0.3);text-align:center">
+        <div style="font-size:9px;color:rgba(255,255,255,0.85);line-height:1.3">${(def?.effect || GC_DEFS[card.gc_type]?.desc || '').slice(0,55)}</div>
+      </div>
     </div>`
   }
 

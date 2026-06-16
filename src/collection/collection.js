@@ -219,7 +219,7 @@ export async function renderCollection(container, ctx) {
   }
 
   container.innerHTML = `
-  <div class="page">
+  <div class="page" style="display:flex;flex-direction:column;height:100%;overflow:hidden">
     <!-- Onglets avec compteurs -->
     <div style="display:flex;border-bottom:2px solid var(--gray-200);background:#fff">
       <button class="col-tab-btn" data-tab="player" style="flex:1;padding:10px 4px;border:none;background:none;cursor:pointer;
@@ -246,8 +246,8 @@ export async function renderCollection(container, ctx) {
     <div id="col-filters" style="padding:10px 16px;background:#fff;border-bottom:1px solid var(--gray-200);display:flex;flex-direction:column;gap:8px"></div>
 
     <!-- Grande carte + strip -->
-    <div id="col-big" style="display:flex;justify-content:center;align-items:center;padding:12px 16px 8px;min-height:60px"></div>
-    <div class="page-body" style="padding:0">
+    <div id="col-big" style="display:flex;justify-content:center;align-items:center;padding:8px 16px 4px;flex:1;overflow:hidden"></div>
+    <div style="flex-shrink:0;padding:0">
       <div id="col-grid" style="display:flex;overflow-x:auto;gap:8px;padding:8px 16px;-webkit-overflow-scrolling:touch;scrollbar-width:none"></div>
     </div>
   </div>`
@@ -273,8 +273,8 @@ export async function renderCollection(container, ctx) {
             style="flex-shrink:0;margin-left:auto;padding:4px 12px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;
               border:1.5px solid ${showAll?'var(--yellow)':'var(--gray-200)'};
               background:${showAll?'var(--yellow)':'#fff'};
-              color:${showAll?'#fff':'var(--gray-600)'}">
-            ${showAll ? '✓ Tout afficher' : 'Voir tout'}
+              color:${showAll?'#111':'var(--gray-600)'}; font-size:18px; padding:5px 10px">
+            ${showAll ? '👁️' : '🚫👁️'}
           </button>
         </div>`
 
@@ -302,8 +302,8 @@ export async function renderCollection(container, ctx) {
             style="padding:4px 12px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;
               border:1.5px solid ${showAll?'var(--yellow)':'var(--gray-200)'};
               background:${showAll?'var(--yellow)':'#fff'};
-              color:${showAll?'#fff':'var(--gray-600)'}">
-            ${showAll ? '✓ Tout afficher' : 'Voir tout'}
+              color:${showAll?'#111':'var(--gray-600)'}; font-size:18px; padding:5px 10px">
+            ${showAll ? '👁️' : '🚫👁️'}
           </button>
         </div>`
       document.getElementById('show-all-btn').addEventListener('click', () => {
@@ -337,7 +337,7 @@ export async function renderCollection(container, ctx) {
     var sel = 0
 
     function repaint() {
-      bigZone.innerHTML = renderBigFn(items[sel])
+      bigZone.innerHTML = '<div style="max-height:100%;overflow:hidden;display:flex;align-items:center;justify-content:center">' + renderBigFn(items[sel]) + '</div>'
       var bigEl = bigZone.querySelector('[data-card-id],[data-form-id],[data-gc-id]')
       if (bigEl) bigEl.addEventListener('click', function() { onBigClick(items[sel]) })
 

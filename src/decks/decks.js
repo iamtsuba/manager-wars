@@ -37,6 +37,39 @@ function getPortrait(p) {
   return `${url}/storage/v1/object/public/assets/tetes/${key}.png`
 }
 
+function flagImgUrl(code) {
+  if (!code || code.length < 2) return null
+  return `https://flagcdn.com/24x18/${code.slice(0,2).toLowerCase()}.png`
+}
+function getClubLogo(p) {
+  const url = import.meta?.env?.VITE_SUPABASE_URL || ''
+  if (!p?.clubs?.logo_url) return null
+  if (p.clubs.logo_url.startsWith('http')) return p.clubs.logo_url
+  return url ? `${url}/storage/v1/object/public/assets/clubs/${p.clubs.logo_url}` : null
+}
+function renderMiniCardHTML(p, w=44, h=58) {
+  const portrait = p ? getPortrait(p) : null
+  const logoUrl  = p ? getClubLogo(p) : null
+  const flag     = flagImgUrl(p?.country_code)
+  const role     = p?.job || 'MIL'
+  const jobColor = JOB_COLORS[role] || '#555'
+  const rarityBorder = { normal:'#aaa', pépite:'#D4A017', papyte:'#222', légende:'#7a28b8' }[p?.rarity] || '#aaa'
+  const note = Number(role==='GK'?p?.note_g:role==='DEF'?p?.note_d:role==='MIL'?p?.note_m:p?.note_a)||0
+  const nameH = Math.round(h*0.19), botH = Math.round(h*0.25), portH = h-nameH-botH
+  if (!p) return `<div style="width:${w}px;height:${h}px;border:2px dashed rgba(255,255,255,0.3);border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:20px;color:rgba(255,255,255,0.3)">+</div>`
+  return `<div style="width:${w}px;height:${h}px;border-radius:5px;border:2px solid ${rarityBorder};background:${jobColor};position:relative;overflow:hidden;flex-shrink:0">
+    <div style="position:absolute;top:0;left:0;right:0;height:${nameH}px;background:rgba(255,255,255,0.93);display:flex;align-items:center;justify-content:center;z-index:2">
+      <span style="font-size:${Math.max(5,Math.round(w/9))}px;font-weight:900;color:#111;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:${w-4}px">${(p?.surname_encoded||'').slice(0,9)}</span>
+    </div>
+    ${portrait?`<img src="${portrait}" style="position:absolute;top:${nameH}px;left:0;width:${w}px;height:${portH}px;object-fit:cover;object-position:top center">`:''}
+    <div style="position:absolute;bottom:0;left:0;right:0;height:${botH}px;background:rgba(255,255,255,0.93);display:flex;align-items:center;justify-content:space-between;padding:0 3px;z-index:2">
+      ${flag?`<img src="${flag}" style="width:${botH+2}px;height:${botH-3}px;object-fit:cover;border-radius:1px">`:`<span style="font-size:${botH-4}px">🌍</span>`}
+      <span style="font-size:${botH-2}px;font-weight:900;color:#111;font-family:Arial Black,Arial">${note}</span>
+      ${logoUrl?`<img src="${logoUrl}" style="width:${botH-4}px;height:${botH-4}px;object-fit:contain">`:(p?.clubs?.encoded_name?`<span style="font-size:${Math.max(4,botH-8)}px;font-weight:700;color:#333">${(p.clubs.encoded_name||'').slice(0,3).toUpperCase()}</span>`:`<span></span>`)}
+    </div>
+  </div>`
+}
+
 export async function renderDecks(container, ctx) {
   const { state, navigate, toast } = ctx
   container.innerHTML = '<div class="page" style="padding:40px;text-align:center;color:#aaa">⚽ Chargement...</div>'

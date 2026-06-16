@@ -329,7 +329,8 @@ async function openGCBooster(profile, count, cost) {
       gc_definition_id: pick.id || null,          // référence DB si dispo
     }
   })
-  const { data: created } = await supabase.from('cards').insert(inserts).select()
+  const { data: created, error: gcErr } = await supabase.from('cards').insert(inserts).select()
+  if (gcErr) console.error('[Booster GC] Erreur insert:', gcErr.message, gcErr)
   return created || []
 }
 
@@ -340,8 +341,9 @@ async function openFormationBooster(profile, cost) {
 
   const formations = ALL_FORMATIONS()
   const formation  = formations[Math.floor(Math.random() * formations.length)]
-  const { data: created } = await supabase.from('cards')
+  const { data: created, error: insertErr } = await supabase.from('cards')
     .insert({ owner_id: profile.id, card_type: 'formation', formation }).select()
+  if (insertErr) console.error('[Booster Formation] Erreur insert:', insertErr.message, insertErr)
   return created || []
 }
 
@@ -349,6 +351,19 @@ async function openFormationBooster(profile, cost) {
 // Phase 1 : booster qui tremble et s'ouvre
 // Phase 2 : les cartes apparaissent une par une avec flip
 function showBoosterAnimation(cards, booster, navigate) {
+  // Guard : si aucune carte (insert DB échoué), afficher message d'erreur
+  if (!cards || cards.length === 0) {
+    const ov = document.createElement('div')
+    ov.style.cssText = 'position:fixed;inset:0;background:#0a1628;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:3000;gap:16px;color:#fff;padding:24px;text-align:center'
+    ov.innerHTML = `
+      <div style="font-size:48px">😕</div>
+      <div style="font-size:20px;font-weight:900">Aucune carte obtenue</div>
+      <div style="font-size:13px;color:rgba(255,255,255,0.5)">Erreur lors du tirage (permissions DB ou colonne manquante)</div>
+      <button style="margin-top:10px;padding:12px 28px;border-radius:10px;border:none;background:#1A6B3C;color:#fff;font-size:15px;font-weight:700;cursor:pointer" id="anim-close-err">Fermer</button>`
+    document.body.appendChild(ov)
+    ov.querySelector('#anim-close-err')?.addEventListener('click', () => ov.remove())
+    return
+  }
   const overlay = document.createElement('div')
   overlay.id = 'booster-anim-overlay'
 

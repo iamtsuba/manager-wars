@@ -222,37 +222,148 @@ export async function renderMatch(container, ctx) {
   const formationCard = (deckCards||[]).find(dc => dc.card?.card_type === 'formation')
   const formation = deckMeta?.formation || formationCard?.card?.formation || '4-4-2'
 
-  const { data: gcCards } = await supabase
-    .from('cards').select('id,gc_type')
-    .eq('owner_id', state.profile.id).eq('card_type','game_changer')
+  // Charger toutes les cartes GC disponibles
+  const { data: allGCCards } = await supabase
+    .from('cards')
+    .select('id, gc_type, gc_definition_id')
+    .eq('owner_id', state.profile.id)
+    .eq('card_type', 'game_changer')
+
+  const { data: gcDefs } = await supabase.from('gc_definitions').select('*').eq('is_active', true)
+
+  // Enrichir les cartes GC avec leur définition
+  const gcCardsEnriched = (allGCCards||[]).map(card => ({
+    ...card,
+    _gcDef: gcDefs?.find(d => d.name === card.gc_type || d.id === card.gc_definition_id) || null,
+  }))
 
   const homeTeam = buildTeam(starters, formation)
   const aiTeam   = await generateAITeam(formation, difficulty)
-  const { data: gcDefs } = await supabase.from('gc_definitions').select('*').eq('is_active', true)
 
-  const { data: match } = await supabase.from('matches').insert({
-    home_id: state.profile.id, away_id:null, mode,
-    home_deck_id: deckId, status:'in_progress',
-  }).select().single()
+  // ── Sélection des GC avant match ──────────────────────────
+  const launchMatch = async (selectedGC) => {
+    const { data: match } = await supabase.from('matches').insert({
+      home_id: state.profile.id, away_id:null, mode,
+      home_deck_id: deckId, status:'in_progress',
+    }).select().single()
 
-  const game = {
-    gcDefs: gcDefs || [],
-    matchId: match?.id, mode, difficulty, formation,
-    homeTeam, aiTeam,
-    homeSubs: subsRaw,
-    subsUsed: 0, maxSubs: Math.min(subsRaw.length, 3),
-    homeScore:0, aiScore:0,
-    gcCards: gcCards||[], usedGc:[],
-    boostCard: null,
-    boostUsed: false,
-    phase:'midfield',
-    attacker:null, round:0,
-    selected:[], pendingAttack:null,
-    log:[], modifiers:{ home:{}, ai:{} },
-    clubName: state.profile.club_name || 'Vous',
+    const game = {
+      gcDefs:   gcDefs || [],
+      matchId:  match?.id, mode, difficulty, formation,
+      homeTeam, aiTeam,
+      homeSubs: subsRaw,
+      subsUsed: 0, maxSubs: Math.min(subsRaw.length, 3),
+      homeScore:0, aiScore:0,
+      gcCards:  selectedGC,   // seulement les 3 sélectionnées
+      usedGc:   [],
+      boostCard: null, boostUsed: false,
+      phase:'midfield', attacker:null, round:0,
+      selected:[], pendingAttack:null,
+      log:[], modifiers:{ home:{}, ai:{} },
+      clubName: state.profile.club_name || 'Vous',
+    }
+    showOpponentReveal(container, game, ctx)
   }
 
-  showOpponentReveal(container, game, ctx)
+  // Si pas de GC disponibles → lancer directement
+  if (!gcCardsEnriched.length) { launchMatch([]); return }
+
+  // Sinon → écran de sélection GC
+  showGCSelection(container, gcCardsEnriched, launchMatch)
+}
+
+// ── Écran de sélection des Game Changers ──────────────────
+function showGCSelection(container, gcCards, onConfirm) {
+  const MAX = 3
+  let chosen = []   // { card }
+
+  function gcCardHTML(card, selected) {
+    const def = card._gcDef
+    const BG   = { purple:'linear-gradient(135deg,#3d0a7a,#7a28b8)', light_blue:'linear-gradient(135deg,#006080,#00bcd4)' }
+    const BORD = { purple:'#9b59b6', light_blue:'#00bcd4' }
+    const bg   = BG[def?.color] || BG.purple
+    const bord = BORD[def?.color] || BORD.purple
+    return `<div class="gc-select-card" data-id="${card.id}"
+      style="width:100px;border-radius:10px;border:3px solid ${selected?'#FFD700':bord};background:${bg};
+        display:flex;flex-direction:column;overflow:hidden;cursor:pointer;flex-shrink:0;
+        box-shadow:${selected?'0 0 18px #FFD700':'0 2px 8px rgba(0,0,0,0.4)'};
+        transform:${selected?'scale(1.06)':'scale(1)'};transition:all 0.15s">
+      <!-- Nom -->
+      <div style="padding:5px 6px;background:rgba(255,255,255,0.12);text-align:center;min-height:32px;display:flex;align-items:center;justify-content:center">
+        <span style="font-size:${(def?.name||card.gc_type).length>12?8:10}px;font-weight:900;color:#fff;line-height:1.2;text-align:center">${def?.name||card.gc_type}</span>
+      </div>
+      <!-- Image -->
+      <div style="height:70px;display:flex;align-items:center;justify-content:center;padding:4px">
+        ${def?.image_url
+          ? `<img src="${import.meta.env.BASE_URL}icons/${def.image_url}" style="max-height:62px;max-width:88px;object-fit:contain">`
+          : `<span style="font-size:32px">⚡</span>`}
+      </div>
+      <!-- Effet -->
+      <div style="padding:5px 6px;background:rgba(0,0,0,0.35);text-align:center;min-height:36px;display:flex;align-items:center;justify-content:center">
+        <span style="font-size:8px;color:rgba(255,255,255,0.85);line-height:1.3">${(def?.effect||'').slice(0,50)}</span>
+      </div>
+      ${selected ? '<div style="position:absolute;top:4px;right:4px;width:20px;height:20px;background:#FFD700;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900;color:#000">✓</div>' : ''}
+    </div>`
+  }
+
+  function render() {
+    container.innerHTML = `
+    <div style="display:flex;flex-direction:column;min-height:100dvh;background:linear-gradient(180deg,#0a1628,#1a0a2e);padding:16px;gap:14px">
+      <!-- Header -->
+      <div style="text-align:center;padding-top:8px">
+        <div style="font-size:11px;color:rgba(255,255,255,0.5);letter-spacing:3px;text-transform:uppercase;margin-bottom:4px">Avant le match</div>
+        <div style="font-size:22px;font-weight:900;color:#fff">Choisir ses Game Changers</div>
+        <div style="font-size:13px;color:rgba(255,255,255,0.5);margin-top:4px">Sélectionne jusqu'à <b style="color:#FFD700">${MAX}</b> cartes · ${chosen.length}/${MAX} choisie(s)</div>
+      </div>
+
+      <!-- Grille des cartes GC -->
+      <div style="flex:1;overflow-y:auto;display:flex;flex-wrap:wrap;gap:10px;justify-content:center;padding:4px 0">
+        ${gcCards.map(card => {
+          const sel = chosen.find(x => x.id === card.id)
+          return `<div style="position:relative">${gcCardHTML(card, !!sel)}</div>`
+        }).join('')}
+      </div>
+
+      <!-- Boutons -->
+      <div style="display:flex;gap:10px;padding-bottom:8px">
+        <button id="gc-sel-skip" style="flex:0 0 auto;padding:13px 18px;border-radius:12px;border:1px solid rgba(255,255,255,0.2);background:transparent;color:rgba(255,255,255,0.6);font-size:13px;cursor:pointer">
+          Sans GC →
+        </button>
+        <button id="gc-sel-confirm" style="flex:1;padding:13px;border-radius:12px;border:none;background:${chosen.length?'#7a28b8':'rgba(255,255,255,0.1)'};color:${chosen.length?'#fff':'rgba(255,255,255,0.4)'};font-size:15px;font-weight:900;cursor:${chosen.length?'pointer':'default'}">
+          ${chosen.length ? `⚡ Partir avec ${chosen.length} GC →` : 'Sélectionne tes cartes'}
+        </button>
+      </div>
+    </div>`
+
+    // Events cartes
+    container.querySelectorAll('.gc-select-card').forEach(el => {
+      el.addEventListener('click', () => {
+        const cardId = el.dataset.id
+        const idx    = chosen.findIndex(x => x.id === cardId)
+        if (idx > -1) {
+          chosen.splice(idx, 1)
+        } else {
+          if (chosen.length >= MAX) return
+          const card = gcCards.find(c => c.id === cardId)
+          if (card) chosen.push(card)
+        }
+        render()
+      })
+    })
+
+    // Confirmer avec les cartes choisies
+    container.querySelector('#gc-sel-confirm')?.addEventListener('click', () => {
+      if (!chosen.length) return
+      onConfirm(chosen)
+    })
+
+    // Passer sans GC
+    container.querySelector('#gc-sel-skip')?.addEventListener('click', () => {
+      onConfirm([])
+    })
+  }
+
+  render()
 }
 
 // ── SÉLECTION DU DECK (refonte) ───────────────────────────

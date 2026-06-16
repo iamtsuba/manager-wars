@@ -489,7 +489,7 @@ async function renderDeckSelect(container, ctx, matchMode) {
 // ── POINT 6 : Reveal équipe adverse (5s) ─────────────────
 function showOpponentReveal(container, game, ctx) {
   container.innerHTML = `
-  <div class="match-screen" style="display:flex;flex-direction:column;align-items:center;justify-content:flex-start;height:100%;min-height:100%;gap:12px;padding:12px 16px;background:#0a3d1e;overflow-y:auto">
+  <div class="match-screen" style="display:flex;flex-direction:column;align-items:center;justify-content:flex-start;height:100%;overflow:hidden;gap:12px;padding:12px 16px;background:#0a3d1e;overflow-y:auto">
     <div style="font-size:11px;color:rgba(255,255,255,0.5);letter-spacing:3px;text-transform:uppercase;margin-top:8px">Équipe adverse</div>
     <div style="font-size:20px;font-weight:900;color:#ff6b6b">IA (${game.difficulty.toUpperCase()})</div>
     <div style="width:min(90vw,420px)">${buildTeamSVG(game.aiTeam, game.formation, null, [], 300, 300)}</div>
@@ -548,7 +548,7 @@ function showMidfieldAnimation(container, game, ctx) {
   }
 
   container.innerHTML = `
-  <div class="match-screen" style="display:flex;flex-direction:column;align-items:center;justify-content:flex-start;height:100%;min-height:100%;gap:14px;padding:16px;background:#0a3d1e;overflow-y:auto">
+  <div class="match-screen" style="display:flex;flex-direction:column;align-items:center;justify-content:flex-start;height:100%;overflow:hidden;gap:14px;padding:16px;background:#0a3d1e;overflow-y:auto">
     <div style="text-align:center;color:#fff">
       <div style="font-size:11px;opacity:.5;letter-spacing:2px;text-transform:uppercase">Duel du milieu de terrain</div>
     </div>
@@ -910,6 +910,8 @@ function renderGame(container, game, ctx) {
   const activeGCs = game.gcCards.filter(gc => !game.usedGc.includes(gc.id))
   const boostAvail = game.boostCard && !game.boostUsed
 
+  container.style.position = 'relative'
+  container.style.overflow  = 'hidden'
   container.innerHTML = `
   <style>
     @keyframes subSlideOut { from{transform:translateX(0);opacity:1} to{transform:translateX(-120%);opacity:0} }
@@ -925,7 +927,7 @@ function renderGame(container, game, ctx) {
     #match-history-panel.open { transform:translateY(0); }
   </style>
 
-  <div class="match-screen" style="display:flex;flex-direction:column;height:calc(100dvh - 130px);max-height:calc(100dvh - 130px);overflow:hidden;background:#0a3d1e;position:relative">
+  <div class="match-screen" style="position:absolute;inset:0;display:flex;flex-direction:column;overflow:hidden;background:#0a3d1e">
 
     <!-- SCORE BAR -->
     <div style="display:flex;align-items:center;padding:8px 10px;background:rgba(0,0,0,0.5);gap:6px;flex-shrink:0">

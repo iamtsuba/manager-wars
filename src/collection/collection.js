@@ -345,11 +345,7 @@ export async function renderCollection(container, ctx) {
         var inner = document.getElementById('big-card-inner')
         var strip = document.getElementById('col-grid')
         if (!inner || !bigZone) return
-        var totalH  = bigZone.parentElement ? bigZone.parentElement.clientHeight : window.innerHeight
-        var filtersH = document.getElementById('col-filters') ? document.getElementById('col-filters').offsetHeight : 80
-        var tabsH    = 60
-        var stripH   = strip ? strip.offsetHeight + 20 : 190
-        var availH   = totalH - filtersH - tabsH - stripH - 16
+        var availH = bigZone.clientHeight - 8
         var availW   = bigZone.clientWidth - 24
         var cardH    = inner.offsetHeight
         var cardW    = inner.offsetWidth
@@ -500,7 +496,7 @@ export async function renderCollection(container, ctx) {
           <div style="padding:10px;background:rgba(0,0,0,0.05);text-align:center"><div style="font-size:11px;color:#aaa">Non possédée</div></div>
         </div>`
       },
-      ({type, gc, owned}) => owned
+      ({type, gc, def, owned}) => owned
         ? (() => { const W=Math.round(140*0.54),H=Math.round(310*0.54),imgH=Math.round(H*0.65),nameH=Math.round(H*0.18),botH=H-Math.round(H*0.65)-Math.round(H*0.18); const BG2={purple:'linear-gradient(160deg,#4a0a8a,#7a28b8)',light_blue:'linear-gradient(160deg,#006080,#00bcd4)'},bo2={purple:'#9b59b6',light_blue:'#00bcd4'}; const bg2=BG2[def?.color]||BG2.purple,bor2=bo2[def?.color]||bo2.purple,imgU=def?.image_url?`${import.meta.env.BASE_URL}icons/${def.image_url}`:null; return `<div style="width:${W}px;height:${H}px;border-radius:8px;background:${bg2};border:1px solid ${bor2};display:flex;flex-direction:column;overflow:hidden"><div style="height:${nameH}px;background:rgba(255,255,255,0.15);display:flex;align-items:center;justify-content:center"><span style="font-size:7px;font-weight:900;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:${W-6}px">${type}</span></div><div style="height:${imgH}px;display:flex;align-items:center;justify-content:center">${imgU?`<img src="${imgU}" style="max-width:${W-8}px;max-height:${imgH-4}px;object-fit:contain">`:`<span style="font-size:24px">${gc.icon}</span>`}</div><div style="flex:1;display:flex;align-items:center;justify-content:center"><span style="font-size:7px;color:rgba(255,255,255,0.7);text-align:center;padding:0 2px">${(def?.effect||gc.desc||'').slice(0,20)}</span></div></div>` })()
         : (() => { const W=Math.round(140*0.54),H=Math.round(310*0.54); return `<div style="width:${W}px;height:${H}px;border-radius:8px;background:#eee;border:1px solid #ddd;display:flex;flex-direction:column;align-items:center;justify-content:center;filter:grayscale(1);opacity:0.45"><span style="font-size:22px">${gc.icon}</span><span style="font-size:7px;color:#aaa;margin-top:4px;text-align:center;padding:0 4px">${type}</span></div>` })(),
       ({type, owned}) => { if (owned) openGCModal(type, openModal) },

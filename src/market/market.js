@@ -103,58 +103,72 @@ async function loadMarket(container, ctx) {
   })
 }
 
-// ── Achat de carte (transaction) ──────────────────────────
+// ── Achat de carte ────────────────────────────────────────
 async function buyCard(listingId, list, container, ctx) {
-  const { state, toast, refreshProfile } = ctx
+  const { state, toast } = ctx
   const listing = list.find(l => l.id === listingId)
   if (!listing) return
 
-  if ((state.profile.credits || 0) < listing.price) {
-    toast('Crédits insuffisants', 'error'); return
-  }
+  const price    = listing.price
+  const myCredit = state.profile.credits || 0
+  const player   = listing.card?.player
 
-  if (!confirm(`Acheter ${listing.card.player.firstname} ${listing.card.player.surname_encoded} pour ${listing.price.toLocaleString('fr')} crédits ?`)) return
+  if (myCredit < price) { toast('Crédits insuffisants', 'error'); return }
+  if (!confirm(`Acheter ${player?.firstname} ${player?.surname_encoded} pour ${price.toLocaleString('fr')} crédits ?`)) return
+
+  // Désactiver le bouton pendant la transaction
+  const btn = document.querySelector(`[data-buy="${listingId}"]`)
+  if (btn) { btn.disabled = true; btn.textContent = '⏳' }
 
   try {
-    // 1. Transférer la carte à l'acheteur
-    const { error: cardErr } = await supabase.from('cards')
-      .update({ owner_id: state.profile.id, is_for_sale: false, sale_price: null })
+    // 1. Transférer la carte à l'acheteur (owner_id)
+    const { error: e1 } = await supabase.from('cards')
+      .update({ owner_id: state.profile.id })
       .eq('id', listing.card.id)
-    if (cardErr) throw cardErr
+    if (e1) throw new Error('Transfert carte : ' + e1.message)
 
     // 2. Marquer l'annonce comme vendue
-    await supabase.from('market_listings')
+    const { error: e2 } = await supabase.from('market_listings')
       .update({ status: 'sold', buyer_id: state.profile.id, sold_at: new Date().toISOString() })
       .eq('id', listingId)
+    if (e2) throw new Error('Mise à jour annonce : ' + e2.message)
 
     // 3. Débiter l'acheteur
-    await supabase.from('users')
-      .update({ credits: (state.profile.credits || 0) - listing.price })
+    const { error: e3 } = await supabase.from('users')
+      .update({ credits: myCredit - price })
       .eq('id', state.profile.id)
+    if (e3) throw new Error('Débit acheteur : ' + e3.message)
 
     // 4. Créditer le vendeur
-    const { data: seller } = await supabase.from('users')
+    const { data: seller, error: e4 } = await supabase.from('users')
       .select('credits').eq('id', listing.seller_id).single()
-    if (seller) {
+    if (!e4 && seller) {
       await supabase.from('users')
-        .update({ credits: (seller.credits || 0) + listing.price })
+        .update({ credits: (seller.credits || 0) + price })
         .eq('id', listing.seller_id)
     }
 
-    // 5. Notifier le vendeur
+    // 5. Notification vendeur (ignorée si table absente)
     await supabase.from('notifications').insert({
       user_id: listing.seller_id,
-      type: 'card_sold',
-      message: `Ta carte ${listing.card.player.surname_encoded} a été vendue pour ${listing.price} crédits !`,
-      data: { card_id: listing.card.id, price: listing.price },
-    })
+      type:    'card_sold',
+      message: `Ta carte ${player?.surname_encoded || '?'} a été vendue pour ${price.toLocaleString('fr')} crédits !`,
+      data:    { card_id: listing.card.id, price },
+    }).then(() => {}).catch(() => {})
 
-    await refreshProfile()
-    toast('Carte achetée ! ✅', 'success')
+    // 6. Mettre à jour les crédits localement (sans refreshProfile)
+    state.profile.credits = myCredit - price
+
+    // 7. Mettre à jour l'affichage du solde dans le header si présent
+    const headerCredits = document.querySelector('[data-credits]') || document.querySelector('.credits-display')
+    if (headerCredits) headerCredits.textContent = (myCredit - price).toLocaleString('fr') + ' cr.'
+
+    toast(`✅ ${player?.surname_encoded} ajouté à ta collection !`, 'success')
     loadMarket(container, ctx)
 
   } catch (err) {
-    toast('Erreur : ' + err.message, 'error')
+    toast('❌ ' + err.message, 'error')
+    if (btn) { btn.disabled = false; btn.textContent = 'Acheter' }
   }
 }
 

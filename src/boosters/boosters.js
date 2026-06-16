@@ -317,7 +317,7 @@ async function openGCBooster(profile, count, cost) {
 
   // Charger les GC actifs depuis la DB (ou fallback hardcodé)
   const { data: dbGC } = await supabase.from('gc_definitions')
-    .select('id,name,gc_type').eq('is_active', true)
+    .select('id,name,gc_type,color,effect,image_url').eq('is_active', true)
   const pool = dbGC?.length ? dbGC : Object.keys(GC_DEFS).map(name => ({ name, gc_type:'game_changer' }))
 
   const inserts = Array.from({ length: count }, () => {
@@ -664,27 +664,30 @@ function buildCardFace(card) {
 
   if (card.card_type === 'game_changer') {
     const def  = card._gcDef
-    const BG   = { purple: 'linear-gradient(135deg,#3d0a7a,#7a28b8)', light_blue: 'linear-gradient(135deg,#006080,#00bcd4)' }
-    const BORD = { purple: '#9b59b6', light_blue: '#00bcd4' }
-    const bg   = BG[def?.color] || BG.purple
-    const bord = BORD[def?.color] || BORD.purple
     const isUltra = def?.gc_type === 'ultra_game_changer'
-    const fallbackIcon = GC_DEFS[card.gc_type]?.icon || '⚡'
-    return `<div style="width:140px;height:200px;background:${bg};border-radius:12px;border:3px solid ${bord};display:flex;flex-direction:column;overflow:hidden;box-shadow:0 0 20px ${bord}66">
-      <!-- Nom -->
-      <div style="padding:6px 8px;background:rgba(255,255,255,0.12);text-align:center">
-        <div style="font-size:${def?.name && def.name.length > 12 ? 9 : 11}px;font-weight:900;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${def?.name || card.gc_type}</div>
-        <div style="font-size:7px;color:rgba(255,255,255,0.6);margin-top:1px">${isUltra ? '💎 ULTRA GC' : '⚡ GAME CHANGER'}</div>
+    const BG   = { purple:'linear-gradient(160deg,#4a0a8a,#7a28b8)', light_blue:'linear-gradient(160deg,#006080,#00bcd4)' }
+    const BORD = { purple:'#b06ce0', light_blue:'#00d4ef' }
+    const bg   = BG[def?.color]   || BG.purple
+    const bord = BORD[def?.color] || BORD.purple
+    const name   = def?.name   || card.gc_type || 'Game Changer'
+    const effect = def?.effect || GC_DEFS[card.gc_type]?.desc || ''
+    const imgUrl = def?.image_url ? `${import.meta.env.BASE_URL}icons/${def.image_url}` : null
+    const fallback = GC_DEFS[card.gc_type]?.icon || '⚡'
+    return `<div style="width:170px;height:240px;background:${bg};border-radius:14px;border:3px solid ${bord};display:flex;flex-direction:column;overflow:hidden;box-shadow:0 0 24px ${bord}88;flex-shrink:0">
+      <!-- Barre nom (haut, fond légèrement clair) -->
+      <div style="padding:8px 10px;background:rgba(255,255,255,0.14);text-align:center;flex-shrink:0">
+        <div style="font-size:${name.length>14?9:11}px;font-weight:900;color:#fff;letter-spacing:.5px;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${name}</div>
+        <div style="font-size:7px;color:rgba(255,255,255,0.55);margin-top:1px">${isUltra?'💎 ULTRA GAME CHANGER':'⚡ GAME CHANGER'}</div>
       </div>
-      <!-- Image ou icône -->
-      <div style="flex:1;display:flex;align-items:center;justify-content:center;padding:6px">
-        ${def?.image_url
-          ? `<img src="${import.meta.env.BASE_URL}icons/${def.image_url}" style="max-height:80px;max-width:110px;object-fit:contain">`
-          : `<div style="font-size:44px">${fallbackIcon}</div>`}
+      <!-- Image (grand, carré centré) -->
+      <div style="flex:1;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.06);margin:0">
+        ${imgUrl
+          ? `<img src="${imgUrl}" style="max-width:120px;max-height:120px;width:auto;height:auto;object-fit:contain;border-radius:6px">`
+          : `<span style="font-size:56px">${fallback}</span>`}
       </div>
-      <!-- Effet -->
-      <div style="padding:6px 8px;background:rgba(0,0,0,0.3);text-align:center">
-        <div style="font-size:9px;color:rgba(255,255,255,0.85);line-height:1.3">${(def?.effect || GC_DEFS[card.gc_type]?.desc || '').slice(0,55)}</div>
+      <!-- Barre effet (bas, fond sombre) -->
+      <div style="padding:8px 10px;background:rgba(0,0,0,0.38);text-align:center;flex-shrink:0">
+        <div style="font-size:10px;color:rgba(255,255,255,0.9);line-height:1.4;font-weight:500">${effect.slice(0,55)}</div>
       </div>
     </div>`
   }

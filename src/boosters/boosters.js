@@ -254,8 +254,11 @@ async function openMixedBooster(profile, booster) {
         .insert({ owner_id:profile.id, player_id:player.id, card_type:'player' }).select().single()
       if (card) results.push({ ...card, player })
     } else if (rate.card_type === 'game_changer') {
-      const gcTypes = ['Ressusciter','Double attaque','Bouclier','Vol de note','Gel','Remplacement+']
-      const gc_type = gcTypes[Math.floor(Math.random()*gcTypes.length)]
+      // GC depuis DB (actifs) ou fallback hardcodé
+      const { data: dbGC2 } = await supabase.from('gc_definitions').select('id,name').eq('is_active',true).eq('gc_type','game_changer')
+      const gcPool = dbGC2?.length ? dbGC2 : [{name:'Ressusciter'},{name:'Double attaque'},{name:'Bouclier'},{name:'Vol de note'},{name:'Gel'}]
+      const gcPick = gcPool[Math.floor(Math.random()*gcPool.length)]
+      const gc_type = gcPick.name
       const { data: card } = await supabase.from('cards')
         .insert({ owner_id:profile.id, card_type:'game_changer', gc_type }).select().single()
       if (card) results.push(card)
@@ -312,12 +315,22 @@ async function openGCBooster(profile, count, cost) {
     .update({ credits: profile.credits - cost }).eq('id', profile.id)
   if (error) throw error
 
-  const gcTypes = Object.keys(GC_DEFS)
-  const selected = Array.from({length: count}, () => gcTypes[Math.floor(Math.random() * gcTypes.length)])
-  const { data: created } = await supabase.from('cards')
-    .insert(selected.map(type => ({ owner_id: profile.id, card_type: 'game_changer', gc_type: type })))
-    .select()
-  return created
+  // Charger les GC actifs depuis la DB (ou fallback hardcodé)
+  const { data: dbGC } = await supabase.from('gc_definitions')
+    .select('id,name,gc_type').eq('is_active', true)
+  const pool = dbGC?.length ? dbGC : Object.keys(GC_DEFS).map(name => ({ name, gc_type:'game_changer' }))
+
+  const inserts = Array.from({ length: count }, () => {
+    const pick = pool[Math.floor(Math.random() * pool.length)]
+    return {
+      owner_id:         profile.id,
+      card_type:        'game_changer',
+      gc_type:          pick.name,                // nom = identifiant de l'effet
+      gc_definition_id: pick.id || null,          // référence DB si dispo
+    }
+  })
+  const { data: created } = await supabase.from('cards').insert(inserts).select()
+  return created || []
 }
 
 async function openFormationBooster(profile, cost) {
@@ -329,7 +342,7 @@ async function openFormationBooster(profile, cost) {
   const formation  = formations[Math.floor(Math.random() * formations.length)]
   const { data: created } = await supabase.from('cards')
     .insert({ owner_id: profile.id, card_type: 'formation', formation }).select()
-  return created
+  return created || []
 }
 
 // ── Animation FIFA ─────────────────────────────────────────

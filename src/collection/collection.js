@@ -329,22 +329,15 @@ export async function renderCollection(container, ctx) {
         grid.innerHTML = '<div style="width:100%;text-align:center;padding:40px;color:var(--gray-600)">Aucun joueur.</div>'
         return
       }
-      grid.innerHTML = list.map(p => {
-        const owned = ownedPlayerIds.has(String(p.id))
-        if (owned) {
-          const card  = playerCards.find(c => c.player.id === p.id)
-          const count = countByPlayer[p.id] || 1
-          const badge = count > 1
-            ? `<div style="position:absolute;top:4px;right:4px;background:#1A6B3C;color:#fff;border-radius:10px;font-size:9px;font-weight:700;padding:1px 6px;z-index:3">×${count}</div>`
-            : ''
-          const forSale = playerCards.filter(c => c.player.id === p.id && c.is_for_sale).length
-          const saleBadge = forSale > 0
-            ? `<div style="position:absolute;top:4px;left:4px;background:#D4A017;color:#fff;border-radius:10px;font-size:9px;font-weight:700;padding:1px 5px;z-index:3">🏷️</div>`
-            : ''
-          return snap(renderCard(card, badge + saleBadge))
-        }
-        return snap(renderMissingCard(p))
-      }).join('')
+      // showAll : même pattern big+strip mais items = players (avec carte ou grisée)
+      const cards2 = list.map(p => playerCards.find(c => c.player.id === p.id) || { _fake:true, player:p, id:'fake-'+p.id })
+      renderBigAndStrip(
+        cards2,
+        (card) => card._fake ? renderMissingCard(card.player) : renderCard(card, ''),
+        (card) => card._fake ? miniPlayerCard({player:card.player, id:'x', _fake:true}) : miniPlayerCard(card),
+        (card) => { if (!card._fake) openCardDetail(card, playerCards, countByPlayer, ctx) },
+        '#1A6B3C'
+      )
     } else {
       const list = filteredCards()
       if (!list.length) {
@@ -359,19 +352,19 @@ export async function renderCollection(container, ctx) {
         if (!seen[card.player.id]) { seen[card.player.id]=true; deduped.push(card) }
       })
 
-      grid.innerHTML = deduped.map(card => {
-        const count = countByPlayer[card.player.id] || 1
-        const badge = count > 1 ? `<div style="position:absolute;top:4px;right:4px;background:#1A6B3C;color:#fff;border-radius:10px;font-size:9px;font-weight:700;padding:1px 6px;z-index:3">×${count}</div>` : ''
-        const forSale = playerCards.filter(c => c.player.id === card.player.id && c.is_for_sale).length
-        const saleBadge = forSale > 0 ? `<div style="position:absolute;top:4px;left:4px;background:#D4A017;color:#fff;border-radius:10px;font-size:9px;font-weight:700;padding:1px 5px;z-index:3">🏷️</div>` : ''
-        return snap(renderCard(card, badge + saleBadge))
-      }).join('')
-      grid.querySelectorAll('[data-card-id]').forEach(el => {
-        el.addEventListener('click', () => {
-          const card = playerCards.find(c => c.id === el.dataset.cardId)
-          if (card) openCardDetail(card, playerCards, countByPlayer, ctx)
-        })
-      })
+      renderBigAndStrip(
+        deduped,
+        (card) => {
+          const count = countByPlayer[card.player.id] || 1
+          const badge = count > 1 ? `<div style="position:absolute;top:4px;right:4px;background:#1A6B3C;color:#fff;border-radius:10px;font-size:9px;font-weight:700;padding:1px 6px;z-index:3">×${count}</div>` : ''
+          const forSale = playerCards.filter(c => c.player.id === card.player.id && c.is_for_sale).length
+          const saleBadge = forSale > 0 ? `<div style="position:absolute;top:4px;left:4px;background:#D4A017;color:#fff;border-radius:10px;font-size:9px;font-weight:700;padding:1px 5px;z-index:3">🏷️</div>` : ''
+          return renderCard(card, badge + saleBadge)
+        },
+        (card) => miniPlayerCard(card),
+        (card) => openCardDetail(card, playerCards, countByPlayer, ctx),
+        '#1A6B3C'
+      )
     }
   }
 
@@ -383,22 +376,21 @@ export async function renderCollection(container, ctx) {
       return
     }
 
-    grid.innerHTML = formationsToShow.map(formation => {
-      const owned = ownedFormations.has(formation)
-      const card  = owned ? formCards.find(c => c.formation === formation) : null
-      const count = owned ? formCards.filter(c => c.formation === formation).length : 0
-      const badge = count > 1 ? `<div style="position:absolute;top:4px;right:4px;background:#0a3d1e;color:#fff;border-radius:10px;font-size:9px;font-weight:700;padding:1px 6px;z-index:3">×${count}</div>` : ''
-      if (owned && card) {
-        return snap(`<div data-form-id="${card.id}" style="position:relative;background:linear-gradient(135deg,#1A6B3C,#2a8f52);border:2px solid #2a8f52;border-radius:12px;padding:16px;color:#fff;width:140px;display:flex;flex-direction:column;gap:6px;align-items:center;text-align:center;cursor:pointer">${badge}<div style="font-size:36px">🏟️</div><div style="font-size:8px;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px">FORMATION</div><div style="font-weight:900;font-size:16px">${formation}</div></div>`)
-      }
-      return snap(`<div style="background:#eee;border:2px solid #ddd;border-radius:12px;padding:16px;color:#aaa;width:140px;display:flex;flex-direction:column;gap:6px;align-items:center;text-align:center;filter:grayscale(1);opacity:0.45"><div style="font-size:36px">🏟️</div><div style="font-size:8px;background:rgba(0,0,0,0.1);padding:2px 8px;border-radius:10px">FORMATION</div><div style="font-weight:900;font-size:16px">${formation}</div></div>`)
-    }).join('')
-    grid.querySelectorAll('[data-form-id]').forEach(el => {
-      el.addEventListener('click', () => {
-        const card = formCards.find(c => c.id === el.dataset.formId)
-        if (card) openFormationModal(card, formCards, ctx, openModal)
-      })
-    })
+    const formItems = formationsToShow.map(f => ({ formation:f, card: formCards.find(c=>c.formation===f)||null, owned: ownedFormations.has(f) }))
+    renderBigAndStrip(
+      formItems,
+      ({formation, card, owned}) => {
+        const count = owned ? formCards.filter(c=>c.formation===formation).length : 0
+        const badge = count>1?`<div style="position:absolute;top:4px;right:4px;background:#0a3d1e;color:#fff;border-radius:10px;font-size:9px;font-weight:700;padding:1px 6px;z-index:3">×${count}</div>`:''
+        if (owned && card) return `<div data-form-id="${card.id}" style="position:relative;background:linear-gradient(135deg,#1A6B3C,#2a8f52);border:3px solid #2a8f52;border-radius:16px;padding:28px 24px;color:#fff;text-align:center;cursor:pointer;min-width:200px">${badge}<div style="font-size:52px;margin-bottom:8px">🏟️</div><div style="font-size:10px;background:rgba(255,255,255,0.2);padding:3px 12px;border-radius:10px;display:inline-block;margin-bottom:8px">FORMATION</div><div style="font-weight:900;font-size:28px">${formation}</div></div>`
+        return `<div style="background:#f0f0f0;border:2px solid #ddd;border-radius:16px;padding:28px 24px;color:#aaa;text-align:center;min-width:200px;filter:grayscale(1);opacity:0.5"><div style="font-size:52px;margin-bottom:8px">🏟️</div><div style="font-size:10px;background:rgba(0,0,0,0.1);padding:3px 12px;border-radius:10px;display:inline-block;margin-bottom:8px">FORMATION</div><div style="font-weight:900;font-size:28px">${formation}</div><div style="font-size:11px;margin-top:6px">Non possédée</div></div>`
+      },
+      ({formation, owned}) => owned
+        ? `<div style="background:linear-gradient(135deg,#1A6B3C,#2a8f52);border-radius:8px;padding:8px 6px;color:#fff;text-align:center;width:70px"><div style="font-size:18px">🏟️</div><div style="font-size:7px;margin-top:2px">${formation}</div></div>`
+        : `<div style="background:#eee;border-radius:8px;padding:8px 6px;color:#aaa;text-align:center;width:70px;filter:grayscale(1);opacity:0.5"><div style="font-size:18px">🏟️</div><div style="font-size:7px;margin-top:2px">${formation}</div></div>`,
+      ({card, owned}) => { if (owned && card) openFormationModal(card, formCards, ctx, openModal) },
+      '#1A6B3C'
+    )
   }
 
   function renderGCGrid(grid) {
@@ -409,20 +401,21 @@ export async function renderCollection(container, ctx) {
       return
     }
 
-    grid.innerHTML = typesToShow.map(type => {
-      const gc    = GC_DEFS[type] || { icon:'⚡', desc:'' }
-      const owned = ownedGcTypes.has(type)
-      const card  = owned ? gcCards.find(c => c.gc_type === type) : null
-      const count = owned ? gcCards.filter(c => c.gc_type === type).length : 0
-      const badge = count > 1 ? `<div style="position:absolute;top:4px;right:4px;background:#3d0a7a;color:#fff;border-radius:10px;font-size:9px;font-weight:700;padding:1px 6px;z-index:3">×${count}</div>` : ''
-      if (owned && card) {
-        return snap(`<div data-gc-id="${card.id}" data-gc-type="${type}" style="position:relative;background:linear-gradient(135deg,#3d0a7a,#7a28b8);border:2px solid #9b59b6;border-radius:12px;padding:16px 12px;color:#fff;width:130px;display:flex;flex-direction:column;gap:6px;align-items:center;text-align:center;cursor:pointer">${badge}<div style="font-size:36px">${gc.icon}</div><div style="font-size:8px;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px">GAME CHANGER</div><div style="font-weight:900;font-size:13px">${type}</div><div style="font-size:9px;color:rgba(255,255,255,0.7)">${gc.desc.slice(0,40)}</div></div>`)
-      }
-      return snap(`<div style="background:#eee;border:2px dashed #ccc;border-radius:12px;padding:16px 12px;color:#aaa;width:130px;display:flex;flex-direction:column;gap:6px;align-items:center;text-align:center;filter:grayscale(1);opacity:0.45"><div style="font-size:36px">${gc.icon}</div><div style="font-size:8px;background:rgba(0,0,0,0.1);padding:2px 8px;border-radius:10px">GAME CHANGER</div><div style="font-weight:900;font-size:13px">${type}</div></div>`)
-    }).join('')
-    grid.querySelectorAll('[data-gc-id]').forEach(el => {
-      el.addEventListener('click', () => openGCModal(el.dataset.gcType, openModal))
-    })
+    const gcItems = typesToShow.map(type => ({ type, gc: GC_DEFS[type]||{icon:'⚡',desc:''}, owned: ownedGcTypes.has(type), card: gcCards.find(c=>c.gc_type===type)||null }))
+    renderBigAndStrip(
+      gcItems,
+      ({type, gc, owned, card}) => {
+        const count = owned ? gcCards.filter(c=>c.gc_type===type).length : 0
+        const badge = count>1?`<div style="position:absolute;top:4px;right:4px;background:#3d0a7a;color:#fff;border-radius:10px;font-size:9px;font-weight:700;padding:1px 6px;z-index:3">×${count}</div>`:''
+        if (owned && card) return `<div data-gc-id="${card.id}" data-gc-type="${type}" style="position:relative;background:linear-gradient(135deg,#3d0a7a,#7a28b8);border:3px solid #9b59b6;border-radius:16px;padding:28px 24px;color:#fff;text-align:center;cursor:pointer;min-width:200px">${badge}<div style="font-size:56px;margin-bottom:8px">${gc.icon}</div><div style="font-size:10px;background:rgba(255,255,255,0.2);padding:3px 12px;border-radius:10px;display:inline-block;margin-bottom:8px">GAME CHANGER</div><div style="font-weight:900;font-size:22px;margin-bottom:6px">${type}</div><div style="font-size:12px;color:rgba(255,255,255,0.75);max-width:200px;margin:0 auto">${gc.desc}</div></div>`
+        return `<div style="background:#f0f0f0;border:2px solid #ddd;border-radius:16px;padding:28px 24px;color:#aaa;text-align:center;min-width:200px;filter:grayscale(1);opacity:0.5"><div style="font-size:56px;margin-bottom:8px">${gc.icon}</div><div style="font-size:10px;background:rgba(0,0,0,0.1);padding:3px 12px;border-radius:10px;display:inline-block;margin-bottom:8px">GAME CHANGER</div><div style="font-weight:900;font-size:20px">${type}</div><div style="font-size:11px;margin-top:6px">Non possédée</div></div>`
+      },
+      ({type, gc, owned}) => owned
+        ? `<div style="background:linear-gradient(135deg,#3d0a7a,#7a28b8);border-radius:8px;padding:8px 6px;color:#fff;text-align:center;width:70px"><div style="font-size:22px">${gc.icon}</div><div style="font-size:7px;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${type}</div></div>`
+        : `<div style="background:#eee;border-radius:8px;padding:8px 6px;color:#aaa;text-align:center;width:70px;filter:grayscale(1);opacity:0.5"><div style="font-size:22px">${gc.icon}</div><div style="font-size:7px;margin-top:2px">${type}</div></div>`,
+      ({type, owned}) => { if (owned) openGCModal(type, openModal) },
+      '#7a28b8'
+    )
   }
 
   // ── Onglets ──────────────────────────────────────────────
@@ -446,14 +439,7 @@ export async function renderCollection(container, ctx) {
   renderCards()
 
   // Flèches scroll
-  document.getElementById('col-prev')?.addEventListener('click', () => {
-    const g = document.getElementById('col-grid')
-    if (g) g.scrollBy({ left: -160, behavior: 'smooth' })
-  })
-  document.getElementById('col-next')?.addEventListener('click', () => {
-    const g = document.getElementById('col-grid')
-    if (g) g.scrollBy({ left: 160, behavior: 'smooth' })
-  })
+
 }
 
 // ── Modal Game Changer ────────────────────────────────────

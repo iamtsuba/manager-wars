@@ -16,6 +16,18 @@ export async function renderGCCards(container) {
     .from('gc_definitions').select('*').order('sort_order').order('created_at')
 
   let selectedId = null
+
+  const EFFECT_TYPES = [
+    { value:'BOOST_STAT',    label:'⚡ Boost stats (+N)',            hasValue:true,  hasTarget:true, hasCount:true, hasRoles:true  },
+    { value:'DEBUFF_STAT',   label:'💀 Debuff stats (-N)',           hasValue:true,  hasTarget:true, hasCount:true, hasRoles:true  },
+    { value:'GRAY_PLAYER',   label:'❄️ Griser un joueur',            hasValue:false, hasTarget:true, hasCount:true, hasRoles:true  },
+    { value:'REVIVE_PLAYER', label:'💫 Ressusciter un joueur',       hasValue:false, hasTarget:false,hasCount:true, hasRoles:false },
+    { value:'REMOVE_GOAL',   label:'🚫 Retirer un but adverse',      hasValue:false, hasTarget:false,hasCount:false,hasRoles:false },
+    { value:'ADD_GOAL_DRAW', label:'⚽ +1 but si duel nul',          hasValue:false, hasTarget:false,hasCount:false,hasRoles:false },
+    { value:'ADD_SUB',       label:'🔄 Ajouter un remplacement',     hasValue:false, hasTarget:false,hasCount:true, hasRoles:false },
+    { value:'CUSTOM',        label:'🛠️ Effet custom (hardcodé)',     hasValue:false, hasTarget:false,hasCount:false,hasRoles:false },
+  ]
+  const ROLES_LIST = ['GK','DEF','MIL','ATT']
   const isMobile = () => window.innerWidth < 700
   const q = id => container.querySelector(id)
 
@@ -144,6 +156,47 @@ export async function renderGCCards(container) {
             <label for="gc-active" style="font-size:13px;cursor:pointer;font-weight:600">Actif</label>
           </div>
         </div>
+
+        <!-- Effet paramétrique -->
+        <div style="border-top:1px solid #eee;padding-top:12px;margin-top:4px">
+          <label style="font-size:11px;color:#7a28b8;font-weight:700;letter-spacing:1px;display:block;margin-bottom:8px">EFFET EN JEU</label>
+          <div>
+            <label style="font-size:11px;color:#666;font-weight:700;display:block;margin-bottom:4px">TYPE D'EFFET</label>
+            <select id="gc-effect-type" style="width:100%;padding:9px;border:1px solid #ddd;border-radius:6px;font-size:13px;margin-bottom:10px">
+              ${EFFECT_TYPES.map(e => `<option value="${e.value}" ${(sel.effect_type||'BOOST_STAT')===e.value?'selected':''}>${e.label}</option>`).join('')}
+            </select>
+          </div>
+          ${(() => {
+            const params = sel.effect_params || {}
+            const ef = EFFECT_TYPES.find(e => e.value === (sel.effect_type||'BOOST_STAT')) || EFFECT_TYPES[0]
+            return `
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+              ${ef.hasValue ? `<div>
+                <label style="font-size:10px;color:#666;font-weight:700;display:block;margin-bottom:3px">VALEUR (+N)</label>
+                <input id="gc-p-value" type="number" min="1" max="5" value="${params.value||2}" style="width:100%;padding:7px;border:1px solid #ddd;border-radius:4px;font-size:13px;box-sizing:border-box">
+              </div>` : ''}
+              ${ef.hasCount ? `<div>
+                <label style="font-size:10px;color:#666;font-weight:700;display:block;margin-bottom:3px">NB JOUEURS</label>
+                <input id="gc-p-count" type="number" min="1" max="11" value="${params.count||1}" style="width:100%;padding:7px;border:1px solid #ddd;border-radius:4px;font-size:13px;box-sizing:border-box">
+              </div>` : ''}
+              ${ef.hasTarget ? `<div>
+                <label style="font-size:10px;color:#666;font-weight:700;display:block;margin-bottom:3px">CIBLE</label>
+                <select id="gc-p-target" style="width:100%;padding:7px;border:1px solid #ddd;border-radius:4px;font-size:13px">
+                  <option value="home" ${(params.target||'home')==='home'?'selected':''}>Mon équipe</option>
+                  <option value="opponent" ${params.target==='opponent'?'selected':''}>Équipe adverse</option>
+                </select>
+              </div>` : ''}
+              ${ef.hasRoles ? `<div>
+                <label style="font-size:10px;color:#666;font-weight:700;display:block;margin-bottom:3px">POSTES CIBLÉS</label>
+                <div style="display:flex;gap:4px;flex-wrap:wrap">
+                  ${ROLES_LIST.map(r => `<label style="display:flex;align-items:center;gap:2px;font-size:11px;cursor:pointer">
+                    <input type="checkbox" class="gc-p-role" value="${r}" ${(!params.roles||params.roles.includes(r))?'checked':''}> ${r}
+                  </label>`).join('')}
+                </div>
+              </div>` : ''}
+            </div>`
+          })()}
+        </div>
       </div>
 
       <div style="display:flex;gap:10px;padding-bottom:20px">
@@ -254,14 +307,26 @@ export async function renderGCCards(container) {
     // Enregistrer
     q('#btn-save-gc')?.addEventListener('click', async () => {
       const sel = cards.find(c => c.id === selectedId); if (!sel) return
+      const ef = EFFECT_TYPES.find(e => e.value === (q('#gc-effect-type')?.value||'BOOST_STAT')) || EFFECT_TYPES[0]
+      const roles = ef.hasRoles
+        ? [...container.querySelectorAll('.gc-p-role:checked')].map(cb => cb.value)
+        : null
+      const effect_params = {
+        ...(ef.hasValue  ? { value: Number(q('#gc-p-value')?.value)||2 } : {}),
+        ...(ef.hasCount  ? { count: Number(q('#gc-p-count')?.value)||1 } : {}),
+        ...(ef.hasTarget ? { target: q('#gc-p-target')?.value||'home'  } : {}),
+        ...(ef.hasRoles  ? { roles: roles?.length ? roles : null }        : {}),
+      }
       const updates = {
-        name:       q('#gc-name')?.value?.trim()     || sel.name,
-        effect:     q('#gc-effect')?.value?.trim()   || null,
-        image_url:  q('#gc-image-url')?.value?.trim()|| null,
-        gc_type:    q('#gc-type')?.value             || 'game_changer',
-        color:      q('#gc-color')?.value            || 'purple',
-        sort_order: Number(q('#gc-sort')?.value)     || 0,
-        is_active:  q('#gc-active')?.checked         ?? sel.is_active,
+        name:          q('#gc-name')?.value?.trim()       || sel.name,
+        effect:        q('#gc-effect')?.value?.trim()     || null,
+        image_url:     q('#gc-image-url')?.value?.trim()  || null,
+        gc_type:       q('#gc-type')?.value               || 'game_changer',
+        color:         q('#gc-color')?.value              || 'purple',
+        sort_order:    Number(q('#gc-sort')?.value)       || 0,
+        is_active:     q('#gc-active')?.checked           ?? sel.is_active,
+        effect_type:   q('#gc-effect-type')?.value        || 'BOOST_STAT',
+        effect_params,
       }
       const { error } = await supabase.from('gc_definitions').update(updates).eq('id', selectedId)
       if (error) { alert(error.message); return }

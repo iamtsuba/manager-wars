@@ -1,4 +1,8 @@
 import { supabase } from '../lib/supabase.js'
+import { FORMATION_POSITIONS } from './formation-links.js'
+
+// Toutes les formations disponibles (depuis formation-links.js)
+const ALL_FORMATIONS = () => Object.keys(FORMATION_POSITIONS)
 import { loadActiveBoosters, drawCard } from './booster-engine.js'
 const BOOSTERS = [
   { id:'players_std',  img: import.meta.env.BASE_URL+'icons/booster-players.png',     name:'Players',       sub:'5 cartes joueurs',  cost:5000,  costLabel:'5 000 crédits', cardCount:5, type:'player' },
@@ -256,7 +260,7 @@ async function openMixedBooster(profile, booster) {
         .insert({ owner_id:profile.id, card_type:'game_changer', gc_type }).select().single()
       if (card) results.push(card)
     } else if (rate.card_type === 'formation') {
-      const formations = ['4-4-2','4-3-3','3-5-2','4-2-3-1','3-4-3']
+      const formations = ALL_FORMATIONS()
       const formation = formations[Math.floor(Math.random()*formations.length)]
       const { data: cards } = await supabase.from('cards')
         .insert({ owner_id:profile.id, card_type:'formation', formation }).select()
@@ -321,7 +325,7 @@ async function openFormationBooster(profile, cost) {
     .update({ credits: profile.credits - cost }).eq('id', profile.id)
   if (error) throw error
 
-  const formations = ['4-4-2','4-3-3','3-4-3','3-5-2','5-3-2']
+  const formations = ALL_FORMATIONS()
   const formation  = formations[Math.floor(Math.random() * formations.length)]
   const { data: created } = await supabase.from('cards')
     .insert({ owner_id: profile.id, card_type: 'formation', formation }).select()

@@ -1070,22 +1070,29 @@ function renderGame(container, game, ctx) {
 
   // ── Dimensionner le terrain exactement (hauteur disponible) ─
   requestAnimationFrame(() => {
-    // 1. Contraindre le match-screen à la hauteur exacte du container
     const ms = container.querySelector('.match-screen')
-    if (ms) {
-      ms.style.height    = container.clientHeight + 'px'
-      ms.style.maxHeight = container.clientHeight + 'px'
-    }
-    // 2. Dimensionner le terrain (après que le layout soit recalculé)
     const mf = container.querySelector('#match-field')
     const tw = container.querySelector('.terrain-wrapper')
-    if (!mf || !tw) return
-    const h    = mf.clientHeight || mf.offsetHeight
-    const w    = mf.clientWidth  || mf.offsetWidth
+    if (!ms || !mf || !tw) return
+
+    // getBoundingClientRect().height = hauteur réelle rendue du container
+    // (indépendant du scroll, toujours la taille visible)
+    const availH = container.getBoundingClientRect().height
+    ms.style.height    = availH + 'px'
+    ms.style.maxHeight = availH + 'px'
+    ms.style.overflow  = 'hidden'
+
+    // Forcer un reflow pour que flex:1 sur #match-field soit recalculé
+    void ms.offsetHeight
+
+    // Maintenant mesurer la zone terrain (valeurs exactes post-reflow)
+    const h    = mf.clientHeight
+    const w    = mf.clientWidth
     const size = Math.min(h, w) || 280
     tw.style.width  = size + 'px'
     tw.style.height = size + 'px'
-    // 3. Redimensionner le SVG lui-même (pas juste le wrapper)
+
+    // Redimensionner le SVG lui-même (width/height hardcodés sinon)
     const svg = tw.querySelector('svg')
     if (svg) {
       svg.setAttribute('width',  size)

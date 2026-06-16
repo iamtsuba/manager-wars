@@ -314,7 +314,7 @@ import{s as k,l as J,F as ke,b as ge,c as He,d as ut}from"./formation-links-BrrC
 
     <!-- Grille cartes -->
     <div class="page-body">
-      <div style="display:flex;flex-wrap:wrap;gap:10px;justify-content:flex-start" id="col-grid"></div>
+      <div id="col-grid" style="width:100%;min-height:100px;user-select:none"></div>
     </div>
   </div>`;function I(){const A=document.getElementById("col-filters");A&&(y==="player"?(A.innerHTML=`
         <input id="col-search" placeholder="🔍 Rechercher un joueur..." style="font-size:13px" value="${w}">

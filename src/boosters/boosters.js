@@ -1,5 +1,5 @@
 import { supabase } from '../lib/supabase.js'
-import { FORMATION_POSITIONS } from './formation-links.js'
+import { FORMATION_POSITIONS } from '../match/formation-links.js'
 
 // Toutes les formations disponibles (depuis formation-links.js)
 const ALL_FORMATIONS = () => Object.keys(FORMATION_POSITIONS)

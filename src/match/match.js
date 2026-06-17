@@ -332,8 +332,16 @@ function showGCSelection(container, gcCards, onConfirm) {
         🔄 Changer de GC
       </button>`
 
-    ov.querySelector('#gc-launch')?.addEventListener('click', () => onConfirm(chosen))
-    ov.querySelector('#gc-no-gc')?.addEventListener('click', () => onConfirm([]))
+    const _gcDone = (cards) => {
+      // Réinitialiser les styles imposés par showGCSelection
+      container.style.overflow      = ''
+      container.style.height        = ''
+      container.style.display       = ''
+      container.style.flexDirection = ''
+      onConfirm(cards)
+    }
+    ov.querySelector('#gc-launch')?.addEventListener('click', () => _gcDone(chosen))
+    ov.querySelector('#gc-no-gc')?.addEventListener('click', () => _gcDone([]))
     ov.querySelector('#gc-reset')?.addEventListener('click', () => { chosen = []; render() })
 
     const wrap = container.querySelector('#gc-screen-wrap')

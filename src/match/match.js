@@ -307,17 +307,18 @@ function showGCSelection(container, gcCards, onConfirm) {
   }
 
   function render() {
+    container.style.overflow = 'hidden'
     container.innerHTML = `
-    <div style="display:flex;flex-direction:column;height:100%;min-height:100%;background:linear-gradient(180deg,#0a1628,#1a0a2e);padding:16px;gap:14px">
+    <div style="display:flex;flex-direction:column;height:100%;overflow:hidden;background:linear-gradient(180deg,#0a1628,#1a0a2e)">
       <!-- Header -->
-      <div style="text-align:center;padding-top:8px">
+      <div style="text-align:center;padding:12px 16px 4px;flex-shrink:0">
         <div style="font-size:11px;color:rgba(255,255,255,0.5);letter-spacing:3px;text-transform:uppercase;margin-bottom:4px">Avant le match</div>
         <div style="font-size:22px;font-weight:900;color:#fff">Choisir ses Game Changers</div>
         <div style="font-size:13px;color:rgba(255,255,255,0.5);margin-top:4px">Sélectionne jusqu'à <b style="color:#FFD700">${MAX}</b> cartes · ${chosen.length}/${MAX} choisie(s)</div>
       </div>
 
       <!-- Grille des cartes GC -->
-      <div style="flex:1;overflow-y:auto;display:flex;flex-wrap:wrap;gap:10px;justify-content:center;padding:4px 0">
+      <div style="flex:1;overflow-y:auto;display:flex;flex-wrap:wrap;gap:10px;justify-content:center;padding:8px 16px">
         ${gcCards.map(card => {
           const sel = chosen.find(x => x.id === card.id)
           return `<div style="position:relative">${gcCardHTML(card, !!sel)}</div>`
@@ -325,7 +326,7 @@ function showGCSelection(container, gcCards, onConfirm) {
       </div>
 
       <!-- Boutons -->
-      <div style="display:flex;gap:10px;padding-bottom:8px">
+      <div style="display:flex;gap:10px;padding:8px 16px 12px;flex-shrink:0;background:rgba(0,0,0,0.2)">
         <button id="gc-sel-skip" style="flex:0 0 auto;padding:13px 18px;border-radius:12px;border:1px solid rgba(255,255,255,0.2);background:transparent;color:rgba(255,255,255,0.6);font-size:13px;cursor:pointer">
           Sans GC →
         </button>

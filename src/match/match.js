@@ -910,7 +910,11 @@ function renderGame(container, game, ctx) {
   const activeGCs = game.gcCards.filter(gc => !game.usedGc.includes(gc.id))
   const boostAvail = game.boostCard && !game.boostUsed
 
+  // Container : hauteur fixe = espace dispo, pas de scroll
   container.style.overflow = 'hidden'
+  container.style.height   = '100%'
+  container.style.display  = 'flex'
+  container.style.flexDirection = 'column'
   container.innerHTML = `
   <style>
     @keyframes subSlideOut { from{transform:translateX(0);opacity:1} to{transform:translateX(-120%);opacity:0} }
@@ -926,7 +930,7 @@ function renderGame(container, game, ctx) {
     #match-history-panel.open { transform:translateY(0); }
   </style>
 
-  <div class="match-screen" style="display:flex;flex-direction:column;overflow:hidden;background:#0a3d1e">
+  <div class="match-screen" style="display:flex;flex-direction:column;overflow:hidden;background:#0a3d1e;height:100%;width:100%">
 
     <!-- SCORE BAR -->
     <div style="display:flex;align-items:center;padding:8px 10px;background:rgba(0,0,0,0.5);gap:6px;flex-shrink:0">
@@ -984,8 +988,8 @@ function renderGame(container, game, ctx) {
       </div>
 
       <!-- Terrain -->
-      <div style="overflow:hidden;min-width:0;flex:1;min-height:0;display:flex;align-items:center;justify-content:center" id="match-field">
-        <div class="terrain-wrapper" style="overflow:hidden;flex-shrink:0">
+      <div style="overflow:hidden;min-width:0;flex:1;min-height:0;display:flex;align-items:center;justify-content:center;padding:4px" id="match-field">
+        <div class="terrain-wrapper" style="overflow:hidden;flex-shrink:0;aspect-ratio:1;max-height:100%;max-width:100%;height:100%;display:flex;align-items:center;justify-content:center">
           ${renderTeam(game.homeTeam, game.formation, game.phase, selectedIds, 300, 300)}
         </div>
       </div>
@@ -1070,36 +1074,29 @@ function renderGame(container, game, ctx) {
   </div>`
 
   // ── Dimensionner le terrain exactement (hauteur disponible) ─
-  // Dimensionner le terrain après que le layout soit stable
+  // Garantir la hauteur du match-screen + rendre le SVG responsive
   ;(function sizeTerrain() {
     const ms = container.querySelector('.match-screen')
-    const mf = container.querySelector('#match-field')
-    const tw = container.querySelector('.terrain-wrapper')
-    if (!ms || !mf || !tw) return
-
-    // 1. Contraindre le match-screen à la hauteur EXACTE du container
-    const availH = container.clientHeight || container.getBoundingClientRect().height
-    if (availH > 50) {
-      ms.style.height    = availH + 'px'
-      ms.style.maxHeight = availH + 'px'
-      ms.style.overflow  = 'hidden'
+    if (ms) {
+      // Hauteur exacte = hauteur visible du container (borné par #app = 100dvh)
+      const h = container.clientHeight
+      if (h > 50) { ms.style.height = h + 'px'; ms.style.maxHeight = h + 'px' }
     }
-
-    // 2. Forcer reflow : LIRE offsetHeight force le navigateur à recalculer
-    void ms.offsetHeight
-
-    // 3. Mesurer la zone terrain (après reflow, les valeurs sont exactes)
-    const h = mf.clientHeight
-    const w = mf.clientWidth
-    if (!h || !w) return
-
-    // 4. SVG = carré qui tient dans les deux dimensions
-    //    On soustrait 4px de marge pour éviter tout débordement
-    const size = Math.max(80, Math.min(h, w) - 4)
-    tw.style.width  = size + 'px'
-    tw.style.height = size + 'px'
+    const tw = container.querySelector('.terrain-wrapper')
+    if (!tw) return
     const svg = tw.querySelector('svg')
-    if (svg) { svg.setAttribute('width', size); svg.setAttribute('height', size) }
+    if (svg) {
+      // Le SVG remplit son wrapper (qui est contraint par aspect-ratio + max-height)
+      svg.removeAttribute('width')
+      svg.removeAttribute('height')
+      svg.style.width    = '100%'
+      svg.style.height   = '100%'
+      svg.style.maxWidth = 'none'
+      svg.style.margin   = '0'
+      svg.style.display  = 'block'
+      if (!svg.getAttribute('viewBox')) svg.setAttribute('viewBox', '0 0 300 300')
+      svg.setAttribute('preserveAspectRatio', 'xMidYMid meet')
+    }
   })()
 
   // ── CHRONO (point 7) ─────────────────────────────────────

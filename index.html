@@ -50,36 +50,19 @@
       animation: loaderZoomOut 0.5s cubic-bezier(0.5, 0, 0.75, 0) forwards;
     }
 
-    /* ── Mobile-first container ──────────────────────────── */
+    /* ── Layout mobile / PC ─────────────────────────────── */
     html, body {
       margin: 0; padding: 0;
       height: 100%; overflow: hidden;
-      background: #0a0a14;
-    }
-    body {
-      display: flex;
-      justify-content: center;
-      align-items: flex-start;
     }
     #app {
       width: 100%;
-      max-width: 430px;
       height: 100dvh;
-      height: 100vh; /* fallback */
+      height: 100vh;
       overflow: hidden;
       display: flex;
       flex-direction: column;
       position: relative;
-    }
-    /* Sur PC : encadrement façon smartphone */
-    @media (min-width: 500px) {
-      body { align-items: center; background: #0a0a14; }
-      #app {
-        max-height: 900px;
-        border-radius: 18px;
-        box-shadow: 0 0 0 1px rgba(255,255,255,0.07),
-                    0 30px 80px rgba(0,0,0,0.8);
-      }
     }
   </style>
 

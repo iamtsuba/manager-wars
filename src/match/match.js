@@ -275,68 +275,94 @@ export async function renderMatch(container, ctx) {
 // ── Écran de sélection des Game Changers ──────────────────
 function showGCSelection(container, gcCards, onConfirm) {
   const MAX = 3
-  let chosen = []   // { card }
+
+  // ── Distinct par gc_type : une seule carte par type ──────
+  const seen = new Set()
+  const distinctCards = gcCards.filter(card => {
+    const key = card.gc_type || card.id
+    if (seen.has(key)) return false
+    seen.add(key); return true
+  })
+
+  let chosen = []
 
   function gcCardHTML(card, selected) {
-    const def = card._gcDef
+    const def  = card._gcDef
     const BG   = { purple:'linear-gradient(135deg,#3d0a7a,#7a28b8)', light_blue:'linear-gradient(135deg,#006080,#00bcd4)' }
     const BORD = { purple:'#9b59b6', light_blue:'#00bcd4' }
-    const bg   = BG[def?.color] || BG.purple
+    const bg   = BG[def?.color]   || BG.purple
     const bord = BORD[def?.color] || BORD.purple
     return `<div class="gc-select-card" data-id="${card.id}"
       style="width:100px;border-radius:10px;border:3px solid ${selected?'#FFD700':bord};background:${bg};
-        display:flex;flex-direction:column;overflow:hidden;cursor:pointer;flex-shrink:0;
+        display:flex;flex-direction:column;overflow:hidden;cursor:pointer;flex-shrink:0;position:relative;
         box-shadow:${selected?'0 0 18px #FFD700':'0 2px 8px rgba(0,0,0,0.4)'};
         transform:${selected?'scale(1.06)':'scale(1)'};transition:all 0.15s">
-      <!-- Nom -->
       <div style="padding:5px 6px;background:rgba(255,255,255,0.12);text-align:center;min-height:32px;display:flex;align-items:center;justify-content:center">
         <span style="font-size:${(def?.name||card.gc_type).length>12?8:10}px;font-weight:900;color:#fff;line-height:1.2;text-align:center">${def?.name||card.gc_type}</span>
       </div>
-      <!-- Image -->
       <div style="height:70px;display:flex;align-items:center;justify-content:center;padding:4px">
-        ${def?.image_url
-          ? `<img src="${import.meta.env.BASE_URL}icons/${def.image_url}" style="max-height:62px;max-width:88px;object-fit:contain">`
-          : `<span style="font-size:32px">⚡</span>`}
+        ${def?.image_url ? `<img src="${import.meta.env.BASE_URL}icons/${def.image_url}" style="max-height:62px;max-width:88px;object-fit:contain">` : `<span style="font-size:32px">⚡</span>`}
       </div>
-      <!-- Effet -->
       <div style="padding:5px 6px;background:rgba(0,0,0,0.35);text-align:center;min-height:36px;display:flex;align-items:center;justify-content:center">
         <span style="font-size:8px;color:rgba(255,255,255,0.85);line-height:1.3">${(def?.effect||'').slice(0,50)}</span>
       </div>
-      ${selected ? '<div style="position:absolute;top:4px;right:4px;width:20px;height:20px;background:#FFD700;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900;color:#000">✓</div>' : ''}
+      ${selected ? '<div style="position:absolute;top:4px;right:4px;width:20px;height:20px;background:#FFD700;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900;color:#000;z-index:2">✓</div>' : ''}
     </div>`
   }
 
+  function renderOverlay() {
+    // Overlay centré avec les 3 boutons — apparaît quand MAX cartes sélectionnées
+    const existing = container.querySelector('#gc-confirm-overlay')
+    if (existing) existing.remove()
+    if (chosen.length < MAX) return
+
+    const ov = document.createElement('div')
+    ov.id = 'gc-confirm-overlay'
+    ov.style.cssText = 'position:absolute;inset:0;background:rgba(10,22,40,0.88);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:32px 24px;z-index:20;backdrop-filter:blur(4px)'
+    ov.innerHTML = `
+      <div style="font-size:28px">⚡</div>
+      <div style="font-size:18px;font-weight:900;color:#FFD700;text-align:center">${MAX} cartes sélectionnées !</div>
+      <button id="gc-launch" style="width:100%;max-width:320px;padding:16px;border-radius:14px;border:none;background:linear-gradient(135deg,#5a0a9a,#9a28e8);color:#fff;font-size:16px;font-weight:900;cursor:pointer;box-shadow:0 4px 20px rgba(122,40,184,0.5)">
+        ⚡ Partir avec ces ${MAX} GC
+      </button>
+      <button id="gc-no-gc" style="width:100%;max-width:320px;padding:14px;border-radius:14px;border:2px solid rgba(255,255,255,0.2);background:transparent;color:rgba(255,255,255,0.7);font-size:14px;font-weight:600;cursor:pointer">
+        ▶ Partir sans GC
+      </button>
+      <button id="gc-reset" style="width:100%;max-width:320px;padding:14px;border-radius:14px;border:2px solid rgba(212,160,23,0.4);background:rgba(212,160,23,0.1);color:#D4A017;font-size:14px;font-weight:700;cursor:pointer">
+        🔄 Changer de GC
+      </button>`
+
+    ov.querySelector('#gc-launch')?.addEventListener('click', () => onConfirm(chosen))
+    ov.querySelector('#gc-no-gc')?.addEventListener('click', () => onConfirm([]))
+    ov.querySelector('#gc-reset')?.addEventListener('click', () => { chosen = []; render() })
+
+    const wrap = container.querySelector('#gc-screen-wrap')
+    if (wrap) wrap.appendChild(ov)
+    else container.appendChild(ov)
+  }
+
   function render() {
-    // clientHeight = hauteur réelle du container dans le flex layout
-    // (flex:1 exclut déjà le header ET la nav du bas — ne pas utiliser height:100% ni visualViewport)
     container.style.overflow = 'hidden'
     const _gcH = container.clientHeight || container.getBoundingClientRect().height
-    container.style.height = _gcH + 'px'
+    if (_gcH > 50) container.style.height = _gcH + 'px'
+
     container.innerHTML = `
-    <div style="display:flex;flex-direction:column;height:100%;overflow:hidden;background:linear-gradient(180deg,#0a1628,#1a0a2e)">
+    <div id="gc-screen-wrap" style="position:relative;display:flex;flex-direction:column;height:100%;overflow:hidden;background:linear-gradient(180deg,#0a1628,#1a0a2e)">
       <!-- Header -->
-      <div style="text-align:center;padding:12px 16px 4px;flex-shrink:0">
+      <div style="text-align:center;padding:12px 16px 8px;flex-shrink:0">
         <div style="font-size:11px;color:rgba(255,255,255,0.5);letter-spacing:3px;text-transform:uppercase;margin-bottom:4px">Avant le match</div>
-        <div style="font-size:22px;font-weight:900;color:#fff">Choisir ses Game Changers</div>
-        <div style="font-size:13px;color:rgba(255,255,255,0.5);margin-top:4px">Sélectionne jusqu'à <b style="color:#FFD700">${MAX}</b> cartes · ${chosen.length}/${MAX} choisie(s)</div>
+        <div style="font-size:20px;font-weight:900;color:#fff">Choisir ses Game Changers</div>
+        <div style="font-size:13px;color:rgba(255,255,255,0.5);margin-top:3px">
+          Sélectionne <b style="color:#FFD700">${MAX}</b> cartes · ${chosen.length}/${MAX}
+          ${chosen.length > 0 && chosen.length < MAX ? ` · encore ${MAX - chosen.length}` : ''}
+        </div>
       </div>
-
-      <!-- Grille des cartes GC -->
-      <div style="flex:1;overflow-y:auto;display:flex;flex-wrap:wrap;gap:10px;justify-content:center;align-content:flex-start;padding:8px 16px">
-        ${gcCards.map(card => {
-          const sel = chosen.find(x => x.id === card.id)
-          return `<div style="position:relative">${gcCardHTML(card, !!sel)}</div>`
+      <!-- Grille cartes -->
+      <div style="flex:1;overflow-y:auto;display:flex;flex-wrap:wrap;gap:10px;justify-content:center;align-content:flex-start;padding:8px 16px 16px">
+        ${distinctCards.map(card => {
+          const sel = chosen.find(x => x.gc_type === card.gc_type)
+          return gcCardHTML(card, !!sel)
         }).join('')}
-      </div>
-
-      <!-- Boutons -->
-      <div style="display:flex;gap:10px;padding:8px 16px 12px;flex-shrink:0;background:rgba(0,0,0,0.2)">
-        <button id="gc-sel-skip" style="flex:0 0 auto;padding:13px 18px;border-radius:12px;border:1px solid rgba(255,255,255,0.2);background:transparent;color:rgba(255,255,255,0.6);font-size:13px;cursor:pointer">
-          Sans GC →
-        </button>
-        <button id="gc-sel-confirm" style="flex:1;padding:13px;border-radius:12px;border:none;background:${chosen.length?'#7a28b8':'rgba(255,255,255,0.1)'};color:${chosen.length?'#fff':'rgba(255,255,255,0.4)'};font-size:15px;font-weight:900;cursor:${chosen.length?'pointer':'default'}">
-          ${chosen.length ? `⚡ Partir avec ${chosen.length} GC →` : 'Sélectionne tes cartes'}
-        </button>
       </div>
     </div>`
 
@@ -344,28 +370,17 @@ function showGCSelection(container, gcCards, onConfirm) {
     container.querySelectorAll('.gc-select-card').forEach(el => {
       el.addEventListener('click', () => {
         const cardId = el.dataset.id
-        const idx    = chosen.findIndex(x => x.id === cardId)
-        if (idx > -1) {
-          chosen.splice(idx, 1)
-        } else {
-          if (chosen.length >= MAX) return
-          const card = gcCards.find(c => c.id === cardId)
-          if (card) chosen.push(card)
-        }
+        const card   = distinctCards.find(c => c.id === cardId)
+        if (!card) return
+        const idx = chosen.findIndex(x => x.gc_type === card.gc_type)
+        if (idx > -1) { chosen.splice(idx, 1) }
+        else if (chosen.length < MAX) { chosen.push(card) }
         render()
+        if (chosen.length === MAX) renderOverlay()
       })
     })
 
-    // Confirmer avec les cartes choisies
-    container.querySelector('#gc-sel-confirm')?.addEventListener('click', () => {
-      if (!chosen.length) return
-      onConfirm(chosen)
-    })
-
-    // Passer sans GC
-    container.querySelector('#gc-sel-skip')?.addEventListener('click', () => {
-      onConfirm([])
-    })
+    if (chosen.length === MAX) renderOverlay()
   }
 
   render()

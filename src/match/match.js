@@ -307,9 +307,12 @@ function showGCSelection(container, gcCards, onConfirm) {
   }
 
   function render() {
-    container.style.overflow = 'hidden'
+    container.style.overflow      = 'hidden'
+    container.style.height        = '100%'
+    container.style.display       = 'flex'
+    container.style.flexDirection = 'column'
     container.innerHTML = `
-    <div style="display:flex;flex-direction:column;height:100%;overflow:hidden;background:linear-gradient(180deg,#0a1628,#1a0a2e)">
+    <div style="display:flex;flex-direction:column;height:100%;overflow:hidden;background:linear-gradient(180deg,#0a1628,#1a0a2e);max-width:100%">
       <!-- Header -->
       <div style="text-align:center;padding:12px 16px 4px;flex-shrink:0">
         <div style="font-size:11px;color:rgba(255,255,255,0.5);letter-spacing:3px;text-transform:uppercase;margin-bottom:4px">Avant le match</div>
@@ -318,7 +321,7 @@ function showGCSelection(container, gcCards, onConfirm) {
       </div>
 
       <!-- Grille des cartes GC -->
-      <div style="flex:1;overflow-y:auto;display:flex;flex-wrap:wrap;gap:10px;justify-content:center;padding:8px 16px">
+      <div style="flex:1;overflow-y:auto;display:flex;flex-wrap:wrap;gap:10px;justify-content:center;align-content:flex-start;padding:8px 16px">
         ${gcCards.map(card => {
           const sel = chosen.find(x => x.id === card.id)
           return `<div style="position:relative">${gcCardHTML(card, !!sel)}</div>`

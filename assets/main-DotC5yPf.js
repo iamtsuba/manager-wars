@@ -905,8 +905,8 @@ import{s as $,l as ae,F as Ge,b as xe,c as st,d as Mt}from"./formation-links-CDB
         <span style="font-size:8px;color:rgba(255,255,255,0.85);line-height:1.3">${((n==null?void 0:n.effect)||"").slice(0,50)}</span>
       </div>
       ${r?'<div style="position:absolute;top:4px;right:4px;width:20px;height:20px;background:#FFD700;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900;color:#000">✓</div>':""}
-    </div>`}function s(){var l,r;e.style.overflow="hidden",e.innerHTML=`
-    <div style="display:flex;flex-direction:column;height:100%;overflow:hidden;background:linear-gradient(180deg,#0a1628,#1a0a2e)">
+    </div>`}function s(){var l,r;e.style.overflow="hidden",e.style.height="100%",e.style.display="flex",e.style.flexDirection="column",e.innerHTML=`
+    <div style="display:flex;flex-direction:column;height:100%;overflow:hidden;background:linear-gradient(180deg,#0a1628,#1a0a2e);max-width:100%">
       <!-- Header -->
       <div style="text-align:center;padding:12px 16px 4px;flex-shrink:0">
         <div style="font-size:11px;color:rgba(255,255,255,0.5);letter-spacing:3px;text-transform:uppercase;margin-bottom:4px">Avant le match</div>
@@ -915,7 +915,7 @@ import{s as $,l as ae,F as Ge,b as xe,c as st,d as Mt}from"./formation-links-CDB
       </div>
 
       <!-- Grille des cartes GC -->
-      <div style="flex:1;overflow-y:auto;display:flex;flex-wrap:wrap;gap:10px;justify-content:center;padding:8px 16px">
+      <div style="flex:1;overflow-y:auto;display:flex;flex-wrap:wrap;gap:10px;justify-content:center;align-content:flex-start;padding:8px 16px">
         ${t.map(n=>{const c=d.find(p=>p.id===n.id);return`<div style="position:relative">${o(n,!!c)}</div>`}).join("")}
       </div>
 

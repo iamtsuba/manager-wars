@@ -307,12 +307,15 @@ function showGCSelection(container, gcCards, onConfirm) {
   }
 
   function render() {
-    container.style.overflow      = 'hidden'
-    container.style.height        = '100%'
-    container.style.display       = 'flex'
-    container.style.flexDirection = 'column'
+    // Mesurer la hauteur RÉELLE disponible (exclut la nav fixe du bas)
+    container.style.overflow = 'hidden'
+    container.style.position = 'relative'
+    // Hauteur = distance du haut du container au bas du viewport visible
+    const _gcContTop = container.getBoundingClientRect().top
+    const _gcAvailH  = (window.visualViewport?.height || window.innerHeight) - _gcContTop
+    container.style.height = Math.max(200, _gcAvailH) + 'px'
     container.innerHTML = `
-    <div style="display:flex;flex-direction:column;height:100%;overflow:hidden;background:linear-gradient(180deg,#0a1628,#1a0a2e);max-width:100%">
+    <div style="display:flex;flex-direction:column;height:100%;overflow:hidden;background:linear-gradient(180deg,#0a1628,#1a0a2e)">
       <!-- Header -->
       <div style="text-align:center;padding:12px 16px 4px;flex-shrink:0">
         <div style="font-size:11px;color:rgba(255,255,255,0.5);letter-spacing:3px;text-transform:uppercase;margin-bottom:4px">Avant le match</div>

@@ -307,13 +307,11 @@ function showGCSelection(container, gcCards, onConfirm) {
   }
 
   function render() {
-    // Mesurer la hauteur RÉELLE disponible (exclut la nav fixe du bas)
+    // clientHeight = hauteur réelle du container dans le flex layout
+    // (flex:1 exclut déjà le header ET la nav du bas — ne pas utiliser height:100% ni visualViewport)
     container.style.overflow = 'hidden'
-    container.style.position = 'relative'
-    // Hauteur = distance du haut du container au bas du viewport visible
-    const _gcContTop = container.getBoundingClientRect().top
-    const _gcAvailH  = (window.visualViewport?.height || window.innerHeight) - _gcContTop
-    container.style.height = Math.max(200, _gcAvailH) + 'px'
+    const _gcH = container.clientHeight || container.getBoundingClientRect().height
+    container.style.height = _gcH + 'px'
     container.innerHTML = `
     <div style="display:flex;flex-direction:column;height:100%;overflow:hidden;background:linear-gradient(180deg,#0a1628,#1a0a2e)">
       <!-- Header -->

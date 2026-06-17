@@ -530,22 +530,22 @@ export async function renderCollection(container, ctx) {
         const bord = BORD[def?.color]||BORD.purple
         const effect = def?.effect||gc.desc||''
         const imgUrl = def?.image_url ? `${import.meta.env.BASE_URL}icons/${def.image_url}` : null
-        if (owned && card) return `<div data-gc-id="${card.id}" data-gc-type="${type}" style="position:relative;width:200px;border-radius:16px;border:3px solid ${bord};background:${bg};display:flex;flex-direction:column;overflow:hidden;box-shadow:0 0 28px ${bord}66;cursor:pointer">
+        if (owned && card) return `<div data-gc-id="${card.id}" data-gc-type="${type}" style="position:relative;width:140px;border-radius:12px;border:3px solid ${bord};background:${bg};display:flex;flex-direction:column;overflow:hidden;box-shadow:0 0 24px ${bord}66;cursor:pointer">
           ${badge}
           <div style="padding:10px 12px;background:rgba(255,255,255,0.14);text-align:center">
             <div style="font-size:${type.length>14?10:13}px;font-weight:900;color:#fff;letter-spacing:.5px;text-transform:uppercase">${type}</div>
             <div style="font-size:8px;color:rgba(255,255,255,0.55);margin-top:2px">${isUltra?'💎 ULTRA GC':'⚡ GAME CHANGER'}</div>
           </div>
-          <div style="height:150px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.06)">
+          <div style="height:220px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.06)">
             ${imgUrl?`<img src="${imgUrl}" style="max-width:120px;max-height:120px;object-fit:contain;border-radius:6px">`:`<span style="font-size:64px">${gc.icon}</span>`}
           </div>
           <div style="padding:10px 12px;background:rgba(0,0,0,0.35);text-align:center">
             <div style="font-size:11px;color:rgba(255,255,255,0.9);line-height:1.4">${effect.slice(0,60)}</div>
           </div>
         </div>`
-        return `<div style="width:200px;border-radius:16px;border:2px solid #ddd;background:#f0f0f0;display:flex;flex-direction:column;overflow:hidden;filter:grayscale(1);opacity:0.5">
+        return `<div style="width:140px;border-radius:12px;border:2px solid #ddd;background:#f0f0f0;display:flex;flex-direction:column;overflow:hidden;filter:grayscale(1);opacity:0.5">
           <div style="padding:10px 12px;background:rgba(0,0,0,0.05);text-align:center"><div style="font-size:13px;font-weight:900;color:#888;text-transform:uppercase">${type}</div></div>
-          <div style="height:150px;display:flex;align-items:center;justify-content:center"><span style="font-size:64px">${gc.icon}</span></div>
+          <div style="height:220px;display:flex;align-items:center;justify-content:center"><span style="font-size:64px">${gc.icon}</span></div>
           <div style="padding:10px;background:rgba(0,0,0,0.05);text-align:center"><div style="font-size:11px;color:#aaa">Non possédée</div></div>
         </div>`
       },

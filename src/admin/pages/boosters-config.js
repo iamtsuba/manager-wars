@@ -280,21 +280,37 @@ export async function renderBoostersConfig(container) {
       }
     })
 
-    // ═══ + Ligne taux ═══ (skipDBReload = true pour garder les modifs en mémoire)
+    // ═══ Sauver les valeurs DOM → editRates (avant re-render) ═══
+    function saveRatesFromDOM() {
+      container.querySelectorAll('[data-rate-idx]').forEach(row => {
+        const i = Number(row.dataset.rateIdx)
+        if (i >= 0 && i < editRates.length) {
+          editRates[i].card_type  = row.querySelector('.rate-type')?.value   || 'player'
+          editRates[i].rarity     = row.querySelector('.rate-rarity')?.value || null
+          editRates[i].note_min   = Number(row.querySelector('.rate-note-min')?.value) || null
+          editRates[i].note_max   = Number(row.querySelector('.rate-note-max')?.value) || null
+          editRates[i].percentage = Number(row.querySelector('.rate-pct')?.value)      || 0
+        }
+      })
+    }
+
+    // ═══ + Ligne taux ═══
     q('#btn-add-rate')?.addEventListener('click', () => {
+      saveRatesFromDOM()   // ← sauver DOM avant re-render
       editRates.push({
         id: null, booster_id: selectedId, card_type: 'player',
-        rarity: 'normal', note_min: 1, note_max: 10, percentage: 10,
+        rarity: 'normal', note_min: null, note_max: null, percentage: 10,
         sort_order: editRates.length
       })
-      render(true)   // ← NE PAS recharger depuis DB
+      render(true)
     })
 
     // Supprimer ligne taux
     container.querySelectorAll('.btn-del-rate').forEach(btn => {
       btn.addEventListener('click', () => {
+        saveRatesFromDOM()
         editRates.splice(Number(btn.dataset.idx), 1)
-        render(true)   // ← NE PAS recharger depuis DB
+        render(true)
       })
     })
 

@@ -989,7 +989,7 @@ function renderGame(container, game, ctx) {
 
       <!-- Terrain -->
       <div style="overflow:hidden;min-width:0;flex:1;min-height:0;display:flex;align-items:center;justify-content:center;padding:4px" id="match-field">
-        <div class="terrain-wrapper" style="overflow:hidden;flex-shrink:0;aspect-ratio:1;max-height:100%;max-width:100%;height:100%;display:flex;align-items:center;justify-content:center">
+        <div class="terrain-wrapper" style="overflow:hidden;flex-shrink:0;display:flex;align-items:center;justify-content:center">
           ${renderTeam(game.homeTeam, game.formation, game.phase, selectedIds, 300, 300)}
         </div>
       </div>
@@ -1074,19 +1074,47 @@ function renderGame(container, game, ctx) {
   </div>`
 
   // ── Dimensionner le terrain exactement (hauteur disponible) ─
-  // Garantir la hauteur du match-screen + rendre le SVG responsive
-  ;(function sizeTerrain() {
+  // ── Dimensionnement adapté PC / Mobile ───────────────────
+  function sizeTerrain() {
     const ms = container.querySelector('.match-screen')
-    if (ms) {
-      // Hauteur exacte = hauteur visible du container (borné par #app = 100dvh)
-      const h = container.clientHeight
-      if (h > 50) { ms.style.height = h + 'px'; ms.style.maxHeight = h + 'px' }
-    }
+    const mf = container.querySelector('#match-field')
     const tw = container.querySelector('.terrain-wrapper')
-    if (!tw) return
+    if (!ms || !mf || !tw) return
+
+    const isPC = window.innerWidth >= 700
+
+    // 1. Hauteur de référence = viewport (mobile) ou hauteur du #app encadré (PC)
+    const appEl  = document.getElementById('app')
+    const refH   = isPC && appEl ? appEl.clientHeight : window.innerHeight
+    const refTop = ms.getBoundingClientRect().top      // offset du match-screen depuis le haut viewport
+    const availH = refH - refTop                        // hauteur réelle dispo pour le match-screen
+
+    if (availH > 100) {
+      ms.style.height    = availH + 'px'
+      ms.style.maxHeight = availH + 'px'
+    }
+    ms.style.overflow = 'hidden'
+
+    // 2. Forcer reflow pour que flex:1 sur #match-field se recalcule
+    void ms.offsetHeight
+
+    // 3. Mesurer la zone terrain disponible
+    const zoneH = mf.clientHeight
+    const zoneW = mf.clientWidth
+    if (zoneH < 20 || zoneW < 20) return
+
+    // 4. Carré = min(largeur, hauteur), avec léger plafond sur PC pour rester lisible
+    let size = Math.min(zoneH, zoneW) - 6
+    if (isPC) size = Math.min(size, 460)   // sur PC, ne pas dépasser 460px
+    size = Math.max(120, size)
+
+    tw.style.width  = size + 'px'
+    tw.style.height = size + 'px'
+    tw.style.aspectRatio = ''   // on gère manuellement
+
+    // 5. SVG responsive dans le wrapper
     const svg = tw.querySelector('svg')
     if (svg) {
-      // Le SVG remplit son wrapper (qui est contraint par aspect-ratio + max-height)
       svg.removeAttribute('width')
       svg.removeAttribute('height')
       svg.style.width    = '100%'
@@ -1097,7 +1125,13 @@ function renderGame(container, game, ctx) {
       if (!svg.getAttribute('viewBox')) svg.setAttribute('viewBox', '0 0 300 300')
       svg.setAttribute('preserveAspectRatio', 'xMidYMid meet')
     }
-  })()
+  }
+  requestAnimationFrame(sizeTerrain)
+  // Re-dimensionner si la fenêtre change (rotation mobile, resize PC)
+  if (!game._resizeBound) {
+    game._resizeBound = true
+    window.addEventListener('resize', () => requestAnimationFrame(sizeTerrain))
+  }
 
   // ── CHRONO (point 7) ─────────────────────────────────────
   if (game._timerInt) { clearInterval(game._timerInt); game._timerInt = null }

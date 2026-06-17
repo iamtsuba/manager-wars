@@ -910,6 +910,7 @@ function renderGame(container, game, ctx) {
   const activeGCs = game.gcCards.filter(gc => !game.usedGc.includes(gc.id))
   const boostAvail = game.boostCard && !game.boostUsed
 
+  container.style.overflow = 'hidden'
   container.innerHTML = `
   <style>
     @keyframes subSlideOut { from{transform:translateX(0);opacity:1} to{transform:translateX(-120%);opacity:0} }
@@ -1069,36 +1070,37 @@ function renderGame(container, game, ctx) {
   </div>`
 
   // ── Dimensionner le terrain exactement (hauteur disponible) ─
-  requestAnimationFrame(() => {
+  // Dimensionner le terrain après que le layout soit stable
+  ;(function sizeTerrain() {
     const ms = container.querySelector('.match-screen')
     const mf = container.querySelector('#match-field')
     const tw = container.querySelector('.terrain-wrapper')
     if (!ms || !mf || !tw) return
 
-    // getBoundingClientRect().height = hauteur réelle rendue du container
-    // (indépendant du scroll, toujours la taille visible)
-    const availH = container.getBoundingClientRect().height
-    ms.style.height    = availH + 'px'
-    ms.style.maxHeight = availH + 'px'
-    ms.style.overflow  = 'hidden'
+    // 1. Contraindre le match-screen à la hauteur EXACTE du container
+    const availH = container.clientHeight || container.getBoundingClientRect().height
+    if (availH > 50) {
+      ms.style.height    = availH + 'px'
+      ms.style.maxHeight = availH + 'px'
+      ms.style.overflow  = 'hidden'
+    }
 
-    // Forcer un reflow pour que flex:1 sur #match-field soit recalculé
+    // 2. Forcer reflow : LIRE offsetHeight force le navigateur à recalculer
     void ms.offsetHeight
 
-    // Maintenant mesurer la zone terrain (valeurs exactes post-reflow)
-    const h    = mf.clientHeight
-    const w    = mf.clientWidth
-    const size = Math.min(h, w) || 280
+    // 3. Mesurer la zone terrain (après reflow, les valeurs sont exactes)
+    const h = mf.clientHeight
+    const w = mf.clientWidth
+    if (!h || !w) return
+
+    // 4. SVG = carré qui tient dans les deux dimensions
+    //    On soustrait 4px de marge pour éviter tout débordement
+    const size = Math.max(80, Math.min(h, w) - 4)
     tw.style.width  = size + 'px'
     tw.style.height = size + 'px'
-
-    // Redimensionner le SVG lui-même (width/height hardcodés sinon)
     const svg = tw.querySelector('svg')
-    if (svg) {
-      svg.setAttribute('width',  size)
-      svg.setAttribute('height', size)
-    }
-  })
+    if (svg) { svg.setAttribute('width', size); svg.setAttribute('height', size) }
+  })()
 
   // ── CHRONO (point 7) ─────────────────────────────────────
   if (game._timerInt) { clearInterval(game._timerInt); game._timerInt = null }

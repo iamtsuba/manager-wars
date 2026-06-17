@@ -159,7 +159,7 @@ export async function renderCollection(container, ctx) {
 
   // Définitions GC depuis la DB (image, couleur, effet)
   const { data: gcDefinitions } = await supabase
-    .from('gc_definitions').select('name,gc_type,color,effect,image_url').eq('is_active', true)
+    .from('gc_definitions').select('name,gc_type,color,effect,image_url')
   const gcDefMap = {}
   ;(gcDefinitions||[]).forEach(d => { gcDefMap[d.name] = d })
 
@@ -385,6 +385,63 @@ export async function renderCollection(container, ctx) {
     return '<div style="width:' + W + 'px;height:' + H + 'px;overflow:hidden;position:relative;flex-shrink:0"><div style="transform:scale(' + SCALE + ');transform-origin:top left;position:absolute;top:0;left:0;pointer-events:none">' + inner + '</div></div>'
   }
 
+  // ── SVG terrain formation ────────────────────────────────
+  function formFieldSVG(formation, w, h) {
+    w = w || 100; h = h || 140
+    var pos = FORMATION_POSITIONS[formation] || {}
+    var colors = { GK:'#111111', DEF:'#cc2222', MIL:'#D4A017', ATT:'#1A6B3C' }
+    var r = Math.max(3, Math.round(w * 0.055))
+    var dots = Object.entries(pos).flatMap(function(entry) {
+      var role = entry[0], players = entry[1]
+      return (players||[]).map(function(p) {
+        var cx = Math.round(p.x * w / 100)
+        var cy = Math.round(p.y * h / 100)
+        return '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="' + colors[role] + '" stroke="rgba(255,255,255,0.7)" stroke-width="1"/>'
+      })
+    }).join('')
+    var lw = Math.max(1, Math.round(w/50))
+    return '<svg viewBox="0 0 ' + w + ' ' + h + '" xmlns="http://www.w3.org/2000/svg" style="display:block;width:100%;height:100%">'
+      + '<rect width="' + w + '" height="' + h + '" fill="#1A6B3C"/>'
+      + '<rect x="' + Math.round(w*.2) + '" y="' + Math.round(h*.02) + '" width="' + Math.round(w*.6) + '" height="' + Math.round(h*.18) + '" fill="none" stroke="rgba(255,255,255,0.45)" stroke-width="' + lw + '"/>'
+      + '<line x1="0" y1="' + Math.round(h*.5) + '" x2="' + w + '" y2="' + Math.round(h*.5) + '" stroke="rgba(255,255,255,0.35)" stroke-width="' + lw + '"/>'
+      + '<ellipse cx="' + Math.round(w*.5) + '" cy="' + Math.round(h*.5) + '" rx="' + Math.round(w*.18) + '" ry="' + Math.round(h*.12) + '" fill="none" stroke="rgba(255,255,255,0.35)" stroke-width="' + lw + '"/>'
+      + '<rect x="' + Math.round(w*.2) + '" y="' + Math.round(h*.8) + '" width="' + Math.round(w*.6) + '" height="' + Math.round(h*.18) + '" fill="none" stroke="rgba(255,255,255,0.45)" stroke-width="' + lw + '"/>'
+      + dots + '</svg>'
+  }
+
+  function renderFormationCard(formation, card, count) {
+    var badge = count>1 ? '<div style="position:absolute;top:4px;right:4px;background:#0a3d1e;color:#fff;border-radius:10px;font-size:9px;font-weight:700;padding:1px 6px;z-index:3">×' + count + '</div>' : ''
+    var id = card ? 'data-form-id="' + card.id + '"' : ''
+    var fs = formation.length > 7 ? 14 : formation.length > 5 ? 16 : 19
+    var owned = !!card
+    return '<div ' + id + ' style="position:relative;width:140px;border-radius:12px;border:3px solid ' + (owned?'#2a7a40':'#bbb') + ';background:#fff;display:flex;flex-direction:column;overflow:hidden;cursor:pointer;box-shadow:0 2px 10px rgba(0,0,0,.12);' + (!owned?'filter:grayscale(1);opacity:0.5':'') + '">'
+      + badge
+      + '<div style="padding:8px 6px 6px;background:#fff;text-align:center;border-bottom:3px solid ' + (owned?'#1A6B3C':'#aaa') + ';flex-shrink:0">'
+      + '<div style="font-size:8px;color:#888;letter-spacing:1.5px;font-weight:700;margin-bottom:2px">FORMATION</div>'
+      + '<div style="font-size:' + fs + 'px;font-weight:900;color:' + (owned?'#1A6B3C':'#aaa') + ';line-height:1">' + formation + '</div>'
+      + '</div>'
+      + '<div style="flex:1;overflow:hidden;background:' + (owned?'#1A6B3C':'#ccc') + '">' + formFieldSVG(formation, 140, 220) + '</div>'
+      + '</div>'
+  }
+
+  function miniFormationCard(formation, owned) {
+    var SCALE = 0.54
+    var W = Math.round(140*SCALE), H = Math.round(305*SCALE)
+    var nameH = Math.round(H*0.22), fieldH = H - nameH
+    var fs = formation.length > 7 ? 5 : 7
+    var svg = formFieldSVG(formation, W, fieldH)
+    var border = owned ? '1.5px solid #2a7a40' : '1px solid #ddd'
+    var filter = owned ? '' : 'filter:grayscale(1);opacity:0.45;'
+    var nameBg = owned ? '#1A6B3C' : '#bbb'
+    var nameColor = '#fff'
+    return '<div style="width:' + W + 'px;height:' + H + 'px;border-radius:6px;border:' + border + ';background:#fff;display:flex;flex-direction:column;overflow:hidden;' + filter + '">'
+      + '<div style="height:' + nameH + 'px;background:' + nameBg + ';display:flex;align-items:center;justify-content:center;padding:0 2px;flex-shrink:0">'
+      + '<span style="font-size:' + fs + 'px;font-weight:900;color:' + nameColor + ';text-align:center;overflow:hidden;white-space:nowrap;max-width:' + (W-4) + 'px">' + formation + '</span>'
+      + '</div>'
+      + '<div style="height:' + fieldH + 'px;overflow:hidden;flex-shrink:0">' + svg + '</div>'
+      + '</div>'
+  }
+
   function renderPlayerGrid(grid) {
     if (showAll) {
       const list = filteredAllPlayers()
@@ -442,22 +499,16 @@ export async function renderCollection(container, ctx) {
     const formItems = formationsToShow.map(f => ({ formation:f, card: formCards.find(c=>c.formation===f)||null, owned: ownedFormations.has(f) }))
     renderBigAndStrip(
       formItems,
-      ({formation, card, owned}) => {
-        const count = owned ? formCards.filter(c=>c.formation===formation).length : 0
-        const badge = count>1?`<div style="position:absolute;top:4px;right:4px;background:#0a3d1e;color:#fff;border-radius:10px;font-size:9px;font-weight:700;padding:1px 6px;z-index:3">×${count}</div>`:''
-        if (owned && card) return `<div data-form-id="${card.id}" style="position:relative;background:linear-gradient(135deg,#1A6B3C,#2a8f52);border:3px solid #2a8f52;border-radius:16px;padding:28px 24px;color:#fff;text-align:center;cursor:pointer;min-width:200px">${badge}<div style="font-size:52px;margin-bottom:8px">🏟️</div><div style="font-size:10px;background:rgba(255,255,255,0.2);padding:3px 12px;border-radius:10px;display:inline-block;margin-bottom:8px">FORMATION</div><div style="font-weight:900;font-size:28px">${formation}</div></div>`
-        return `<div style="background:#f0f0f0;border:2px solid #ddd;border-radius:16px;padding:28px 24px;color:#aaa;text-align:center;min-width:200px;filter:grayscale(1);opacity:0.5"><div style="font-size:52px;margin-bottom:8px">🏟️</div><div style="font-size:10px;background:rgba(0,0,0,0.1);padding:3px 12px;border-radius:10px;display:inline-block;margin-bottom:8px">FORMATION</div><div style="font-weight:900;font-size:28px">${formation}</div><div style="font-size:11px;margin-top:6px">Non possédée</div></div>`
-      },
-      ({formation, owned}) => owned
-        ? `<div style="background:linear-gradient(135deg,#1A6B3C,#2a8f52);border-radius:8px;padding:8px 6px;color:#fff;text-align:center;width:70px"><div style="font-size:18px">🏟️</div><div style="font-size:7px;margin-top:2px">${formation}</div></div>`
-        : `<div style="background:#eee;border-radius:8px;padding:8px 6px;color:#aaa;text-align:center;width:70px;filter:grayscale(1);opacity:0.5"><div style="font-size:18px">🏟️</div><div style="font-size:7px;margin-top:2px">${formation}</div></div>`,
+      ({formation, card, owned}) => renderFormationCard(formation, owned ? card : null, owned ? formCards.filter(c=>c.formation===formation).length : 0),
+      ({formation, owned}) => miniFormationCard(formation, owned),
       ({card, owned}) => { if (owned && card) openFormationModal(card, formCards, ctx, openModal) },
       '#1A6B3C'
     )
   }
 
   function renderGCGrid(grid) {
-    const typesToShow = showAll ? ALL_GC_TYPES : [...ownedGcTypes]
+    const allFromDB = Object.keys(gcDefMap)
+    const typesToShow = showAll ? (allFromDB.length ? allFromDB : ALL_GC_TYPES) : [...ownedGcTypes]
 
     if (!typesToShow.length) {
       grid.innerHTML = '<div style="width:100%;text-align:center;padding:40px;color:var(--gray-600)">Aucune carte Game Changer.<br><small>Ouvre un booster Game Changer !</small></div>'

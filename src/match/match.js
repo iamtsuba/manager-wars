@@ -1001,61 +1001,98 @@ function renderGame(container, game, ctx) {
       ▼ Historique (${game.log.length})
     </button>
 
-    <!-- ZONE CENTRALE : REMPLAÇANTS + TERRAIN -->
-    <div style="display:flex;flex:1;min-height:0;overflow:hidden">
+    ${(()=>{
+      const _pc = window.innerWidth >= 700
 
-      <!-- Colonne remplaçants (mini cartes) -->
-      <div style="display:flex;flex-direction:column;gap:4px;padding:4px 2px;width:50px;align-items:center;overflow-y:auto;flex-shrink:0;background:rgba(0,0,0,0.15)">
-        ${availSubs.length === 0
+      // ─── Boutons GC (réutilisés dans les deux layouts) ───
+      const gcMiniPC = (gc, isBoost) => isBoost
+        ? `<div id="boost-card" style="width:110px;padding:8px 6px;background:linear-gradient(135deg,#4a9fc4,#87CEEB);border:2px solid #87CEEB;border-radius:10px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;text-align:center">
+            <div style="font-size:22px">⚡</div>
+            <div style="font-size:10px;color:#000;font-weight:900">+${game.boostCard?.value}</div>
+          </div>`
+        : `<div class="gc-mini" data-gc-id="${gc.id}" data-gc-type="${gc.gc_type}"
+            style="width:110px;padding:8px 6px;background:linear-gradient(135deg,#3d0a7a,#7a28b8);border:1px solid #9b59b6;border-radius:10px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;text-align:center">
+            <div style="font-size:22px">${GC_DEFS[gc.gc_type]?.icon||'⚡'}</div>
+            <div style="font-size:9px;color:#fff;font-weight:700;max-width:105px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${gc.gc_type}</div>
+          </div>`
+
+      const gcMiniMob = (gc, isBoost) => isBoost
+        ? `<div id="boost-card" style="padding:4px;background:linear-gradient(135deg,#4a9fc4,#87CEEB);border:2px solid #87CEEB;border-radius:7px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:1px;text-align:center;min-width:42px">
+            <div style="font-size:15px">⚡</div>
+            <div style="font-size:7px;color:#000;font-weight:900">+${game.boostCard?.value}</div>
+          </div>`
+        : `<div class="gc-mini" data-gc-id="${gc.id}" data-gc-type="${gc.gc_type}"
+            style="padding:4px;background:linear-gradient(135deg,#3d0a7a,#7a28b8);border:1px solid #9b59b6;border-radius:7px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:1px;text-align:center;min-width:42px">
+            <div style="font-size:15px">${GC_DEFS[gc.gc_type]?.icon||'⚡'}</div>
+            <div style="font-size:6px;color:#fff;font-weight:600;max-width:40px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${gc.gc_type.slice(0,7)}</div>
+          </div>`
+
+      // ─── Bouton action ────────────────────────────────────
+      const btnStyle = _pc
+        ? 'padding:14px 20px;border-radius:14px;font-size:16px;font-weight:900;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;width:100%'
+        : 'padding:10px 8px;border-radius:12px;font-size:13px;font-weight:900;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;width:100%'
+
+      const actionBtn = isFinished
+        ? `<button id="btn-results" style="${btnStyle};background:linear-gradient(135deg,#D4A017,#FFD700);border:none;color:#000">🏁 Résultats</button>`
+        : isAITurn
+        ? `<div style="${btnStyle};background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);color:rgba(255,255,255,0.4)">⏳ Tour IA</div>`
+        : isAttack
+        ? `<button id="btn-action" style="${btnStyle};background:linear-gradient(135deg,#c47a00,#FFD700);border:none;color:#fff;box-shadow:0 0 18px rgba(255,215,0,0.4)" ${game.selected.length===0?'disabled':''}> ⚔️ ATTAQUEZ <span id="match-timer" style="font-weight:900"></span></button>`
+        : isDefense
+        ? `<button id="btn-action" style="${btnStyle};background:linear-gradient(135deg,#1a4a8a,#3a7bd5);border:none;color:#fff;box-shadow:0 0 18px rgba(135,206,235,0.4)" ${game.selected.length===0?'disabled':''}>🛡️ DÉFENDEZ <span id="match-timer" style="font-weight:900"></span></button>`
+        : `<div style="${btnStyle};background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1)"></div>`
+
+      const counter = (isAttack||isDefense) ? `<div style="font-size:9px;color:rgba(255,255,255,0.4);text-align:center;margin-top:2px">${game.selected.length}/3 sélectionné(s)</div>` : ''
+
+      // ─── Subs column (commun) ─────────────────────────────
+      const subsHTML = `<div style="display:flex;flex-direction:column;gap:4px;padding:4px 2px;width:${_pc?56:50}px;align-items:center;overflow-y:auto;flex-shrink:0;background:rgba(0,0,0,0.15)">
+        ${availSubs.length===0
           ? `<div style="font-size:7px;color:rgba(255,255,255,0.25);text-align:center;margin-top:6px;line-height:1.4">Pas de<br>rempl.</div>`
-          : availSubs.map(s => `
-              <div class="sub-btn-col" data-sub-id="${s.cardId}" title="${s.firstname} ${s.name}" style="cursor:pointer;flex-shrink:0">
-                ${renderMiniCardHTML(s, 44, 58)}
-              </div>`).join('')
-        }
-      </div>
+          : availSubs.map(s=>`<div class="sub-btn-col" data-sub-id="${s.cardId}" style="cursor:pointer;flex-shrink:0">${renderMiniCardHTML(s,44,58)}</div>`).join('')}
+      </div>`
 
-      <!-- Terrain -->
-      <div style="overflow:hidden;min-width:0;flex:1;min-height:0;display:flex;align-items:center;justify-content:center;padding:4px" id="match-field">
+      // ─── Terrain ──────────────────────────────────────────
+      const terrainHTML = `<div style="overflow:hidden;min-width:0;flex:1;min-height:0;display:flex;align-items:center;justify-content:center" id="match-field">
         <div class="terrain-wrapper" style="overflow:hidden;flex-shrink:0;display:flex;align-items:center;justify-content:center">
-          ${renderTeam(game.homeTeam, game.formation, game.phase, selectedIds, 300, 300)}
+          ${renderTeam(game.homeTeam,game.formation,game.phase,selectedIds,300,300)}
         </div>
-      </div>
-    </div>
+      </div>`
 
-    <!-- ZONE BAS : GC + BOUTON ACTION — même hauteur -->
-    <div style="display:flex;align-items:stretch;padding:6px 8px;background:rgba(0,0,0,0.35);gap:6px;flex-shrink:0">
-
-      <!-- Strip GC : ligne horizontale, même hauteur que le bouton -->
-      <div style="flex:1;display:flex;gap:4px;overflow-x:auto;scrollbar-width:none">
-        ${activeGCs.map(gc => `
-          <div class="gc-mini" data-gc-id="${gc.id}" data-gc-type="${gc.gc_type}"
-            style="flex-shrink:0;width:46px;background:linear-gradient(135deg,#3d0a7a,#7a28b8);border:1px solid #9b59b6;border-radius:8px;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:4px 2px">
-            <div style="font-size:18px;line-height:1">${GC_DEFS[gc.gc_type]?.icon||'⚡'}</div>
-            <div style="font-size:6px;color:#fff;font-weight:600;text-align:center;line-height:1.1;max-width:44px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">${gc.gc_type.slice(0,9)}</div>
-          </div>`).join('')}
-        ${boostAvail ? `
-          <div id="boost-card" style="flex-shrink:0;width:46px;background:linear-gradient(135deg,#4a9fc4,#87CEEB);border:2px solid #87CEEB;border-radius:8px;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:4px 2px">
-            <div style="font-size:18px;line-height:1">⚡</div>
-            <div style="font-size:7px;color:#000;font-weight:900">+${game.boostCard.value}</div>
-          </div>` : ''}
-      </div>
-
-      <!-- Bouton action principal -->
-      <div style="flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:2px">
-        ${isFinished
-          ? `<button id="btn-results" style="min-width:130px;padding:14px 16px;border-radius:14px;background:linear-gradient(135deg,#D4A017,#FFD700);border:none;color:#000;font-size:15px;font-weight:900;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px">🏁 Résultats</button>`
-          : isAITurn
-          ? `<div style="min-width:130px;padding:14px 16px;border-radius:14px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);color:rgba(255,255,255,0.4);font-size:14px;display:flex;align-items:center;justify-content:center;gap:6px">⏳ Tour IA</div>`
-          : isAttack
-          ? `<button id="btn-action" style="min-width:130px;padding:14px 16px;border-radius:14px;background:linear-gradient(135deg,#c47a00,#FFD700);border:none;color:#fff;font-size:15px;font-weight:900;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;box-shadow:0 0 18px rgba(255,215,0,0.4)" ${game.selected.length===0?'disabled style="opacity:0.45;cursor:default"':''}>⚔️ ATTAQUEZ <span id="match-timer" style="font-weight:900"></span></button>`
-          : isDefense
-          ? `<button id="btn-action" style="min-width:130px;padding:14px 16px;border-radius:14px;background:linear-gradient(135deg,#1a4a8a,#3a7bd5);border:none;color:#fff;font-size:15px;font-weight:900;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;box-shadow:0 0 18px rgba(135,206,235,0.4)" ${game.selected.length===0?'disabled style="opacity:0.45;cursor:default"':''}>🛡️ DÉFENDEZ <span id="match-timer" style="font-weight:900"></span></button>`
-          : `<div style="min-width:130px;padding:14px;border-radius:14px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1)"></div>`
-        }
-        ${isAttack || isDefense ? `<div style="font-size:9px;color:rgba(255,255,255,0.4)">${game.selected.length}/3 sélectionné(s)</div>` : ''}
-      </div>
-    </div>
+      if (_pc) {
+        // ══ LAYOUT PC : subs | terrain | colonne droite GC+btn ══
+        return `
+        <div style="display:flex;flex:1;min-height:0;overflow:hidden">
+          ${subsHTML}
+          ${terrainHTML}
+          <!-- Colonne droite : GC + bouton -->
+          <div style="width:140px;flex-shrink:0;display:flex;flex-direction:column;align-items:center;padding:10px 8px;gap:10px;background:rgba(0,0,0,0.2);overflow-y:auto">
+            ${activeGCs.map(gc=>gcMiniPC(gc,false)).join('')}
+            ${boostAvail?gcMiniPC(null,true):''}
+            <div style="flex:1"></div>
+            <div style="width:100%">${actionBtn}${counter}</div>
+          </div>
+        </div>`
+      } else {
+        // ══ LAYOUT MOBILE : subs | (terrain + zone bas) ══════
+        return `
+        <div style="display:flex;flex:1;min-height:0;overflow:hidden">
+          ${subsHTML}
+          <div style="flex:1;min-width:0;display:flex;flex-direction:column;min-height:0">
+            ${terrainHTML}
+            <!-- Zone bas mobile : GC grille + bouton -->
+            <div style="display:flex;align-items:stretch;padding:4px 6px;background:rgba(0,0,0,0.35);gap:5px;flex-shrink:0">
+              <div style="display:flex;flex-wrap:wrap;gap:3px;align-content:center;max-width:120px">
+                ${activeGCs.map(gc=>gcMiniMob(gc,false)).join('')}
+                ${boostAvail?gcMiniMob(null,true):''}
+              </div>
+              <div style="flex:1;display:flex;flex-direction:column;justify-content:center;gap:3px">
+                ${actionBtn}${counter}
+              </div>
+            </div>
+          </div>
+        </div>`
+      }
+    })()}
   </div>
 
   <!-- PANNEAU HISTORIQUE (slide-up) -->
@@ -1133,7 +1170,6 @@ function renderGame(container, game, ctx) {
 
     // 4. Carré = min(largeur, hauteur), avec léger plafond sur PC pour rester lisible
     let size = Math.min(zoneH, zoneW) - 6
-    if (isPC) size = Math.min(size, 460)   // sur PC, ne pas dépasser 460px
     size = Math.max(120, size)
 
     tw.style.width  = size + 'px'

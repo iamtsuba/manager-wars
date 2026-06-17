@@ -247,7 +247,16 @@ async function openMixedBooster(profile, booster) {
           return (!rate.note_min || best >= rate.note_min) && (!rate.note_max || best <= rate.note_max)
         })
       }
-      if (!filtered.length) filtered = pool || []
+      // Si contrainte note définie mais aucun joueur → fallback sur rareté seulement (pas toute la DB)
+      if (!filtered.length) {
+        if (rate.note_min || rate.note_max) {
+          // Relâcher uniquement la contrainte note, garder la rareté
+          filtered = (pool || [])
+          console.warn('[Booster] Aucun joueur avec note', rate.note_min, '-', rate.note_max, '— fallback rareté uniquement')
+        } else {
+          filtered = pool || []
+        }
+      }
       if (!filtered.length) continue
       const player = filtered[Math.floor(Math.random()*filtered.length)]
       const { data: card } = await supabase.from('cards')

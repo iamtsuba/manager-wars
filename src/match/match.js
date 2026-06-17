@@ -611,7 +611,7 @@ function showMidfieldAnimation(container, game, ctx) {
     setTimeout(() => {
       const boostVal = game.boostCard?.value
       container.innerHTML = `
-      <div class="match-screen" style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;min-height:100%;gap:20px;padding:24px;background:#0a3d1e;text-align:center">
+      <div class="match-screen" style="display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding-top:40px;height:100%;min-height:100%;gap:16px;padding-left:24px;padding-right:24px;background:#0a3d1e;text-align:center">
         <div style="font-size:64px">${homeWins ? '🏆' : '😤'}</div>
         <div style="font-size:22px;font-weight:900;color:#fff;line-height:1.3">
           ${homeWins
@@ -990,26 +990,26 @@ function renderGame(container, game, ctx) {
       </div>
     </div>
 
-    <!-- ZONE BAS : GC + BOUTON ACTION -->
-    <div style="display:flex;align-items:flex-end;padding:6px 8px;background:rgba(0,0,0,0.35);gap:8px;flex-shrink:0;min-height:80px">
+    <!-- ZONE BAS : GC + BOUTON ACTION — même hauteur -->
+    <div style="display:flex;align-items:stretch;padding:6px 8px;background:rgba(0,0,0,0.35);gap:6px;flex-shrink:0">
 
-      <!-- Grille GC -->
-      <div style="flex:1;display:grid;grid-template-columns:repeat(4,1fr);gap:3px;align-content:start">
+      <!-- Strip GC : ligne horizontale, même hauteur que le bouton -->
+      <div style="flex:1;display:flex;gap:4px;overflow-x:auto;scrollbar-width:none">
         ${activeGCs.map(gc => `
           <div class="gc-mini" data-gc-id="${gc.id}" data-gc-type="${gc.gc_type}"
-            style="background:linear-gradient(135deg,#3d0a7a,#7a28b8);border:1px solid #9b59b6;border-radius:7px;padding:3px 2px;cursor:pointer;text-align:center">
-            <div style="font-size:16px">${GC_DEFS[gc.gc_type]?.icon||'⚡'}</div>
-            <div style="font-size:6px;color:#fff;font-weight:600;line-height:1.2">${gc.gc_type.slice(0,8)}</div>
+            style="flex-shrink:0;width:46px;background:linear-gradient(135deg,#3d0a7a,#7a28b8);border:1px solid #9b59b6;border-radius:8px;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:4px 2px">
+            <div style="font-size:18px;line-height:1">${GC_DEFS[gc.gc_type]?.icon||'⚡'}</div>
+            <div style="font-size:6px;color:#fff;font-weight:600;text-align:center;line-height:1.1;max-width:44px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">${gc.gc_type.slice(0,9)}</div>
           </div>`).join('')}
         ${boostAvail ? `
-          <div id="boost-card" style="background:linear-gradient(135deg,#4a9fc4,#87CEEB);border:2px solid #87CEEB;border-radius:7px;padding:3px 2px;cursor:pointer;text-align:center">
-            <div style="font-size:16px">⚡</div>
-            <div style="font-size:6px;color:#000;font-weight:900">+${game.boostCard.value}</div>
+          <div id="boost-card" style="flex-shrink:0;width:46px;background:linear-gradient(135deg,#4a9fc4,#87CEEB);border:2px solid #87CEEB;border-radius:8px;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:4px 2px">
+            <div style="font-size:18px;line-height:1">⚡</div>
+            <div style="font-size:7px;color:#000;font-weight:900">+${game.boostCard.value}</div>
           </div>` : ''}
       </div>
 
-      <!-- Bouton action principal (rectangulaire + chrono) -->
-      <div style="flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:3px">
+      <!-- Bouton action principal -->
+      <div style="flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:2px">
         ${isFinished
           ? `<button id="btn-results" style="min-width:130px;padding:14px 16px;border-radius:14px;background:linear-gradient(135deg,#D4A017,#FFD700);border:none;color:#000;font-size:15px;font-weight:900;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px">🏁 Résultats</button>`
           : isAITurn

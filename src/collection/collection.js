@@ -388,24 +388,26 @@ export async function renderCollection(container, ctx) {
   // ── SVG terrain formation ────────────────────────────────
   function formFieldSVG(formation, w, h) {
     w = w || 100; h = h || 140
+    // FORMATION_POSITIONS: { ATT1:{x:0-1, y:0-1}, DEF2:{x,y}, GK1:{x,y}, ... }
     var pos = FORMATION_POSITIONS[formation] || {}
-    var colors = { GK:'#111111', DEF:'#cc2222', MIL:'#D4A017', ATT:'#1A6B3C' }
-    var r = Math.max(3, Math.round(w * 0.055))
-    var dots = Object.entries(pos).flatMap(function(entry) {
-      var role = entry[0], players = entry[1]
-      return (players||[]).map(function(p) {
-        var cx = Math.round(p.x * w / 100)
-        var cy = Math.round(p.y * h / 100)
-        return '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="' + colors[role] + '" stroke="rgba(255,255,255,0.7)" stroke-width="1"/>'
-      })
+    var colors = { GK:'#111111', DEF:'#cc2222', MIL:'#D4A017', ATT:'#22aa55' }
+    var r = Math.max(3, Math.round(w * 0.06))
+    var dots = Object.entries(pos).map(function(entry) {
+      var key = entry[0], p = entry[1]
+      // Extraire le rôle depuis la clé (ATT1→ATT, DEF3→DEF, GK1→GK, MIL2→MIL)
+      var role = key.replace(/\d+$/, '')
+      var color = colors[role] || '#888'
+      var cx = Math.round(p.x * w)
+      var cy = Math.round(p.y * h)
+      return '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="' + color + '" stroke="rgba(255,255,255,0.8)" stroke-width="1"/>'
     }).join('')
     var lw = Math.max(1, Math.round(w/50))
     return '<svg viewBox="0 0 ' + w + ' ' + h + '" xmlns="http://www.w3.org/2000/svg" style="display:block;width:100%;height:100%">'
       + '<rect width="' + w + '" height="' + h + '" fill="#1A6B3C"/>'
-      + '<rect x="' + Math.round(w*.2) + '" y="' + Math.round(h*.02) + '" width="' + Math.round(w*.6) + '" height="' + Math.round(h*.18) + '" fill="none" stroke="rgba(255,255,255,0.45)" stroke-width="' + lw + '"/>'
-      + '<line x1="0" y1="' + Math.round(h*.5) + '" x2="' + w + '" y2="' + Math.round(h*.5) + '" stroke="rgba(255,255,255,0.35)" stroke-width="' + lw + '"/>'
-      + '<ellipse cx="' + Math.round(w*.5) + '" cy="' + Math.round(h*.5) + '" rx="' + Math.round(w*.18) + '" ry="' + Math.round(h*.12) + '" fill="none" stroke="rgba(255,255,255,0.35)" stroke-width="' + lw + '"/>'
-      + '<rect x="' + Math.round(w*.2) + '" y="' + Math.round(h*.8) + '" width="' + Math.round(w*.6) + '" height="' + Math.round(h*.18) + '" fill="none" stroke="rgba(255,255,255,0.45)" stroke-width="' + lw + '"/>'
+      + '<rect x="' + Math.round(w*.2) + '" y="' + Math.round(h*.02) + '" width="' + Math.round(w*.6) + '" height="' + Math.round(h*.16) + '" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="' + lw + '"/>'
+      + '<line x1="0" y1="' + Math.round(h*.5) + '" x2="' + w + '" y2="' + Math.round(h*.5) + '" stroke="rgba(255,255,255,0.3)" stroke-width="' + lw + '"/>'
+      + '<ellipse cx="' + Math.round(w*.5) + '" cy="' + Math.round(h*.5) + '" rx="' + Math.round(w*.18) + '" ry="' + Math.round(h*.11) + '" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="' + lw + '"/>'
+      + '<rect x="' + Math.round(w*.2) + '" y="' + Math.round(h*.82) + '" width="' + Math.round(w*.6) + '" height="' + Math.round(h*.16) + '" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="' + lw + '"/>'
       + dots + '</svg>'
   }
 

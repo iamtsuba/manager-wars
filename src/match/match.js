@@ -1052,7 +1052,7 @@ function renderGame(container, game, ctx) {
       </div>`
 
       // ─── Terrain ──────────────────────────────────────────
-      const terrainHTML = `<div style="overflow:hidden;min-width:0;flex:1;min-height:0;display:flex;align-items:center;justify-content:center" id="match-field">
+      const terrainHTML = `<div style="overflow:hidden;min-width:0;flex:0.8;min-height:0;display:flex;align-items:center;justify-content:center" id="match-field">
         <div class="terrain-wrapper" style="overflow:hidden;flex-shrink:0;display:flex;align-items:center;justify-content:center">
           ${renderTeam(game.homeTeam,game.formation,game.phase,selectedIds,300,300)}
         </div>

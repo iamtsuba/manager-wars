@@ -121,45 +121,19 @@ async function buyCard(listingId, list, container, ctx) {
   if (btn) { btn.disabled = true; btn.textContent = '⏳' }
 
   try {
-    // 1. Transférer la carte à l'acheteur (owner_id)
-    const { error: e1 } = await supabase.from('cards')
-      .update({ owner_id: state.profile.id })
-      .eq('id', listing.card.id)
-    if (e1) throw new Error('Transfert carte : ' + e1.message)
+    // Transaction atomique côté serveur (RPC) : transfère la carte, met à jour
+    // les crédits des deux parties, marque l'annonce vendue, notifie le vendeur.
+    // Contourne les limitations RLS qui empêchent un acheteur de modifier
+    // la ligne 'users' ou 'market_listings' du vendeur.
+    const { data: result, error: rpcErr } = await supabase
+      .rpc('buy_market_card', { p_listing_id: listingId, p_buyer_id: state.profile.id })
 
-    // 2. Marquer l'annonce comme vendue
-    const { error: e2 } = await supabase.from('market_listings')
-      .update({ status: 'sold', buyer_id: state.profile.id, sold_at: new Date().toISOString() })
-      .eq('id', listingId)
-    if (e2) throw new Error('Mise à jour annonce : ' + e2.message)
+    if (rpcErr) throw new Error(rpcErr.message)
+    if (!result?.success) throw new Error(result?.error || 'Achat impossible')
 
-    // 3. Débiter l'acheteur
-    const { error: e3 } = await supabase.from('users')
-      .update({ credits: myCredit - price })
-      .eq('id', state.profile.id)
-    if (e3) throw new Error('Débit acheteur : ' + e3.message)
-
-    // 4. Créditer le vendeur
-    const { data: seller, error: e4 } = await supabase.from('users')
-      .select('credits').eq('id', listing.seller_id).single()
-    if (!e4 && seller) {
-      await supabase.from('users')
-        .update({ credits: (seller.credits || 0) + price })
-        .eq('id', listing.seller_id)
-    }
-
-    // 5. Notification vendeur (ignorée si table absente)
-    await supabase.from('notifications').insert({
-      user_id: listing.seller_id,
-      type:    'card_sold',
-      message: `Ta carte ${player?.surname_encoded || '?'} a été vendue pour ${price.toLocaleString('fr')} crédits !`,
-      data:    { card_id: listing.card.id, price },
-    }).then(() => {}).catch(() => {})
-
-    // 6. Mettre à jour les crédits localement (sans refreshProfile)
+    // Mettre à jour les crédits localement
     state.profile.credits = myCredit - price
 
-    // 7. Mettre à jour l'affichage du solde dans le header si présent
     const headerCredits = document.querySelector('[data-credits]') || document.querySelector('.credits-display')
     if (headerCredits) headerCredits.textContent = (myCredit - price).toLocaleString('fr') + ' cr.'
 

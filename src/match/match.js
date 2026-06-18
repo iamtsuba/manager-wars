@@ -205,6 +205,94 @@ function _showBottomNav(container) {
   }
 }
 
+
+// ── MATCH RANDOM : écran de recherche + matchmaking ───────
+async function showMatchmakingSearch(container, ctx, deckId, formation, starters, subsRaw) {
+  const { state, navigate, toast } = ctx
+  let cancelled = false
+  let channel = null
+
+  container.style.overflow = 'hidden'
+  container.innerHTML = `
+    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:24px;background:linear-gradient(180deg,#0a1628,#1a0a2e);padding:24px;text-align:center">
+      <div style="width:64px;height:64px;border:4px solid rgba(255,255,255,0.15);border-top-color:#FFD700;border-radius:50%;animation:mmspin 0.9s linear infinite"></div>
+      <div style="font-size:18px;font-weight:900;color:#fff">Recherche d'un adversaire...</div>
+      <div id="mm-status" style="font-size:13px;color:rgba(255,255,255,0.5)">Connexion au matchmaking</div>
+      <button id="mm-cancel" style="margin-top:12px;padding:12px 28px;border-radius:12px;border:1.5px solid rgba(255,255,255,0.25);background:transparent;color:rgba(255,255,255,0.7);font-size:14px;cursor:pointer">Annuler la recherche</button>
+    </div>
+    <style>@keyframes mmspin{to{transform:rotate(360deg)}}</style>`
+
+  const statusEl = () => document.getElementById('mm-status')
+  const cleanup = async (removeFromQueue = true) => {
+    cancelled = true
+    if (channel) { supabase.removeChannel(channel); channel = null }
+    if (removeFromQueue) {
+      await supabase.rpc('cancel_matchmaking', { p_user_id: state.profile.id }).catch(()=>{})
+    }
+  }
+
+  document.getElementById('mm-cancel')?.addEventListener('click', async () => {
+    await cleanup(true)
+    _showBottomNav(container)
+    navigate('home')
+  })
+
+  // ── Lancer le match une fois matché (par moi ou par l'adversaire) ──
+  const startPvpMatch = async (matchId, opponentId, amIHome) => {
+    if (cancelled) return
+    cancelled = true
+    if (channel) { supabase.removeChannel(channel); channel = null }
+    if (statusEl()) statusEl().textContent = 'Adversaire trouvé !'
+    await new Promise(r => setTimeout(r, 600))
+    if (container.isConnected === false) return
+    renderPvpMatch(container, ctx, matchId, amIHome)
+  }
+
+  // ── Tentative de matchmaking ────────────────────────────
+  const { data: result, error } = await supabase.rpc('try_matchmake', {
+    p_user_id: state.profile.id, p_deck_id: deckId
+  })
+
+  if (error || !result?.success) {
+    toast('Erreur de matchmaking', 'error')
+    _showBottomNav(container)
+    navigate('home')
+    return
+  }
+
+  if (result.matched) {
+    // Un adversaire attendait déjà : on est "away", lui est "home"
+    startPvpMatch(result.match_id, result.opponent_id, false)
+    return
+  }
+
+  // Personne en attente : on écoute en Realtime notre propre entrée dans la queue
+  if (statusEl()) statusEl().textContent = 'En attente d\'un autre joueur...'
+
+  channel = supabase
+    .channel('matchmaking-' + state.profile.id)
+    .on('postgres_changes', {
+      event: 'UPDATE', schema: 'public', table: 'matchmaking_queue',
+      filter: `user_id=eq.${state.profile.id}`
+    }, (payload) => {
+      const row = payload.new
+      if (row.status === 'matched' && row.match_id) {
+        // On était "home" (premier inscrit), l'adversaire nous a rejoint
+        startPvpMatch(row.match_id, row.matched_with, true)
+      }
+    })
+    .subscribe()
+}
+
+
+// ── Match PvP (synchro temps réel) — À COMPLÉTER étape 3 ──
+async function renderPvpMatch(container, ctx, matchId, amIHome) {
+  container.innerHTML = `<div style="padding:40px;text-align:center;color:#aaa">
+    ⚽ Match trouvé ! (match_id: ${matchId})<br><br>
+    <span style="font-size:12px;color:#666">Moteur de match PvP en cours de développement — étape 3</span>
+  </div>`
+}
+
 export async function renderMatch(container, ctx) {
   const { state, navigate, toast } = ctx
   _hideBottomNav(container)
@@ -244,6 +332,11 @@ export async function renderMatch(container, ctx) {
   // Formation : priorité decks.formation, puis formation card, puis défaut
   const formationCard = (deckCards||[]).find(dc => dc.card?.card_type === 'formation')
   const formation = deckMeta?.formation || formationCard?.card?.formation || '4-4-2'
+
+  // ── MODE RANDOM : matchmaking PvP au lieu de générer une IA ──
+  if (matchMode === 'random') {
+    return showMatchmakingSearch(container, ctx, deckId, formation, starters, subsRaw)
+  }
 
   // Charger toutes les cartes GC disponibles
   const { data: allGCCards } = await supabase

@@ -1140,61 +1140,33 @@ function renderGame(container, game, ctx) {
 
   // ── Dimensionner le terrain exactement (hauteur disponible) ─
   // ── Dimensionnement adapté PC / Mobile ───────────────────
-  function sizeTerrain() {
+  // CSS gère le sizing via aspect-ratio:1 sur .terrain-wrapper
+  // On retire seulement le max-width:440px hardcodé dans le SVG
+  ;(function fixSVG() {
+    const svg = container.querySelector('.terrain-wrapper svg')
+    if (!svg) return
+    svg.removeAttribute('width')
+    svg.removeAttribute('height')
+    svg.style.width    = '100%'
+    svg.style.height   = '100%'
+    svg.style.maxWidth = 'none'
+    svg.style.margin   = '0'
+    svg.style.display  = 'block'
+    if (!svg.getAttribute('viewBox')) svg.setAttribute('viewBox', '0 0 300 300')
+    svg.setAttribute('preserveAspectRatio', 'xMidYMid meet')
+    // Contraindre le match-screen à la hauteur du container
     const ms = container.querySelector('.match-screen')
-    const mf = container.querySelector('#match-field')
-    const tw = container.querySelector('.terrain-wrapper')
-    if (!ms || !mf || !tw) return
-
-    const isPC = window.innerWidth >= 700
-
-    // 1. Hauteur de référence = viewport (mobile) ou hauteur du #app encadré (PC)
-    const appEl  = document.getElementById('app')
-    const refH   = isPC && appEl ? appEl.clientHeight : window.innerHeight
-    const refTop = ms.getBoundingClientRect().top      // offset du match-screen depuis le haut viewport
-    const availH = refH - refTop                        // hauteur réelle dispo pour le match-screen
-
-    if (availH > 100) {
-      ms.style.height    = availH + 'px'
-      ms.style.maxHeight = availH + 'px'
+    if (ms) {
+      const h = container.clientHeight
+      if (h > 50) { ms.style.height = h + 'px'; ms.style.overflow = 'hidden' }
     }
-    ms.style.overflow = 'hidden'
-
-    // 2. Forcer reflow pour que flex:1 sur #match-field se recalcule
-    void ms.offsetHeight
-
-    // 3. Mesurer la zone terrain disponible
-    const zoneH = mf.clientHeight
-    const zoneW = mf.clientWidth
-    if (zoneH < 20 || zoneW < 20) return
-
-    // 4. Carré = min(largeur, hauteur), avec léger plafond sur PC pour rester lisible
-    let size = Math.min(zoneH, zoneW) - 6
-    size = Math.max(120, size)
-
-    tw.style.width  = size + 'px'
-    tw.style.height = size + 'px'
-    tw.style.aspectRatio = ''   // on gère manuellement
-
-    // 5. SVG responsive dans le wrapper
-    const svg = tw.querySelector('svg')
-    if (svg) {
-      svg.removeAttribute('width')
-      svg.removeAttribute('height')
-      svg.style.width    = '100%'
-      svg.style.height   = '100%'
-      svg.style.maxWidth = 'none'
-      svg.style.margin   = '0'
-      svg.style.display  = 'block'
-      if (!svg.getAttribute('viewBox')) svg.setAttribute('viewBox', '0 0 300 300')
-      svg.setAttribute('preserveAspectRatio', 'xMidYMid meet')
-    }
-  }
-  requestAnimationFrame(sizeTerrain)
-  // Re-dimensionner si la fenêtre change (rotation mobile, resize PC)
+  })()
   if (!game._resizeBound) {
     game._resizeBound = true
-    window.addEventListener('resize', () => requestAnimationFrame(sizeTerrain))
+    window.addEventListener('resize', () => {
+      const svg2 = container.querySelector('.terrain-wrapper svg')
+      if (svg2) { svg2.style.width='100%'; svg2.style.height='100%'; svg2.style.maxWidth='none' }
+    })
   }
 
   // ── CHRONO (point 7) ─────────────────────────────────────

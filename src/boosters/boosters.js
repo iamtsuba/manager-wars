@@ -261,7 +261,15 @@ async function openMixedBooster(profile, booster) {
       const player = filtered[Math.floor(Math.random()*filtered.length)]
       const { data: card } = await supabase.from('cards')
         .insert({ owner_id:profile.id, player_id:player.id, card_type:'player' }).select().single()
-      if (card) results.push({ ...card, player })
+      if (card) {
+        results.push({ ...card, player })
+        supabase.rpc('record_transfer', {
+          p_card_id: card.id, p_player_id: player.id,
+          p_club_name: profile.club_name || profile.pseudo,
+          p_manager_name: profile.pseudo,
+          p_source: 'booster', p_price: null
+        }).then(()=>{}).catch(()=>{})
+      }
     } else if (rate.card_type === 'game_changer') {
       // GC depuis DB (actifs) ou fallback hardcodé
       const { data: dbGC2 } = await supabase.from('gc_definitions').select('id,name').eq('is_active',true).eq('gc_type','game_changer')
@@ -316,6 +324,15 @@ async function openPlayersBooster(profile, count, cost) {
   const { data: created } = await supabase.from('cards')
     .insert(selected.map(p => ({ owner_id: profile.id, player_id: p.id, card_type: 'player' })))
     .select()
+  // Enregistrer chaque transfert (booster initial)
+  ;(created||[]).forEach((card, i) => {
+    supabase.rpc('record_transfer', {
+      p_card_id: card.id, p_player_id: selected[i].id,
+      p_club_name: profile.club_name || profile.pseudo,
+      p_manager_name: profile.pseudo,
+      p_source: 'booster', p_price: null
+    }).then(()=>{}).catch(()=>{})
+  })
   return selected.map((p, i) => ({ ...created[i], player: p }))
 }
 

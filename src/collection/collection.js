@@ -678,6 +678,7 @@ function openFormationModal(card, allFormationCards, ctx, openModal) {
         Deux joueurs <b>adjacents</b> (↔ horizontal ou ↕ vertical) partageant le même <b>pays</b> ou le même <b>club</b> donnent <b>+1</b> à l'action.
       </div>
     </div>
+    ${clubsHTML}
 
     <!-- Vente directe -->
     <div style="margin-top:16px;border-top:1px solid var(--gray-200);padding-top:14px">
@@ -756,7 +757,7 @@ function openFormationModal(card, allFormationCards, ctx, openModal) {
 }
 
 // ── Détail carte joueur + vente directe ───────────────────
-function openCardDetail(card, allPlayerCards, countByPlayer, ctx) {
+async function openCardDetail(card, allPlayerCards, countByPlayer, ctx) {
   const { state, toast, openModal, closeModal, navigate, refreshProfile } = ctx
   const p = card.player
 
@@ -777,6 +778,25 @@ function openCardDetail(card, allPlayerCards, countByPlayer, ctx) {
   const job2Color = p.job2 ? JOB_COLORS[p.job2] : null
   const rarColor  = RAR_COLORS[p.rarity] || '#ccc'
   const country   = COUNTRY_NAMES[p.country_code] || p.country_code || ''
+
+  // Historique des transferts (clubs traversés)
+  const { data: transfers } = await supabase
+    .from('transfer_history')
+    .select('club_name, manager_name, source, price, transferred_at')
+    .eq('player_id', p.id)
+    .order('transferred_at', { ascending: true })
+
+  const clubsHTML = (transfers && transfers.length) ? `
+    <div style="margin-top:16px;border-top:1px solid var(--gray-200);padding-top:14px">
+      <div style="font-size:13px;font-weight:700;margin-bottom:10px">🏟️ Clubs</div>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        ${transfers.map(t => `
+          <div style="display:flex;justify-content:space-between;align-items:center;background:#f9f9f9;border-radius:8px;padding:8px 12px">
+            <div style="font-size:13px">${t.club_name} <span style="color:var(--gray-600)">(${t.manager_name})</span></div>
+            <div style="font-size:13px;font-weight:700;color:${t.source==='booster'?'var(--gray-600)':'var(--yellow)'}">${t.source==='booster' ? 'Booster' : (t.price ? t.price.toLocaleString('fr')+'€' : '—')}</div>
+          </div>`).join('')}
+      </div>
+    </div>` : ''
 
   openModal(`${p.firstname} ${p.surname_encoded}`,
     `<div style="display:flex;gap:16px;flex-wrap:wrap;justify-content:center">
@@ -841,6 +861,7 @@ function openCardDetail(card, allPlayerCards, countByPlayer, ctx) {
         </div>
       </div>
     </div>
+    ${clubsHTML}
 
     <!-- Vente directe -->
     <div style="margin-top:16px;border-top:1px solid var(--gray-200);padding-top:14px">

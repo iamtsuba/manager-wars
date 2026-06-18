@@ -13,7 +13,8 @@ export async function renderMarket(container, ctx) {
 async function loadMarket(container, ctx) {
   const { state, toast } = ctx
 
-  const { data: listings } = await supabase
+  // Annonces actives (marché d'achat global)
+  const { data: activeListings } = await supabase
     .from('market_listings')
     .select(`id, price, status, listed_at, seller_id,
       seller:users!seller_id(pseudo),
@@ -24,8 +25,23 @@ async function loadMarket(container, ctx) {
     .order('listed_at', { ascending: false })
     .limit(60)
 
-  const myListings = (listings || []).filter(l => l.seller_id === state.profile.id)
-  const others = (listings || []).filter(l => l.seller_id !== state.profile.id)
+  // Toutes MES ventes (actives + vendues) — requête séparée pour ne pas dépendre
+  // de la limite/filtre du marché global
+  const { data: myAllListings } = await supabase
+    .from('market_listings')
+    .select(`id, price, status, listed_at, sold_at, seller_id, buyer_id,
+      buyer:users!buyer_id(pseudo),
+      card:cards(id, card_type,
+        player:players(id, firstname, surname_encoded, country_code, job, job2,
+          note_g, note_d, note_m, note_a, rarity, skin, hair, hair_length, clubs(encoded_name, logo_url)))`)
+    .eq('seller_id', state.profile.id)
+    .in('status', ['active', 'sold'])
+    .order('listed_at', { ascending: false })
+    .limit(100)
+
+  const others = (activeListings || []).filter(l => l.seller_id !== state.profile.id)
+  const myListings = myAllListings || []
+  const myActiveCount = myListings.filter(l => l.status === 'active').length
 
   container.innerHTML = `
   <div class="page">
@@ -49,30 +65,46 @@ async function loadMarket(container, ctx) {
 
     if (list.length === 0) {
       content.innerHTML = `<div style="text-align:center;color:var(--gray-600);padding:40px">
-        ${tab === 'buy' ? 'Aucune carte en vente actuellement.' : 'Tu n\'as aucune carte en vente.'}
+        ${tab === 'buy' ? 'Aucune carte en vente actuellement.' : 'Tu n\'as aucune vente pour le moment.'}
       </div>`
       return
     }
 
+    // Pour "Mes ventes" : grouper actives en premier, puis vendues (plus récentes d'abord)
+    const sortedList = tab === 'mine'
+      ? [...list].sort((a,b) => {
+          if (a.status !== b.status) return a.status === 'active' ? -1 : 1
+          return new Date(b.listed_at) - new Date(a.listed_at)
+        })
+      : list
+
     content.innerHTML = `<div style="display:flex;flex-direction:column;gap:10px">
-      ${list.map(l => {
+      ${sortedList.map(l => {
         const p = l.card?.player
         if (!p) return ''
         const note = p.job === 'GK' ? p.note_g : p.job === 'DEF' ? p.note_d : p.job === 'MIL' ? p.note_m : p.note_a
         const rarColor = RARITY_COLORS[p.rarity]
         const canAfford = (state.profile.credits || 0) >= l.price
-        return `<div class="card-panel" style="display:flex;align-items:center;gap:12px;padding:12px">
+        const isSold = l.status === 'sold'
+
+        return `<div class="card-panel" style="display:flex;align-items:center;gap:12px;padding:12px;${isSold?'opacity:0.65':''}">
           <div style="width:44px;height:44px;border-radius:8px;background:${jobColor(p.job)};color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:18px;border:2px solid ${rarColor};flex-shrink:0">${note}</div>
           <div style="flex:1;min-width:0">
             <div style="font-weight:700;font-size:14px">${p.firstname} ${p.surname_encoded}</div>
             <div style="font-size:11px;color:var(--gray-600)">${p.country_code} · ${p.clubs?.encoded_name || '—'} · ${p.rarity} · ${p.job}</div>
-            <div style="font-size:11px;color:var(--gray-600)">Vendeur : ${l.seller?.pseudo || '—'}</div>
+            ${tab === 'buy'
+              ? `<div style="font-size:11px;color:var(--gray-600)">Vendeur : ${l.seller?.pseudo || '—'}</div>`
+              : isSold
+                ? `<div style="font-size:11px;color:var(--green)">✅ Vendu à ${l.buyer?.pseudo || '—'} · ${l.sold_at ? new Date(l.sold_at).toLocaleDateString('fr') : ''}</div>`
+                : `<div style="font-size:11px;color:var(--gray-600)">🟢 En vente depuis le ${new Date(l.listed_at).toLocaleDateString('fr')}</div>`}
           </div>
           <div style="text-align:right;flex-shrink:0">
             <div style="font-weight:900;color:var(--yellow);font-size:15px">${l.price.toLocaleString('fr')}</div>
             ${tab === 'buy'
               ? `<button class="btn btn-primary btn-sm" data-buy="${l.id}" ${!canAfford ? 'disabled' : ''} style="margin-top:4px">${canAfford ? 'Acheter' : 'Trop cher'}</button>`
-              : `<button class="btn btn-danger btn-sm" data-cancel="${l.id}" style="margin-top:4px">Retirer</button>`}
+              : isSold
+                ? `<span style="display:inline-block;margin-top:4px;font-size:10px;font-weight:700;color:#fff;background:var(--green);padding:3px 10px;border-radius:10px">VENDU</span>`
+                : `<button class="btn btn-danger btn-sm" data-cancel="${l.id}" style="margin-top:4px">Retirer</button>`}
           </div>
         </div>`
       }).join('')}

@@ -536,7 +536,7 @@ export async function renderCollection(container, ctx) {
             <div style="font-size:${type.length>14?10:13}px;font-weight:900;color:#fff;letter-spacing:.5px;text-transform:uppercase">${type}</div>
             <div style="font-size:8px;color:rgba(255,255,255,0.55);margin-top:2px">${isUltra?'💎 ULTRA GC':'⚡ GAME CHANGER'}</div>
           </div>
-          <div style="height:220px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.06)">
+          <div style="height:150px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.06)">
             ${imgUrl?`<img src="${imgUrl}" style="max-width:120px;max-height:120px;object-fit:contain;border-radius:6px">`:`<span style="font-size:64px">${gc.icon}</span>`}
           </div>
           <div style="padding:10px 12px;background:rgba(0,0,0,0.35);text-align:center">
@@ -545,7 +545,7 @@ export async function renderCollection(container, ctx) {
         </div>`
         return `<div style="width:140px;border-radius:12px;border:2px solid #ddd;background:#f0f0f0;display:flex;flex-direction:column;overflow:hidden;filter:grayscale(1);opacity:0.5">
           <div style="padding:10px 12px;background:rgba(0,0,0,0.05);text-align:center"><div style="font-size:13px;font-weight:900;color:#888;text-transform:uppercase">${type}</div></div>
-          <div style="height:220px;display:flex;align-items:center;justify-content:center"><span style="font-size:64px">${gc.icon}</span></div>
+          <div style="height:150px;display:flex;align-items:center;justify-content:center"><span style="font-size:64px">${gc.icon}</span></div>
           <div style="padding:10px;background:rgba(0,0,0,0.05);text-align:center"><div style="font-size:11px;color:#aaa">Non possédée</div></div>
         </div>`
       },

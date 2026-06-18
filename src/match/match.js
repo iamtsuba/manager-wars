@@ -1052,7 +1052,7 @@ function renderGame(container, game, ctx) {
       </div>`
 
       // ─── Terrain ──────────────────────────────────────────
-      const terrainHTML = `<div style="overflow:hidden;min-width:0;flex:0.8;min-height:0;display:flex;align-items:center;justify-content:center" id="match-field">
+      const terrainHTML = `<div style="overflow:hidden;min-width:0;flex:1;min-height:0;display:flex;align-items:center;justify-content:center" id="match-field">
         <div class="terrain-wrapper" style="overflow:hidden;flex-shrink:0;display:flex;align-items:center;justify-content:center">
           ${renderTeam(game.homeTeam,game.formation,game.phase,selectedIds,300,300)}
         </div>
@@ -1061,23 +1061,23 @@ function renderGame(container, game, ctx) {
       if (_pc) {
         // ══ LAYOUT PC : subs | terrain | colonne droite GC+btn ══
         return `
-        <div style="display:flex;flex:1;min-height:0;overflow:hidden">
+        <div style="display:flex;flex:0.8;min-height:0;overflow:hidden">
           ${subsHTML}
           ${terrainHTML}
           <!-- Colonne droite : GC + bouton -->
           <div style="width:140px;flex-shrink:0;display:flex;flex-direction:column;align-items:center;padding:10px 8px;gap:10px;background:rgba(0,0,0,0.2);overflow-y:auto">
             ${activeGCs.map(gc=>gcMiniPC(gc,false)).join('')}
             ${boostAvail?gcMiniPC(null,true):''}
-            <div style="flex:1"></div>
+            <div style="flex:0.8"></div>
             <div style="width:100%">${actionBtn}${counter}</div>
           </div>
         </div>`
       } else {
         // ══ LAYOUT MOBILE : subs | (terrain + zone bas) ══════
         return `
-        <div style="display:flex;flex:1;min-height:0;overflow:hidden">
+        <div style="display:flex;flex:0.8;min-height:0;overflow:hidden">
           ${subsHTML}
-          <div style="flex:1;min-width:0;display:flex;flex-direction:column;min-height:0">
+          <div style="flex:0.8;min-width:0;display:flex;flex-direction:column;min-height:0">
             ${terrainHTML}
             <!-- Zone bas mobile : GC grille + bouton -->
             <div style="display:flex;align-items:stretch;padding:4px 6px;background:rgba(0,0,0,0.35);gap:5px;flex-shrink:0">
@@ -1085,7 +1085,7 @@ function renderGame(container, game, ctx) {
                 ${activeGCs.map(gc=>gcMiniMob(gc,false)).join('')}
                 ${boostAvail?gcMiniMob(null,true):''}
               </div>
-              <div style="flex:1;display:flex;flex-direction:column;justify-content:center;gap:3px">
+              <div style="flex:0.8;display:flex;flex-direction:column;justify-content:center;gap:3px">
                 ${actionBtn}${counter}
               </div>
             </div>

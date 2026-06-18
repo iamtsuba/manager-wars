@@ -552,7 +552,7 @@ export async function renderCollection(container, ctx) {
       ({type, gc, def, owned}) => owned
         ? (() => { const W=Math.round(140*0.54),H=Math.round(310*0.54),imgH=Math.round(H*0.65),nameH=Math.round(H*0.18),botH=H-Math.round(H*0.65)-Math.round(H*0.18); const BG2={purple:'linear-gradient(160deg,#4a0a8a,#7a28b8)',light_blue:'linear-gradient(160deg,#006080,#00bcd4)'},bo2={purple:'#9b59b6',light_blue:'#00bcd4'}; const bg2=BG2[def?.color]||BG2.purple,bor2=bo2[def?.color]||bo2.purple,imgU=def?.image_url?`${import.meta.env.BASE_URL}icons/${def.image_url}`:null; return `<div style="width:${W}px;height:${H}px;border-radius:8px;background:${bg2};border:1px solid ${bor2};display:flex;flex-direction:column;overflow:hidden"><div style="height:${nameH}px;background:rgba(255,255,255,0.15);display:flex;align-items:center;justify-content:center"><span style="font-size:7px;font-weight:900;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:${W-6}px">${type}</span></div><div style="height:${imgH}px;display:flex;align-items:center;justify-content:center">${imgU?`<img src="${imgU}" style="max-width:${W-8}px;max-height:${imgH-4}px;object-fit:contain">`:`<span style="font-size:24px">${gc.icon}</span>`}</div><div style="flex:1;display:flex;align-items:center;justify-content:center"><span style="font-size:7px;color:rgba(255,255,255,0.7);text-align:center;padding:0 2px">${(def?.effect||gc.desc||'').slice(0,20)}</span></div></div>` })()
         : (() => { const W=Math.round(140*0.54),H=Math.round(310*0.54); return `<div style="width:${W}px;height:${H}px;border-radius:8px;background:#eee;border:1px solid #ddd;display:flex;flex-direction:column;align-items:center;justify-content:center;filter:grayscale(1);opacity:0.45"><span style="font-size:22px">${gc.icon}</span><span style="font-size:7px;color:#aaa;margin-top:4px;text-align:center;padding:0 4px">${type}</span></div>` })(),
-      ({type, owned}) => { if (owned) openGCModal(type, openModal) },
+      ({type, owned, def}) => { if (owned) openGCModal(type, def, openModal) },
       '#7a28b8'
     )
   }
@@ -582,19 +582,32 @@ export async function renderCollection(container, ctx) {
 }
 
 // ── Modal Game Changer ────────────────────────────────────
-function openGCModal(gcType, openModal) {
-  const gc = GC_DEFS[gcType] || { icon:'⚡', desc:'Effet spécial.' }
+function openGCModal(gcType, def, openModal) {
+  const fallback = GC_DEFS[gcType] || { icon:'⚡', desc:'Effet spécial.' }
+  const isUltra = def?.gc_type === 'ultra_game_changer'
+  const BG   = { purple:'linear-gradient(160deg,#4a0a8a,#7a28b8)', light_blue:'linear-gradient(160deg,#006080,#00bcd4)' }
+  const BORD = { purple:'#b06ce0', light_blue:'#00d4ef' }
+  const bg   = BG[def?.color]   || BG.purple
+  const bord = BORD[def?.color] || BORD.purple
+  const name   = def?.name   || gcType
+  const effect = def?.effect || fallback.desc
+  const imgUrl = def?.image_url ? `${import.meta.env.BASE_URL}icons/${def.image_url}` : null
+
   openModal('Game Changer',
     `<div style="display:flex;flex-direction:column;align-items:center;gap:16px;padding:8px">
-      <div style="background:linear-gradient(135deg,#3d0a7a,#7a28b8);border-radius:16px;border:2px solid #9b59b6;
-        padding:24px 32px;text-align:center;color:#fff;width:100%;max-width:280px">
-        <div style="font-size:56px;margin-bottom:8px">${gc.icon}</div>
-        <div style="font-size:9px;background:rgba(255,255,255,0.2);padding:2px 10px;border-radius:10px;display:inline-block;letter-spacing:.5px;margin-bottom:8px">GAME CHANGER</div>
-        <div style="font-size:22px;font-weight:900">${gcType}</div>
+      <div style="background:${bg};border-radius:16px;border:2px solid ${bord};
+        padding:0;text-align:center;color:#fff;width:100%;max-width:280px;overflow:hidden;display:flex;flex-direction:column">
+        <div style="padding:12px;background:rgba(255,255,255,0.14)">
+          <div style="font-size:9px;background:rgba(255,255,255,0.2);padding:2px 10px;border-radius:10px;display:inline-block;letter-spacing:.5px;margin-bottom:6px">${isUltra?'💎 ULTRA GC':'⚡ GAME CHANGER'}</div>
+          <div style="font-size:20px;font-weight:900">${name}</div>
+        </div>
+        <div style="height:160px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.06)">
+          ${imgUrl ? `<img src="${imgUrl}" style="max-width:150px;max-height:150px;object-fit:contain">` : `<span style="font-size:64px">${fallback.icon}</span>`}
+        </div>
       </div>
       <div style="background:#f9f0ff;border-radius:10px;padding:14px 16px;width:100%">
         <div style="font-size:12px;font-weight:700;color:#7a28b8;margin-bottom:6px">EFFET</div>
-        <div style="font-size:14px;color:#333">${gc.desc}</div>
+        <div style="font-size:14px;color:#333">${effect}</div>
       </div>
       <div style="background:#fff3cd;border-radius:10px;padding:10px 14px;width:100%">
         <div style="font-size:12px;color:#856404">⚠️ Cette carte est à <b>usage unique</b>. Une fois jouée en match, elle est définitivement supprimée de ta collection.</div>

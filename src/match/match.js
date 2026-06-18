@@ -1028,27 +1028,45 @@ function renderGame(container, game, ctx) {
       const _pc = window.innerWidth >= 700
 
       // ─── Boutons GC (réutilisés dans les deux layouts) ───
+      // ─── Design Collection pour les cartes GC ────────────────
+      const gcCardDesign = (gc, w, h) => {
+        const def    = (game.gcDefs||[]).find(d => d.name === gc.gc_type)
+        const bg     = ({purple:'linear-gradient(160deg,#4a0a8a,#7a28b8)',light_blue:'linear-gradient(160deg,#006080,#00bcd4)'})[def?.color] || 'linear-gradient(160deg,#4a0a8a,#7a28b8)'
+        const bord   = ({purple:'#b06ce0',light_blue:'#00d4ef'})[def?.color] || '#b06ce0'
+        const name   = def?.name || gc.gc_type
+        const effect = def?.effect || GC_DEFS[gc.gc_type]?.desc || ''
+        const imgUrl = def?.image_url ? `${import.meta.env.BASE_URL}icons/${def.image_url}` : null
+        const icon   = GC_DEFS[gc.gc_type]?.icon || '⚡'
+        const nameH  = Math.round(h * 0.22), effH = Math.round(h * 0.22), imgH = h - nameH - effH
+        const fs     = name.length > 12 ? 7 : 9
+        return `<div class="gc-mini" data-gc-id="${gc.id}" data-gc-type="${gc.gc_type}"
+          style="width:${w}px;height:${h}px;border-radius:10px;border:2px solid ${bord};background:${bg};display:flex;flex-direction:column;overflow:hidden;cursor:pointer;flex-shrink:0">
+          <div style="height:${nameH}px;background:rgba(255,255,255,0.14);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0 3px">
+            <span style="font-size:${fs}px;font-weight:900;color:#fff;text-align:center;line-height:1.1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:${w-6}px">${name}</span>
+            <span style="font-size:6px;color:rgba(255,255,255,0.45)">⚡ GC</span>
+          </div>
+          <div style="height:${imgH}px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.06)">
+            ${imgUrl ? `<img src="${imgUrl}" style="max-width:${w-10}px;max-height:${imgH-6}px;object-fit:contain">` : `<span style="font-size:${Math.round(imgH*.55)}px">${icon}</span>`}
+          </div>
+          <div style="height:${effH}px;background:rgba(0,0,0,0.38);display:flex;align-items:center;justify-content:center;padding:0 3px">
+            <span style="font-size:6px;color:rgba(255,255,255,0.9);text-align:center;line-height:1.25">${effect.slice(0,38)}</span>
+          </div>
+        </div>`
+      }
+
       const gcMiniPC = (gc, isBoost) => isBoost
         ? `<div id="boost-card" style="width:110px;padding:8px 6px;background:linear-gradient(135deg,#4a9fc4,#87CEEB);border:2px solid #87CEEB;border-radius:10px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;text-align:center">
             <div style="font-size:22px">⚡</div>
             <div style="font-size:10px;color:#000;font-weight:900">+${game.boostCard?.value}</div>
           </div>`
-        : `<div class="gc-mini" data-gc-id="${gc.id}" data-gc-type="${gc.gc_type}"
-            style="width:110px;padding:8px 6px;background:linear-gradient(135deg,#3d0a7a,#7a28b8);border:1px solid #9b59b6;border-radius:10px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;text-align:center">
-            <div style="font-size:22px">${GC_DEFS[gc.gc_type]?.icon||'⚡'}</div>
-            <div style="font-size:9px;color:#fff;font-weight:700;max-width:105px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${gc.gc_type}</div>
-          </div>`
+        : gcCardDesign(gc, 110, 150)
 
       const gcMiniMob = (gc, isBoost) => isBoost
         ? `<div id="boost-card" style="padding:4px;background:linear-gradient(135deg,#4a9fc4,#87CEEB);border:2px solid #87CEEB;border-radius:7px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:1px;text-align:center;min-width:42px">
             <div style="font-size:15px">⚡</div>
             <div style="font-size:7px;color:#000;font-weight:900">+${game.boostCard?.value}</div>
           </div>`
-        : `<div class="gc-mini" data-gc-id="${gc.id}" data-gc-type="${gc.gc_type}"
-            style="padding:4px;background:linear-gradient(135deg,#3d0a7a,#7a28b8);border:1px solid #9b59b6;border-radius:7px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:1px;text-align:center;min-width:42px">
-            <div style="font-size:15px">${GC_DEFS[gc.gc_type]?.icon||'⚡'}</div>
-            <div style="font-size:6px;color:#fff;font-weight:600;max-width:40px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${gc.gc_type.slice(0,7)}</div>
-          </div>`
+        : gcCardDesign(gc, 68, 95)
 
       // ─── Bouton action ────────────────────────────────────
       const btnStyle = _pc
@@ -1170,7 +1188,7 @@ function renderGame(container, game, ctx) {
     svg.removeAttribute('height')
     svg.style.cssText = 'width:100%;height:100%;display:block;max-width:none;margin:0'
     // viewBox resserré : PAD original=38, on réduit à 10 → plus de zoom
-    svg.setAttribute('viewBox', '-10 -10 320 320')
+    svg.setAttribute('viewBox', '-26 -26 352 352')
     svg.setAttribute('preserveAspectRatio', 'xMidYMid meet')
     const ms = container.querySelector('.match-screen')
     if (ms) {
@@ -1672,18 +1690,34 @@ function openSubstitution(container, game, ctx, preferredSubId = null) {
 
 // ── GAME CHANGER : popup détail ───────────────────────────
 function openGCDetail(gcId, gcType, container, game, ctx) {
-  const def = GC_DEFS[gcType] || { icon:'⚡', desc:'Carte spéciale.' }
+  const dbDef = (game.gcDefs||[]).find(d => d.name === gcType)
+  const legDef = GC_DEFS[gcType] || { icon:'⚡', desc:'Carte spéciale.' }
+  const bg     = ({purple:'linear-gradient(160deg,#4a0a8a,#7a28b8)',light_blue:'linear-gradient(160deg,#006080,#00bcd4)'})[dbDef?.color] || 'linear-gradient(160deg,#4a0a8a,#7a28b8)'
+  const bord   = ({purple:'#b06ce0',light_blue:'#00d4ef'})[dbDef?.color] || '#b06ce0'
+  const name   = dbDef?.name || gcType
+  const effect = dbDef?.effect || legDef.desc
+  const imgUrl = dbDef?.image_url ? `${import.meta.env.BASE_URL}icons/${dbDef.image_url}` : null
+  const icon   = legDef.icon || '⚡'
   const overlay = document.createElement('div')
-  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.88);z-index:750;display:flex;align-items:center;justify-content:center;padding:24px'
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.88);z-index:750;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:24px'
   overlay.innerHTML = `
-    <div style="background:linear-gradient(160deg,#2a0a52,#7a28b8);border:2px solid #9b59b6;border-radius:18px;padding:24px;max-width:320px;text-align:center;color:#fff">
-      <div style="font-size:52px;margin-bottom:10px">${def.icon}</div>
-      <div style="font-size:19px;font-weight:900;margin-bottom:8px">${gcType}</div>
-      <div style="font-size:13px;color:rgba(255,255,255,0.85);line-height:1.5;margin-bottom:20px">${def.desc}</div>
-      <div style="display:flex;gap:10px">
-        <button id="gc-back" style="flex:1;padding:12px;border-radius:10px;border:1px solid rgba(255,255,255,0.3);background:transparent;color:#fff;font-size:14px;cursor:pointer">Retour</button>
-        <button id="gc-use" style="flex:1;padding:12px;border-radius:10px;border:none;background:#FFD700;color:#000;font-size:14px;font-weight:900;cursor:pointer">Utiliser</button>
+    <!-- Carte design Collection -->
+    <div style="width:190px;border-radius:16px;border:3px solid ${bord};background:${bg};display:flex;flex-direction:column;overflow:hidden;box-shadow:0 0 40px ${bord}66">
+      <div style="padding:10px;background:rgba(255,255,255,0.14);text-align:center">
+        <div style="font-size:${name.length>14?11:14}px;font-weight:900;color:#fff;letter-spacing:.5px;text-transform:uppercase">${name}</div>
+        <div style="font-size:8px;color:rgba(255,255,255,0.5);margin-top:2px">⚡ GAME CHANGER</div>
       </div>
+      <div style="height:160px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.06)">
+        ${imgUrl ? `<img src="${imgUrl}" style="max-width:150px;max-height:150px;object-fit:contain">` : `<span style="font-size:72px">${icon}</span>`}
+      </div>
+      <div style="padding:10px;background:rgba(0,0,0,0.38);text-align:center">
+        <div style="font-size:12px;color:rgba(255,255,255,0.92);line-height:1.5">${effect}</div>
+      </div>
+    </div>
+    <!-- Boutons -->
+    <div style="display:flex;gap:12px;width:190px">
+      <button id="gc-back" style="flex:1;padding:13px;border-radius:12px;border:1px solid rgba(255,255,255,0.3);background:transparent;color:#fff;font-size:14px;cursor:pointer">Retour</button>
+      <button id="gc-use" style="flex:1;padding:13px;border-radius:12px;border:none;background:#FFD700;color:#000;font-size:14px;font-weight:900;cursor:pointer">Utiliser ⚡</button>
     </div>`
   document.body.appendChild(overlay)
   overlay.querySelector('#gc-back')?.addEventListener('click', () => overlay.remove())

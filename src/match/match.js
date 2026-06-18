@@ -183,8 +183,31 @@ function generateFakeAITeam(formation) {
 }
 
 // ── ENTRY POINT ───────────────────────────────────────────
+// ── Masquer/Afficher la nav bas pendant le match ─────────
+function _hideBottomNav(container) {
+  let el = container.nextElementSibling
+  while (el) {
+    if (!el.dataset.matchHidden) {
+      el.dataset.matchHidden = el.style.display || 'flex'
+      el.style.display = 'none'
+    }
+    el = el.nextElementSibling
+  }
+}
+function _showBottomNav(container) {
+  let el = container.nextElementSibling
+  while (el) {
+    if (el.dataset.matchHidden) {
+      el.style.display = el.dataset.matchHidden === 'none' ? '' : el.dataset.matchHidden
+      delete el.dataset.matchHidden
+    }
+    el = el.nextElementSibling
+  }
+}
+
 export async function renderMatch(container, ctx) {
   const { state, navigate, toast } = ctx
+  _hideBottomNav(container)
   const params = state.params || {}
   container.innerHTML = '<div style="padding:40px;text-align:center;color:#aaa">⚽ Chargement...</div>'
 
@@ -489,7 +512,7 @@ async function renderDeckSelect(container, ctx, matchMode) {
       if (!complete) return
       ctx.navigate('match', { matchMode, deckId: deck.id })
     })
-    document.getElementById('cancel-deck-select')?.addEventListener('click', () => navigate('home'))
+    document.getElementById('cancel-deck-select')?.addEventListener('click', () => { _showBottomNav(container); navigate('home') })
 
     // Swipe tactile gauche/droite
     const swipeZone = document.getElementById('deck-swipe-zone')
@@ -1140,21 +1163,15 @@ function renderGame(container, game, ctx) {
 
   // ── Dimensionner le terrain exactement (hauteur disponible) ─
   // ── Dimensionnement adapté PC / Mobile ───────────────────
-  // CSS gère le sizing via aspect-ratio:1 sur .terrain-wrapper
-  // On retire seulement le max-width:440px hardcodé dans le SVG
   ;(function fixSVG() {
     const svg = container.querySelector('.terrain-wrapper svg')
     if (!svg) return
     svg.removeAttribute('width')
     svg.removeAttribute('height')
-    svg.style.width    = '100%'
-    svg.style.height   = '100%'
-    svg.style.maxWidth = 'none'
-    svg.style.margin   = '0'
-    svg.style.display  = 'block'
-    if (!svg.getAttribute('viewBox')) svg.setAttribute('viewBox', '0 0 300 300')
+    svg.style.cssText = 'width:100%;height:100%;display:block;max-width:none;margin:0'
+    // viewBox resserré : PAD original=38, on réduit à 10 → plus de zoom
+    svg.setAttribute('viewBox', '-10 -10 320 320')
     svg.setAttribute('preserveAspectRatio', 'xMidYMid meet')
-    // Contraindre le match-screen à la hauteur du container
     const ms = container.querySelector('.match-screen')
     if (ms) {
       const h = container.clientHeight
@@ -1165,7 +1182,7 @@ function renderGame(container, game, ctx) {
     game._resizeBound = true
     window.addEventListener('resize', () => {
       const svg2 = container.querySelector('.terrain-wrapper svg')
-      if (svg2) { svg2.style.width='100%'; svg2.style.height='100%'; svg2.style.maxWidth='none' }
+      if (svg2) { svg2.style.cssText = 'width:100%;height:100%;display:block;max-width:none;margin:0' }
     })
   }
 
@@ -1206,6 +1223,7 @@ function renderGame(container, game, ctx) {
 
   // ── Events ────────────────────────────────────────────────
   document.getElementById('match-quit')?.addEventListener('click', () => {
+    _showBottomNav(container)
     if (confirm('Abandonner ? Résultat : défaite 3-0')) {
       game.homeScore = 0; game.aiScore = 3
       finishMatch(container, game, ctx)
@@ -1989,8 +2007,8 @@ async function finishMatch(container, game, ctx) {
       </div>
     </div>`
   document.body.appendChild(overlay)
-  document.getElementById('res-home')?.addEventListener('click',()=>{overlay.remove();ctx.navigate('home')})
-  document.getElementById('res-replay')?.addEventListener('click',()=>{overlay.remove();ctx.navigate('match',{matchMode:game.mode})})
+  document.getElementById('res-home')?.addEventListener('click',()=>{overlay.remove();_showBottomNav(container);ctx.navigate('home')})
+  document.getElementById('res-replay')?.addEventListener('click',()=>{overlay.remove();_showBottomNav(container);ctx.navigate('match',{matchMode:game.mode})})
 }
 
 function showAITeam(game, ctx) {

@@ -285,12 +285,322 @@ async function showMatchmakingSearch(container, ctx, deckId, formation, starters
 }
 
 
-// ── Match PvP (synchro temps réel) — À COMPLÉTER étape 3 ──
+// ════════════════════════════════════════════════════════
+// MATCH PVP — synchro temps réel via matches.game_state
+// ════════════════════════════════════════════════════════
+//
+// Principe : un seul état de jeu (gameState) est stocké en DB dans
+// matches.game_state (JSONB). Chaque action d'un joueur :
+//   1. Calcule le nouvel état localement
+//   2. L'écrit dans matches.game_state (UPDATE)
+//   3. Les DEUX clients (via Realtime) reçoivent l'update et re-render
+//
+// Le state utilise 'p1'/'p2' au lieu de 'home'/'ai'. Chaque client
+// sait s'il est p1 (home_id) ou p2 (away_id) et adapte l'affichage
+// (mon équipe à gauche, adversaire à droite, mes boutons actifs
+// seulement quand c'est mon tour).
+
 async function renderPvpMatch(container, ctx, matchId, amIHome) {
-  container.innerHTML = `<div style="padding:40px;text-align:center;color:#aaa">
-    ⚽ Match trouvé ! (match_id: ${matchId})<br><br>
-    <span style="font-size:12px;color:#666">Moteur de match PvP en cours de développement — étape 3</span>
-  </div>`
+  const { state, navigate, toast } = ctx
+  const myRole  = amIHome ? 'p1' : 'p2'
+  const oppRole = amIHome ? 'p2' : 'p1'
+
+  container.innerHTML = '<div style="padding:40px;text-align:center;color:#aaa">⚽ Préparation du match...</div>'
+
+  // ── Charger le match + les 2 decks ──────────────────────
+  const { data: match } = await supabase.from('matches').select('*').eq('id', matchId).single()
+  if (!match) { toast('Match introuvable', 'error'); navigate('home'); return }
+
+  // Si le state existe déjà (l'autre joueur l'a initialisé), on le charge tel quel.
+  // Sinon (on est p1, premier arrivé), on construit l'état initial.
+  let gameState = match.game_state && Object.keys(match.game_state).length ? match.game_state : null
+
+  if (!gameState) {
+    const [{ data: p1Deck }, { data: p1Cards }, { data: p2Deck }, { data: p2Cards }, { data: p1Profile }, { data: p2Profile }] = await Promise.all([
+      supabase.from('decks').select('formation,name').eq('id', match.home_deck_id).single(),
+      supabase.from('deck_cards').select(`position,is_starter,slot_order,card:cards(id,card_type,formation,player:players(id,firstname,surname_encoded,country_code,club_id,job,job2,note_g,note_d,note_m,note_a,rarity,skin,hair,hair_length,clubs(encoded_name,logo_url)))`).eq('deck_id', match.home_deck_id).order('slot_order'),
+      supabase.from('decks').select('formation,name').eq('id', match.away_deck_id).single(),
+      supabase.from('deck_cards').select(`position,is_starter,slot_order,card:cards(id,card_type,formation,player:players(id,firstname,surname_encoded,country_code,club_id,job,job2,note_g,note_d,note_m,note_a,rarity,skin,hair,hair_length,clubs(encoded_name,logo_url)))`).eq('deck_id', match.away_deck_id).order('slot_order'),
+      supabase.from('users').select('id,pseudo,club_name').eq('id', match.home_id).single(),
+      supabase.from('users').select('id,pseudo,club_name').eq('id', match.away_id).single(),
+    ])
+
+    const p1Starters = (p1Cards||[]).filter(dc=>dc.is_starter && dc.card?.player).map(dc=>playerFromCard(dc.card))
+    const p2Starters = (p2Cards||[]).filter(dc=>dc.is_starter && dc.card?.player).map(dc=>playerFromCard(dc.card))
+    const p1Subs     = (p1Cards||[]).filter(dc=>!dc.is_starter && dc.card?.player).map(dc=>playerFromCard(dc.card))
+    const p2Subs     = (p2Cards||[]).filter(dc=>!dc.is_starter && dc.card?.player).map(dc=>playerFromCard(dc.card))
+    const p1Formation = p1Deck?.formation || '4-4-2'
+    const p2Formation = p2Deck?.formation || '4-4-2'
+
+    gameState = {
+      p1Team: buildTeam(p1Starters, p1Formation),
+      p2Team: buildTeam(p2Starters, p2Formation),
+      p1Subs, p2Subs,
+      p1Formation, p2Formation,
+      p1Name: p1Profile?.club_name || p1Profile?.pseudo || 'Joueur 1',
+      p2Name: p2Profile?.club_name || p2Profile?.pseudo || 'Joueur 2',
+      p1Score: 0, p2Score: 0,
+      p1Subs_used: 0, p2Subs_used: 0,
+      maxSubs: 3,
+      phase: 'midfield',        // midfield → reveal → p1-attack/p2-attack → ... → finished
+      attacker: null,           // 'p1' ou 'p2'
+      round: 0,
+      selected_p1: [], selected_p2: [],
+      pendingAttack: null,
+      log: [],
+      modifiers: { p1:{}, p2:{} },
+      usedGc_p1: [], usedGc_p2: [],
+      lastActionAt: new Date().toISOString(),
+    }
+
+    // Premier à arriver (p1/home) initialise le state en DB
+    await supabase.from('matches').update({ game_state: gameState, turn_user_id: match.home_id }).eq('id', matchId)
+  }
+
+  // ── Channel Realtime : écouter les changements du match ──
+  const channel = supabase
+    .channel('pvp-match-' + matchId)
+    .on('postgres_changes', {
+      event: 'UPDATE', schema: 'public', table: 'matches', filter: `id=eq.${matchId}`
+    }, (payload) => {
+      const row = payload.new
+      if (row.game_state) {
+        gameState = row.game_state
+        renderPvpScreen()
+      }
+      if (row.status === 'finished' || row.forfeit) {
+        renderPvpScreen()
+      }
+    })
+    .subscribe()
+
+  // ── Écrire le nouvel état en DB (déclenche le re-render chez les 2) ──
+  async function pushState(partial) {
+    Object.assign(gameState, partial)
+    gameState.lastActionAt = new Date().toISOString()
+    await supabase.from('matches').update({ game_state: gameState }).eq('id', matchId)
+    renderPvpScreen()  // mise à jour locale immédiate (pas besoin d'attendre le Realtime echo)
+  }
+
+  // ── Quitter proprement (forfait) ──────────────────────────
+  async function forfeitMatch() {
+    const winnerId = amIHome ? match.away_id : match.home_id
+    await supabase.from('matches').update({
+      status: 'finished', forfeit: true, winner_id: winnerId
+    }).eq('id', matchId)
+    supabase.removeChannel(channel)
+    _showBottomNav(container)
+    navigate('home')
+  }
+
+  // ── Rendu principal ────────────────────────────────────
+  function renderPvpScreen() {
+    const myTeam  = gameState[myRole + 'Team']
+    const oppTeam = gameState[oppRole + 'Team']
+    const myScore = gameState[myRole + 'Score']
+    const oppScore= gameState[oppRole + 'Score']
+    const myName  = gameState[myRole + 'Name']
+    const oppName = gameState[oppRole + 'Name']
+
+    if (gameState.phase === 'midfield') {
+      return renderPvpMidfield()
+    }
+    if (gameState.phase === 'finished') {
+      return renderPvpResult()
+    }
+
+    const isMyAttack  = gameState.phase === myRole + '-attack'
+    const isMyDefense = gameState.phase === myRole + '-defense'
+    const isOppTurn   = gameState.phase === oppRole + '-attack' || gameState.phase === oppRole + '-defense'
+    const mySelected  = gameState['selected_' + myRole] || []
+    const selectedIds = new Set(mySelected.map(s => s.cardId))
+
+    container.style.overflow = 'hidden'
+    container.style.height = '100%'
+    container.style.display = 'flex'
+    container.style.flexDirection = 'column'
+    container.innerHTML = `
+    <div class="match-screen" style="display:flex;flex-direction:column;overflow:hidden;background:#0a3d1e;height:100%;width:100%">
+      <!-- Score -->
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:rgba(0,0,0,0.25);flex-shrink:0">
+        <button id="pvp-quit" style="background:rgba(220,53,69,0.9);border:none;color:#fff;width:32px;height:32px;border-radius:50%;font-size:16px;cursor:pointer">✕</button>
+        <div style="flex:1;text-align:center;color:#fff;font-size:14px;font-weight:700">
+          ${myName} <span style="color:#FFD700;font-size:18px">${myScore}</span> – <span style="color:#FFD700;font-size:18px">${oppScore}</span> ${oppName}
+        </div>
+        <div style="width:32px"></div>
+      </div>
+
+      <!-- Indicateur tour -->
+      <div style="text-align:center;padding:4px;background:rgba(0,0,0,0.15);font-size:11px;color:${isOppTurn?'rgba(255,255,255,0.4)':'#FFD700'};font-weight:700;flex-shrink:0">
+        ${isOppTurn ? `⏳ Tour de ${oppName}` : isMyAttack ? '⚔️ À vous d\'attaquer !' : isMyDefense ? '🛡️ À vous de défendre !' : ''}
+      </div>
+
+      <!-- Zone centrale : terrain -->
+      <div style="display:flex;flex:1;min-height:0;overflow:hidden">
+        <div style="overflow:hidden;min-width:0;flex:1;min-height:0" id="match-field">
+          <div class="terrain-wrapper" style="width:100%;height:100%;overflow:hidden">
+            ${renderTeam(myTeam, gameState[myRole+'Formation'], isMyAttack?'attack':isMyDefense?'defense':'idle', selectedIds, 300, 300)}
+          </div>
+        </div>
+      </div>
+
+      <!-- Zone bas : bouton action -->
+      <div style="display:flex;align-items:stretch;padding:8px;background:rgba(0,0,0,0.35);gap:6px;flex-shrink:0">
+        <div style="flex:1;display:flex;flex-direction:column;justify-content:center;gap:3px">
+          ${isMyAttack
+            ? `<button id="pvp-action" style="padding:14px;border-radius:14px;background:linear-gradient(135deg,#c47a00,#FFD700);border:none;color:#fff;font-size:15px;font-weight:900;cursor:pointer" ${mySelected.length===0?'disabled style="opacity:0.45"':''}>⚔️ ATTAQUEZ <span id="pvp-timer"></span></button>`
+            : isMyDefense
+            ? `<button id="pvp-action" style="padding:14px;border-radius:14px;background:linear-gradient(135deg,#1a4a8a,#3a7bd5);border:none;color:#fff;font-size:15px;font-weight:900;cursor:pointer" ${mySelected.length===0?'disabled style="opacity:0.45"':''}>🛡️ DÉFENDEZ <span id="pvp-timer"></span></button>`
+            : `<div style="padding:14px;border-radius:14px;background:rgba(255,255,255,0.08);color:rgba(255,255,255,0.4);text-align:center;font-size:13px">⏳ En attente...</div>`}
+          ${(isMyAttack||isMyDefense) ? `<div style="font-size:9px;color:rgba(255,255,255,0.4);text-align:center">${mySelected.length}/3 sélectionné(s)</div>` : ''}
+        </div>
+      </div>
+    </div>`
+
+    // Sélection de joueurs (clic sur le terrain)
+    container.querySelectorAll('.match-slot-hit').forEach(el => {
+      el.addEventListener('click', () => {
+        if (!isMyAttack && !isMyDefense) return
+        const cardId = el.dataset.cardId
+        const role   = el.dataset.role
+        const p = (myTeam[role]||[]).find(pp => pp.cardId === cardId)
+        if (!p || p.used) return
+        const arr = gameState['selected_' + myRole]
+        const idx = arr.findIndex(s => s.cardId === cardId)
+        if (idx > -1) arr.splice(idx, 1)
+        else if (arr.length < 3) arr.push({ ...p, _role: role })
+        renderPvpScreen()
+      })
+    })
+
+    container.querySelector('#pvp-action')?.addEventListener('click', () => {
+      if (isMyAttack) pvpConfirmAttack()
+      else if (isMyDefense) pvpConfirmDefense()
+    })
+    container.querySelector('#pvp-quit')?.addEventListener('click', () => {
+      if (confirm('Quitter le match ? Vous perdrez par forfait.')) forfeitMatch()
+    })
+
+    // Timer (30s→15s) uniquement si c'est mon tour
+    if (gameState._timerInt) { clearInterval(gameState._timerInt); gameState._timerInt = null }
+    if (isMyAttack || isMyDefense) {
+      let remaining = 30, phase2 = false
+      const timerEl = () => document.getElementById('pvp-timer')
+      const paint = () => { if (timerEl()) { timerEl().textContent = remaining+'s'; timerEl().style.color = phase2 ? '#ff4444' : '#fff' } }
+      paint()
+      gameState._timerInt = setInterval(() => {
+        remaining--
+        if (remaining <= 15 && !phase2) phase2 = true
+        paint()
+        if (remaining <= 0) {
+          clearInterval(gameState._timerInt); gameState._timerInt = null
+          // Auto-forfait si le temps expire
+          forfeitMatch()
+        }
+      }, 1000)
+    }
+  }
+
+  // ── Duel milieu (calculé localement par p1, écrit en DB) ──
+  function renderPvpMidfield() {
+    const p1Mils = gameState.p1Team.MIL || []
+    const p2Mils = gameState.p2Team.MIL || []
+    const p1Total = calcMidfieldDuel(p1Mils)
+    const p2Total = calcMidfieldDuel(p2Mils)
+
+    container.style.overflow = 'hidden'
+    container.innerHTML = `
+    <div class="match-screen" style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:20px;padding:24px;background:#0a3d1e;text-align:center">
+      <div style="font-size:11px;color:rgba(255,255,255,0.5);letter-spacing:2px;text-transform:uppercase">Duel du milieu de terrain</div>
+      <div style="display:flex;align-items:center;gap:20px">
+        <div style="text-align:center"><div style="font-size:13px;color:#fff">${gameState.p1Name}</div><div style="font-size:40px;font-weight:900;color:#FFD700">${p1Total}</div></div>
+        <div style="font-size:14px;color:rgba(255,255,255,0.4)">VS</div>
+        <div style="text-align:center"><div style="font-size:13px;color:#fff">${gameState.p2Name}</div><div style="font-size:40px;font-weight:900;color:#FFD700">${p2Total}</div></div>
+      </div>
+      <div style="color:rgba(255,255,255,0.5);font-size:13px">Calcul en cours...</div>
+    </div>`
+
+    // Seul p1 (home) écrit le résultat pour éviter une race condition entre les 2 clients
+    if (myRole === 'p1') {
+      setTimeout(async () => {
+        const p1Wins = p1Total >= p2Total
+        const attacker = p1Wins ? 'p1' : 'p2'
+        await pushState({ phase: attacker + '-attack', attacker, round: 1 })
+      }, 1800)
+    }
+  }
+
+  // ── Écran résultat final ───────────────────────────────
+  function renderPvpResult() {
+    const myScore = gameState[myRole+'Score'], oppScore = gameState[oppRole+'Score']
+    const won = myScore > oppScore
+    const draw = myScore === oppScore
+    container.style.overflow = 'hidden'
+    container.innerHTML = `
+    <div class="match-screen" style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:18px;padding:24px;background:#0a3d1e;text-align:center">
+      <div style="font-size:64px">${won?'🏆':draw?'🤝':'😤'}</div>
+      <div style="font-size:24px;font-weight:900;color:#fff">${won?'Victoire !':draw?'Match nul':'Défaite'}</div>
+      <div style="font-size:32px;font-weight:900;color:#FFD700">${myScore} - ${oppScore}</div>
+      <button id="pvp-home" style="padding:16px 40px;border-radius:14px;border:none;background:#1A6B3C;color:#fff;font-size:16px;font-weight:900;cursor:pointer">🏠 Retour à l'accueil</button>
+    </div>`
+    document.getElementById('pvp-home')?.addEventListener('click', () => {
+      supabase.removeChannel(channel)
+      _showBottomNav(container)
+      navigate('home')
+    })
+  }
+
+  // ── Action : confirmer attaque ──────────────────────────
+  async function pvpConfirmAttack() {
+    const selected = (gameState['selected_'+myRole]||[]).map(s=>({...s,_line:s._role}))
+    if (!selected.length) return
+    const calc = calcAttack(selected, gameState.modifiers[myRole]||{})
+    selected.forEach(sel => {
+      const p = (gameState[myRole+'Team'][sel._role]||[]).find(pp=>pp.cardId===sel.cardId)
+      if (p) p.used = true
+    })
+    await pushState({
+      pendingAttack: { ...calc, players: selected, side: myRole },
+      ['selected_'+myRole]: [],
+      modifiers: { ...gameState.modifiers, [myRole]: {} },
+      phase: oppRole + '-defense',
+    })
+  }
+
+  // ── Action : confirmer défense ──────────────────────────
+  async function pvpConfirmDefense() {
+    const selected = (gameState['selected_'+myRole]||[]).map(s=>({...s,_line:s._role}))
+    const calc = calcDefense(selected, gameState.modifiers[myRole]||{})
+    selected.forEach(sel => {
+      const p = (gameState[myRole+'Team'][sel._role]||[]).find(pp=>pp.cardId===sel.cardId)
+      if (p) p.used = true
+    })
+    const result = resolveDuel(gameState.pendingAttack.total, calc.total, gameState.modifiers[myRole]||{})
+    const attackerRole = gameState.pendingAttack.side
+    const goal = result === 'attack'
+    const newAttackerScore = gameState[attackerRole+'Score'] + (goal?1:0)
+
+    // Round suivant : l'autre équipe attaque (alternance simple)
+    const nextAttacker = attackerRole === 'p1' ? 'p2' : 'p1'
+    const round = (gameState.round||0) + 1
+    const isFinished = round > 10  // 10 rounds par match (ajustable)
+
+    await pushState({
+      [attackerRole+'Score']: newAttackerScore,
+      ['selected_'+myRole]: [],
+      modifiers: { ...gameState.modifiers, [myRole]: {} },
+      pendingAttack: null,
+      phase: isFinished ? 'finished' : nextAttacker + '-attack',
+      attacker: nextAttacker,
+      round,
+    })
+
+    if (isFinished) {
+      await supabase.from('matches').update({ status: 'finished' }).eq('id', matchId)
+    }
+  }
+
+  renderPvpScreen()
 }
 
 export async function renderMatch(container, ctx) {

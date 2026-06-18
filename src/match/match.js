@@ -1068,7 +1068,7 @@ function renderGame(container, game, ctx) {
           <div style="width:140px;flex-shrink:0;display:flex;flex-direction:column;align-items:center;padding:10px 8px;gap:10px;background:rgba(0,0,0,0.2);overflow-y:auto">
             ${activeGCs.map(gc=>gcMiniPC(gc,false)).join('')}
             ${boostAvail?gcMiniPC(null,true):''}
-            <div style="flex:0.8"></div>
+            <div style="flex:1"></div>
             <div style="width:100%">${actionBtn}${counter}</div>
           </div>
         </div>`
@@ -1077,7 +1077,7 @@ function renderGame(container, game, ctx) {
         return `
         <div style="display:flex;flex:0.8;min-height:0;overflow:hidden">
           ${subsHTML}
-          <div style="flex:0.8;min-width:0;display:flex;flex-direction:column;min-height:0">
+          <div style="flex:1;min-width:0;display:flex;flex-direction:column;min-height:0">
             ${terrainHTML}
             <!-- Zone bas mobile : GC grille + bouton -->
             <div style="display:flex;align-items:stretch;padding:4px 6px;background:rgba(0,0,0,0.35);gap:5px;flex-shrink:0">

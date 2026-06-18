@@ -1165,13 +1165,13 @@ import{s as k,l as re,F as Ge,b as ge,c as st,d as Mt}from"./formation-links-CDB
           <div style="width:140px;flex-shrink:0;display:flex;flex-direction:column;align-items:center;padding:10px 8px;gap:10px;background:rgba(0,0,0,0.2);overflow-y:auto">
             ${p.map(F=>v(F,!1)).join("")}
             ${f?v(null,!0):""}
-            <div style="flex:0.8"></div>
+            <div style="flex:1"></div>
             <div style="width:100%">${L}${B}</div>
           </div>
         </div>`:`
         <div style="display:flex;flex:0.8;min-height:0;overflow:hidden">
           ${S}
-          <div style="flex:0.8;min-width:0;display:flex;flex-direction:column;min-height:0">
+          <div style="flex:1;min-width:0;display:flex;flex-direction:column;min-height:0">
             ${R}
             <!-- Zone bas mobile : GC grille + bouton -->
             <div style="display:flex;align-items:stretch;padding:4px 6px;background:rgba(0,0,0,0.35);gap:5px;flex-shrink:0">

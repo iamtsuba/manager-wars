@@ -336,25 +336,38 @@ async function renderPvpMatch(container, ctx, matchId, amIHome) {
 
   // ── Construire les données d'équipes (les 2 clients en ont besoin) ──
   async function buildGameState() {
-    const [{ data: p1Deck }, { data: p1Cards }, { data: p2Deck }, { data: p2Cards }, { data: p1Profile }, { data: p2Profile }] = await Promise.all([
-      supabase.from('decks').select('formation,name').eq('id', match.home_deck_id).single(),
-      supabase.from('deck_cards').select(`position,is_starter,slot_order,card:cards(id,card_type,formation,player:players(id,firstname,surname_encoded,country_code,club_id,job,job2,note_g,note_d,note_m,note_a,rarity,skin,hair,hair_length,clubs(encoded_name,logo_url)))`).eq('deck_id', match.home_deck_id).order('slot_order'),
-      supabase.from('decks').select('formation,name').eq('id', match.away_deck_id).single(),
-      supabase.from('deck_cards').select(`position,is_starter,slot_order,card:cards(id,card_type,formation,player:players(id,firstname,surname_encoded,country_code,club_id,job,job2,note_g,note_d,note_m,note_a,rarity,skin,hair,hair_length,clubs(encoded_name,logo_url)))`).eq('deck_id', match.away_deck_id).order('slot_order'),
+    // RPC SECURITY DEFINER : contourne le blocage RLS deck_cards_own
+  // (Tom ne peut normalement pas lire les deck_cards d'Iron et vice-versa)
+  const [{ data: p1DeckData, error: p1Err }, { data: p2DeckData, error: p2Err }, { data: p1Profile }, { data: p2Profile }] = await Promise.all([
+      supabase.rpc('get_deck_for_match', { p_deck_id: match.home_deck_id }),
+      supabase.rpc('get_deck_for_match', { p_deck_id: match.away_deck_id }),
       supabase.from('users').select('id,pseudo,club_name').eq('id', match.home_id).single(),
       supabase.from('users').select('id,pseudo,club_name').eq('id', match.away_id).single(),
     ])
 
-    const p1Starters = (p1Cards||[]).filter(dc=>dc.is_starter && dc.card?.player).map(dc=>playerFromCard(dc.card, dc.position))
-    const p2Starters = (p2Cards||[]).filter(dc=>dc.is_starter && dc.card?.player).map(dc=>playerFromCard(dc.card, dc.position))
-    const p1Subs     = (p1Cards||[]).filter(dc=>!dc.is_starter && dc.card?.player).map(dc=>playerFromCard(dc.card, dc.position))
-    const p2Subs     = (p2Cards||[]).filter(dc=>!dc.is_starter && dc.card?.player).map(dc=>playerFromCard(dc.card, dc.position))
-    // Fallback identique à renderDeckSelect/decks.js : si decks.formation est NULL,
-    // chercher la formation via la carte 'formation' présente dans le deck.
-    const p1FormationCard = (p1Cards||[]).find(dc => dc.card?.card_type === 'formation')
-    const p2FormationCard = (p2Cards||[]).find(dc => dc.card?.card_type === 'formation')
-    const p1Formation = p1Deck?.formation || p1FormationCard?.card?.formation || '4-4-2'
-    const p2Formation = p2Deck?.formation || p2FormationCard?.card?.formation || '4-4-2'
+    if (p1Err) console.error('[PvP] get_deck_for_match p1 error:', p1Err)
+    if (p2Err) console.error('[PvP] get_deck_for_match p2 error:', p2Err)
+
+    function rpcPlayerToLocal(row, position) {
+      return {
+        cardId: row.card_id, position: position || row.position,
+        id: row.id, firstname: row.firstname, name: row.surname_encoded,
+        country_code: row.country_code, club_id: row.club_id,
+        job: row.job, job2: row.job2,
+        note_g: Number(row.note_g)||0, note_d: Number(row.note_d)||0,
+        note_m: Number(row.note_m)||0, note_a: Number(row.note_a)||0,
+        rarity: row.rarity, skin: row.skin, hair: row.hair, hair_length: row.hair_length,
+        clubName: row.club_encoded_name || null, clubLogo: row.club_logo_url || null,
+        boost: 0, used: false, _line: null, _col: null,
+      }
+    }
+
+    const p1Starters = (p1DeckData?.starters || []).map(r => rpcPlayerToLocal(r, r.position))
+    const p2Starters = (p2DeckData?.starters || []).map(r => rpcPlayerToLocal(r, r.position))
+    const p1Subs     = (p1DeckData?.subs || []).map(r => rpcPlayerToLocal(r, r.position))
+    const p2Subs     = (p2DeckData?.subs || []).map(r => rpcPlayerToLocal(r, r.position))
+    const p1Formation = p1DeckData?.formation || '4-4-2'
+    const p2Formation = p2DeckData?.formation || '4-4-2'
 
     console.log('[PvP] p1Formation:', p1Formation, 'p1 starters:', p1Starters.length, 'positions:', p1Starters.map(s=>s.position))
     console.log('[PvP] p2Formation:', p2Formation, 'p2 starters:', p2Starters.length, 'positions:', p2Starters.map(s=>s.position))

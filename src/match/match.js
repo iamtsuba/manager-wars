@@ -207,42 +207,17 @@ function generateFakeAITeam(formation) {
 // ── ENTRY POINT ───────────────────────────────────────────
 // ── Masquer/Afficher le header haut + la nav bas pendant le match ──
 function _hideBottomNav(container) {
-  // Frères APRÈS le container (nav du bas)
-  let el = container.nextElementSibling
-  while (el) {
-    if (!el.dataset.matchHidden) {
-      el.dataset.matchHidden = el.style.display || 'flex'
-      el.style.display = 'none'
-    }
-    el = el.nextElementSibling
-  }
-  // Frères AVANT le container (header logo/crédits/lune)
-  el = container.previousElementSibling
-  while (el) {
-    if (!el.dataset.matchHidden) {
-      el.dataset.matchHidden = el.style.display || 'flex'
-      el.style.display = 'none'
-    }
-    el = el.previousElementSibling
-  }
+  // Cibler explicitement les barres top-nav et bottom-nav (enfants de #app)
+  document.querySelectorAll('.top-nav, .bottom-nav').forEach(el => {
+    el.style.setProperty('display', 'none', 'important')
+    el.dataset.matchHidden = '1'
+  })
 }
 function _showBottomNav(container) {
-  let el = container.nextElementSibling
-  while (el) {
-    if (el.dataset.matchHidden) {
-      el.style.display = el.dataset.matchHidden === 'none' ? '' : el.dataset.matchHidden
-      delete el.dataset.matchHidden
-    }
-    el = el.nextElementSibling
-  }
-  el = container.previousElementSibling
-  while (el) {
-    if (el.dataset.matchHidden) {
-      el.style.display = el.dataset.matchHidden === 'none' ? '' : el.dataset.matchHidden
-      delete el.dataset.matchHidden
-    }
-    el = el.previousElementSibling
-  }
+  document.querySelectorAll('.top-nav, .bottom-nav').forEach(el => {
+    el.style.removeProperty('display')
+    delete el.dataset.matchHidden
+  })
 }
 
 
@@ -673,6 +648,22 @@ async function renderPvpMatch(container, ctx, matchId, amIHome) {
     container.querySelector('#pvp-view-opp')?.addEventListener('click', () => {
       pvpShowOpponentTeam()
     })
+
+    // Contraindre le match-screen + SVG terrain (identique vs IA)
+    ;(function fixSVGPvp() {
+      const svg = container.querySelector('.terrain-wrapper svg')
+      if (svg) {
+        svg.removeAttribute('width'); svg.removeAttribute('height')
+        svg.style.cssText = 'width:100%;height:100%;display:block;max-width:none;margin:0'
+        svg.setAttribute('viewBox', '-26 -26 352 352')
+        svg.setAttribute('preserveAspectRatio', 'xMidYMid meet')
+      }
+      const ms = container.querySelector('.match-screen')
+      if (ms) {
+        const h = container.clientHeight
+        if (h > 50) { ms.style.height = h + 'px'; ms.style.maxHeight = h + 'px'; ms.style.overflow = 'hidden' }
+      }
+    })()
 
     // Timer (30s→15s) uniquement si c'est mon tour
     if (gameState._timerInt) { clearInterval(gameState._timerInt); gameState._timerInt = null }
@@ -1342,8 +1333,11 @@ async function renderDeckSelect(container, ctx, matchMode) {
     const team = starters.length >= 11 ? buildTeam(starters, formation) : null
     const complete = starters.length >= 11
 
+    _hideBottomNav(container)
+    container.style.height = '100%'
+    container.style.overflow = 'hidden'
     container.innerHTML = `
-    <div id="deck-select-screen" style="display:flex;flex-direction:column;height:calc(100dvh - 130px);overflow:hidden;background:#0a3d1e;color:#fff">
+    <div id="deck-select-screen" style="display:flex;flex-direction:column;height:100%;overflow:hidden;background:#0a3d1e;color:#fff">
 
       <!-- Header -->
       <div style="padding:10px 16px;background:rgba(0,0,0,0.4);text-align:center;flex-shrink:0">

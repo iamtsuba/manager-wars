@@ -462,8 +462,8 @@ async function renderPvpMatch(container, ctx, matchId, amIHome) {
     const isMyAttack  = gameState.phase === myRole + '-attack'
     const isMyDefense = gameState.phase === myRole + '-defense'
     const isOppTurn   = gameState.phase === oppRole + '-attack' || gameState.phase === oppRole + '-defense'
-    const mySelected  = gameState['selected_' + myRole] || []
-    const selectedIds = new Set(mySelected.map(s => s.cardId))
+    const mySelected  = Array.isArray(gameState['selected_' + myRole]) ? gameState['selected_' + myRole] : []
+    const selectedIds = mySelected.map(s => s.cardId)
 
     container.style.overflow = 'hidden'
     container.style.height = '100%'
@@ -515,6 +515,7 @@ async function renderPvpMatch(container, ctx, matchId, amIHome) {
         const role   = el.dataset.role
         const p = (myTeam[role]||[]).find(pp => pp.cardId === cardId)
         if (!p || p.used) return
+        if (!Array.isArray(gameState['selected_' + myRole])) gameState['selected_' + myRole] = []
         const arr = gameState['selected_' + myRole]
         const idx = arr.findIndex(s => s.cardId === cardId)
         if (idx > -1) arr.splice(idx, 1)

@@ -506,8 +506,71 @@ async function renderPvpMatch(container, ctx, matchId, amIHome) {
     container.style.height = '100%'
     container.style.display = 'flex'
     container.style.flexDirection = 'column'
-    container.innerHTML = `
-    <div class="match-screen" style="display:flex;flex-direction:column;overflow:hidden;background:#0a3d1e;height:100%;width:100%">
+
+    const _pc = window.innerWidth >= 700
+    const mySubs = gameState[myRole + 'Subs'] || []
+    const usedSubIds = (gameState['usedSubIds_' + myRole]) || []
+    const availSubs = mySubs.filter(s => !usedSubIds.includes(s.cardId))
+    const myGcCardsFull = gameState['gcCardsFull_' + myRole] || []  // [{id, gc_type, _gcDef}]
+    const myUsedGc = gameState['usedGc_' + myRole] || []
+    const activeGCs = myGcCardsFull.filter(gc => !myUsedGc.includes(gc.id))
+    const boostAvail = gameState.boostOwner === myRole && !gameState.boostUsed
+
+    // ─── Design Collection pour les cartes GC (identique vs IA) ───
+    const gcCardDesignPvp = (gc, w, h) => {
+      const def    = gc._gcDef
+      const bg     = ({purple:'linear-gradient(160deg,#4a0a8a,#7a28b8)',light_blue:'linear-gradient(160deg,#006080,#00bcd4)'})[def?.color] || 'linear-gradient(160deg,#4a0a8a,#7a28b8)'
+      const bord   = ({purple:'#b06ce0',light_blue:'#00d4ef'})[def?.color] || '#b06ce0'
+      const name   = def?.name || gc.gc_type
+      const effect = def?.effect || GC_DEFS[gc.gc_type]?.desc || ''
+      const imgUrl = def?.image_url ? `${import.meta.env.BASE_URL}icons/${def.image_url}` : null
+      const icon   = GC_DEFS[gc.gc_type]?.icon || '⚡'
+      const nameH  = Math.round(h * 0.22), effH = Math.round(h * 0.22), imgH = h - nameH - effH
+      const fs     = name.length > 12 ? 7 : 9
+      return `<div class="pvp-gc-mini" data-gc-id="${gc.id}" data-gc-type="${gc.gc_type}"
+        style="width:${w}px;height:${h}px;border-radius:10px;border:2px solid ${bord};background:${bg};display:flex;flex-direction:column;overflow:hidden;cursor:pointer;flex-shrink:0">
+        <div style="height:${nameH}px;background:rgba(255,255,255,0.14);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0 3px">
+          <span style="font-size:${fs}px;font-weight:900;color:#fff;text-align:center;line-height:1.1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:${w-6}px">${name}</span>
+          <span style="font-size:6px;color:rgba(255,255,255,0.45)">⚡ GC</span>
+        </div>
+        <div style="height:${imgH}px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.06)">
+          ${imgUrl ? `<img src="${imgUrl}" style="max-width:${w-10}px;max-height:${imgH-6}px;object-fit:contain">` : `<span style="font-size:${Math.round(imgH*.55)}px">${icon}</span>`}
+        </div>
+        <div style="height:${effH}px;background:rgba(0,0,0,0.38);display:flex;align-items:center;justify-content:center;padding:0 3px">
+          <span style="font-size:6px;color:rgba(255,255,255,0.9);text-align:center;line-height:1.25">${effect.slice(0,38)}</span>
+        </div>
+      </div>`
+    }
+
+    const boostCardHTML = (w, h) => `<div id="pvp-boost-card" style="width:${w}px;height:${h}px;flex-shrink:0;background:linear-gradient(135deg,#4a9fc4,#87CEEB);border:2px solid #87CEEB;border-radius:10px;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px">
+      <div style="font-size:${_pc?22:18}px">⚡</div>
+      <div style="font-size:${_pc?11:9}px;color:#000;font-weight:900">+${gameState.boostValue}</div>
+    </div>`
+
+    const subsHTML = `<div style="display:flex;flex-direction:column;gap:4px;padding:4px 2px;width:${_pc?70:50}px;align-items:center;overflow-y:auto;flex-shrink:0;background:rgba(0,0,0,0.15)">
+      ${availSubs.length===0
+        ? `<div style="font-size:7px;color:rgba(255,255,255,0.25);text-align:center;margin-top:6px;line-height:1.4">Pas de<br>rempl.</div>`
+        : availSubs.map(s=>`<div class="pvp-sub-btn" data-sub-id="${s.cardId}" style="cursor:pointer;flex-shrink:0">${renderMiniCardHTML(s,_pc?60:44,_pc?78:58)}</div>`).join('')}
+    </div>`
+
+    const terrainHTML = `<div style="overflow:hidden;min-width:0;flex:1;min-height:0" id="match-field">
+      <div class="terrain-wrapper" style="width:100%;height:100%;overflow:hidden">
+        ${renderTeam(myTeam, gameState[myRole+'Formation'], isMyAttack?'attack':isMyDefense?'defense':'idle', selectedIds, 300, 300)}
+      </div>
+    </div>`
+
+    const btnStyle = _pc
+      ? 'padding:14px 20px;border-radius:14px;font-size:16px;font-weight:900;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;width:100%'
+      : 'padding:10px 8px;border-radius:12px;font-size:13px;font-weight:900;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;width:100%'
+
+    const actionBtn = isMyAttack
+      ? `<button id="pvp-action" style="${btnStyle};background:linear-gradient(135deg,#c47a00,#FFD700);border:none;color:#fff;box-shadow:0 0 18px rgba(255,215,0,0.4)" ${mySelected.length===0?'disabled':''}>⚔️ ATTAQUEZ <span id="pvp-timer"></span></button>`
+      : isMyDefense
+      ? `<button id="pvp-action" style="${btnStyle};background:linear-gradient(135deg,#1a4a8a,#3a7bd5);border:none;color:#fff;box-shadow:0 0 18px rgba(135,206,235,0.4)" ${mySelected.length===0?'disabled':''}>🛡️ DÉFENDEZ <span id="pvp-timer"></span></button>`
+      : `<div style="${btnStyle};background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);color:rgba(255,255,255,0.4)">⏳ Tour de ${oppName}</div>`
+    const counter = (isMyAttack||isMyDefense) ? `<div style="font-size:9px;color:rgba(255,255,255,0.4);text-align:center;margin-top:2px">${mySelected.length}/3 sélectionné(s)</div>` : ''
+
+    const headerHTML = `
       <!-- Score -->
       <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:rgba(0,0,0,0.25);flex-shrink:0">
         <button id="pvp-quit" style="background:rgba(220,53,69,0.9);border:none;color:#fff;width:32px;height:32px;border-radius:50%;font-size:16px;cursor:pointer">✕</button>
@@ -516,38 +579,44 @@ async function renderPvpMatch(container, ctx, matchId, amIHome) {
         </div>
         <div style="width:32px"></div>
       </div>
-
-      <!-- Indicateur tour -->
       <div style="text-align:center;padding:4px;background:rgba(0,0,0,0.15);font-size:11px;color:${isOppTurn?'rgba(255,255,255,0.4)':'#FFD700'};font-weight:700;flex-shrink:0">
         ${isOppTurn ? `⏳ Tour de ${oppName}` : isMyAttack ? '⚔️ À vous d\'attaquer !' : isMyDefense ? '🛡️ À vous de défendre !' : ''}
-      </div>
+      </div>`
 
-      <!-- Zone centrale : terrain -->
-      <div style="display:flex;flex:1;min-height:0;overflow:hidden">
-        <div style="overflow:hidden;min-width:0;flex:1;min-height:0" id="match-field">
-          <div class="terrain-wrapper" style="width:100%;height:100%;overflow:hidden">
-            ${renderTeam(myTeam, gameState[myRole+'Formation'], isMyAttack?'attack':isMyDefense?'defense':'idle', selectedIds, 300, 300)}
+    if (_pc) {
+      container.innerHTML = `
+      <div class="match-screen" style="display:flex;flex-direction:column;overflow:hidden;background:#0a3d1e;height:100%;width:100%">
+        ${headerHTML}
+        <div style="display:flex;flex:1;min-height:0;overflow:hidden">
+          ${subsHTML}
+          ${terrainHTML}
+          <div style="width:150px;flex-shrink:0;display:flex;flex-direction:column;align-items:center;padding:10px 8px;gap:10px;background:rgba(0,0,0,0.2);overflow-y:auto">
+            <div style="width:100%">${actionBtn}${counter}</div>
+            <div style="width:100%;height:1px;background:rgba(255,255,255,0.1)"></div>
+            ${boostAvail ? boostCardHTML(110,90) : ''}
+            ${activeGCs.map(gc=>gcCardDesignPvp(gc,110,150)).join('')}
           </div>
         </div>
-      </div>
-
-      <!-- Zone bas : carte boost (si gagnée) + bouton action -->
-      <div style="display:flex;align-items:stretch;padding:8px;background:rgba(0,0,0,0.35);gap:6px;flex-shrink:0">
-        ${(gameState.boostOwner === myRole && !gameState.boostUsed) ? `
-        <div id="pvp-boost-card" style="flex-shrink:0;width:64px;background:linear-gradient(135deg,#4a9fc4,#87CEEB);border:2px solid #87CEEB;border-radius:10px;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px">
-          <div style="font-size:20px">⚡</div>
-          <div style="font-size:11px;color:#000;font-weight:900">+${gameState.boostValue}</div>
-        </div>` : ''}
-        <div style="flex:1;display:flex;flex-direction:column;justify-content:center;gap:3px">
-          ${isMyAttack
-            ? `<button id="pvp-action" style="padding:14px;border-radius:14px;background:linear-gradient(135deg,#c47a00,#FFD700);border:none;color:#fff;font-size:15px;font-weight:900;cursor:pointer" ${mySelected.length===0?'disabled style="opacity:0.45"':''}>⚔️ ATTAQUEZ <span id="pvp-timer"></span></button>`
-            : isMyDefense
-            ? `<button id="pvp-action" style="padding:14px;border-radius:14px;background:linear-gradient(135deg,#1a4a8a,#3a7bd5);border:none;color:#fff;font-size:15px;font-weight:900;cursor:pointer" ${mySelected.length===0?'disabled style="opacity:0.45"':''}>🛡️ DÉFENDEZ <span id="pvp-timer"></span></button>`
-            : `<div style="padding:14px;border-radius:14px;background:rgba(255,255,255,0.08);color:rgba(255,255,255,0.4);text-align:center;font-size:13px">⏳ En attente...</div>`}
-          ${(isMyAttack||isMyDefense) ? `<div style="font-size:9px;color:rgba(255,255,255,0.4);text-align:center">${mySelected.length}/3 sélectionné(s)</div>` : ''}
+      </div>`
+    } else {
+      container.innerHTML = `
+      <div class="match-screen" style="display:flex;flex-direction:column;overflow:hidden;background:#0a3d1e;height:100%;width:100%">
+        ${headerHTML}
+        <div style="display:flex;flex:1;min-height:0;overflow:hidden">
+          ${subsHTML}
+          <div style="flex:1;min-width:0;display:flex;flex-direction:column;min-height:0">
+            ${terrainHTML}
+            <div style="display:flex;align-items:stretch;padding:8px;background:rgba(0,0,0,0.35);gap:6px;flex-shrink:0">
+              ${boostAvail ? boostCardHTML(60,80) : ''}
+              ${activeGCs.map(gc=>gcCardDesignPvp(gc,68,95)).join('')}
+              <div style="flex:1;display:flex;flex-direction:column;justify-content:center;gap:3px;min-width:90px">
+                ${actionBtn}${counter}
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
-    </div>`
+      </div>`
+    }
 
     // Sélection de joueurs (clic sur le terrain)
     container.querySelectorAll('.match-slot-hit').forEach(el => {
@@ -566,12 +635,18 @@ async function renderPvpMatch(container, ctx, matchId, amIHome) {
       })
     })
 
-    container.querySelector('#pvp-action')?.addEventListener('click', () => {
-      container.querySelector('#pvp-boost-card')?.addEventListener('click', () => {
+    container.querySelector('#pvp-boost-card')?.addEventListener('click', () => {
       pvpOpenBoostPicker()
     })
 
-    if (isMyAttack) pvpConfirmAttack()
+    container.querySelectorAll('.pvp-gc-mini').forEach(el => {
+      el.addEventListener('click', () => {
+        pvpOpenGCDetail(el.dataset.gcId, el.dataset.gcType)
+      })
+    })
+
+    container.querySelector('#pvp-action')?.addEventListener('click', () => {
+      if (isMyAttack) pvpConfirmAttack()
       else if (isMyDefense) pvpConfirmDefense()
     })
     container.querySelector('#pvp-quit')?.addEventListener('click', () => {
@@ -681,7 +756,14 @@ async function renderPvpMatch(container, ctx, matchId, amIHome) {
       })
 
     container.querySelector('#pvp-gc-validate')?.addEventListener('click', async () => {
-      await pushState({ ['gcReady_' + myRole]: true })
+      // Charger les définitions complètes des cartes choisies, pour les avoir
+      // disponibles dans gameState pendant tout le match (design Collection)
+      const myUserId2 = myRole==='p1' ? match.home_id : match.away_id
+      const { data: myCardsFull } = await supabase.from('cards').select('id,gc_type').eq('owner_id', myUserId2).eq('card_type','game_changer').in('id', chosen)
+      const { data: gcDefsFull } = await supabase.from('gc_definitions').select('*').eq('is_active', true)
+      const enriched = (myCardsFull||[]).map(c => ({ ...c, _gcDef: gcDefsFull?.find(d => d.name === c.gc_type) || null }))
+
+      await pushState({ ['gcReady_' + myRole]: true, ['gcCardsFull_' + myRole]: enriched })
       if (gameState['gcReady_' + oppRole]) {
         await pushState({ phase: 'reveal' })
       }
@@ -857,6 +939,47 @@ async function renderPvpMatch(container, ctx, matchId, amIHome) {
         overlay.remove()
         await pushState({ [myRole+'Team']: team, boostUsed: true })
       })
+    })
+  }
+
+  // ── Détail carte GC (design Collection) + utilisation basique ──
+  function pvpOpenGCDetail(gcId, gcType) {
+    const myGcCardsFull = gameState['gcCardsFull_' + myRole] || []
+    const card = myGcCardsFull.find(c => c.id === gcId)
+    const dbDef = card?._gcDef
+    const legDef = GC_DEFS[gcType] || { icon:'⚡', desc:'Carte spéciale.' }
+    const bg     = ({purple:'linear-gradient(160deg,#4a0a8a,#7a28b8)',light_blue:'linear-gradient(160deg,#006080,#00bcd4)'})[dbDef?.color] || 'linear-gradient(160deg,#4a0a8a,#7a28b8)'
+    const bord   = ({purple:'#b06ce0',light_blue:'#00d4ef'})[dbDef?.color] || '#b06ce0'
+    const name   = dbDef?.name || gcType
+    const effect = dbDef?.effect || legDef.desc
+    const imgUrl = dbDef?.image_url ? `${import.meta.env.BASE_URL}icons/${dbDef.image_url}` : null
+    const icon   = legDef.icon || '⚡'
+    const overlay = document.createElement('div')
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.88);z-index:750;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:24px'
+    overlay.innerHTML = `
+      <div style="width:190px;border-radius:16px;border:3px solid ${bord};background:${bg};display:flex;flex-direction:column;overflow:hidden;box-shadow:0 0 40px ${bord}66">
+        <div style="padding:10px;background:rgba(255,255,255,0.14);text-align:center">
+          <div style="font-size:${name.length>14?11:14}px;font-weight:900;color:#fff;letter-spacing:.5px;text-transform:uppercase">${name}</div>
+          <div style="font-size:8px;color:rgba(255,255,255,0.5);margin-top:2px">⚡ GAME CHANGER</div>
+        </div>
+        <div style="height:160px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.06)">
+          ${imgUrl ? `<img src="${imgUrl}" style="max-width:150px;max-height:150px;object-fit:contain">` : `<span style="font-size:72px">${icon}</span>`}
+        </div>
+        <div style="padding:10px;background:rgba(0,0,0,0.38);text-align:center">
+          <div style="font-size:12px;color:rgba(255,255,255,0.92);line-height:1.5">${effect}</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:12px;width:190px">
+        <button id="pvp-gc-back" style="flex:1;padding:13px;border-radius:12px;border:1px solid rgba(255,255,255,0.3);background:transparent;color:#fff;font-size:14px;cursor:pointer">Retour</button>
+        <button id="pvp-gc-use" style="flex:1;padding:13px;border-radius:12px;border:none;background:#FFD700;color:#000;font-size:14px;font-weight:900;cursor:pointer">Utiliser ⚡</button>
+      </div>`
+    document.body.appendChild(overlay)
+    overlay.querySelector('#pvp-gc-back')?.addEventListener('click', () => overlay.remove())
+    overlay.querySelector('#pvp-gc-use')?.addEventListener('click', async () => {
+      overlay.remove()
+      const used = gameState['usedGc_' + myRole] || []
+      used.push(gcId)
+      await pushState({ ['usedGc_' + myRole]: used })
     })
   }
 

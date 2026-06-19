@@ -232,7 +232,8 @@ async function showMatchmakingSearch(container, ctx, deckId, formation, starters
   }
 
   document.getElementById('mm-cancel')?.addEventListener('click', async () => {
-    await cleanup(true)
+    // Toujours revenir à l'accueil, même si cleanup() échoue côté serveur
+    try { await cleanup(true) } catch (e) { console.warn('[Matchmaking] cleanup error:', e) }
     _showBottomNav(container)
     navigate('home')
   })

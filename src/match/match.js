@@ -349,8 +349,15 @@ async function renderPvpMatch(container, ctx, matchId, amIHome) {
     const p2Starters = (p2Cards||[]).filter(dc=>dc.is_starter && dc.card?.player).map(dc=>playerFromCard(dc.card, dc.position))
     const p1Subs     = (p1Cards||[]).filter(dc=>!dc.is_starter && dc.card?.player).map(dc=>playerFromCard(dc.card, dc.position))
     const p2Subs     = (p2Cards||[]).filter(dc=>!dc.is_starter && dc.card?.player).map(dc=>playerFromCard(dc.card, dc.position))
-    const p1Formation = p1Deck?.formation || '4-4-2'
-    const p2Formation = p2Deck?.formation || '4-4-2'
+    // Fallback identique à renderDeckSelect/decks.js : si decks.formation est NULL,
+    // chercher la formation via la carte 'formation' présente dans le deck.
+    const p1FormationCard = (p1Cards||[]).find(dc => dc.card?.card_type === 'formation')
+    const p2FormationCard = (p2Cards||[]).find(dc => dc.card?.card_type === 'formation')
+    const p1Formation = p1Deck?.formation || p1FormationCard?.card?.formation || '4-4-2'
+    const p2Formation = p2Deck?.formation || p2FormationCard?.card?.formation || '4-4-2'
+
+    console.log('[PvP] p1Formation:', p1Formation, 'p1 starters:', p1Starters.length, 'positions:', p1Starters.map(s=>s.position))
+    console.log('[PvP] p2Formation:', p2Formation, 'p2 starters:', p2Starters.length, 'positions:', p2Starters.map(s=>s.position))
 
     return {
       p1Team: buildTeam(p1Starters, p1Formation),
@@ -411,12 +418,17 @@ async function renderPvpMatch(container, ctx, matchId, amIHome) {
       event: 'UPDATE', schema: 'public', table: 'matches', filter: `id=eq.${matchId}`
     }, (payload) => {
       const row = payload.new
-      if (row.game_state) {
-        gameState = row.game_state
-        renderPvpScreen()
-      }
-      if (row.status === 'finished' || row.forfeit) {
-        renderPvpScreen()
+      try {
+        if (row.game_state) {
+          gameState = row.game_state
+          renderPvpScreen()
+        }
+        if (row.status === 'finished' || row.forfeit) {
+          renderPvpScreen()
+        }
+      } catch (e) {
+        console.error('[PvP] Realtime render crash:', e, 'gameState:', gameState)
+        toast('Erreur de synchro temps réel : ' + e.message, 'error')
       }
     })
     .subscribe()
@@ -425,8 +437,17 @@ async function renderPvpMatch(container, ctx, matchId, amIHome) {
   async function pushState(partial) {
     Object.assign(gameState, partial)
     gameState.lastActionAt = new Date().toISOString()
-    await supabase.from('matches').update({ game_state: gameState }).eq('id', matchId)
-    renderPvpScreen()  // mise à jour locale immédiate (pas besoin d'attendre le Realtime echo)
+    const { error } = await supabase.from('matches').update({ game_state: gameState }).eq('id', matchId)
+    if (error) {
+      console.error('[PvP] pushState DB error:', error.message, error)
+      toast('Erreur de synchronisation : ' + error.message, 'error')
+    }
+    try {
+      renderPvpScreen()
+    } catch (e) {
+      console.error('[PvP] renderPvpScreen crash après pushState:', e)
+      toast('Erreur d\'affichage : ' + e.message, 'error')
+    }
   }
 
   // ── Quitter proprement (forfait) ──────────────────────────

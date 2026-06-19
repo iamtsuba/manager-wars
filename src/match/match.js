@@ -529,62 +529,83 @@ async function renderPvpMatch(container, ctx, matchId, amIHome) {
     }
   }
 
-  // ── Sélection des Game Changers avant match (PvP) ─────────
+  // ── Sélection des Game Changers avant match (PvP) — design vs IA ──
   function renderPvpGCSelect() {
     const myReady  = gameState['gcReady_' + myRole]
     const oppReady = gameState['gcReady_' + oppRole]
-    const myChosen = gameState['gc_' + myRole] || []
+    if (!Array.isArray(gameState['gc_' + myRole])) gameState['gc_' + myRole] = []
+    let chosen = gameState['gc_' + myRole]
     const MAX = 3
+
+    function gcCardHTML(card, selected) {
+      const def  = card._gcDef
+      const BG   = { purple:'linear-gradient(135deg,#3d0a7a,#7a28b8)', light_blue:'linear-gradient(135deg,#006080,#00bcd4)' }
+      const BORD = { purple:'#9b59b6', light_blue:'#00bcd4' }
+      const bg   = BG[def?.color]   || BG.purple
+      const bord = BORD[def?.color] || BORD.purple
+      return `<div class="pvp-gc-card" data-id="${card.id}"
+        style="width:100px;border-radius:10px;border:3px solid ${selected?'#FFD700':bord};background:${bg};
+          display:flex;flex-direction:column;overflow:hidden;cursor:pointer;flex-shrink:0;position:relative;
+          box-shadow:${selected?'0 0 18px #FFD700':'0 2px 8px rgba(0,0,0,0.4)'};
+          transform:${selected?'scale(1.06)':'scale(1)'};transition:all 0.15s">
+        <div style="padding:5px 6px;background:rgba(255,255,255,0.12);text-align:center;min-height:32px;display:flex;align-items:center;justify-content:center">
+          <span style="font-size:${(def?.name||card.gc_type).length>12?8:10}px;font-weight:900;color:#fff;line-height:1.2;text-align:center">${def?.name||card.gc_type}</span>
+        </div>
+        <div style="height:70px;display:flex;align-items:center;justify-content:center;padding:4px">
+          ${def?.image_url ? `<img src="${import.meta.env.BASE_URL}icons/${def.image_url}" style="max-height:62px;max-width:88px;object-fit:contain">` : `<span style="font-size:32px">⚡</span>`}
+        </div>
+        <div style="padding:5px 6px;background:rgba(0,0,0,0.35);text-align:center;min-height:36px;display:flex;align-items:center;justify-content:center">
+          <span style="font-size:8px;color:rgba(255,255,255,0.85);line-height:1.3">${(def?.effect||'').slice(0,50)}</span>
+        </div>
+        ${selected ? '<div style="position:absolute;top:4px;right:4px;width:20px;height:20px;background:#FFD700;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900;color:#000;z-index:2">✓</div>' : ''}
+      </div>`
+    }
 
     container.style.overflow = 'hidden'
     container.innerHTML = `
-    <div style="display:flex;flex-direction:column;height:100%;overflow:hidden;background:linear-gradient(180deg,#0a1628,#1a0a2e)">
-      <div style="text-align:center;padding:14px 16px 6px;flex-shrink:0">
-        <div style="font-size:11px;color:rgba(255,255,255,0.5);letter-spacing:2px;text-transform:uppercase">Avant le match</div>
-        <div style="font-size:18px;font-weight:900;color:#fff">Choisis tes Game Changers</div>
-        <div style="font-size:12px;color:rgba(255,255,255,0.5);margin-top:2px">${myChosen.length}/${MAX} sélectionnée(s)</div>
+    <div id="pvp-gc-wrap" style="position:relative;display:flex;flex-direction:column;height:100%;overflow:hidden;background:linear-gradient(180deg,#0a1628,#1a0a2e)">
+      <div style="text-align:center;padding:12px 16px 8px;flex-shrink:0">
+        <div style="font-size:11px;color:rgba(255,255,255,0.5);letter-spacing:3px;text-transform:uppercase;margin-bottom:4px">Avant le match</div>
+        <div style="font-size:20px;font-weight:900;color:#fff">Choisir ses Game Changers</div>
+        <div style="font-size:13px;color:rgba(255,255,255,0.5);margin-top:3px">
+          Sélectionne <b style="color:#FFD700">${MAX}</b> cartes · ${chosen.length}/${MAX}
+        </div>
       </div>
       ${myReady ? `
       <div style="flex:1;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px">
         <div style="font-size:32px">✅</div>
         <div style="color:#fff;font-size:14px">Prêt ! ${oppReady ? 'Adversaire aussi.' : `En attente de ${gameState[oppRole+'Name']}...`}</div>
       </div>` : `
-      <div id="pvp-gc-grid" style="flex:1;overflow-y:auto;display:flex;flex-wrap:wrap;gap:10px;justify-content:center;align-content:flex-start;padding:8px 16px"></div>
+      <div id="pvp-gc-grid" style="flex:1;overflow-y:auto;display:flex;flex-wrap:wrap;gap:10px;justify-content:center;align-content:flex-start;padding:8px 16px 16px"></div>
       <div style="padding:10px 16px 14px;flex-shrink:0">
         <button id="pvp-gc-validate" style="width:100%;padding:14px;border-radius:14px;border:none;background:linear-gradient(135deg,#5a0a9a,#9a28e8);color:#fff;font-size:15px;font-weight:900;cursor:pointer">
-          ${myChosen.length ? `⚡ Valider (${myChosen.length} GC)` : '▶ Continuer sans GC'}
+          ${chosen.length ? `⚡ Valider (${chosen.length} GC)` : '▶ Continuer sans GC'}
         </button>
       </div>`}
     </div>`
 
     if (myReady) return
 
-    // Charger mes cartes GC disponibles
-    supabase.from('cards').select('id,gc_type').eq('owner_id', myRole==='p1'?match.home_id:match.away_id).eq('card_type','game_changer')
-      .then(({ data: myGcCards }) => {
+    const myUserId = myRole==='p1' ? match.home_id : match.away_id
+    supabase.from('cards').select('id,gc_type').eq('owner_id', myUserId).eq('card_type','game_changer')
+      .then(async ({ data: myGcCards }) => {
+        const { data: gcDefs } = await supabase.from('gc_definitions').select('*').eq('is_active', true)
         const seen = new Set()
-        const distinct = (myGcCards||[]).filter(c => { if (seen.has(c.gc_type)) return false; seen.add(c.gc_type); return true })
+        const distinct = (myGcCards||[]).filter(cd => { if (seen.has(cd.gc_type)) return false; seen.add(cd.gc_type); return true })
+          .map(cd => ({ ...cd, _gcDef: gcDefs?.find(d => d.name === cd.gc_type) || null }))
         const grid = document.getElementById('pvp-gc-grid')
         if (!grid) return
         if (!distinct.length) {
           grid.innerHTML = '<div style="color:rgba(255,255,255,0.4);font-size:13px;text-align:center;margin-top:30px">Aucune carte Game Changer disponible.</div>'
           return
         }
-        grid.innerHTML = distinct.map(c => {
-          const sel = myChosen.includes(c.id)
-          const icon = (GC_DEFS[c.gc_type]||{}).icon || '⚡'
-          return `<div class="pvp-gc-card" data-id="${c.id}" style="width:90px;padding:10px 6px;border-radius:10px;border:3px solid ${sel?'#FFD700':'#9b59b6'};background:linear-gradient(135deg,#3d0a7a,#7a28b8);text-align:center;cursor:pointer">
-            <div style="font-size:26px">${icon}</div>
-            <div style="font-size:9px;color:#fff;font-weight:700;margin-top:4px">${c.gc_type}</div>
-          </div>`
-        }).join('')
+        grid.innerHTML = distinct.map(cd => gcCardHTML(cd, chosen.includes(cd.id))).join('')
         grid.querySelectorAll('.pvp-gc-card').forEach(el => {
           el.addEventListener('click', () => {
             const id = el.dataset.id
-            const arr = gameState['gc_' + myRole]
-            const idx = arr.indexOf(id)
-            if (idx > -1) arr.splice(idx, 1)
-            else if (arr.length < MAX) arr.push(id)
+            const idx = chosen.indexOf(id)
+            if (idx > -1) chosen.splice(idx, 1)
+            else if (chosen.length < MAX) chosen.push(id)
             renderPvpScreen()
           })
         })
@@ -592,7 +613,6 @@ async function renderPvpMatch(container, ctx, matchId, amIHome) {
 
     container.querySelector('#pvp-gc-validate')?.addEventListener('click', async () => {
       await pushState({ ['gcReady_' + myRole]: true })
-      // Si les deux sont prêts → lancer le duel du milieu
       if (gameState['gcReady_' + oppRole]) {
         await pushState({ phase: 'midfield' })
       }
@@ -601,31 +621,95 @@ async function renderPvpMatch(container, ctx, matchId, amIHome) {
 
     // ── Duel milieu (calculé localement par p1, écrit en DB) ──
   function renderPvpMidfield() {
-    const p1Mils = gameState.p1Team.MIL || []
-    const p2Mils = gameState.p2Team.MIL || []
-    const p1Total = calcMidfieldDuel(p1Mils)
-    const p2Total = calcMidfieldDuel(p2Mils)
+    const myMils  = gameState[myRole + 'Team'].MIL || []
+    const oppMils = gameState[oppRole + 'Team'].MIL || []
+
+    function milScore(mils) { return mils.reduce((s,p) => s + getNoteForRole(p,'MIL'), 0) }
+    function milLinks(mils) {
+      let bonus = 0
+      for (let i = 0; i < mils.length-1; i++) {
+        const c = linkColor(mils[i], mils[i+1])
+        if (c === '#00ff88') bonus += 2
+        else if (c === '#FFD700') bonus += 1
+      }
+      return bonus
+    }
+
+    const myTotal  = milScore(myMils)  + milLinks(myMils)
+    const oppTotal = milScore(oppMils) + milLinks(oppMils)
+    const myWins   = myTotal >= oppTotal
+
+    function renderMilRow(mils, label, color) {
+      return `<div style="text-align:center">
+        <div style="font-size:10px;color:rgba(255,255,255,0.5);letter-spacing:2px;margin-bottom:8px;text-transform:uppercase">${label}</div>
+        <div style="display:flex;align-items:center;justify-content:center;gap:0">
+          ${mils.map((p, i) => {
+            const portrait = getPortrait(p)
+            const lc = i < mils.length-1 ? linkColor(p, mils[i+1]) : null
+            const hasLink = lc && lc !== '#ff3333' && lc !== '#cc2222'
+            return `
+            <div style="width:52px;height:52px;border-radius:8px;background:${color};position:relative;flex-shrink:0;overflow:hidden;border:2px solid rgba(255,255,255,0.3)">
+              ${portrait?`<img src="${portrait}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0.8">`:''}
+              <div style="position:relative;z-index:1;font-size:15px;font-weight:900;color:#fff;text-shadow:0 1px 3px #000;text-align:center;padding-top:4px">${getNoteForRole(p,'MIL')}</div>
+              <div style="position:relative;z-index:1;font-size:6px;color:#fff;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:0 2px">${p.name}</div>
+            </div>
+            ${lc ? `<div style="width:14px;height:4px;border-radius:2px;background:${lc};flex-shrink:0;opacity:${hasLink?0.9:0.3}"></div>` : ''}
+            `
+          }).join('')}
+        </div>
+        <div style="margin-top:6px;font-size:11px;color:rgba(255,255,255,0.5)">
+          Score: ${milScore(mils)} + ${milLinks(mils)} liens = <b style="color:#fff">${milScore(mils)+milLinks(mils)}</b>
+        </div>
+      </div>`
+    }
 
     container.style.overflow = 'hidden'
     container.innerHTML = `
-    <div class="match-screen" style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:20px;padding:24px;background:#0a3d1e;text-align:center">
-      <div style="font-size:11px;color:rgba(255,255,255,0.5);letter-spacing:2px;text-transform:uppercase">Duel du milieu de terrain</div>
-      <div style="display:flex;align-items:center;gap:20px">
-        <div style="text-align:center"><div style="font-size:13px;color:#fff">${gameState.p1Name}</div><div style="font-size:40px;font-weight:900;color:#FFD700">${p1Total}</div></div>
-        <div style="font-size:14px;color:rgba(255,255,255,0.4)">VS</div>
-        <div style="text-align:center"><div style="font-size:13px;color:#fff">${gameState.p2Name}</div><div style="font-size:40px;font-weight:900;color:#FFD700">${p2Total}</div></div>
+    <div class="match-screen" style="display:flex;flex-direction:column;align-items:center;justify-content:flex-start;height:100%;overflow:hidden;gap:14px;padding:16px;background:#0a3d1e;overflow-y:auto">
+      <div style="text-align:center;color:#fff">
+        <div style="font-size:11px;opacity:.5;letter-spacing:2px;text-transform:uppercase">Duel du milieu de terrain</div>
       </div>
-      <div style="color:rgba(255,255,255,0.5);font-size:13px">Calcul en cours...</div>
+
+      ${renderMilRow(myMils, gameState[myRole+'Name'], '#D4A017')}
+
+      <div style="display:flex;flex-direction:column;align-items:center;gap:4px">
+        <div id="pvp-score-me" style="font-size:48px;font-weight:900;color:#D4A017;transition:all 0.6s ease">${myTotal}</div>
+        <div style="font-size:14px;color:rgba(255,255,255,0.4);letter-spacing:2px">VS</div>
+        <div id="pvp-score-opp" style="font-size:48px;font-weight:900;color:rgba(255,255,255,0.7);transition:all 0.6s ease">${oppTotal}</div>
+      </div>
+
+      ${renderMilRow(oppMils, gameState[oppRole+'Name'], '#bb2020')}
+
+      <div id="pvp-midfield-result" style="opacity:0;text-align:center;transition:opacity 0.5s;color:#fff;max-width:320px"></div>
     </div>`
 
-    // Seul p1 (home) écrit le résultat pour éviter une race condition entre les 2 clients
-    if (myRole === 'p1') {
+    setTimeout(() => {
+      const elMe  = document.getElementById('pvp-score-me')
+      const elOpp = document.getElementById('pvp-score-opp')
+      const elRes = document.getElementById('pvp-midfield-result')
+      if (elMe && elOpp) {
+        if (myWins) { elMe.style.fontSize='80px'; elMe.style.color='#FFD700'; elOpp.style.opacity='0.25' }
+        else { elOpp.style.fontSize='80px'; elOpp.style.color='#ff6b6b'; elMe.style.opacity='0.25' }
+      }
+      if (elRes) {
+        elRes.style.opacity = '1'
+        elRes.innerHTML = `<div style="font-size:20px;font-weight:900;margin-bottom:10px">
+          ⚽ ${myWins ? `${gameState[myRole+'Name']} gagne le milieu et attaque !` : `${gameState[oppRole+'Name']} gagne l'engagement et attaque !`}
+        </div>`
+      }
+
+      // Page résultat séparée, puis transition de phase — seul p1 écrit en DB
       setTimeout(async () => {
-        const p1Wins = p1Total >= p2Total
+        if (myRole !== 'p1') return  // seul p1 décide pour éviter la race condition
+        const p1Mils = gameState.p1Team.MIL || []
+        const p2Mils = gameState.p2Team.MIL || []
+        const p1Total = milScore(p1Mils) + milLinks(p1Mils)
+        const p2Total = milScore(p2Mils) + milLinks(p2Mils)
+        const p1Wins  = p1Total >= p2Total
         const attacker = p1Wins ? 'p1' : 'p2'
         await pushState({ phase: attacker + '-attack', attacker, round: 1 })
       }, 1800)
-    }
+    }, 600)
   }
 
   // ── Écran résultat final ───────────────────────────────

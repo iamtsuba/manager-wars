@@ -312,11 +312,8 @@ async function renderPvpMatch(container, ctx, matchId, amIHome) {
   const { data: match } = await supabase.from('matches').select('*').eq('id', matchId).single()
   if (!match) { toast('Match introuvable', 'error'); navigate('home'); return }
 
-  // Si le state existe déjà (l'autre joueur l'a initialisé), on le charge tel quel.
-  // Sinon (on est p1, premier arrivé), on construit l'état initial.
-  let gameState = match.game_state && Object.keys(match.game_state).length ? match.game_state : null
-
-  if (!gameState) {
+  // ── Construire les données d'équipes (les 2 clients en ont besoin) ──
+  async function buildGameState() {
     const [{ data: p1Deck }, { data: p1Cards }, { data: p2Deck }, { data: p2Cards }, { data: p1Profile }, { data: p2Profile }] = await Promise.all([
       supabase.from('decks').select('formation,name').eq('id', match.home_deck_id).single(),
       supabase.from('deck_cards').select(`position,is_starter,slot_order,card:cards(id,card_type,formation,player:players(id,firstname,surname_encoded,country_code,club_id,job,job2,note_g,note_d,note_m,note_a,rarity,skin,hair,hair_length,clubs(encoded_name,logo_url)))`).eq('deck_id', match.home_deck_id).order('slot_order'),
@@ -333,7 +330,7 @@ async function renderPvpMatch(container, ctx, matchId, amIHome) {
     const p1Formation = p1Deck?.formation || '4-4-2'
     const p2Formation = p2Deck?.formation || '4-4-2'
 
-    gameState = {
+    return {
       p1Team: buildTeam(p1Starters, p1Formation),
       p2Team: buildTeam(p2Starters, p2Formation),
       p1Subs, p2Subs,
@@ -343,19 +340,46 @@ async function renderPvpMatch(container, ctx, matchId, amIHome) {
       p1Score: 0, p2Score: 0,
       p1Subs_used: 0, p2Subs_used: 0,
       maxSubs: 3,
-      phase: 'midfield',        // midfield → reveal → p1-attack/p2-attack → ... → finished
-      attacker: null,           // 'p1' ou 'p2'
+      phase: 'gc-select',        // gc-select → midfield → p1/p2-attack/defense → finished
+      attacker: null,
       round: 0,
       selected_p1: [], selected_p2: [],
       pendingAttack: null,
       log: [],
       modifiers: { p1:{}, p2:{} },
+      gc_p1: [], gc_p2: [],           // cartes GC sélectionnées par chacun (ids)
+      gcReady_p1: false, gcReady_p2: false,  // a validé sa sélection GC
       usedGc_p1: [], usedGc_p2: [],
       lastActionAt: new Date().toISOString(),
     }
+  }
 
-    // Premier à arriver (p1/home) initialise le state en DB
-    await supabase.from('matches').update({ game_state: gameState, turn_user_id: match.home_id }).eq('id', matchId)
+  // ── Verrou d'initialisation : SEUL p1 (home) construit et écrit l'état initial ──
+  // p2 attend en Realtime que p1 ait terminé, pour éviter toute race condition
+  // (sinon les deux clients construisent et écrasent le state en parallèle).
+  let gameState = match.game_state && Object.keys(match.game_state).length ? match.game_state : null
+
+  if (!gameState) {
+    if (amIHome) {
+      gameState = await buildGameState()
+      // Écriture atomique : seulement si game_state est encore vide en DB
+      // (évite d'écraser si jamais ce client se relance deux fois)
+      const { data: check } = await supabase.from('matches').select('game_state').eq('id', matchId).single()
+      if (!check?.game_state || !Object.keys(check.game_state).length) {
+        await supabase.from('matches').update({ game_state: gameState, turn_user_id: match.home_id }).eq('id', matchId)
+      } else {
+        gameState = check.game_state
+      }
+    } else {
+      // p2 attend que p1 ait initialisé le state (poll court + realtime)
+      container.innerHTML = '<div style="padding:40px;text-align:center;color:#aaa">⚽ Synchronisation avec l\'adversaire...</div>'
+      for (let i = 0; i < 30 && !gameState; i++) {
+        await new Promise(r => setTimeout(r, 400))
+        const { data: m2 } = await supabase.from('matches').select('game_state').eq('id', matchId).single()
+        if (m2?.game_state && Object.keys(m2.game_state).length) gameState = m2.game_state
+      }
+      if (!gameState) { toast('Erreur de synchronisation', 'error'); navigate('home'); return }
+    }
   }
 
   // ── Channel Realtime : écouter les changements du match ──
@@ -403,6 +427,9 @@ async function renderPvpMatch(container, ctx, matchId, amIHome) {
     const myName  = gameState[myRole + 'Name']
     const oppName = gameState[oppRole + 'Name']
 
+    if (gameState.phase === 'gc-select') {
+      return renderPvpGCSelect()
+    }
     if (gameState.phase === 'midfield') {
       return renderPvpMidfield()
     }
@@ -502,7 +529,77 @@ async function renderPvpMatch(container, ctx, matchId, amIHome) {
     }
   }
 
-  // ── Duel milieu (calculé localement par p1, écrit en DB) ──
+  // ── Sélection des Game Changers avant match (PvP) ─────────
+  function renderPvpGCSelect() {
+    const myReady  = gameState['gcReady_' + myRole]
+    const oppReady = gameState['gcReady_' + oppRole]
+    const myChosen = gameState['gc_' + myRole] || []
+    const MAX = 3
+
+    container.style.overflow = 'hidden'
+    container.innerHTML = `
+    <div style="display:flex;flex-direction:column;height:100%;overflow:hidden;background:linear-gradient(180deg,#0a1628,#1a0a2e)">
+      <div style="text-align:center;padding:14px 16px 6px;flex-shrink:0">
+        <div style="font-size:11px;color:rgba(255,255,255,0.5);letter-spacing:2px;text-transform:uppercase">Avant le match</div>
+        <div style="font-size:18px;font-weight:900;color:#fff">Choisis tes Game Changers</div>
+        <div style="font-size:12px;color:rgba(255,255,255,0.5);margin-top:2px">${myChosen.length}/${MAX} sélectionnée(s)</div>
+      </div>
+      ${myReady ? `
+      <div style="flex:1;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px">
+        <div style="font-size:32px">✅</div>
+        <div style="color:#fff;font-size:14px">Prêt ! ${oppReady ? 'Adversaire aussi.' : `En attente de ${gameState[oppRole+'Name']}...`}</div>
+      </div>` : `
+      <div id="pvp-gc-grid" style="flex:1;overflow-y:auto;display:flex;flex-wrap:wrap;gap:10px;justify-content:center;align-content:flex-start;padding:8px 16px"></div>
+      <div style="padding:10px 16px 14px;flex-shrink:0">
+        <button id="pvp-gc-validate" style="width:100%;padding:14px;border-radius:14px;border:none;background:linear-gradient(135deg,#5a0a9a,#9a28e8);color:#fff;font-size:15px;font-weight:900;cursor:pointer">
+          ${myChosen.length ? `⚡ Valider (${myChosen.length} GC)` : '▶ Continuer sans GC'}
+        </button>
+      </div>`}
+    </div>`
+
+    if (myReady) return
+
+    // Charger mes cartes GC disponibles
+    supabase.from('cards').select('id,gc_type').eq('owner_id', myRole==='p1'?match.home_id:match.away_id).eq('card_type','game_changer')
+      .then(({ data: myGcCards }) => {
+        const seen = new Set()
+        const distinct = (myGcCards||[]).filter(c => { if (seen.has(c.gc_type)) return false; seen.add(c.gc_type); return true })
+        const grid = document.getElementById('pvp-gc-grid')
+        if (!grid) return
+        if (!distinct.length) {
+          grid.innerHTML = '<div style="color:rgba(255,255,255,0.4);font-size:13px;text-align:center;margin-top:30px">Aucune carte Game Changer disponible.</div>'
+          return
+        }
+        grid.innerHTML = distinct.map(c => {
+          const sel = myChosen.includes(c.id)
+          const icon = (GC_DEFS[c.gc_type]||{}).icon || '⚡'
+          return `<div class="pvp-gc-card" data-id="${c.id}" style="width:90px;padding:10px 6px;border-radius:10px;border:3px solid ${sel?'#FFD700':'#9b59b6'};background:linear-gradient(135deg,#3d0a7a,#7a28b8);text-align:center;cursor:pointer">
+            <div style="font-size:26px">${icon}</div>
+            <div style="font-size:9px;color:#fff;font-weight:700;margin-top:4px">${c.gc_type}</div>
+          </div>`
+        }).join('')
+        grid.querySelectorAll('.pvp-gc-card').forEach(el => {
+          el.addEventListener('click', () => {
+            const id = el.dataset.id
+            const arr = gameState['gc_' + myRole]
+            const idx = arr.indexOf(id)
+            if (idx > -1) arr.splice(idx, 1)
+            else if (arr.length < MAX) arr.push(id)
+            renderPvpScreen()
+          })
+        })
+      })
+
+    container.querySelector('#pvp-gc-validate')?.addEventListener('click', async () => {
+      await pushState({ ['gcReady_' + myRole]: true })
+      // Si les deux sont prêts → lancer le duel du milieu
+      if (gameState['gcReady_' + oppRole]) {
+        await pushState({ phase: 'midfield' })
+      }
+    })
+  }
+
+    // ── Duel milieu (calculé localement par p1, écrit en DB) ──
   function renderPvpMidfield() {
     const p1Mils = gameState.p1Team.MIL || []
     const p2Mils = gameState.p2Team.MIL || []

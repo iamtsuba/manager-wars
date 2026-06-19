@@ -205,8 +205,9 @@ function generateFakeAITeam(formation) {
 }
 
 // ── ENTRY POINT ───────────────────────────────────────────
-// ── Masquer/Afficher la nav bas pendant le match ─────────
+// ── Masquer/Afficher le header haut + la nav bas pendant le match ──
 function _hideBottomNav(container) {
+  // Frères APRÈS le container (nav du bas)
   let el = container.nextElementSibling
   while (el) {
     if (!el.dataset.matchHidden) {
@@ -214,6 +215,15 @@ function _hideBottomNav(container) {
       el.style.display = 'none'
     }
     el = el.nextElementSibling
+  }
+  // Frères AVANT le container (header logo/crédits/lune)
+  el = container.previousElementSibling
+  while (el) {
+    if (!el.dataset.matchHidden) {
+      el.dataset.matchHidden = el.style.display || 'flex'
+      el.style.display = 'none'
+    }
+    el = el.previousElementSibling
   }
 }
 function _showBottomNav(container) {
@@ -224,6 +234,14 @@ function _showBottomNav(container) {
       delete el.dataset.matchHidden
     }
     el = el.nextElementSibling
+  }
+  el = container.previousElementSibling
+  while (el) {
+    if (el.dataset.matchHidden) {
+      el.style.display = el.dataset.matchHidden === 'none' ? '' : el.dataset.matchHidden
+      delete el.dataset.matchHidden
+    }
+    el = el.previousElementSibling
   }
 }
 

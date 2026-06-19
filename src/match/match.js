@@ -577,7 +577,7 @@ async function renderPvpMatch(container, ctx, matchId, amIHome) {
         <div style="flex:1;text-align:center;color:#fff;font-size:14px;font-weight:700">
           ${myName} <span style="color:#FFD700;font-size:18px">${myScore}</span> – <span style="color:#FFD700;font-size:18px">${oppScore}</span> ${oppName}
         </div>
-        <div style="width:32px"></div>
+        <button id="pvp-view-opp" style="width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.3);color:#fff;font-size:16px;cursor:pointer;flex-shrink:0">👁</button>
       </div>
       <div style="text-align:center;padding:4px;background:rgba(0,0,0,0.15);font-size:11px;color:${isOppTurn?'rgba(255,255,255,0.4)':'#FFD700'};font-weight:700;flex-shrink:0">
         ${isOppTurn ? `⏳ Tour de ${oppName}` : isMyAttack ? '⚔️ À vous d\'attaquer !' : isMyDefense ? '🛡️ À vous de défendre !' : ''}
@@ -651,6 +651,9 @@ async function renderPvpMatch(container, ctx, matchId, amIHome) {
     })
     container.querySelector('#pvp-quit')?.addEventListener('click', () => {
       if (confirm('Quitter le match ? Vous perdrez par forfait.')) forfeitMatch()
+    })
+    container.querySelector('#pvp-view-opp')?.addEventListener('click', () => {
+      pvpShowOpponentTeam()
     })
 
     // Timer (30s→15s) uniquement si c'est mon tour
@@ -943,6 +946,19 @@ async function renderPvpMatch(container, ctx, matchId, amIHome) {
   }
 
   // ── Détail carte GC (design Collection) + utilisation basique ──
+  // ── Voir l'équipe adverse (popup, design identique à showAITeam) ──
+  function pvpShowOpponentTeam() {
+    const overlay = document.createElement('div')
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.92);z-index:800;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:20px;overflow-y:auto'
+    overlay.innerHTML = `
+      <div style="font-size:12px;color:rgba(255,255,255,0.5);letter-spacing:2px;text-transform:uppercase">Équipe adverse</div>
+      <div style="font-size:18px;font-weight:900;color:#ff6b6b">${gameState[oppRole+'Name']}</div>
+      <div style="width:min(90vw,420px)">${buildTeamSVG(gameState[oppRole+'Team'], gameState[oppRole+'Formation'], null, [], 300, 300)}</div>
+      <button id="pvp-view-opp-close" style="margin-top:8px;padding:12px 28px;border-radius:12px;border:1.5px solid rgba(255,255,255,0.3);background:transparent;color:#fff;font-size:14px;cursor:pointer">Fermer</button>`
+    document.body.appendChild(overlay)
+    overlay.querySelector('#pvp-view-opp-close')?.addEventListener('click', () => overlay.remove())
+  }
+
   function pvpOpenGCDetail(gcId, gcType) {
     const myGcCardsFull = gameState['gcCardsFull_' + myRole] || []
     const card = myGcCardsFull.find(c => c.id === gcId)

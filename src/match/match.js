@@ -53,10 +53,11 @@ function getPortrait(p) {
   return `${url}/storage/v1/object/public/assets/tetes/${key}.png`
 }
 
-function playerFromCard(card) {
+function playerFromCard(card, position) {
   const p = card.player
   return {
     cardId: card.id,
+    position: position || null,
     id: p.id,
     firstname: p.firstname,
     name: p.surname_encoded,
@@ -94,10 +95,31 @@ function rollBoost() {
   return 1
 }
 
+// starters : tableau de { ...playerFromCard, position } où position = vrai slot DB (ex: 'MIL5','DEF3','GK1')
+// Si position est fourni, on respecte EXACTEMENT le placement du deck (comme decks.js).
+// Sinon (fallback, ancien code appelant sans position) on garde l'heuristique par job.
 function buildTeam(starters, formation) {
   const struct = FORMATIONS[formation] || FORMATIONS['4-4-2']
   const lines  = { GK:[], DEF:[], MIL:[], ATT:[] }
-  const pool   = [...starters]
+
+  const hasPositions = starters.length && starters.every(p => p.position)
+
+  if (hasPositions) {
+    // Regrouper par rôle extrait de la position (ex: 'MIL5' → 'MIL'), trié par numéro de slot
+    for (const role of ['GK','DEF','MIL','ATT']) {
+      const linePlayers = starters
+        .filter(p => p.position && p.position.replace(/\d+$/, '') === role)
+        .sort((a,b) => parseInt(a.position.replace(/\D+/g,''),10) - parseInt(b.position.replace(/\D+/g,''),10))
+        .map(p => ({ ...p, _line: role }))
+      const cols = getColsForLine(linePlayers.length)
+      linePlayers.forEach((p, i) => { p._col = cols[i] })
+      lines[role] = linePlayers
+    }
+    return lines
+  }
+
+  // ── Fallback heuristique (ancien comportement, utilisé seulement si pas de position) ──
+  const pool = [...starters]
   for (const role of ['GK','DEF','MIL','ATT']) {
     const linePlayers = []
     for (let i = 0; i < struct[role]; i++) {
@@ -323,10 +345,10 @@ async function renderPvpMatch(container, ctx, matchId, amIHome) {
       supabase.from('users').select('id,pseudo,club_name').eq('id', match.away_id).single(),
     ])
 
-    const p1Starters = (p1Cards||[]).filter(dc=>dc.is_starter && dc.card?.player).map(dc=>playerFromCard(dc.card))
-    const p2Starters = (p2Cards||[]).filter(dc=>dc.is_starter && dc.card?.player).map(dc=>playerFromCard(dc.card))
-    const p1Subs     = (p1Cards||[]).filter(dc=>!dc.is_starter && dc.card?.player).map(dc=>playerFromCard(dc.card))
-    const p2Subs     = (p2Cards||[]).filter(dc=>!dc.is_starter && dc.card?.player).map(dc=>playerFromCard(dc.card))
+    const p1Starters = (p1Cards||[]).filter(dc=>dc.is_starter && dc.card?.player).map(dc=>playerFromCard(dc.card, dc.position))
+    const p2Starters = (p2Cards||[]).filter(dc=>dc.is_starter && dc.card?.player).map(dc=>playerFromCard(dc.card, dc.position))
+    const p1Subs     = (p1Cards||[]).filter(dc=>!dc.is_starter && dc.card?.player).map(dc=>playerFromCard(dc.card, dc.position))
+    const p2Subs     = (p2Cards||[]).filter(dc=>!dc.is_starter && dc.card?.player).map(dc=>playerFromCard(dc.card, dc.position))
     const p1Formation = p1Deck?.formation || '4-4-2'
     const p2Formation = p2Deck?.formation || '4-4-2'
 
@@ -813,8 +835,8 @@ export async function renderMatch(container, ctx) {
       .eq('deck_id', deckId).order('slot_order')
   ])
 
-  const starters = (deckCards||[]).filter(dc => dc.is_starter && dc.card?.player).map(dc => playerFromCard(dc.card))
-  const subsRaw  = (deckCards||[]).filter(dc => !dc.is_starter && dc.card?.player).map(dc => playerFromCard(dc.card))
+  const starters = (deckCards||[]).filter(dc => dc.is_starter && dc.card?.player).map(dc => playerFromCard(dc.card, dc.position))
+  const subsRaw  = (deckCards||[]).filter(dc => !dc.is_starter && dc.card?.player).map(dc => playerFromCard(dc.card, dc.position))
 
   if (starters.length < 11) {
     showMsg(container, '⚠️', `Deck incomplet (${starters.length}/11).`, 'Compléter', () => navigate('decks'))
@@ -1032,7 +1054,7 @@ async function renderDeckSelect(container, ctx, matchMode) {
   function renderPreview() {
     const deck = decks[currentIdx]
     const cards = (allDeckCards||[]).filter(dc => dc.deck_id === deck.id)
-    const starters = cards.filter(dc => dc.is_starter && dc.card?.player).map(dc => playerFromCard(dc.card))
+    const starters = cards.filter(dc => dc.is_starter && dc.card?.player).map(dc => playerFromCard(dc.card, dc.position))
     const formationCard = cards.find(dc => dc.card?.card_type === 'formation')
     const formation = deck.formation || formationCard?.card?.formation || '4-4-2'
     const team = starters.length >= 11 ? buildTeam(starters, formation) : null

@@ -88,10 +88,10 @@ function getColsForLine(n) {
 }
 
 function rollBoost() {
+  // +1 70%, +2 20%, +3 10%
   const r = Math.random() * 100
-  if (r < 0.1)  return 4
-  if (r < 5.0)  return 3
-  if (r < 20.0) return 2
+  if (r < 10) return 3
+  if (r < 30) return 2
   return 1
 }
 
@@ -486,6 +486,9 @@ async function renderPvpMatch(container, ctx, matchId, amIHome) {
     if (gameState.phase === 'gc-select') {
       return renderPvpGCSelect()
     }
+    if (gameState.phase === 'reveal') {
+      return renderPvpReveal()
+    }
     if (gameState.phase === 'midfield') {
       return renderPvpMidfield()
     }
@@ -528,8 +531,13 @@ async function renderPvpMatch(container, ctx, matchId, amIHome) {
         </div>
       </div>
 
-      <!-- Zone bas : bouton action -->
+      <!-- Zone bas : carte boost (si gagnée) + bouton action -->
       <div style="display:flex;align-items:stretch;padding:8px;background:rgba(0,0,0,0.35);gap:6px;flex-shrink:0">
+        ${(gameState.boostOwner === myRole && !gameState.boostUsed) ? `
+        <div id="pvp-boost-card" style="flex-shrink:0;width:64px;background:linear-gradient(135deg,#4a9fc4,#87CEEB);border:2px solid #87CEEB;border-radius:10px;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px">
+          <div style="font-size:20px">⚡</div>
+          <div style="font-size:11px;color:#000;font-weight:900">+${gameState.boostValue}</div>
+        </div>` : ''}
         <div style="flex:1;display:flex;flex-direction:column;justify-content:center;gap:3px">
           ${isMyAttack
             ? `<button id="pvp-action" style="padding:14px;border-radius:14px;background:linear-gradient(135deg,#c47a00,#FFD700);border:none;color:#fff;font-size:15px;font-weight:900;cursor:pointer" ${mySelected.length===0?'disabled style="opacity:0.45"':''}>⚔️ ATTAQUEZ <span id="pvp-timer"></span></button>`
@@ -559,7 +567,11 @@ async function renderPvpMatch(container, ctx, matchId, amIHome) {
     })
 
     container.querySelector('#pvp-action')?.addEventListener('click', () => {
-      if (isMyAttack) pvpConfirmAttack()
+      container.querySelector('#pvp-boost-card')?.addEventListener('click', () => {
+      pvpOpenBoostPicker()
+    })
+
+    if (isMyAttack) pvpConfirmAttack()
       else if (isMyDefense) pvpConfirmDefense()
     })
     container.querySelector('#pvp-quit')?.addEventListener('click', () => {
@@ -671,9 +683,29 @@ async function renderPvpMatch(container, ctx, matchId, amIHome) {
     container.querySelector('#pvp-gc-validate')?.addEventListener('click', async () => {
       await pushState({ ['gcReady_' + myRole]: true })
       if (gameState['gcReady_' + oppRole]) {
-        await pushState({ phase: 'midfield' })
+        await pushState({ phase: 'reveal' })
       }
     })
+  }
+
+  // ── Reveal équipe adverse (5s), identique au design vs IA ──
+  function renderPvpReveal() {
+    container.style.overflow = 'hidden'
+    container.innerHTML = `
+    <div class="match-screen" style="display:flex;flex-direction:column;align-items:center;justify-content:flex-start;height:100%;overflow:hidden;gap:12px;padding:12px 16px;background:#0a3d1e;overflow-y:auto">
+      <div style="font-size:11px;color:rgba(255,255,255,0.5);letter-spacing:3px;text-transform:uppercase;margin-top:8px">Équipe adverse</div>
+      <div style="font-size:20px;font-weight:900;color:#ff6b6b">${gameState[oppRole+'Name']}</div>
+      <div style="width:min(90vw,420px)">${buildTeamSVG(gameState[oppRole+'Team'], gameState[oppRole+'Formation'], null, [], 300, 300)}</div>
+      <div style="font-size:15px;color:rgba(255,255,255,0.7)">
+        <span class="loading-dots">Chargement</span>
+      </div>
+      <style>@keyframes ld{0%,20%{opacity:0.3}50%{opacity:1}80%,100%{opacity:0.3}}.loading-dots::after{content:'...';animation:ld 1.4s infinite}</style>
+    </div>`
+
+    // Seul p1 déclenche la transition (évite double-écriture)
+    if (myRole === 'p1') {
+      setTimeout(async () => { await pushState({ phase: 'midfield' }) }, 5000)
+    }
   }
 
     // ── Duel milieu (calculé localement par p1, écrit en DB) ──
@@ -748,28 +780,86 @@ async function renderPvpMatch(container, ctx, matchId, amIHome) {
         if (myWins) { elMe.style.fontSize='80px'; elMe.style.color='#FFD700'; elOpp.style.opacity='0.25' }
         else { elOpp.style.fontSize='80px'; elOpp.style.color='#ff6b6b'; elMe.style.opacity='0.25' }
       }
+      // Carte boost : calculée localement par chacun à partir de la même seed déterministe
+      // (pour que les 2 joueurs affichent exactement la même valeur sans dépendre du Realtime)
+      const p1Mils0 = gameState.p1Team.MIL || []
+      const p2Mils0 = gameState.p2Team.MIL || []
+      const p1Total0 = milScore(p1Mils0) + milLinks(p1Mils0)
+      const p2Total0 = milScore(p2Mils0) + milLinks(p2Mils0)
+      const winnerRole0 = p1Total0 >= p2Total0 ? 'p1' : 'p2'
+      const winnerName0 = gameState[winnerRole0 + 'Name']
+
       if (elRes) {
         elRes.style.opacity = '1'
         elRes.innerHTML = `<div style="font-size:20px;font-weight:900;margin-bottom:10px">
-          ⚽ ${myWins ? `${gameState[myRole+'Name']} gagne le milieu et attaque !` : `${gameState[oppRole+'Name']} gagne l'engagement et attaque !`}
-        </div>`
+          ⚽ ${myWins ? `${gameState[myRole+'Name']} gagne le milieu de terrain et attaque !` : `${gameState[oppRole+'Name']} gagne l'engagement et attaque !`}
+        </div>
+        ${myWins ? `
+        <div style="background:rgba(135,206,235,0.15);border:2px solid #87CEEB;border-radius:14px;padding:14px 24px;display:inline-block;margin-top:4px" id="pvp-boost-display">
+          <div style="font-size:10px;color:#87CEEB;letter-spacing:1px">CARTE BOOST OBTENUE</div>
+          <div style="font-size:32px;font-weight:900;color:#87CEEB">+?</div>
+          <div style="font-size:10px;color:rgba(135,206,235,0.7)">Applicable sur n'importe quel joueur</div>
+        </div>` : ''}`
       }
 
       // Page résultat séparée, puis transition de phase — seul p1 écrit en DB
+      // (p1 tire aussi la carte boost pour que la valeur soit partagée dans le state)
       setTimeout(async () => {
         if (myRole !== 'p1') return  // seul p1 décide pour éviter la race condition
-        const p1Mils = gameState.p1Team.MIL || []
-        const p2Mils = gameState.p2Team.MIL || []
-        const p1Total = milScore(p1Mils) + milLinks(p1Mils)
-        const p2Total = milScore(p2Mils) + milLinks(p2Mils)
-        const p1Wins  = p1Total >= p2Total
-        const attacker = p1Wins ? 'p1' : 'p2'
-        await pushState({ phase: attacker + '-attack', attacker, round: 1 })
+        const attacker = winnerRole0
+        const boostValue = rollBoost()
+        await pushState({
+          phase: attacker + '-attack', attacker, round: 1,
+          boostValue, boostUsed: false, boostOwner: attacker,
+        })
       }, 1800)
     }, 600)
+
+    // Afficher la vraie valeur du boost dès qu'elle est connue (via le state, après transition)
+    // → géré par renderPvpScreen au prochain rendu (boostValue affiché dans la zone GC)
   }
 
   // ── Écran résultat final ───────────────────────────────
+  // ── Picker pour appliquer la carte boost ───────────────────
+  function pvpOpenBoostPicker() {
+    const myTeamNow = gameState[myRole + 'Team']
+    const pool = Object.entries(myTeamNow).flatMap(([role, players]) =>
+      (players||[]).filter(p=>!p.used).map(p=>({...p,_line:role})))
+    if (!pool.length) return
+
+    const overlay = document.createElement('div')
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.9);z-index:900;display:flex;flex-direction:column;overflow:hidden'
+    overlay.innerHTML = `
+      <div style="padding:12px 16px;background:rgba(255,255,255,0.08);display:flex;align-items:center;gap:10px;flex-shrink:0">
+        <div style="flex:1;font-size:14px;font-weight:700;color:#fff">⚡ Choisir un joueur pour +${gameState.boostValue}</div>
+        <button id="boost-picker-close" style="background:none;border:none;color:rgba(255,255,255,0.5);font-size:22px;cursor:pointer">✕</button>
+      </div>
+      <div style="flex:1;overflow-y:auto;padding:12px;display:flex;flex-wrap:wrap;gap:8px;align-content:flex-start">
+        ${pool.map(p => {
+          const bg = ({GK:'#111',DEF:'#bb2020',MIL:'#D4A017',ATT:'#1A6B3C'})[p._line]||'#555'
+          const note = getNoteForRole(p, p._line) + (p.boost||0)
+          return `<div class="boost-pick-item" data-cid="${p.cardId}" style="width:80px;border-radius:8px;border:2px solid rgba(255,255,255,0.25);background:${bg};overflow:hidden;cursor:pointer">
+            <div style="background:rgba(255,255,255,0.9);text-align:center;padding:2px;font-size:7px;font-weight:900;color:#111;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">${p.name||'?'}</div>
+            <div style="height:50px;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:900;color:#fff">${note}</div>
+          </div>`
+        }).join('')}
+      </div>`
+    document.body.appendChild(overlay)
+    overlay.querySelector('#boost-picker-close')?.addEventListener('click', () => overlay.remove())
+    overlay.querySelectorAll('.boost-pick-item').forEach(el => {
+      el.addEventListener('click', async () => {
+        const cid = el.dataset.cid
+        const p = pool.find(x => x.cardId === cid)
+        if (!p) return
+        const team = gameState[myRole + 'Team']
+        const target = (team[p._line]||[]).find(pp => pp.cardId === cid)
+        if (target) target.boost = (target.boost||0) + gameState.boostValue
+        overlay.remove()
+        await pushState({ [myRole+'Team']: team, boostUsed: true })
+      })
+    })
+  }
+
   function renderPvpResult() {
     const myScore = gameState[myRole+'Score'], oppScore = gameState[oppRole+'Score']
     const won = myScore > oppScore

@@ -883,6 +883,16 @@ async function renderPvpMatch(container, ctx, matchId, amIHome) {
       const winnerRole0 = p1Total0 >= p2Total0 ? 'p1' : 'p2'
       const winnerName0 = gameState[winnerRole0 + 'Name']
 
+      // Tirer la valeur du boost MAINTENANT (p1 fait foi), pour l'afficher tout de suite.
+      // Si elle existe déjà dans le state (echo realtime), on la réutilise.
+      let boostValueNow = gameState.boostValue
+      if (boostValueNow == null) {
+        boostValueNow = rollBoost()
+        gameState.boostValue = boostValueNow
+        gameState.boostOwner = winnerRole0
+        gameState.boostUsed = false
+      }
+
       if (elRes) {
         elRes.style.opacity = '1'
         elRes.innerHTML = `<div style="font-size:20px;font-weight:900;margin-bottom:10px">
@@ -891,20 +901,18 @@ async function renderPvpMatch(container, ctx, matchId, amIHome) {
         ${myWins ? `
         <div style="background:rgba(135,206,235,0.15);border:2px solid #87CEEB;border-radius:14px;padding:14px 24px;display:inline-block;margin-top:4px" id="pvp-boost-display">
           <div style="font-size:10px;color:#87CEEB;letter-spacing:1px">CARTE BOOST OBTENUE</div>
-          <div style="font-size:32px;font-weight:900;color:#87CEEB">+?</div>
+          <div style="font-size:32px;font-weight:900;color:#87CEEB">+${boostValueNow}</div>
           <div style="font-size:10px;color:rgba(135,206,235,0.7)">Applicable sur n'importe quel joueur</div>
         </div>` : ''}`
       }
 
-      // Page résultat séparée, puis transition de phase — seul p1 écrit en DB
-      // (p1 tire aussi la carte boost pour que la valeur soit partagée dans le state)
+      // Transition de phase — seul p1 écrit en DB (avec la valeur boost déjà tirée)
       setTimeout(async () => {
-        if (myRole !== 'p1') return  // seul p1 décide pour éviter la race condition
+        if (myRole !== 'p1') return
         const attacker = winnerRole0
-        const boostValue = rollBoost()
         await pushState({
           phase: attacker + '-attack', attacker, round: 1,
-          boostValue, boostUsed: false, boostOwner: attacker,
+          boostValue: gameState.boostValue, boostUsed: false, boostOwner: attacker,
         })
       }, 1800)
     }, 600)
@@ -1355,10 +1363,10 @@ async function renderDeckSelect(container, ctx, matchMode) {
         <button id="next-deck" style="width:46px;height:46px;border-radius:50%;background:rgba(255,255,255,${currentIdx===decks.length-1?'0.05':'0.15'});border:2px solid rgba(255,255,255,${currentIdx===decks.length-1?'0.1':'0.3'});color:${currentIdx===decks.length-1?'rgba(255,255,255,0.2)':'#fff'};font-size:20px;cursor:${currentIdx===decks.length-1?'default':'pointer'};flex-shrink:0">▶</button>
       </div>
 
-      <!-- Terrain preview : contraindre la largeur du SVG pour contrôler hauteur+largeur -->
-      <div id="deck-swipe-zone" style="flex:1;min-height:0;overflow:hidden;position:relative;touch-action:pan-y;display:flex;align-items:center;justify-content:center">
+      <!-- Terrain preview : SVG occupe toute la zone disponible (carré max) -->
+      <div id="deck-swipe-zone" style="flex:1;min-height:0;overflow:hidden;position:relative;touch-action:pan-y;display:flex;align-items:center;justify-content:center;padding:4px">
         ${team
-          ? `<div style="width:min(98vw, calc(100dvh - 400px));overflow:hidden;flex-shrink:0">${renderTeam(team, formation, null, [], 285, 285)}</div>`
+          ? `<div class="deck-preview-wrap" style="aspect-ratio:1/1;max-width:100%;max-height:100%;width:auto;height:100%;overflow:hidden">${renderTeam(team, formation, null, [], 285, 285)}</div>`
           : `<div style="display:flex;align-items:center;justify-content:center;height:100%;opacity:.4;flex-direction:column;gap:8px">
               <div style="font-size:32px">⚠️</div>
               <div>Deck incomplet (${starters.length}/11)</div>
@@ -1384,6 +1392,15 @@ async function renderDeckSelect(container, ctx, matchMode) {
         </button>
       </div>
     </div>`
+
+    // Retirer le cap max-width:440px du SVG pour qu'il remplisse le wrapper
+    ;(function fixDeckSVG() {
+      const svg = container.querySelector('.deck-preview-wrap svg')
+      if (!svg) return
+      svg.removeAttribute('width'); svg.removeAttribute('height')
+      svg.style.cssText = 'width:100%;height:100%;display:block;max-width:none;margin:0'
+      svg.setAttribute('preserveAspectRatio', 'xMidYMid meet')
+    })()
 
     document.getElementById('prev-deck')?.addEventListener('click', () => {
       if (currentIdx > 0) { currentIdx--; renderPreview() }

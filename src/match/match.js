@@ -222,7 +222,7 @@ function _showBottomNav(container) {
 
 
 // ── MATCH RANDOM : écran de recherche + matchmaking ───────
-async function showMatchmakingSearch(container, ctx, deckId, formation, starters, subsRaw) {
+async function showMatchmakingSearch(container, ctx, deckId, formation, starters, subsRaw, myGC = [], gcDefs = []) {
   const { state, navigate, toast } = ctx
   let cancelled = false
   let channel = null
@@ -261,7 +261,7 @@ async function showMatchmakingSearch(container, ctx, deckId, formation, starters
     if (statusEl()) statusEl().textContent = 'Adversaire trouvé !'
     await new Promise(r => setTimeout(r, 600))
     if (container.isConnected === false) return
-    renderPvpMatch(container, ctx, matchId, amIHome)
+    renderPvpMatch(container, ctx, matchId, amIHome, myGC, gcDefs)
   }
 
   // ── Tentative de matchmaking ────────────────────────────
@@ -316,10 +316,14 @@ async function showMatchmakingSearch(container, ctx, deckId, formation, starters
 // (mon équipe à gauche, adversaire à droite, mes boutons actifs
 // seulement quand c'est mon tour).
 
-async function renderPvpMatch(container, ctx, matchId, amIHome) {
+async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDefs = []) {
   const { state, navigate, toast } = ctx
   const myRole  = amIHome ? 'p1' : 'p2'
   const oppRole = amIHome ? 'p2' : 'p1'
+
+  // GC pré-sélectionnés (avant matchmaking) : ids + version enrichie complète
+  const myGCIds  = (myGC || []).map(g => g.id)
+  const myGCFull = (myGC || []).map(g => ({ id: g.id, gc_type: g.gc_type, _gcDef: g._gcDef || null }))
 
   container.innerHTML = '<div style="padding:40px;text-align:center;color:#aaa">⚽ Préparation du match...</div>'
 
@@ -375,15 +379,19 @@ async function renderPvpMatch(container, ctx, matchId, amIHome) {
       p1Score: 0, p2Score: 0,
       p1Subs_used: 0, p2Subs_used: 0,
       maxSubs: 3,
-      phase: 'gc-select',        // gc-select → midfield → p1/p2-attack/defense → finished
+      phase: 'reveal',           // reveal → midfield → p1/p2-attack/defense → finished
       attacker: null,
       round: 0,
       selected_p1: [], selected_p2: [],
       pendingAttack: null,
       log: [],
       modifiers: { p1:{}, p2:{} },
-      gc_p1: [], gc_p2: [],           // cartes GC sélectionnées par chacun (ids)
-      gcReady_p1: false, gcReady_p2: false,  // a validé sa sélection GC
+      // GC déjà choisis avant le matchmaking : p1 (home) injecte les siens ici.
+      gc_p1: amIHome ? myGCIds : [],
+      gc_p2: amIHome ? [] : myGCIds,
+      gcCardsFull_p1: amIHome ? myGCFull : [],
+      gcCardsFull_p2: amIHome ? [] : myGCFull,
+      gcReady_p1: true, gcReady_p2: true,
       usedGc_p1: [], usedGc_p2: [],
       lastActionAt: new Date().toISOString(),
     }
@@ -414,6 +422,11 @@ async function renderPvpMatch(container, ctx, matchId, amIHome) {
         if (m2?.game_state && Object.keys(m2.game_state).length) gameState = m2.game_state
       }
       if (!gameState) { toast('Erreur de synchronisation', 'error'); navigate('home'); return }
+
+      // p2 injecte SES propres GC (p1 n'avait mis que les siens) puis sauvegarde
+      gameState.gc_p2 = myGCIds
+      gameState.gcCardsFull_p2 = myGCFull
+      await supabase.from('matches').update({ game_state: gameState }).eq('id', matchId)
     }
   }
 
@@ -1128,11 +1141,6 @@ export async function renderMatch(container, ctx) {
   const formationCard = (deckCards||[]).find(dc => dc.card?.card_type === 'formation')
   const formation = deckMeta?.formation || formationCard?.card?.formation || '4-4-2'
 
-  // ── MODE RANDOM : matchmaking PvP au lieu de générer une IA ──
-  if (matchMode === 'random') {
-    return showMatchmakingSearch(container, ctx, deckId, formation, starters, subsRaw)
-  }
-
   // Charger toutes les cartes GC disponibles
   const { data: allGCCards } = await supabase
     .from('cards')
@@ -1147,6 +1155,17 @@ export async function renderMatch(container, ctx) {
     ...card,
     _gcDef: gcDefs?.find(d => d.name === card.gc_type || d.id === card.gc_definition_id) || null,
   }))
+
+  // ── MODE RANDOM : sélection GC AVANT le matchmaking (comme vs IA) ──
+  if (matchMode === 'random') {
+    const startRandom = (selectedGC) => {
+      // selectedGC = cartes enrichies choisies (avec _gcDef)
+      showMatchmakingSearch(container, ctx, deckId, formation, starters, subsRaw, selectedGC, gcDefs || [])
+    }
+    if (!gcCardsEnriched.length) { startRandom([]); return }
+    showGCSelection(container, gcCardsEnriched, startRandom)
+    return
+  }
 
   const homeTeam = buildTeam(starters, formation)
   const aiTeam   = await generateAITeam(formation, difficulty)

@@ -4,15 +4,6 @@ export async function renderHome(container, { state, navigate, toast }) {
   const p = state.profile
   if (!p) return
 
-  // Stats récentes
-  const { data: recentMatches } = await supabase
-    .from('matches')
-    .select('id,home_score,away_score,status,mode,winner_id,created_at')
-    .or(`home_id.eq.${p.id},away_id.eq.${p.id}`)
-    .eq('status','finished')
-    .order('created_at', { ascending: false })
-    .limit(3)
-
   container.innerHTML = `
   <div class="page">
     <div class="page-body">
@@ -26,7 +17,9 @@ export async function renderHome(container, { state, navigate, toast }) {
           <h3 style="margin:0">${p.pseudo}</h3>
           <div class="level">Niveau ${p.level} · ${p.club_name}</div>
         </div>
-        <div class="hero-compact-spacer"></div>
+        <button class="nav-rankings-btn" id="nav-matches" title="Mes matchs" style="margin-left:auto">
+          <img src="${import.meta.env.BASE_URL}icons/badge-ball.png" alt="Matchs" onerror="this.replaceWith(Object.assign(document.createElement('span'),{textContent:'⚽',style:'font-size:22px'}))">
+        </button>
       </div>
 
       <!-- Ranked (bouton) -->
@@ -55,34 +48,7 @@ export async function renderHome(container, { state, navigate, toast }) {
         </div>
       </div>
 
-      <!-- Derniers matchs -->
-      ${recentMatches && recentMatches.length > 0 ? `
-      <div>
-        <div class="section-title">⚽ Derniers matchs</div>
-        <div class="card-panel" style="padding:0">
-          ${recentMatches.map(m => {
-            const isWin  = m.winner_id === p.id
-            const isDraw = m.home_score === m.away_score
-            const result = isDraw ? 'N' : isWin ? 'V' : 'D'
-            const color  = isDraw ? '#888' : isWin ? '#1A6B3C' : '#c0392b'
-            const label  = {vs_ai_easy:'IA Facile',vs_ai_medium:'IA Moyen',vs_ai_hard:'IA Difficile',vs_ai_club:'IA Club',friend_challenge:'Défi ami',championship:'Championnat'}[m.mode] || m.mode
-            const date = new Date(m.created_at)
-            const dateStr = date.toLocaleDateString('fr', {month:'short', day:'numeric'})
-            return `<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;border-bottom:1px solid var(--gray-200)">
-              <div>
-                <div style="font-size:13px;font-weight:600">${label}</div>
-                <div style="font-size:11px;color:var(--gray-600)">${dateStr}</div>
-              </div>
-              <div style="display:flex;align-items:center;gap:8px">
-                <span style="font-size:14px;font-weight:700">${m.home_score} - ${m.away_score}</span>
-                <span style="background:${color};color:#fff;width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900">${result}</span>
-              </div>
-            </div>`
-          }).join('')}
-        </div>
-      </div>` : ''}
-
-      <!-- Logout -->
+            <!-- Logout -->
       <div style="text-align:center;padding:12px 0;display:flex;flex-direction:column;gap:8px;align-items:center">
         <button class="btn btn-ghost btn-sm" id="logout-btn" style="color:var(--gray-600)">Déconnexion</button>
         ${p.is_admin ? `
@@ -105,6 +71,7 @@ export async function renderHome(container, { state, navigate, toast }) {
   })
 
   document.getElementById('nav-rankings')?.addEventListener('click', () => navigate('rankings'))
+  document.getElementById('nav-matches')?.addEventListener('click', () => navigate('matches'))
 
   // Actions jeu
   container.querySelectorAll('[data-action]').forEach(el => {
@@ -115,7 +82,6 @@ export async function renderHome(container, { state, navigate, toast }) {
 
       const action = el.dataset.action
       if (action === 'match-ai') { showDifficultyPicker(navigate); return }
-      if (action === 'match-random') { navigate('match', { matchMode: 'random' }); return }
       // Tous les autres modes : bientôt disponible
       toast('Bientôt disponible', 'info')
     })

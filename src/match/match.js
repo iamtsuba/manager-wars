@@ -625,7 +625,8 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
       const log = Array.isArray(gameState.log) ? gameState.log : []
       const last = log[log.length-1]
       if (!last) return '<div style="padding:6px 8px;font-size:11px;color:rgba(255,255,255,0.3)">⏳ Match en cours...</div>'
-      return '<div style="padding:2px 4px">'+renderLogEntry(last)+'</div>'
+      const accent = last.type === 'goal' ? '#FFD700' : last.type === 'stop' ? '#00ff88' : last.type === 'attack' ? '#ff6b6b' : 'rgba(255,255,255,0.6)'
+      return `<div style="padding:7px 10px;border-left:3px solid ${accent};font-size:12px;color:#fff">${last.text || ''}</div>`
     })()
 
     const histLen = (Array.isArray(gameState.log) ? gameState.log : []).length
@@ -670,18 +671,23 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
         ${headerHTML}
         <div style="display:flex;flex:1;min-height:0;overflow:hidden">
           ${subsHTML}
-          <div style="flex:1;min-width:0;display:flex;flex-direction:column;min-height:0">
-            ${terrainHTML}
-            <div style="display:flex;align-items:stretch;padding:8px;background:rgba(0,0,0,0.35);gap:6px;flex-shrink:0">
-              ${boostAvail ? boostCardHTML(60,80) : ''}
-              ${activeGCs.map(gc=>gcCardDesignPvp(gc,68,95)).join('')}
-              <div style="flex:1;display:flex;flex-direction:column;justify-content:center;gap:3px;min-width:90px">
-                ${actionBtn}${counter}
-              </div>
-            </div>
+          <div id="match-field" style="flex:1;min-width:0;min-height:0;overflow:hidden">
+            <div class="terrain-wrapper" style="width:100%;height:100%;overflow:hidden"></div>
           </div>
         </div>
+        <!-- ZONE BAS : cartes GC en ligne + bouton pleine largeur (comme vs IA) -->
+        <div style="flex-shrink:0;background:rgba(0,0,0,0.35);padding:6px 8px 8px;display:flex;flex-direction:column;gap:6px">
+          <div style="display:flex;gap:6px;overflow-x:auto;align-items:flex-end;min-height:96px;padding-bottom:2px">
+            ${activeGCs.map(gc=>gcCardDesignPvp(gc,68,95)).join('')}
+            ${boostAvail ? boostCardHTML(68,95) : ''}
+          </div>
+          <div>${actionBtn}${counter}</div>
+        </div>
       </div>`
+      // Le terrain est rendu hors du flux flex (sinon il prend toute la hauteur) :
+      // on injecte le SVG dans .terrain-wrapper après coup
+      const tw = container.querySelector('.terrain-wrapper')
+      if (tw) tw.innerHTML = renderTeam(myTeam, gameState[myRole+'Formation'], isMyAttack?'attack':isMyDefense?'defense':'idle', selectedIds, 300, 300)
     }
 
     // Sélection de joueurs (clic sur le terrain)
@@ -1146,11 +1152,18 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
       const p = (gameState[myRole+'Team'][sel._role]||[]).find(pp=>pp.cardId===sel.cardId)
       if (p) p.used = true
     })
+    const log = Array.isArray(gameState.log) ? gameState.log : []
+    log.push({
+      type: 'attack',
+      text: `⚔️ ${gameState[myRole+'Name']} attaque (${calc.total})`,
+      players: selected, total: calc.total, side: myRole,
+    })
     await pushState({
       pendingAttack: { ...calc, players: selected, side: myRole },
       ['selected_'+myRole]: [],
       modifiers: { ...gameState.modifiers, [myRole]: {} },
       phase: oppRole + '-defense',
+      log,
     })
   }
 
@@ -1172,6 +1185,19 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
     const round = (gameState.round||0) + 1
     const isFinished = round > 10  // 10 rounds par match (ajustable)
 
+    const log = Array.isArray(gameState.log) ? gameState.log : []
+    log.push({
+      type: 'defense',
+      text: `🛡️ ${gameState[myRole+'Name']} défend (${calc.total})`,
+      players: selected, total: calc.total, side: myRole,
+    })
+    log.push({
+      type: goal ? 'goal' : 'stop',
+      text: goal
+        ? `⚽ BUT de ${gameState[attackerRole+'Name']} ! (${gameState.pendingAttack.total} vs ${calc.total})`
+        : `✋ Attaque stoppée (${gameState.pendingAttack.total} vs ${calc.total})`,
+    })
+
     await pushState({
       [attackerRole+'Score']: newAttackerScore,
       ['selected_'+myRole]: [],
@@ -1180,6 +1206,7 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
       phase: isFinished ? 'finished' : nextAttacker + '-attack',
       attacker: nextAttacker,
       round,
+      log,
     })
 
     if (isFinished) {

@@ -430,6 +430,32 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
     }
   }
 
+  let _pvpEnded = false
+
+  // ── Écran de fin (victoire / défaite / forfait) ──
+  function showPvpEndScreen(row) {
+    try { supabase.removeChannel(channel) } catch {}
+    const myId = state.profile.id
+    const iWon = row.winner_id === myId
+    const byForfeit = !!row.forfeit
+    const myFinal = gameState[myRole + 'Score'] ?? 0
+    const oppFinal = gameState[oppRole + 'Score'] ?? 0
+    const overlay = document.createElement('div')
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.92);z-index:1500;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;color:#fff;padding:24px;text-align:center'
+    overlay.innerHTML = `
+      <div style="font-size:64px">${iWon ? '🏆' : '😞'}</div>
+      <div style="font-size:26px;font-weight:900;color:${iWon ? '#FFD700' : '#ff6b6b'}">${iWon ? 'VICTOIRE !' : 'DÉFAITE'}</div>
+      <div style="font-size:18px;color:#fff">${gameState[myRole+'Name']} ${myFinal} – ${oppFinal} ${gameState[oppRole+'Name']}</div>
+      ${byForfeit ? `<div style="font-size:13px;color:rgba(255,255,255,0.5)">${iWon ? "L'adversaire a quitté la partie" : 'Match perdu par forfait'}</div>` : ''}
+      <button id="pvp-end-home" style="margin-top:10px;padding:14px 32px;border-radius:12px;border:none;background:#1A6B3C;color:#fff;font-size:16px;font-weight:900;cursor:pointer">Retour à l'accueil</button>`
+    document.body.appendChild(overlay)
+    overlay.querySelector('#pvp-end-home')?.addEventListener('click', () => {
+      overlay.remove()
+      _showBottomNav(container)
+      navigate('home')
+    })
+  }
+
   // ── Channel Realtime : écouter les changements du match ──
   const channel = supabase
     .channel('pvp-match-' + matchId)
@@ -438,16 +464,21 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
     }, (payload) => {
       const row = payload.new
       try {
+        // Fin de match (forfait ou terminé) : afficher le résultat une seule fois
+        if (row.status === 'finished' || row.forfeit) {
+          if (_pvpEnded) return
+          _pvpEnded = true
+          if (gameState._timerInt) { clearInterval(gameState._timerInt); gameState._timerInt = null }
+          if (row.game_state) gameState = row.game_state
+          showPvpEndScreen(row)
+          return
+        }
         if (row.game_state) {
           gameState = row.game_state
           renderPvpScreen()
         }
-        if (row.status === 'finished' || row.forfeit) {
-          renderPvpScreen()
-        }
       } catch (e) {
         console.error('[PvP] Realtime render crash:', e, 'gameState:', gameState)
-        toast('Erreur de synchro temps réel : ' + e.message, 'error')
       }
     })
     .subscribe()
@@ -471,11 +502,17 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
 
   // ── Quitter proprement (forfait) ──────────────────────────
   async function forfeitMatch() {
+    if (_pvpEnded) return
+    _pvpEnded = true
+    // Nettoyer le timer pour éviter tout re-render fantôme
+    if (gameState._timerInt) { clearInterval(gameState._timerInt); gameState._timerInt = null }
     const winnerId = amIHome ? match.away_id : match.home_id
-    await supabase.from('matches').update({
-      status: 'finished', forfeit: true, winner_id: winnerId
-    }).eq('id', matchId)
-    supabase.removeChannel(channel)
+    try {
+      await supabase.from('matches').update({
+        status: 'finished', forfeit: true, winner_id: winnerId
+      }).eq('id', matchId)
+    } catch (e) { console.warn('[PvP] forfeit DB error:', e) }
+    try { supabase.removeChannel(channel) } catch {}
     _showBottomNav(container)
     navigate('home')
   }
@@ -576,6 +613,23 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
       : `<div style="${btnStyle};background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);color:rgba(255,255,255,0.4)">⏳ Tour de ${oppName}</div>`
     const counter = (isMyAttack||isMyDefense) ? `<div style="font-size:9px;color:rgba(255,255,255,0.4);text-align:center;margin-top:2px">${mySelected.length}/3 sélectionné(s)</div>` : ''
 
+    // Zone actions : montre l'attaque adverse en cours (quand je défends) ou ma dernière action
+    const actionZone = (() => {
+      const pa = gameState.pendingAttack
+      if (isMyDefense && pa && Array.isArray(pa.players)) {
+        return `<div style="padding:5px 8px;background:rgba(180,30,30,0.2);border-left:3px solid #ff6b6b">
+          <div style="font-size:8px;color:#ff6b6b;letter-spacing:2px;margin-bottom:4px;text-transform:uppercase">⚔️ ${oppName} ATTAQUE — Défendez !</div>
+          ${renderCardRow(pa.players.map(p=>({...p,used:false})), '#ff6b6b', pa.total)}
+        </div>`
+      }
+      const log = Array.isArray(gameState.log) ? gameState.log : []
+      const last = log[log.length-1]
+      if (!last) return '<div style="padding:6px 8px;font-size:11px;color:rgba(255,255,255,0.3)">⏳ Match en cours...</div>'
+      return '<div style="padding:2px 4px">'+renderLogEntry(last)+'</div>'
+    })()
+
+    const histLen = (Array.isArray(gameState.log) ? gameState.log : []).length
+
     const headerHTML = `
       <!-- Score -->
       <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:rgba(0,0,0,0.25);flex-shrink:0">
@@ -587,7 +641,13 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
       </div>
       <div style="text-align:center;padding:4px;background:rgba(0,0,0,0.15);font-size:11px;color:${isOppTurn?'rgba(255,255,255,0.4)':'#FFD700'};font-weight:700;flex-shrink:0">
         ${isOppTurn ? `⏳ Tour de ${oppName}` : isMyAttack ? '⚔️ À vous d\'attaquer !' : isMyDefense ? '🛡️ À vous de défendre !' : ''}
-      </div>`
+      </div>
+      <!-- Zone actions -->
+      <div id="pvp-action-zone" style="background:rgba(0,0,0,0.3);flex-shrink:0;overflow:hidden;max-height:100px">${actionZone}</div>
+      <!-- Bouton historique -->
+      <button id="pvp-toggle-history" style="width:100%;padding:3px 10px;background:rgba(0,0,0,0.15);border:none;border-bottom:1px solid rgba(255,255,255,0.05);color:rgba(255,255,255,0.3);font-size:9px;cursor:pointer;letter-spacing:1px;flex-shrink:0;text-transform:uppercase">
+        ▼ Historique (${histLen})
+      </button>`
 
     if (_pc) {
       container.innerHTML = `
@@ -662,6 +722,10 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
       pvpShowOpponentTeam()
     })
 
+    container.querySelector('#pvp-toggle-history')?.addEventListener('click', () => {
+      pvpShowHistory()
+    })
+
     // Contraindre le match-screen + SVG terrain (identique vs IA)
     ;(function fixSVGPvp() {
       const svg = container.querySelector('.terrain-wrapper svg')
@@ -680,20 +744,21 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
 
     // Timer (30s→15s) uniquement si c'est mon tour
     if (gameState._timerInt) { clearInterval(gameState._timerInt); gameState._timerInt = null }
-    if (isMyAttack || isMyDefense) {
+    if ((isMyAttack || isMyDefense) && !_pvpEnded) {
+      // Cycle identique vs IA : 30s puis 15s (rouge) puis forfait
       let remaining = 30, phase2 = false
       const timerEl = () => document.getElementById('pvp-timer')
       const paint = () => { if (timerEl()) { timerEl().textContent = remaining+'s'; timerEl().style.color = phase2 ? '#ff4444' : '#fff' } }
       paint()
       gameState._timerInt = setInterval(() => {
         remaining--
-        if (remaining <= 15 && !phase2) phase2 = true
-        paint()
-        if (remaining <= 0) {
-          clearInterval(gameState._timerInt); gameState._timerInt = null
-          // Auto-forfait si le temps expire
-          forfeitMatch()
-        }
+        if (remaining < 0) {
+          if (!phase2) { phase2 = true; remaining = 15; paint() }
+          else {
+            clearInterval(gameState._timerInt); gameState._timerInt = null
+            forfeitMatch()
+          }
+        } else paint()
       }, 1000)
     }
   }
@@ -976,6 +1041,30 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
   }
 
   // ── Détail carte GC (design Collection) + utilisation basique ──
+  // ── Historique du match (popup) ──
+  function pvpShowHistory() {
+    const log = Array.isArray(gameState.log) ? gameState.log : []
+    const overlay = document.createElement('div')
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.92);z-index:800;display:flex;flex-direction:column'
+    overlay.innerHTML = `
+      <div style="display:flex;align-items:center;padding:14px 16px;border-bottom:1px solid rgba(255,255,255,0.1);flex-shrink:0">
+        <div style="flex:1;font-size:14px;font-weight:700;color:#fff">📋 Historique du match</div>
+        <button id="pvp-hist-close" style="background:none;border:none;color:rgba(255,255,255,0.6);font-size:20px;cursor:pointer">✕</button>
+      </div>
+      <div style="flex:1;overflow-y:auto;padding:12px 16px;display:flex;flex-direction:column;gap:6px">
+        ${log.length === 0
+          ? `<div style="text-align:center;padding:40px;color:rgba(255,255,255,0.3)">Aucune action pour l'instant</div>`
+          : [...log].reverse().map(e => {
+              const accent = e.type === 'goal' ? '#FFD700' : e.type === 'defense' ? '#00ff88' : 'rgba(255,255,255,0.5)'
+              return `<div style="padding:8px 10px;border-radius:8px;background:rgba(255,255,255,0.04);border-left:3px solid ${accent}">
+                <div style="font-size:12px;color:#fff">${e.text || ''}</div>
+              </div>`
+            }).join('')}
+      </div>`
+    document.body.appendChild(overlay)
+    overlay.querySelector('#pvp-hist-close')?.addEventListener('click', () => overlay.remove())
+  }
+
   // ── Voir l'équipe adverse (popup, design identique à showAITeam) ──
   function pvpShowOpponentTeam() {
     const overlay = document.createElement('div')

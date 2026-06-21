@@ -12,7 +12,7 @@ import { FORMATION_LINKS, FORMATION_POSITIONS, linkColor, getActiveLinks } from 
 // (sauf la logique de tour : IA d'un côté, joueur réel de l'autre).
 // ═══════════════════════════════════════════════════════════
 
-const FORMATIONS = {
+export const FORMATIONS = {
   '4-3-3 (3)': { GK:1, DEF:4, MIL:3, ATT:3 },
   '5-3-2':     { GK:1, DEF:5, MIL:3, ATT:2 },
   '4-3-3 (4)': { GK:1, DEF:4, MIL:3, ATT:3 },
@@ -39,7 +39,7 @@ const FORMATIONS = {
   '3-4-3':         { GK:1, DEF:3, MIL:4, ATT:3 },
   '4-1-2-1-2 (2)': { GK:1, DEF:4, MIL:4, ATT:2 },
 }
-const JOB_COLORS = { GK:'#111', DEF:'#bb2020', MIL:'#D4A017', ATT:'#1A6B3C' }
+export const JOB_COLORS = { GK:'#111', DEF:'#bb2020', MIL:'#D4A017', ATT:'#1A6B3C' }
 
 // ── Helpers ───────────────────────────────────────────────
 

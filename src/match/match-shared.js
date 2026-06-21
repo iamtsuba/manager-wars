@@ -150,6 +150,11 @@ export function _hideBottomNav(container) {
     el.style.setProperty('display', 'none', 'important')
     el.dataset.matchHidden = '1'
   })
+  // La classe .page réserve padding-bottom:70px pour la bottom-nav (cf app.css).
+  // Une fois la nav cachée, ce padding devient un espace fantôme qui décale
+  // tout l'écran de match vers le bas (le bouton Attaquer/Défendre se retrouve
+  // sous la ligne de flottaison, accessible seulement en scrollant la page).
+  if (container) container.style.setProperty('padding-bottom', '0', 'important')
 }
 
 export function _showBottomNav(container) {
@@ -157,6 +162,7 @@ export function _showBottomNav(container) {
     el.style.removeProperty('display')
     delete el.dataset.matchHidden
   })
+  if (container) container.style.removeProperty('padding-bottom')
 }
 
 export function showGCSelection(container, gcCards, onConfirm) {

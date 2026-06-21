@@ -417,17 +417,33 @@ function showBoosterAnimation(cards, booster, navigate) {
         0%,100% { transform:translateY(0) rotate(-1deg); }
         50%      { transform:translateY(-8px) rotate(1deg); }
       }
-      .pack-visual.shaking { animation:packShake 0.4s ease-in-out; }
-      @keyframes packShake {
-        0%,100%{transform:rotate(0)} 20%{transform:rotate(-8deg) scale(1.05)}
-        40%{transform:rotate(8deg) scale(1.08)} 60%{transform:rotate(-5deg)}
-        80%{transform:rotate(5deg)}
+      .pack-half { position:absolute; top:0; left:0; width:180px; height:280px; overflow:hidden; will-change:transform,opacity; }
+      .pack-half img { position:absolute; top:0; left:0; width:180px; height:280px; object-fit:contain; }
+      .pack-half-top    { clip-path: inset(0 0 50% 0); }
+      .pack-half-bottom { clip-path: inset(50% 0 0 0); }
+      .pack-cut .pack-half-top    { animation:cutTop .6s cubic-bezier(.4,0,.2,1) forwards; }
+      .pack-cut .pack-half-bottom { animation:cutBottom .6s cubic-bezier(.4,0,.2,1) forwards; }
+      @keyframes cutTop {
+        0%{transform:translateY(0) rotate(0)} 
+        100%{transform:translateY(-70px) translateX(-30px) rotate(-12deg);opacity:0}
       }
-      .pack-open { animation:packOpen 0.6s ease-out forwards !important; }
-      @keyframes packOpen {
-        0%{transform:scale(1);opacity:1} 50%{transform:scale(1.3) rotate(5deg);opacity:.8}
-        100%{transform:scale(0) rotate(20deg);opacity:0}
+      @keyframes cutBottom {
+        0%{transform:translateY(0) rotate(0)}
+        100%{transform:translateY(70px) translateX(30px) rotate(12deg);opacity:0}
       }
+      #pack-blade {
+        position:absolute; top:50%; left:0; height:4px; width:0;
+        transform:translateY(-50%);
+        background:linear-gradient(90deg, transparent, #fff 40%, #FFD700 60%, #fff);
+        box-shadow:0 0 14px 3px #FFD700, 0 0 26px 8px rgba(255,215,0,0.6);
+        border-radius:4px; pointer-events:none; opacity:0;
+      }
+      #cut-flash {
+        position:absolute; inset:0; background:radial-gradient(circle at center, rgba(255,255,255,0.95), transparent 65%);
+        opacity:0; pointer-events:none;
+      }
+      .cut-flash-go { animation:cutFlash .5s ease-out forwards; }
+      @keyframes cutFlash { 0%{opacity:0;transform:scale(0.4)} 30%{opacity:1} 100%{opacity:0;transform:scale(1.8)} }
       /* Carte révélation - une seule carte centrée */
       .single-card-reveal {
         animation:cardReveal 0.5s cubic-bezier(0.34,1.56,0.64,1) both;
@@ -453,13 +469,22 @@ function showBoosterAnimation(cards, booster, navigate) {
       @keyframes recapAppear { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:none} }
     </style>
 
-    <!-- Phase 1 : booster -->
+    <!-- Phase 1 : booster (à découper) -->
     <div id="pack-phase" style="display:flex;flex-direction:column;align-items:center;gap:16px">
       <div style="font-size:14px;color:rgba(255,255,255,0.7)">
         ${booster.name} · ${cards.length} carte${cards.length>1?'s':''}
       </div>
-      <div class="pack-visual" id="pack-visual"><img src="${booster.img}" alt="${booster.name}"></div>
-      <div style="font-size:13px;color:rgba(255,255,255,0.5)">Appuie pour ouvrir</div>
+      <div class="pack-visual" id="pack-visual" style="position:relative;animation:packFloat 2s ease-in-out infinite">
+        <div id="pack-cut-zone" style="position:relative;width:180px;height:280px;touch-action:none;cursor:grab;user-select:none;-webkit-user-select:none">
+          <div class="pack-half pack-half-bottom"><img src="${booster.img}" alt="${booster.name}" draggable="false"></div>
+          <div class="pack-half pack-half-top"><img src="${booster.img}" alt="${booster.name}" draggable="false"></div>
+          <div id="pack-blade"></div>
+          <div id="cut-flash"></div>
+        </div>
+      </div>
+      <div id="cut-hint" style="font-size:13px;color:rgba(255,255,255,0.6);display:flex;align-items:center;gap:6px">
+        <span style="font-size:16px">👉</span> Glisse de gauche à droite pour ouvrir
+      </div>
     </div>
 
     <!-- Phase 2 : révélation une par une -->
@@ -487,21 +512,64 @@ function showBoosterAnimation(cards, booster, navigate) {
 
   document.body.appendChild(overlay)
 
-  // ── Phase 1 : ouverture du booster ───────────────────
-  let packClicked = false
-  document.getElementById('pack-visual').addEventListener('click', () => {
-    if (packClicked) return
-    packClicked = true
-    const packEl = document.getElementById('pack-visual')
-    packEl.classList.add('shaking')
+  // ── Phase 1 : DÉCOUPE par glissement gauche → droite ──
+  let cutDone = false
+  const zone  = document.getElementById('pack-cut-zone')
+  const blade = document.getElementById('pack-blade')
+  let dragging = false
+
+  const clientX = (e) => (e.touches && e.touches[0] ? e.touches[0].clientX : e.clientX)
+
+  function onDown(e) {
+    if (cutDone) return
+    dragging = true
+    blade.style.opacity = '1'
+    onMove(e)
+  }
+  function onMove(e) {
+    if (!dragging || cutDone) return
+    const r = zone.getBoundingClientRect()
+    const x = clientX(e) - r.left
+    const prog = Math.max(0, Math.min(1, x / r.width))
+    blade.style.width = (prog * r.width) + 'px'
+    if (prog >= 0.82) triggerCut()
+  }
+  function onUp() {
+    if (cutDone) return
+    dragging = false
+    // Pas allé assez loin → la lame se rétracte
+    blade.style.transition = 'width .2s ease, opacity .2s ease'
+    blade.style.width = '0'
+    blade.style.opacity = '0'
+    setTimeout(() => { if (!cutDone) blade.style.transition = '' }, 220)
+  }
+
+  function triggerCut() {
+    if (cutDone) return
+    cutDone = true
+    dragging = false
+    blade.style.width = '100%'
+    blade.style.opacity = '1'
+    document.getElementById('cut-flash')?.classList.add('cut-flash-go')
+    if (navigator.vibrate) navigator.vibrate([30, 20, 50])
+    const hint = document.getElementById('cut-hint')
+    if (hint) hint.style.opacity = '0'
+    // Les deux moitiés se séparent
+    zone.classList.add('pack-cut')
     setTimeout(() => {
-      packEl.classList.add('pack-open')
-      setTimeout(() => {
-        document.getElementById('pack-phase').style.display = 'none'
-        startCardReveal(0)
-      }, 600)
-    }, 500)
-  })
+      blade.style.opacity = '0'
+      document.getElementById('pack-phase').style.display = 'none'
+      startCardReveal(0)
+    }, 620)
+  }
+
+  zone.addEventListener('pointerdown', onDown)
+  window.addEventListener('pointermove', onMove)
+  window.addEventListener('pointerup', onUp)
+  // Fallback tactile (anciens navigateurs sans pointer events)
+  zone.addEventListener('touchstart', onDown, { passive:true })
+  window.addEventListener('touchmove', onMove, { passive:true })
+  window.addEventListener('touchend', onUp)
 
   // ── Phase 2 : révélation carte par carte ─────────────
   let currentIdx = 0

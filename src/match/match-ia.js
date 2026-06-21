@@ -591,25 +591,34 @@ function renderGame(container, game, ctx) {
   })()
 
   // ── Dimensionner l'écran de match exactement (hauteur réelle visible) ─
-  ;(function fixHeight() {
+  // IMPORTANT : doit être RÉAPPLIQUÉ quand le viewport change (barre d'URL
+  // mobile qui apparaît/disparaît), sinon l'écran garde la hauteur du moment
+  // du rendu (ex: 749px barre masquée) alors que la zone visible rétrécit
+  // (ex: 693px barre visible) → le bas (bouton) passe sous l'écran.
+  function updateMatchHeight() {
     const ms = container.querySelector('.match-screen')
-    if (ms) {
-      // visualViewport.height = zone réellement visible (hors barre d'URL).
-      const vh = Math.round((window.visualViewport && window.visualViewport.height) || window.innerHeight)
-      ms.style.height = vh + 'px'
-      ms.style.maxHeight = vh + 'px'
-      ms.style.overflow = 'hidden'
-    }
-    // La barre d'action mobile est en position:absolute;bottom:0 → on réserve
-    // sa hauteur sous la zone de jeu pour ne pas masquer le bas du terrain.
+    if (!ms) return
+    const vh = Math.round((window.visualViewport && window.visualViewport.height) || window.innerHeight)
+    ms.style.height = vh + 'px'
+    ms.style.maxHeight = vh + 'px'
+    ms.style.overflow = 'hidden'
     const bar = container.querySelector('#mobile-action-bar')
     const play = container.querySelector('#mobile-play-area')
-    if (bar && play) {
-      requestAnimationFrame(() => {
-        play.style.paddingBottom = bar.offsetHeight + 'px'
-      })
+    if (bar && play) play.style.paddingBottom = bar.offsetHeight + 'px'
+  }
+  updateMatchHeight()
+  // Réappliquer après stabilisation de la barre d'URL + à chaque resize viewport
+  setTimeout(updateMatchHeight, 120)
+  setTimeout(updateMatchHeight, 400)
+  setTimeout(updateMatchHeight, 1000)
+  if (!game._vvBound) {
+    game._vvBound = true
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', updateMatchHeight)
+      window.visualViewport.addEventListener('scroll', updateMatchHeight)
     }
-  })()
+    window.addEventListener('resize', updateMatchHeight)
+  }
 
   // ── Dimensionnement du SVG du terrain (PC / Mobile) ──────────
   ;(function fixSVG() {

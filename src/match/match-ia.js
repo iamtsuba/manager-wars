@@ -205,8 +205,8 @@ function showMidfieldAnimation(container, game, ctx) {
       @keyframes duelPulse { 0%{transform:scale(1)} 50%{transform:scale(1.18)} 100%{transform:scale(1)} }
       @keyframes duelGlow { 0%,100%{text-shadow:0 0 12px rgba(255,215,0,0.6)} 50%{text-shadow:0 0 28px rgba(255,215,0,0.95)} }
       @keyframes vsFlash { 0%{opacity:0;transform:scale(2)} 60%{opacity:1;transform:scale(0.9)} 100%{opacity:1;transform:scale(1)} }
-      @keyframes crushSlam { 0%{transform:translateY(0) scale(1)} 70%{transform:translateY(var(--crush-dist)) scale(1.06,0.9)} 85%{transform:translateY(calc(var(--crush-dist) - 8px)) scale(0.98,1.04)} 100%{transform:translateY(var(--crush-dist)) scale(1)} }
-      @keyframes crushSquash { 0%{transform:scaleY(1);opacity:1} 60%{transform:scaleY(0.12) translateY(6px);opacity:.6} 100%{transform:scaleY(0);opacity:0} }
+      @keyframes winnerSlam { 0%{transform:scale(1)} 35%{transform:translateY(-14px) scale(1.05)} 70%{transform:translateY(10px) scale(1.12,0.92)} 100%{transform:translateY(0) scale(1)} }
+      @keyframes crushSquash { 0%{transform:scaleY(1);opacity:1} 55%{transform:scaleY(0.1) translateY(8px);opacity:.5} 100%{transform:scaleY(0);opacity:0} }
       @keyframes shockwave { 0%{transform:translateX(-50%) scale(0.2);opacity:.9} 100%{transform:translateX(-50%) scale(2.4);opacity:0} }
       @keyframes boostFlipIn { 0%{transform:perspective(600px) rotateY(90deg) scale(0.6);opacity:0} 60%{transform:perspective(600px) rotateY(-12deg) scale(1.08);opacity:1} 100%{transform:perspective(600px) rotateY(0) scale(1);opacity:1} }
       @keyframes fadeUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
@@ -226,7 +226,7 @@ function showMidfieldAnimation(container, game, ctx) {
     ${renderMilRow(aiMils, 'IA', '#bb2020', 'ai')}
 
     <div id="duel-shock" style="position:absolute;left:50%;top:50%;width:120px;height:120px;border-radius:50%;border:6px solid #FFD700;opacity:0;pointer-events:none"></div>
-    <div id="duel-finale" style="display:flex;flex-direction:column;align-items:center;gap:14px;margin-top:6px"></div>
+    <div id="duel-finale" style="position:fixed;inset:0;z-index:200;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:24px;opacity:0;pointer-events:none;background:radial-gradient(circle at center, rgba(10,61,30,0.4), rgba(10,61,30,0.92))"></div>
   </div>`
 
   // ── Séquence d'animation ──────────────────────────────────
@@ -302,50 +302,52 @@ function showMidfieldAnimation(container, game, ctx) {
     }
     if (elLose) elLose.style.opacity = '0.25'
 
-    // 2) Écrasement : la rangée gagnante slam vers la perdante, qui s'aplatit
+    // 2) Écrasement : le vainqueur slam (sur place), le perdant s'aplatit
     setTimeout(() => {
-      if (winRow && loseRow) {
-        const wRect = winRow.getBoundingClientRect()
-        const lRect = loseRow.getBoundingClientRect()
-        const dist = Math.round(lRect.top - wRect.top)
-        winRow.style.setProperty('--crush-dist', dist + 'px')
-        winRow.style.animation = 'crushSlam .55s cubic-bezier(.4,0,.6,1) forwards'
+      if (winRow) {
+        winRow.style.transformOrigin = 'center'
+        winRow.style.animation = 'winnerSlam .5s cubic-bezier(.4,0,.7,1) forwards'
         winRow.style.zIndex = '5'
-        // onde de choc au moment de l'impact
-        setTimeout(() => {
-          const shock = document.getElementById('duel-shock')
-          if (shock) {
-            shock.style.top = lRect.top - winRow.getBoundingClientRect().top + 'px'
-            shock.style.animation = 'shockwave .5s ease-out forwards'
-          }
-          loseRow.style.animation = 'crushSquash .45s ease-in forwards'
-          if (navigator.vibrate) navigator.vibrate(60)
-        }, 360)
       }
+      // impact : onde de choc + écrasement du perdant + vibration
+      setTimeout(() => {
+        const shock = document.getElementById('duel-shock')
+        if (shock) {
+          const r = (loseRow||winRow)?.getBoundingClientRect()
+          const sr = container.querySelector('.match-screen').getBoundingClientRect()
+          if (r) { shock.style.top = (r.top - sr.top + r.height/2) + 'px' }
+          shock.style.animation = 'shockwave .5s ease-out forwards'
+        }
+        if (loseRow) {
+          loseRow.style.transformOrigin = 'center'
+          loseRow.style.animation = 'crushSquash .45s ease-in forwards'
+        }
+        if (navigator.vibrate) navigator.vibrate([40, 30, 60])
+      }, 320)
 
-      // 3) Révélation de la finale (boost + bouton) là où était la perdante
+      // 3) Révélation de l'overlay centré (boost + bouton) — toujours visible
       setTimeout(() => {
         const fin = document.getElementById('duel-finale')
-        if (loseRow) loseRow.style.display = 'none'
-        if (elHome) elHome.parentElement.style.display = 'none'
-        if (fin) {
-          fin.innerHTML = `
-            <div style="font-size:18px;font-weight:900;color:#fff;animation:fadeUp .4s ease both">
-              ${homeWins ? `⚽ ${game.clubName} attaque !` : `😔 L'IA gagne l'engagement`}
-            </div>
-            ${homeWins ? `
-            <div style="background:linear-gradient(135deg,#4a9fc4,#87CEEB);border:3px solid #cdeffd;border-radius:16px;padding:18px 30px;text-align:center;animation:boostFlipIn .7s cubic-bezier(.34,1.56,.64,1) both;box-shadow:0 8px 30px rgba(135,206,235,0.4)">
-              <div style="font-size:10px;color:rgba(0,0,0,0.6);letter-spacing:2px;text-transform:uppercase;margin-bottom:4px;font-weight:700">Carte Boost obtenue</div>
-              <div style="font-size:40px">⚡</div>
-              <div style="font-size:44px;font-weight:900;color:#063;line-height:1">+${boostValue}</div>
-              <div style="font-size:10px;color:rgba(0,0,0,0.55);margin-top:4px">Applicable sur n'importe quel joueur</div>
-            </div>` : ''}
-            <button id="start-match-btn" style="margin-top:4px;padding:16px 44px;border-radius:14px;border:none;background:#1A6B3C;color:#fff;font-size:17px;font-weight:900;cursor:pointer;box-shadow:0 4px 20px rgba(0,0,0,0.3);animation:fadeUp .4s ease both;animation-delay:.5s;opacity:0">
-              ▶ Commencer le match
-            </button>`
-          document.getElementById('start-match-btn')?.addEventListener('click', startMatch)
-        }
-      }, 700)
+        if (!fin) return
+        fin.innerHTML = `
+          <div style="font-size:22px;font-weight:900;color:#fff;text-align:center;animation:fadeUp .4s ease both;text-shadow:0 2px 12px rgba(0,0,0,0.5)">
+            ${homeWins ? `⚽ ${game.clubName}<br>gagne le milieu et attaque !` : `😔 L'IA gagne l'engagement<br>et attaque !`}
+          </div>
+          ${homeWins ? `
+          <div style="background:linear-gradient(135deg,#4a9fc4,#87CEEB);border:3px solid #cdeffd;border-radius:18px;padding:20px 34px;text-align:center;animation:boostFlipIn .7s cubic-bezier(.34,1.56,.64,1) both;box-shadow:0 10px 36px rgba(135,206,235,0.5)">
+            <div style="font-size:10px;color:rgba(0,0,0,0.6);letter-spacing:2px;text-transform:uppercase;margin-bottom:6px;font-weight:700">Carte Boost obtenue</div>
+            <div style="font-size:46px;line-height:1">⚡</div>
+            <div style="font-size:50px;font-weight:900;color:#063;line-height:1.1">+${boostValue}</div>
+            <div style="font-size:10px;color:rgba(0,0,0,0.55);margin-top:4px">Applicable sur n'importe quel joueur</div>
+          </div>` : ''}
+          <button id="start-match-btn" style="margin-top:6px;padding:18px 46px;border-radius:14px;border:none;background:#1A6B3C;color:#fff;font-size:18px;font-weight:900;cursor:pointer;box-shadow:0 6px 24px rgba(0,0,0,0.4);animation:fadeUp .4s ease both;animation-delay:.45s;opacity:0">
+            ▶ Commencer le match
+          </button>`
+        fin.style.transition = 'opacity .45s ease'
+        fin.style.opacity = '1'
+        fin.style.pointerEvents = 'auto'
+        document.getElementById('start-match-btn')?.addEventListener('click', startMatch)
+      }, 600)
     }, 700)
   }, 2800)
 }

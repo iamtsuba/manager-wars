@@ -27,35 +27,51 @@ export async function renderMatchIA(container, ctx) {
   const mode       = matchMode
 
   await loadMatchSetup(container, ctx, matchMode, async ({ deckId, formation, starters, subsRaw, gcCardsEnriched, gcDefs }) => {
-    const homeTeam = buildTeam(starters, formation)
-    const aiTeam   = await generateAITeam(formation, difficulty)
+    try {
+      const homeTeam = buildTeam(starters, formation)
+      const aiTeam   = await generateAITeam(formation, difficulty)
 
-    const launchMatch = async (selectedGC) => {
-      const { data: match } = await supabase.from('matches').insert({
-        home_id: state.profile.id, away_id:null, mode,
-        home_deck_id: deckId, status:'in_progress',
-      }).select().single()
+      const launchMatch = async (selectedGC) => {
+        try {
+          const { data: match, error: matchErr } = await supabase.from('matches').insert({
+            home_id: state.profile.id, away_id:null, mode,
+            home_deck_id: deckId, status:'in_progress',
+          }).select().single()
 
-      const game = {
-        gcDefs:   gcDefs || [],
-        matchId:  match?.id, mode, difficulty, formation,
-        homeTeam, aiTeam,
-        homeSubs: subsRaw,
-        subsUsed: 0, maxSubs: Math.min(subsRaw.length, 3),
-        homeScore:0, aiScore:0,
-        gcCards:  selectedGC,
-        usedGc:   [],
-        boostCard: null, boostUsed: false,
-        phase:'midfield', attacker:null, round:0,
-        selected:[], pendingAttack:null,
-        log:[], modifiers:{ home:{}, ai:{} },
-        clubName: state.profile.club_name || 'Vous',
+          if (matchErr) {
+            console.error('[MatchIA] Erreur création match:', matchErr)
+            showMsg(container, '⚠️', "Impossible de créer le match (" + matchErr.message + ").", 'Retour', () => ctx.navigate('home'))
+            return
+          }
+
+          const game = {
+            gcDefs:   gcDefs || [],
+            matchId:  match?.id, mode, difficulty, formation,
+            homeTeam, aiTeam,
+            homeSubs: subsRaw,
+            subsUsed: 0, maxSubs: Math.min(subsRaw.length, 3),
+            homeScore:0, aiScore:0,
+            gcCards:  selectedGC,
+            usedGc:   [],
+            boostCard: null, boostUsed: false,
+            phase:'midfield', attacker:null, round:0,
+            selected:[], pendingAttack:null,
+            log:[], modifiers:{ home:{}, ai:{} },
+            clubName: state.profile.club_name || 'Vous',
+          }
+          showOpponentReveal(container, game, ctx)
+        } catch (e) {
+          console.error('[MatchIA] Exception launchMatch:', e)
+          showMsg(container, '⚠️', 'Erreur au lancement du match : ' + e.message, 'Retour', () => ctx.navigate('home'))
+        }
       }
-      showOpponentReveal(container, game, ctx)
-    }
 
-    if (!gcCardsEnriched.length) { launchMatch([]); return }
-    showGCSelection(container, gcCardsEnriched, launchMatch)
+      if (!gcCardsEnriched.length) { launchMatch([]); return }
+      showGCSelection(container, gcCardsEnriched, launchMatch)
+    } catch (e) {
+      console.error('[MatchIA] Exception setup:', e)
+      showMsg(container, '⚠️', 'Erreur de préparation du match : ' + e.message, 'Retour', () => ctx.navigate('home'))
+    }
   })
 }
 

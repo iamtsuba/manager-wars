@@ -368,7 +368,7 @@ function renderGame(container, game, ctx) {
     #match-history-panel.open { transform:translateY(0); }
   </style>
 
-  <div class="match-screen" style="display:flex;flex-direction:column;overflow:hidden;background:#0a3d1e;height:100%;width:100%">
+  <div class="match-screen" style="position:fixed;inset:0;z-index:100;display:flex;flex-direction:column;overflow:hidden;background:#0a3d1e;height:100%;width:100%">
 
     <!-- SCORE BAR -->
     <div style="display:flex;align-items:center;padding:8px 10px;background:rgba(0,0,0,0.5);gap:6px;flex-shrink:0">
@@ -489,12 +489,13 @@ function renderGame(container, game, ctx) {
         <div style="display:flex;flex:0.8;min-height:0;overflow:hidden">
           ${subsHTML}
           ${terrainHTML}
-          <!-- Colonne droite : GC + bouton -->
-          <div style="width:140px;flex-shrink:0;display:flex;flex-direction:column;align-items:center;padding:10px 8px;gap:10px;background:rgba(0,0,0,0.2);overflow-y:auto">
-            ${activeGCs.map(gc=>gcMiniPC(gc,false)).join('')}
-            ${boostAvail?gcMiniPC(null,true):''}
-            <div style="flex:1"></div>
-            <div style="width:100%">${actionBtn}${counter}</div>
+          <!-- Colonne droite : GC scrollable + bouton épinglé -->
+          <div style="width:140px;flex-shrink:0;display:flex;flex-direction:column;padding:10px 8px;background:rgba(0,0,0,0.2)">
+            <div style="flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;align-items:center;gap:10px">
+              ${activeGCs.map(gc=>gcMiniPC(gc,false)).join('')}
+              ${boostAvail?gcMiniPC(null,true):''}
+            </div>
+            <div style="width:100%;flex-shrink:0;padding-top:8px">${actionBtn}${counter}</div>
           </div>
         </div>`
       } else {
@@ -567,17 +568,12 @@ function renderGame(container, game, ctx) {
   ;(function fixHeight() {
     const ms = container.querySelector('.match-screen')
     if (ms) {
-      // container (#page-content / .page) est désormais correctement dimensionné
-      // grâce au fix #app global (window.innerHeight). On cale donc l'écran de
-      // match sur la hauteur réelle disponible du parent — valeur toujours
-      // positive et exacte, contrairement à un calcul via getBoundingClientRect
-      // qui pouvait renvoyer une hauteur trop grande (et couper le bas) si la
-      // mise en page n'était pas encore stabilisée juste après le rendu.
-      const h = container.clientHeight
-      if (h > 50) {
-        ms.style.height = h + 'px'
-        ms.style.maxHeight = h + 'px'
-      }
+      // L'écran de match est en position:fixed;inset:0 → il couvre déjà
+      // exactement la fenêtre. On fixe sa hauteur sur window.innerHeight
+      // (fenêtre visible réelle) pour être 100% certain qu'il ne dépasse
+      // jamais, indépendamment de tout parent / cascade CSS.
+      ms.style.height = window.innerHeight + 'px'
+      ms.style.maxHeight = window.innerHeight + 'px'
       ms.style.overflow = 'hidden'
     }
   })()

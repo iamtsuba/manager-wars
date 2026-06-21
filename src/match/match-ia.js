@@ -579,8 +579,9 @@ function renderGame(container, game, ctx) {
     svg.setAttribute('preserveAspectRatio', 'xMidYMid meet')
     const ms = container.querySelector('.match-screen')
     if (ms) {
-      const h = container.clientHeight
-      if (h > 50) { ms.style.height = h + 'px'; ms.style.overflow = 'hidden' }
+      ms.style.height = '100%'
+      ms.style.maxHeight = '100%'
+      ms.style.overflow = 'hidden'
     }
   })()
   if (!game._resizeBound) {

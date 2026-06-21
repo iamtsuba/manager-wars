@@ -370,9 +370,6 @@ function renderGame(container, game, ctx) {
 
   <div class="match-screen" style="position:fixed;top:0;left:0;right:0;bottom:auto;z-index:100;display:flex;flex-direction:column;overflow:hidden;background:#0a3d1e;width:100%">
 
-    <!-- BANDEAU DEBUG TEMPORAIRE -->
-    <div id="dbg-bar" style="flex-shrink:0;background:#ff00ff;color:#fff;font-size:10px;font-family:monospace;padding:3px 6px;text-align:center;font-weight:700;z-index:999"></div>
-
     <!-- SCORE BAR -->
     <div style="display:flex;align-items:center;padding:8px 10px;background:rgba(0,0,0,0.5);gap:6px;flex-shrink:0">
       <button id="match-quit" style="width:34px;height:34px;border-radius:50%;background:rgba(220,50,50,0.7);border:none;color:#fff;font-size:16px;cursor:pointer;flex-shrink:0">✕</button>
@@ -457,8 +454,8 @@ function renderGame(container, game, ctx) {
 
       // ─── Bouton action ────────────────────────────────────
       const btnStyle = _pc
-        ? 'padding:14px 20px;border-radius:14px;font-size:16px;font-weight:900;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;width:100%'
-        : 'padding:10px 8px;border-radius:12px;font-size:13px;font-weight:900;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;width:100%'
+        ? 'padding:28px 20px;border-radius:14px;font-size:16px;font-weight:900;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;width:100%'
+        : 'padding:22px 8px;border-radius:12px;font-size:14px;font-weight:900;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;width:100%'
 
       const actionBtn = isFinished
         ? `<button id="btn-results" style="${btnStyle};background:linear-gradient(135deg,#D4A017,#FFD700);border:none;color:#000">🏁 Résultats</button>`
@@ -569,28 +566,6 @@ function renderGame(container, game, ctx) {
       }
     </div>
   </div>`
-
-  // ── Bandeau debug temporaire (mise à jour continue) ───────
-  ;(function fillDebug() {
-    const dbg = container.querySelector('#dbg-bar')
-    if (!dbg) return
-    const vv = window.visualViewport
-    const tick = () => {
-      const ms = container.querySelector('.match-screen')
-      if (!ms) return
-      const bar = container.querySelector('#mobile-action-bar')
-      const btn = container.querySelector('#btn-action, #btn-results')
-      const msRect = ms.getBoundingClientRect()
-      const barRect = bar ? bar.getBoundingClientRect() : null
-      dbg.textContent =
-        `iH${window.innerHeight} vvH${vv?Math.round(vv.height):'-'} ` +
-        `setH:${ms.style.height||'auto'} rectH${Math.round(msRect.height)} ` +
-        `barBot${barRect?Math.round(barRect.bottom):'-'} btn${btn?1:0}`
-    }
-    tick()
-    if (game._dbgInt) clearInterval(game._dbgInt)
-    game._dbgInt = setInterval(tick, 500)
-  })()
 
   // ── Dimensionner l'écran de match exactement (hauteur réelle visible) ─
   // IMPORTANT : doit être RÉAPPLIQUÉ quand le viewport change (barre d'URL

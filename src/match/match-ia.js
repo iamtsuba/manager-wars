@@ -603,6 +603,7 @@ function renderGame(container, game, ctx) {
     const vh = Math.round((window.visualViewport && window.visualViewport.height) || window.innerHeight)
     ms.style.bottom = 'auto'
     ms.style.height = vh + 'px'
+    ms.style.minHeight = vh + 'px'
     ms.style.maxHeight = vh + 'px'
     ms.style.overflow = 'hidden'
     const bar = container.querySelector('#mobile-action-bar')

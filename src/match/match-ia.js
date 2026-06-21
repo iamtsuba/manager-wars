@@ -570,24 +570,26 @@ function renderGame(container, game, ctx) {
     </div>
   </div>`
 
-  // ── Bandeau debug temporaire ──────────────────────────────
+  // ── Bandeau debug temporaire (mise à jour continue) ───────
   ;(function fillDebug() {
     const dbg = container.querySelector('#dbg-bar')
     if (!dbg) return
     const vv = window.visualViewport
-    const ms = container.querySelector('.match-screen')
-    const bar = container.querySelector('#mobile-action-bar')
-    const btn = container.querySelector('#btn-action, #btn-results')
-    setTimeout(() => {
-      const msRect = ms ? ms.getBoundingClientRect() : null
+    const tick = () => {
+      const ms = container.querySelector('.match-screen')
+      if (!ms) return
+      const bar = container.querySelector('#mobile-action-bar')
+      const btn = container.querySelector('#btn-action, #btn-results')
+      const msRect = ms.getBoundingClientRect()
       const barRect = bar ? bar.getBoundingClientRect() : null
       dbg.textContent =
-        `iW${window.innerWidth} iH${window.innerHeight} vvH${vv?Math.round(vv.height):'-'} ` +
-        `PC${window.innerWidth>=700?1:0} ph:${game.phase} ` +
-        `ms${msRect?Math.round(msRect.height):'-'} ` +
-        `bar${barRect?Math.round(barRect.bottom):'-'}/${barRect?Math.round(barRect.top):'-'} ` +
-        `btn${btn?1:0}`
-    }, 60)
+        `iH${window.innerHeight} vvH${vv?Math.round(vv.height):'-'} ` +
+        `setH:${ms.style.height||'auto'} rectH${Math.round(msRect.height)} ` +
+        `barBot${barRect?Math.round(barRect.bottom):'-'} btn${btn?1:0}`
+    }
+    tick()
+    if (game._dbgInt) clearInterval(game._dbgInt)
+    game._dbgInt = setInterval(tick, 500)
   })()
 
   // ── Dimensionner l'écran de match exactement (hauteur réelle visible) ─

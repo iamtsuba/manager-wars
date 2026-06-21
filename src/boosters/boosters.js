@@ -4,6 +4,7 @@ import { FORMATION_POSITIONS } from '../match/formation-links.js'
 // Toutes les formations disponibles (depuis formation-links.js)
 const ALL_FORMATIONS = () => Object.keys(FORMATION_POSITIONS)
 import { loadActiveBoosters, drawCard } from './booster-engine.js'
+import { renderCard as renderCollectionCard } from '../collection/collection.js'
 const BOOSTERS = [
   { id:'players_std',  img: import.meta.env.BASE_URL+'icons/booster-players.png',     name:'Players',       sub:'5 cartes joueurs',  cost:5000,  costLabel:'5 000 crédits', cardCount:5, type:'player' },
   { id:'players_pub',  img: import.meta.env.BASE_URL+'icons/booster-silver.png',       name:'Players (pub)', sub:'3 cartes joueurs',  cost:0,     costLabel:'1 pub',         cardCount:3, type:'player' },
@@ -419,20 +420,20 @@ function showBoosterAnimation(cards, booster, navigate) {
       }
       .pack-half { position:absolute; top:0; left:0; width:180px; height:280px; overflow:hidden; will-change:transform,opacity; }
       .pack-half img { position:absolute; top:0; left:0; width:180px; height:280px; object-fit:contain; }
-      .pack-half-top    { clip-path: inset(0 0 50% 0); }
-      .pack-half-bottom { clip-path: inset(50% 0 0 0); }
+      .pack-half-top    { clip-path: inset(0 0 80% 0); }
+      .pack-half-bottom { clip-path: inset(20% 0 0 0); }
       .pack-cut .pack-half-top    { animation:cutTop .6s cubic-bezier(.4,0,.2,1) forwards; }
       .pack-cut .pack-half-bottom { animation:cutBottom .6s cubic-bezier(.4,0,.2,1) forwards; }
       @keyframes cutTop {
         0%{transform:translateY(0) rotate(0)} 
-        100%{transform:translateY(-70px) translateX(-30px) rotate(-12deg);opacity:0}
+        100%{transform:translateY(-90px) translateX(-30px) rotate(-14deg);opacity:0}
       }
       @keyframes cutBottom {
         0%{transform:translateY(0) rotate(0)}
-        100%{transform:translateY(70px) translateX(30px) rotate(12deg);opacity:0}
+        100%{transform:translateY(60px) translateX(20px) rotate(8deg);opacity:0}
       }
       #pack-blade {
-        position:absolute; top:50%; left:0; height:4px; width:0;
+        position:absolute; top:20%; left:0; height:4px; width:0;
         transform:translateY(-50%);
         background:linear-gradient(90deg, transparent, #fff 40%, #FFD700 60%, #fff);
         box-shadow:0 0 14px 3px #FFD700, 0 0 26px 8px rgba(255,215,0,0.6);
@@ -590,8 +591,8 @@ function showBoosterAnimation(cards, booster, navigate) {
     if (counter) counter.textContent = `Carte ${idx+1} / ${cards.length}`
     if (hint) hint.textContent = idx < cards.length-1 ? 'Appuie pour continuer →' : 'Appuie pour voir toutes tes cartes'
 
-    // Construire la carte
-    const cardHtml = buildCardFace(card)
+    // Construire la carte (agrandie pour la révélation principale)
+    const cardHtml = `<div style="transform:scale(1.4);transform-origin:center;margin:30px 0">${buildCardFace(card)}</div>`
     const isLegend = card.card_type === 'player' && card.player?.rarity === 'legende'
 
     // Wrapper cliquable
@@ -717,43 +718,9 @@ function showBoosterAnimation(cards, booster, navigate) {
 
 function buildCardFace(card) {
   if (card.card_type === 'player' && card.player) {
-    const p = card.player
-    const job = p.job || 'ATT'
-    const jobColor = JOB_COLORS[job] || '#1A6B3C'
-    const rarColor = RAR_COLORS[p.rarity] || '#ccc'
-    const note = job==='GK'?p.note_g : job==='DEF'?p.note_d : job==='MIL'?p.note_m : p.note_a
-    const portrait = getPortrait(p)
-    const countryName = { MA:'MAROC',FR:'FRANCE',AR:'ARGENTINE',PT:'PORTUGAL',BR:'BRESIL',ES:'ESPAGNE',DE:'ALLEMAGNE',GB:'ANGLETERRE',IT:'ITALIE',CM:'CAMEROUN',SN:'SENEGAL' }[p.country_code] || p.country_code
-
-    return `<div style="width:140px;height:200px;background:#f2e8d2;border-radius:12px;border:3px solid ${rarColor};overflow:hidden;display:flex;flex-direction:column">
-      <!-- Nom -->
-      <div style="padding:6px 6px 2px;text-align:center;background:#f2e8d2">
-        <div style="font-size:8px;letter-spacing:1px;color:#666;text-transform:uppercase">${p.firstname}</div>
-        <div style="font-size:13px;font-weight:900;color:#111;line-height:1.1;font-family:Arial Black,Arial">${(p.surname_encoded||'').toUpperCase()}</div>
-      </div>
-      <!-- Étoile + bande poste -->
-      <div style="position:relative;height:72px;background:#f2e8d2;display:flex;flex-direction:column;align-items:center">
-        <div style="position:absolute;top:14px;width:100%;height:26px;background:${jobColor}"></div>
-        <svg width="50" height="48" viewBox="0 0 54 52" style="position:absolute;top:4px;z-index:2;display:block">
-          <polygon points="27,3 33,18 50,18 37,29 41,47 27,37 13,47 17,29 4,18 21,18" fill="${jobColor}" stroke="white" stroke-width="2.5"/>
-          <text x="27" y="33" text-anchor="middle" font-size="16" font-weight="900" fill="white" font-family="Arial Black,Arial">${note||0}</text>
-        </svg>
-      </div>
-      <!-- Portrait -->
-      <div style="flex:1;overflow:hidden;background:#b8d4f0">
-        ${portrait
-          ? `<img src="${portrait}" style="width:100%;height:100%;object-fit:cover;object-position:center top" onerror="this.style.display='none'">`
-          : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:40px;color:#8fa5be">👤</div>`}
-      </div>
-      <!-- Footer -->
-      <div style="background:#f2e8d2;padding:3px 6px;display:flex;align-items:center;justify-content:space-between;height:26px">
-        <img src="https://flagsapi.com/${p.country_code}/flat/32.png" style="width:18px;height:12px;border-radius:2px;object-fit:cover" onerror="this.style.display='none'">
-        <div style="font-size:7px;letter-spacing:1px;color:#555;text-transform:uppercase">${countryName}</div>
-        ${p.clubs?.logo_url
-          ? `<img src="${p.clubs.logo_url}" style="width:20px;height:16px;object-fit:contain">`
-          : `<div style="background:#1a3a7a;color:#fff;border-radius:2px;padding:1px 3px;font-size:6px;font-weight:700">${(p.clubs?.encoded_name||'').slice(0,6)}</div>`}
-      </div>
-    </div>`
+    // Même design que la collection / le reste de l'app (cadre rareté, étoile
+    // principale + secondaire, portrait, footer drapeau/pays/club).
+    return renderCollectionCard(card, '')
   }
 
   if (card.card_type === 'game_changer') {

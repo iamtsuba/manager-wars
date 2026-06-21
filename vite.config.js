@@ -1,13 +1,8 @@
 import { defineConfig } from 'vite'
-// ═══════════════════════════════════════════════════════════
-// Extrait à ajouter dans vite.config.js pour injecter la date/heure
-// réelle du build dans __BUILD_TIME__ (utilisé par home.js pour le
-// numéro de version visible uniquement par les admins).
-// ═══════════════════════════════════════════════════════════
-
-import { defineConfig } from 'vite'
 
 // Format compact : 2026.06.21-1432 (année.mois.jour-heureMinute, UTC)
+// Utilisé pour afficher un numéro de version (build) visible uniquement
+// par les admins sur la page d'accueil (voir home.js / APP_VERSION).
 function buildTimeString() {
   const d = new Date()
   const pad = (n) => String(n).padStart(2, '0')
@@ -15,15 +10,10 @@ function buildTimeString() {
 }
 
 export default defineConfig({
-  // ... ta config existante (plugins, base, etc.) reste inchangée ...
-
+  base: '/manager-wars/',
   define: {
     __BUILD_TIME__: JSON.stringify(buildTimeString()),
   },
-})
-
-export default defineConfig({
-  base: '/manager-wars/',
   build: {
     outDir: 'dist',
     rollupOptions: {

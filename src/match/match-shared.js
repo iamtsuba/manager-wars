@@ -196,43 +196,13 @@ export function showGCSelection(container, gcCards, onConfirm) {
     </div>`
   }
 
-  function renderOverlay() {
-    // Overlay centré avec les 3 boutons — apparaît quand MAX cartes sélectionnées
-    const existing = container.querySelector('#gc-confirm-overlay')
-    if (existing) existing.remove()
-    if (chosen.length < MAX) return
-
-    const ov = document.createElement('div')
-    ov.id = 'gc-confirm-overlay'
-    ov.style.cssText = 'position:absolute;inset:0;background:rgba(10,22,40,0.88);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:32px 24px;z-index:20;backdrop-filter:blur(4px)'
-    ov.innerHTML = `
-      <div style="font-size:28px">⚡</div>
-      <div style="font-size:18px;font-weight:900;color:#FFD700;text-align:center">${MAX} cartes sélectionnées !</div>
-      <button id="gc-launch" style="width:100%;max-width:320px;padding:16px;border-radius:14px;border:none;background:linear-gradient(135deg,#5a0a9a,#9a28e8);color:#fff;font-size:16px;font-weight:900;cursor:pointer;box-shadow:0 4px 20px rgba(122,40,184,0.5)">
-        ⚡ Partir avec ces ${MAX} GC
-      </button>
-      <button id="gc-no-gc" style="width:100%;max-width:320px;padding:14px;border-radius:14px;border:2px solid rgba(255,255,255,0.2);background:transparent;color:rgba(255,255,255,0.7);font-size:14px;font-weight:600;cursor:pointer">
-        ▶ Partir sans GC
-      </button>
-      <button id="gc-reset" style="width:100%;max-width:320px;padding:14px;border-radius:14px;border:2px solid rgba(212,160,23,0.4);background:rgba(212,160,23,0.1);color:#D4A017;font-size:14px;font-weight:700;cursor:pointer">
-        🔄 Changer de GC
-      </button>`
-
-    const _gcDone = (cards) => {
-      // Réinitialiser les styles imposés par showGCSelection
-      container.style.overflow      = ''
-      container.style.height        = ''
-      container.style.display       = ''
-      container.style.flexDirection = ''
-      onConfirm(cards)
-    }
-    ov.querySelector('#gc-launch')?.addEventListener('click', () => _gcDone(chosen))
-    ov.querySelector('#gc-no-gc')?.addEventListener('click', () => _gcDone([]))
-    ov.querySelector('#gc-reset')?.addEventListener('click', () => { chosen = []; render() })
-
-    const wrap = container.querySelector('#gc-screen-wrap')
-    if (wrap) wrap.appendChild(ov)
-    else container.appendChild(ov)
+  const _gcDone = (cards) => {
+    // Réinitialiser les styles imposés par showGCSelection
+    container.style.overflow      = ''
+    container.style.height        = ''
+    container.style.display       = ''
+    container.style.flexDirection = ''
+    onConfirm(cards)
   }
 
   function render() {
@@ -240,6 +210,8 @@ export function showGCSelection(container, gcCards, onConfirm) {
     container.style.height = '100%'
     container.style.display = 'flex'
     container.style.flexDirection = 'column'
+
+    const isFull = chosen.length === MAX
 
     container.innerHTML = `
     <div id="gc-screen-wrap" style="position:relative;display:flex;flex-direction:column;height:100%;overflow:hidden;background:linear-gradient(180deg,#0a1628,#1a0a2e)">
@@ -259,6 +231,20 @@ export function showGCSelection(container, gcCards, onConfirm) {
           return gcCardHTML(card, !!sel)
         }).join('')}
       </div>
+      <!-- Barre fixe en bas : boutons d'action -->
+      <div style="flex-shrink:0;padding:10px 16px 14px;display:flex;flex-direction:column;gap:8px;background:rgba(0,0,0,0.25);border-top:1px solid rgba(255,255,255,0.08)">
+        <button id="gc-launch" ${isFull?'':'disabled'} style="width:100%;padding:14px;border-radius:14px;border:none;background:${isFull?'linear-gradient(135deg,#5a0a9a,#9a28e8)':'rgba(255,255,255,0.08)'};color:${isFull?'#fff':'rgba(255,255,255,0.3)'};font-size:15px;font-weight:900;cursor:${isFull?'pointer':'default'};box-shadow:${isFull?'0 4px 20px rgba(122,40,184,0.5)':'none'}">
+          ⚡ Valider ${isFull ? `(${MAX} GC)` : `(${chosen.length}/${MAX})`}
+        </button>
+        <div style="display:flex;gap:8px">
+          <button id="gc-no-gc" style="flex:1;padding:11px;border-radius:12px;border:2px solid rgba(255,255,255,0.2);background:transparent;color:rgba(255,255,255,0.7);font-size:13px;font-weight:600;cursor:pointer">
+            ▶ Sans GC
+          </button>
+          <button id="gc-reset" ${chosen.length===0?'disabled':''} style="flex:1;padding:11px;border-radius:12px;border:2px solid rgba(212,160,23,0.4);background:rgba(212,160,23,0.1);color:${chosen.length===0?'rgba(212,160,23,0.3)':'#D4A017'};font-size:13px;font-weight:700;cursor:${chosen.length===0?'default':'pointer'}">
+            🔄 Réinitialiser
+          </button>
+        </div>
+      </div>
     </div>`
 
     // Events cartes
@@ -271,11 +257,12 @@ export function showGCSelection(container, gcCards, onConfirm) {
         if (idx > -1) { chosen.splice(idx, 1) }
         else if (chosen.length < MAX) { chosen.push(card) }
         render()
-        if (chosen.length === MAX) renderOverlay()
       })
     })
 
-    if (chosen.length === MAX) renderOverlay()
+    container.querySelector('#gc-launch')?.addEventListener('click', () => { if (isFull) _gcDone(chosen) })
+    container.querySelector('#gc-no-gc')?.addEventListener('click', () => _gcDone([]))
+    container.querySelector('#gc-reset')?.addEventListener('click', () => { if (chosen.length) { chosen = []; render() } })
   }
 
   render()
@@ -634,17 +621,31 @@ export async function loadMatchSetup(container, ctx, matchMode, onReady) {
 
   const deckId = params.deckId
 
-  // Charger formation depuis decks table EN PRIORITÉ
-  const [{ data: deckMeta }, { data: deckCards }] = await Promise.all([
-    supabase.from('decks').select('formation,name').eq('id', deckId).single(),
-    supabase.from('deck_cards')
-      .select(`position, is_starter, slot_order,
-        card:cards(id, card_type, formation,
-          player:players(id,firstname,surname_encoded,country_code,club_id,job,job2,
-            note_g,note_d,note_m,note_a,rarity,skin,hair,hair_length,
-            clubs(encoded_name,logo_url)))`)
-      .eq('deck_id', deckId).order('slot_order')
-  ])
+  let deckMeta, deckCards, deckErr1, deckErr2
+  try {
+    const results = await Promise.all([
+      supabase.from('decks').select('formation,name').eq('id', deckId).single(),
+      supabase.from('deck_cards')
+        .select(`position, is_starter, slot_order,
+          card:cards(id, card_type, formation,
+            player:players(id,firstname,surname_encoded,country_code,club_id,job,job2,
+              note_g,note_d,note_m,note_a,rarity,skin,hair,hair_length,
+              clubs(encoded_name,logo_url)))`)
+        .eq('deck_id', deckId).order('slot_order')
+    ])
+    deckMeta  = results[0].data; deckErr1 = results[0].error
+    deckCards = results[1].data; deckErr2 = results[1].error
+  } catch (e) {
+    console.error('[Match] Exception chargement deck:', e)
+    showMsg(container, '⚠️', 'Erreur réseau lors du chargement du deck. Réessaie.', 'Retour', () => navigate('home'))
+    return
+  }
+
+  if (deckErr1 || deckErr2) {
+    console.error('[Match] Erreur Supabase:', deckErr1 || deckErr2)
+    showMsg(container, '⚠️', 'Erreur lors du chargement du deck.', 'Retour', () => navigate('home'))
+    return
+  }
 
   const starters = (deckCards||[]).filter(dc => dc.is_starter && dc.card?.player).map(dc => playerFromCard(dc.card, dc.position))
   const subsRaw  = (deckCards||[]).filter(dc => !dc.is_starter && dc.card?.player).map(dc => playerFromCard(dc.card, dc.position))
@@ -659,7 +660,7 @@ export async function loadMatchSetup(container, ctx, matchMode, onReady) {
   const formation = deckMeta?.formation || formationCard?.card?.formation || '4-4-2'
 
   // Charger toutes les cartes GC disponibles
-  const { data: allGCCards } = await supabase
+  const { data: allGCCards, error: gcErr } = await supabase
     .from('cards')
     .select('id, gc_type, gc_definition_id')
     .eq('owner_id', state.profile.id)

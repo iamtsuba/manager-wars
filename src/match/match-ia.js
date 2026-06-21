@@ -295,9 +295,9 @@ function renderLogEntry(entry) {
     return `
     <div style="background:rgba(255,255,255,0.05);border-radius:8px;padding:5px 6px;border:1px solid rgba(255,255,255,0.08)">
       <div style="text-align:center;font-size:9px;font-weight:700;letter-spacing:1px;color:rgba(255,255,255,0.5);margin-bottom:4px">${(entry.title||'DUEL').toUpperCase()}</div>
-      <div style="display:flex;align-items:center;gap:3px">
+      <div style="display:flex;align-items:center;gap:3px;max-height:46px;overflow:hidden">
         <!-- Joueurs domicile -->
-        <div style="flex:1;display:flex;gap:2px;justify-content:flex-end;flex-wrap:wrap">
+        <div style="flex:1;display:flex;gap:2px;justify-content:flex-end;flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden">
           ${(entry.homePlayers||[]).map(p=>renderMiniPlayer(p)).join('')}
         </div>
         <!-- Score -->
@@ -307,7 +307,7 @@ function renderLogEntry(entry) {
           <div style="font-size:${!hw?20:14}px;font-weight:900;color:${!hw?'#ff6b6b':'rgba(255,255,255,0.4)'};line-height:1">${entry.aiTotal}</div>
         </div>
         <!-- Joueurs IA -->
-        <div style="flex:1;display:flex;gap:2px;justify-content:flex-start;flex-wrap:wrap">
+        <div style="flex:1;display:flex;gap:2px;justify-content:flex-start;flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden">
           ${(entry.aiPlayers||[]).map(p=>renderMiniPlayer(p)).join('')}
         </div>
       </div>
@@ -442,16 +442,16 @@ function renderGame(container, game, ctx) {
       }
 
       const gcMiniPC = (gc, isBoost) => isBoost
-        ? `<div id="boost-card" style="width:110px;padding:8px 6px;background:linear-gradient(135deg,#4a9fc4,#87CEEB);border:2px solid #87CEEB;border-radius:10px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;text-align:center">
-            <div style="font-size:22px">⚡</div>
-            <div style="font-size:10px;color:#000;font-weight:900">+${game.boostCard?.value}</div>
+        ? `<div id="boost-card" style="width:110px;height:150px;background:linear-gradient(135deg,#4a9fc4,#87CEEB);border:2px solid #87CEEB;border-radius:10px;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;text-align:center;flex-shrink:0">
+            <div style="font-size:30px">⚡</div>
+            <div style="font-size:13px;color:#000;font-weight:900">+${game.boostCard?.value}</div>
           </div>`
         : gcCardDesign(gc, 110, 150)
 
       const gcMiniMob = (gc, isBoost) => isBoost
-        ? `<div id="boost-card" style="padding:4px;background:linear-gradient(135deg,#4a9fc4,#87CEEB);border:2px solid #87CEEB;border-radius:7px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:1px;text-align:center;min-width:42px">
-            <div style="font-size:15px">⚡</div>
-            <div style="font-size:7px;color:#000;font-weight:900">+${game.boostCard?.value}</div>
+        ? `<div id="boost-card" style="width:68px;height:95px;background:linear-gradient(135deg,#4a9fc4,#87CEEB);border:2px solid #87CEEB;border-radius:10px;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;text-align:center;flex-shrink:0">
+            <div style="font-size:20px">⚡</div>
+            <div style="font-size:10px;color:#000;font-weight:900">+${game.boostCard?.value}</div>
           </div>`
         : gcCardDesign(gc, 68, 95)
 

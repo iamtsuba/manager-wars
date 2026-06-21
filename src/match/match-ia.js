@@ -499,9 +499,12 @@ function renderGame(container, game, ctx) {
           </div>
         </div>`
       } else {
-        // ══ LAYOUT MOBILE : subs | terrain | (GC en ligne + bouton pleine largeur) ══
+        // ══ LAYOUT MOBILE : terrain (flex) + barre d'action ÉPINGLÉE en bas ══
+        // La barre d'action est en position:absolute;bottom:0 → ancrée au bas
+        // de l'écran de match (lui-même fixed = bas de la fenêtre visible).
+        // Elle NE PEUT PAS être coupée, quoi qu'il arrive au-dessus.
         return `
-        <div style="display:flex;flex:1;min-height:0;overflow:hidden">
+        <div id="mobile-play-area" style="flex:1;min-height:0;display:flex;overflow:hidden">
           ${subsHTML}
           <div id="match-field" style="flex:1;min-width:0;min-height:0;overflow:hidden">
             <div class="terrain-wrapper" style="width:100%;height:100%;overflow:hidden">
@@ -509,8 +512,8 @@ function renderGame(container, game, ctx) {
             </div>
           </div>
         </div>
-        <!-- Zone bas mobile : GC en ligne scrollable AU-DESSUS, bouton pleine largeur EN DESSOUS -->
-        <div style="flex-shrink:0;background:rgba(0,0,0,0.35);padding:6px 8px 8px;display:flex;flex-direction:column;gap:6px">
+        <!-- Barre d'action ÉPINGLÉE en bas (absolute) : toujours visible -->
+        <div id="mobile-action-bar" style="position:absolute;left:0;right:0;bottom:0;z-index:20;background:rgba(0,0,0,0.55);padding:6px 8px 8px;display:flex;flex-direction:column;gap:6px;box-shadow:0 -4px 16px rgba(0,0,0,0.5)">
           <div style="display:flex;gap:6px;overflow-x:auto;align-items:flex-end;min-height:96px;padding-bottom:2px">
             ${activeGCs.map(gc=>gcMiniMob(gc,false)).join('')}
             ${boostAvail?gcMiniMob(null,true):''}
@@ -569,12 +572,19 @@ function renderGame(container, game, ctx) {
     const ms = container.querySelector('.match-screen')
     if (ms) {
       // visualViewport.height = zone réellement visible (hors barre d'URL).
-      // Plus fiable que innerHeight, qui peut renvoyer le layout viewport
-      // (plus grand) sur Android Chrome → le bas (bouton) débordait.
       const vh = Math.round((window.visualViewport && window.visualViewport.height) || window.innerHeight)
       ms.style.height = vh + 'px'
       ms.style.maxHeight = vh + 'px'
       ms.style.overflow = 'hidden'
+    }
+    // La barre d'action mobile est en position:absolute;bottom:0 → on réserve
+    // sa hauteur sous la zone de jeu pour ne pas masquer le bas du terrain.
+    const bar = container.querySelector('#mobile-action-bar')
+    const play = container.querySelector('#mobile-play-area')
+    if (bar && play) {
+      requestAnimationFrame(() => {
+        play.style.paddingBottom = bar.offsetHeight + 'px'
+      })
     }
   })()
 

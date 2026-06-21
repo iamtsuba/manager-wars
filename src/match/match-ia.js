@@ -370,6 +370,9 @@ function renderGame(container, game, ctx) {
 
   <div class="match-screen" style="position:fixed;inset:0;z-index:100;display:flex;flex-direction:column;overflow:hidden;background:#0a3d1e;height:100%;width:100%">
 
+    <!-- BANDEAU DEBUG TEMPORAIRE -->
+    <div id="dbg-bar" style="flex-shrink:0;background:#ff00ff;color:#fff;font-size:10px;font-family:monospace;padding:3px 6px;text-align:center;font-weight:700;z-index:999"></div>
+
     <!-- SCORE BAR -->
     <div style="display:flex;align-items:center;padding:8px 10px;background:rgba(0,0,0,0.5);gap:6px;flex-shrink:0">
       <button id="match-quit" style="width:34px;height:34px;border-radius:50%;background:rgba(220,50,50,0.7);border:none;color:#fff;font-size:16px;cursor:pointer;flex-shrink:0">✕</button>
@@ -566,6 +569,26 @@ function renderGame(container, game, ctx) {
       }
     </div>
   </div>`
+
+  // ── Bandeau debug temporaire ──────────────────────────────
+  ;(function fillDebug() {
+    const dbg = container.querySelector('#dbg-bar')
+    if (!dbg) return
+    const vv = window.visualViewport
+    const ms = container.querySelector('.match-screen')
+    const bar = container.querySelector('#mobile-action-bar')
+    const btn = container.querySelector('#btn-action, #btn-results')
+    setTimeout(() => {
+      const msRect = ms ? ms.getBoundingClientRect() : null
+      const barRect = bar ? bar.getBoundingClientRect() : null
+      dbg.textContent =
+        `iW${window.innerWidth} iH${window.innerHeight} vvH${vv?Math.round(vv.height):'-'} ` +
+        `PC${window.innerWidth>=700?1:0} ph:${game.phase} ` +
+        `ms${msRect?Math.round(msRect.height):'-'} ` +
+        `bar${barRect?Math.round(barRect.bottom):'-'}/${barRect?Math.round(barRect.top):'-'} ` +
+        `btn${btn?1:0}`
+    }, 60)
+  })()
 
   // ── Dimensionner l'écran de match exactement (hauteur réelle visible) ─
   ;(function fixHeight() {

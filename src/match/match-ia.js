@@ -368,7 +368,7 @@ function renderGame(container, game, ctx) {
     #match-history-panel.open { transform:translateY(0); }
   </style>
 
-  <div class="match-screen" style="position:fixed;inset:0;z-index:100;display:flex;flex-direction:column;overflow:hidden;background:#0a3d1e;height:100%;width:100%">
+  <div class="match-screen" style="position:fixed;top:0;left:0;right:0;bottom:auto;z-index:100;display:flex;flex-direction:column;overflow:hidden;background:#0a3d1e;width:100%">
 
     <!-- BANDEAU DEBUG TEMPORAIRE -->
     <div id="dbg-bar" style="flex-shrink:0;background:#ff00ff;color:#fff;font-size:10px;font-family:monospace;padding:3px 6px;text-align:center;font-weight:700;z-index:999"></div>
@@ -599,6 +599,7 @@ function renderGame(container, game, ctx) {
     const ms = container.querySelector('.match-screen')
     if (!ms) return
     const vh = Math.round((window.visualViewport && window.visualViewport.height) || window.innerHeight)
+    ms.style.bottom = 'auto'
     ms.style.height = vh + 'px'
     ms.style.maxHeight = vh + 'px'
     ms.style.overflow = 'hidden'

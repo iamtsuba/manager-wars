@@ -175,48 +175,91 @@ function showMidfieldAnimation(container, game, ctx) {
   const aiTotal   = milScore(aiMils)   + milLinks(aiMils)
   const homeWins  = homeTotal >= aiTotal
 
-  function renderMilRow(mils, label, color) {
-    return `<div style="text-align:center">
-      <div style="font-size:10px;color:rgba(255,255,255,0.5);letter-spacing:2px;margin-bottom:8px;text-transform:uppercase">${label}</div>
+  function renderMilRow(mils, label, color, side) {
+    return `<div style="text-align:center;width:100%">
+      <div style="font-size:11px;color:rgba(255,255,255,0.55);letter-spacing:2px;margin-bottom:10px;text-transform:uppercase;font-weight:700">${label}</div>
       <div style="display:flex;align-items:center;justify-content:center;gap:0">
         ${mils.map((p, i) => {
-          const portrait = getPortrait(p)
           const lc = i < mils.length-1 ? linkColor(p, mils[i+1]) : null
-          const hasLink = lc && lc !== '#ff3333' && lc !== '#cc2222'
+          const noLink = !lc || lc === '#ff3333' || lc === '#cc2222'
+          const linkVal = lc === '#00ff88' ? '+2' : lc === '#FFD700' ? '+1' : ''
           return `
-          <div style="width:52px;height:52px;border-radius:8px;background:${color};position:relative;flex-shrink:0;overflow:hidden;border:2px solid rgba(255,255,255,0.3)">
-            ${portrait?`<img src="${portrait}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0.8">`:''}
-            <div style="position:relative;z-index:1;font-size:15px;font-weight:900;color:#fff;text-shadow:0 1px 3px #000;text-align:center;padding-top:4px">${getNoteForRole(p,'MIL')}</div>
-            <div style="position:relative;z-index:1;font-size:6px;color:#fff;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:0 2px">${p.name}</div>
+          <div class="duel-card duel-card-${side}" data-idx="${i}" style="opacity:0;transform:translateY(18px) scale(0.7);transition:opacity .35s ease, transform .35s cubic-bezier(.34,1.56,.64,1);flex-shrink:0">
+            ${renderMiniCardHTML({ ...p, note: getNoteForRole(p,'MIL'), _line:'MIL' }, 58, 78)}
           </div>
-          ${lc ? `<div style="width:14px;height:4px;border-radius:2px;background:${lc};flex-shrink:0;opacity:${hasLink?0.9:0.3}"></div>` : ''}
+          ${i < mils.length-1 ? `<div class="duel-link duel-link-${side}" data-idx="${i}" style="position:relative;width:18px;height:5px;border-radius:3px;background:${noLink?'rgba(255,255,255,0.12)':lc};flex-shrink:0;opacity:0;transition:opacity .3s ease;box-shadow:${noLink?'none':`0 0 8px ${lc}`}">
+            ${linkVal?`<span style="position:absolute;top:-13px;left:50%;transform:translateX(-50%);font-size:8px;font-weight:900;color:${lc}">${linkVal}</span>`:''}
+          </div>` : ''}
           `
         }).join('')}
       </div>
-      <div style="margin-top:6px;font-size:11px;color:rgba(255,255,255,0.5)">
+      <div class="duel-score-line duel-score-line-${side}" style="margin-top:10px;font-size:12px;color:rgba(255,255,255,0.55);opacity:0;transition:opacity .4s ease">
         Score: ${milScore(mils)} + ${milLinks(mils)} liens = <b style="color:#fff">${milScore(mils)+milLinks(mils)}</b>
       </div>
     </div>`
   }
 
   container.innerHTML = `
-  <div class="match-screen" style="display:flex;flex-direction:column;align-items:center;justify-content:flex-start;height:100%;overflow:hidden;gap:14px;padding:16px;background:#0a3d1e;overflow-y:auto">
+  <div class="match-screen" style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;overflow:hidden;gap:14px;padding:16px;background:#0a3d1e;overflow-y:auto">
+    <style>
+      @keyframes duelPulse { 0%{transform:scale(1)} 50%{transform:scale(1.18)} 100%{transform:scale(1)} }
+      @keyframes duelGlow { 0%,100%{text-shadow:0 0 12px rgba(255,215,0,0.6)} 50%{text-shadow:0 0 28px rgba(255,215,0,0.95)} }
+      @keyframes vsFlash { 0%{opacity:0;transform:scale(2)} 60%{opacity:1;transform:scale(0.9)} 100%{opacity:1;transform:scale(1)} }
+    </style>
     <div style="text-align:center;color:#fff">
-      <div style="font-size:11px;opacity:.5;letter-spacing:2px;text-transform:uppercase">Duel du milieu de terrain</div>
+      <div style="font-size:11px;opacity:.5;letter-spacing:3px;text-transform:uppercase">Duel du milieu de terrain</div>
     </div>
 
-    ${renderMilRow(homeMils, game.clubName, '#D4A017')}
+    ${renderMilRow(homeMils, game.clubName, '#D4A017', 'home')}
 
-    <div style="display:flex;flex-direction:column;align-items:center;gap:4px">
-      <div id="score-home" style="font-size:48px;font-weight:900;color:#D4A017;transition:all 0.6s ease">${homeTotal}</div>
-      <div style="font-size:14px;color:rgba(255,255,255,0.4);letter-spacing:2px">VS</div>
-      <div id="score-ai" style="font-size:48px;font-weight:900;color:rgba(255,255,255,0.7);transition:all 0.6s ease">${aiTotal}</div>
+    <div style="display:flex;flex-direction:column;align-items:center;gap:2px;margin:4px 0">
+      <div id="score-home" style="font-size:48px;font-weight:900;color:#D4A017;transition:all 0.5s ease">0</div>
+      <div id="vs-label" style="font-size:14px;color:rgba(255,255,255,0.4);letter-spacing:3px;opacity:0">VS</div>
+      <div id="score-ai" style="font-size:48px;font-weight:900;color:rgba(255,255,255,0.7);transition:all 0.5s ease">0</div>
     </div>
 
-    ${renderMilRow(aiMils, 'IA', '#bb2020')}
+    ${renderMilRow(aiMils, 'IA', '#bb2020', 'ai')}
 
     <div id="midfield-result" style="opacity:0;text-align:center;transition:opacity 0.5s;color:#fff;max-width:320px"></div>
   </div>`
+
+  // ── Séquence d'animation ──────────────────────────────────
+  const animate = () => {
+    const reveal = (sel, delay) => container.querySelectorAll(sel).forEach((el, i) => {
+      setTimeout(() => { el.style.opacity = '1'; el.style.transform = 'translateY(0) scale(1)' }, delay + i*90)
+    })
+    // 1) Cartes domicile puis IA (en cascade)
+    reveal('.duel-card-home', 150)
+    reveal('.duel-card-ai', 500)
+    // 2) Liens qui s'illuminent
+    setTimeout(() => container.querySelectorAll('.duel-link').forEach((el,i)=>{
+      setTimeout(()=>{ el.style.opacity='1' }, i*70)
+    }), 900)
+    // 3) VS + lignes de score
+    setTimeout(() => {
+      const vs = container.querySelector('#vs-label')
+      if (vs) { vs.style.opacity='1'; vs.style.animation='vsFlash .5s ease' }
+      container.querySelectorAll('.duel-score-line').forEach(el=>el.style.opacity='1')
+    }, 1250)
+    // 4) Comptage animé des scores
+    setTimeout(() => {
+      countUp('score-home', homeTotal, 800)
+      countUp('score-ai', aiTotal, 800)
+    }, 1500)
+  }
+  function countUp(id, target, dur) {
+    const el = document.getElementById(id)
+    if (!el) return
+    const t0 = performance.now()
+    const step = (t) => {
+      const k = Math.min(1, (t - t0) / dur)
+      el.textContent = Math.round(target * (1 - Math.pow(1-k, 3)))
+      if (k < 1) requestAnimationFrame(step)
+      else el.textContent = target
+    }
+    requestAnimationFrame(step)
+  }
+  requestAnimationFrame(animate)
 
   setTimeout(() => {
     const elHome = document.getElementById('score-home')
@@ -225,9 +268,11 @@ function showMidfieldAnimation(container, game, ctx) {
     if (elHome && elAi) {
       if (homeWins) {
         elHome.style.fontSize = '80px'; elHome.style.color = '#FFD700'
+        elHome.style.animation = 'duelPulse .5s ease, duelGlow 1.5s ease infinite .5s'
         elAi.style.opacity = '0.25'
       } else {
         elAi.style.fontSize = '80px'; elAi.style.color = '#ff6b6b'
+        elAi.style.animation = 'duelPulse .5s ease'
         elHome.style.opacity = '0.25'
       }
     }
@@ -286,7 +331,7 @@ function showMidfieldAnimation(container, game, ctx) {
         if (game.attacker === 'ai') setTimeout(() => aiTurn(container, game, ctx), 800)
       })
     }, 100)
-  }, 5000)
+  }, 2800)
 }
 
 function renderLogEntry(entry) {

@@ -176,7 +176,7 @@ function showMidfieldAnimation(container, game, ctx) {
   const homeWins  = homeTotal >= aiTotal
 
   function renderMilRow(mils, label, color, side) {
-    return `<div style="text-align:center;width:100%">
+    return `<div id="duel-row-${side}" style="text-align:center;width:100%;transition:transform .5s cubic-bezier(.5,0,.75,0), opacity .5s ease;transform-origin:center">
       <div style="font-size:11px;color:rgba(255,255,255,0.55);letter-spacing:2px;margin-bottom:10px;text-transform:uppercase;font-weight:700">${label}</div>
       <div style="display:flex;align-items:center;justify-content:center;gap:0">
         ${mils.map((p, i) => {
@@ -200,11 +200,16 @@ function showMidfieldAnimation(container, game, ctx) {
   }
 
   container.innerHTML = `
-  <div class="match-screen" style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;overflow:hidden;gap:14px;padding:16px;background:#0a3d1e;overflow-y:auto">
+  <div class="match-screen" style="position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;overflow:hidden;gap:14px;padding:16px;background:#0a3d1e;overflow-y:auto">
     <style>
       @keyframes duelPulse { 0%{transform:scale(1)} 50%{transform:scale(1.18)} 100%{transform:scale(1)} }
       @keyframes duelGlow { 0%,100%{text-shadow:0 0 12px rgba(255,215,0,0.6)} 50%{text-shadow:0 0 28px rgba(255,215,0,0.95)} }
       @keyframes vsFlash { 0%{opacity:0;transform:scale(2)} 60%{opacity:1;transform:scale(0.9)} 100%{opacity:1;transform:scale(1)} }
+      @keyframes crushSlam { 0%{transform:translateY(0) scale(1)} 70%{transform:translateY(var(--crush-dist)) scale(1.06,0.9)} 85%{transform:translateY(calc(var(--crush-dist) - 8px)) scale(0.98,1.04)} 100%{transform:translateY(var(--crush-dist)) scale(1)} }
+      @keyframes crushSquash { 0%{transform:scaleY(1);opacity:1} 60%{transform:scaleY(0.12) translateY(6px);opacity:.6} 100%{transform:scaleY(0);opacity:0} }
+      @keyframes shockwave { 0%{transform:translateX(-50%) scale(0.2);opacity:.9} 100%{transform:translateX(-50%) scale(2.4);opacity:0} }
+      @keyframes boostFlipIn { 0%{transform:perspective(600px) rotateY(90deg) scale(0.6);opacity:0} 60%{transform:perspective(600px) rotateY(-12deg) scale(1.08);opacity:1} 100%{transform:perspective(600px) rotateY(0) scale(1);opacity:1} }
+      @keyframes fadeUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
     </style>
     <div style="text-align:center;color:#fff">
       <div style="font-size:11px;opacity:.5;letter-spacing:3px;text-transform:uppercase">Duel du milieu de terrain</div>
@@ -220,7 +225,8 @@ function showMidfieldAnimation(container, game, ctx) {
 
     ${renderMilRow(aiMils, 'IA', '#bb2020', 'ai')}
 
-    <div id="midfield-result" style="opacity:0;text-align:center;transition:opacity 0.5s;color:#fff;max-width:320px"></div>
+    <div id="duel-shock" style="position:absolute;left:50%;top:50%;width:120px;height:120px;border-radius:50%;border:6px solid #FFD700;opacity:0;pointer-events:none"></div>
+    <div id="duel-finale" style="display:flex;flex-direction:column;align-items:center;gap:14px;margin-top:6px"></div>
   </div>`
 
   // ── Séquence d'animation ──────────────────────────────────
@@ -261,76 +267,86 @@ function showMidfieldAnimation(container, game, ctx) {
   }
   requestAnimationFrame(animate)
 
+  // ── Révélation vainqueur + écrasement + boost + bouton (inline) ──
+  game.attacker = homeWins ? 'home' : 'ai'
+  const boostValue = homeWins ? rollBoost() : null
+  if (homeWins) game.boostCard = { value: boostValue }
+  game.log.push({
+    type: 'duel',
+    title: 'Milieu de Terrain',
+    homePlayers: homeMils.map(p => ({ name:p.name, note:getNoteForRole(p,'MIL'), portrait:getPortrait(p), job:p.job, country_code:p.country_code, rarity:p.rarity, clubName:p.clubName, clubLogo:p.clubLogo })),
+    aiPlayers:   aiMils.map(p   => ({ name:p.name, note:getNoteForRole(p,'MIL'), portrait:getPortrait(p), job:p.job, country_code:p.country_code, rarity:p.rarity, clubName:p.clubName, clubLogo:p.clubLogo })),
+    homeTotal, aiTotal,
+    text: `Duel milieu : ${game.clubName} ${homeTotal} – ${aiTotal} IA → ${homeWins ? game.clubName+' attaque' : 'IA attaque'}`,
+  })
+
+  const startMatch = () => {
+    game.phase = game.attacker === 'home' ? 'attack' : 'ai-attack'
+    renderGame(container, game, ctx)
+    if (game.attacker === 'ai') setTimeout(() => aiTurn(container, game, ctx), 800)
+  }
+
   setTimeout(() => {
     const elHome = document.getElementById('score-home')
     const elAi   = document.getElementById('score-ai')
-    const elRes  = document.getElementById('midfield-result')
-    if (elHome && elAi) {
-      if (homeWins) {
-        elHome.style.fontSize = '80px'; elHome.style.color = '#FFD700'
-        elHome.style.animation = 'duelPulse .5s ease, duelGlow 1.5s ease infinite .5s'
-        elAi.style.opacity = '0.25'
-      } else {
-        elAi.style.fontSize = '80px'; elAi.style.color = '#ff6b6b'
-        elAi.style.animation = 'duelPulse .5s ease'
-        elHome.style.opacity = '0.25'
-      }
-    }
-    if (elRes) {
-      const boostValue = rollBoost()
-      elRes.style.opacity = '1'
-      const winner = homeWins ? game.clubName : 'IA'
-      elRes.innerHTML = `
-        <div style="font-size:20px;font-weight:900;margin-bottom:10px">
-          ⚽ ${homeWins ? `${game.clubName} gagne le milieu de terrain et attaque !` : `L'IA gagne l'engagement et attaque !`}
-        </div>
-        ${homeWins ? `
-        <div style="background:rgba(135,206,235,0.15);border:2px solid #87CEEB;border-radius:14px;padding:14px 24px;display:inline-block;margin-top:4px">
-          <div style="font-size:10px;color:#87CEEB;letter-spacing:1px">CARTE BOOST OBTENUE</div>
-          <div style="font-size:32px;font-weight:900;color:#87CEEB">+${boostValue}</div>
-          <div style="font-size:10px;color:rgba(135,206,235,0.7)">Applicable sur n'importe quel joueur</div>
-        </div>` : ''}
-      `
-      if (homeWins) game.boostCard = { value: boostValue }
-    }
+    const winRow  = document.getElementById(homeWins ? 'duel-row-home' : 'duel-row-ai')
+    const loseRow = document.getElementById(homeWins ? 'duel-row-ai' : 'duel-row-home')
+    const elWin = homeWins ? elHome : elAi
+    const elLose = homeWins ? elAi : elHome
 
-    game.attacker = homeWins ? 'home' : 'ai'
-    game.log.push({
-      type: 'duel',
-      title: 'Milieu de Terrain',
-      homePlayers: homeMils.map(p => ({ name:p.name, note:getNoteForRole(p,'MIL'), portrait:getPortrait(p), job:p.job, country_code:p.country_code, rarity:p.rarity, clubName:p.clubName, clubLogo:p.clubLogo })),
-      aiPlayers:   aiMils.map(p   => ({ name:p.name, note:getNoteForRole(p,'MIL'), portrait:getPortrait(p), job:p.job, country_code:p.country_code, rarity:p.rarity, clubName:p.clubName, clubLogo:p.clubLogo })),
-      homeTotal, aiTotal,
-      text: `Duel milieu : ${game.clubName} ${homeTotal} – ${aiTotal} IA → ${homeWins ? game.clubName+' attaque' : 'IA attaque'}`,
-    })
+    // 1) Le score du vainqueur grossit
+    if (elWin) {
+      elWin.style.fontSize = '80px'
+      elWin.style.color = homeWins ? '#FFD700' : '#ff6b6b'
+      elWin.style.animation = 'duelPulse .5s ease' + (homeWins ? ', duelGlow 1.5s ease infinite .5s' : '')
+    }
+    if (elLose) elLose.style.opacity = '0.25'
 
-    // Page résultat séparée
+    // 2) Écrasement : la rangée gagnante slam vers la perdante, qui s'aplatit
     setTimeout(() => {
-      const boostVal = game.boostCard?.value
-      container.innerHTML = `
-      <div class="match-screen" style="display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding-top:40px;height:100%;min-height:100%;gap:16px;padding-left:24px;padding-right:24px;background:#0a3d1e;text-align:center">
-        <div style="font-size:64px">${homeWins ? '🏆' : '😤'}</div>
-        <div style="font-size:22px;font-weight:900;color:#fff;line-height:1.3">
-          ${homeWins
-            ? `⚽ ${game.clubName}<br>gagne le milieu de terrain !`
-            : `😔 L'IA gagne l'engagement !`}
-        </div>
-        ${boostVal && homeWins ? `
-        <div style="background:rgba(135,206,235,0.15);border:2px solid #87CEEB;border-radius:16px;padding:16px 32px">
-          <div style="font-size:10px;color:#87CEEB;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px">Carte Boost obtenue</div>
-          <div style="font-size:48px;font-weight:900;color:#87CEEB">+${boostVal}</div>
-          <div style="font-size:11px;color:rgba(135,206,235,0.7)">Applicable sur n'importe quel joueur</div>
-        </div>` : ''}
-        <button id="start-match-btn" style="margin-top:8px;padding:16px 40px;border-radius:14px;border:none;background:#1A6B3C;color:#fff;font-size:17px;font-weight:900;cursor:pointer;box-shadow:0 4px 20px rgba(0,0,0,0.3)">
-          ▶ Commencer le match
-        </button>
-      </div>`
-      document.getElementById('start-match-btn')?.addEventListener('click', () => {
-        game.phase = game.attacker === 'home' ? 'attack' : 'ai-attack'
-        renderGame(container, game, ctx)
-        if (game.attacker === 'ai') setTimeout(() => aiTurn(container, game, ctx), 800)
-      })
-    }, 100)
+      if (winRow && loseRow) {
+        const wRect = winRow.getBoundingClientRect()
+        const lRect = loseRow.getBoundingClientRect()
+        const dist = Math.round(lRect.top - wRect.top)
+        winRow.style.setProperty('--crush-dist', dist + 'px')
+        winRow.style.animation = 'crushSlam .55s cubic-bezier(.4,0,.6,1) forwards'
+        winRow.style.zIndex = '5'
+        // onde de choc au moment de l'impact
+        setTimeout(() => {
+          const shock = document.getElementById('duel-shock')
+          if (shock) {
+            shock.style.top = lRect.top - winRow.getBoundingClientRect().top + 'px'
+            shock.style.animation = 'shockwave .5s ease-out forwards'
+          }
+          loseRow.style.animation = 'crushSquash .45s ease-in forwards'
+          if (navigator.vibrate) navigator.vibrate(60)
+        }, 360)
+      }
+
+      // 3) Révélation de la finale (boost + bouton) là où était la perdante
+      setTimeout(() => {
+        const fin = document.getElementById('duel-finale')
+        if (loseRow) loseRow.style.display = 'none'
+        if (elHome) elHome.parentElement.style.display = 'none'
+        if (fin) {
+          fin.innerHTML = `
+            <div style="font-size:18px;font-weight:900;color:#fff;animation:fadeUp .4s ease both">
+              ${homeWins ? `⚽ ${game.clubName} attaque !` : `😔 L'IA gagne l'engagement`}
+            </div>
+            ${homeWins ? `
+            <div style="background:linear-gradient(135deg,#4a9fc4,#87CEEB);border:3px solid #cdeffd;border-radius:16px;padding:18px 30px;text-align:center;animation:boostFlipIn .7s cubic-bezier(.34,1.56,.64,1) both;box-shadow:0 8px 30px rgba(135,206,235,0.4)">
+              <div style="font-size:10px;color:rgba(0,0,0,0.6);letter-spacing:2px;text-transform:uppercase;margin-bottom:4px;font-weight:700">Carte Boost obtenue</div>
+              <div style="font-size:40px">⚡</div>
+              <div style="font-size:44px;font-weight:900;color:#063;line-height:1">+${boostValue}</div>
+              <div style="font-size:10px;color:rgba(0,0,0,0.55);margin-top:4px">Applicable sur n'importe quel joueur</div>
+            </div>` : ''}
+            <button id="start-match-btn" style="margin-top:4px;padding:16px 44px;border-radius:14px;border:none;background:#1A6B3C;color:#fff;font-size:17px;font-weight:900;cursor:pointer;box-shadow:0 4px 20px rgba(0,0,0,0.3);animation:fadeUp .4s ease both;animation-delay:.5s;opacity:0">
+              ▶ Commencer le match
+            </button>`
+          document.getElementById('start-match-btn')?.addEventListener('click', startMatch)
+        }
+      }, 700)
+    }, 700)
   }, 2800)
 }
 

@@ -237,8 +237,9 @@ export function showGCSelection(container, gcCards, onConfirm) {
 
   function render() {
     container.style.overflow = 'hidden'
-    const _gcH = container.clientHeight || container.getBoundingClientRect().height
-    if (_gcH > 50) container.style.height = _gcH + 'px'
+    container.style.height = '100%'
+    container.style.display = 'flex'
+    container.style.flexDirection = 'column'
 
     container.innerHTML = `
     <div id="gc-screen-wrap" style="position:relative;display:flex;flex-direction:column;height:100%;overflow:hidden;background:linear-gradient(180deg,#0a1628,#1a0a2e)">

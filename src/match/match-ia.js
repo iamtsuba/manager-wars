@@ -485,23 +485,23 @@ function renderGame(container, game, ctx) {
           </div>
         </div>`
       } else {
-        // ══ LAYOUT MOBILE : subs | (terrain + zone bas) ══════
+        // ══ LAYOUT MOBILE : subs | terrain | (GC en ligne + bouton pleine largeur) ══
         return `
-        <div style="display:flex;flex:0.8;min-height:0;overflow:hidden">
+        <div style="display:flex;flex:1;min-height:0;overflow:hidden">
           ${subsHTML}
-          <div style="flex:1;min-width:0;display:flex;flex-direction:column;min-height:0">
-            ${terrainHTML}
-            <!-- Zone bas mobile : GC grille + bouton -->
-            <div style="display:flex;align-items:stretch;padding:4px 6px;background:rgba(0,0,0,0.35);gap:5px;flex-shrink:0">
-              <div style="display:flex;flex-wrap:wrap;gap:3px;align-content:center;max-width:120px">
-                ${activeGCs.map(gc=>gcMiniMob(gc,false)).join('')}
-                ${boostAvail?gcMiniMob(null,true):''}
-              </div>
-              <div style="flex:0.8;display:flex;flex-direction:column;justify-content:center;gap:3px">
-                ${actionBtn}${counter}
-              </div>
+          <div id="match-field" style="flex:1;min-width:0;min-height:0;overflow:hidden">
+            <div class="terrain-wrapper" style="width:100%;height:100%;overflow:hidden">
+              ${renderTeam(game.homeTeam,game.formation,game.phase,selectedIds,300,300)}
             </div>
           </div>
+        </div>
+        <!-- Zone bas mobile : GC en ligne scrollable AU-DESSUS, bouton pleine largeur EN DESSOUS -->
+        <div style="flex-shrink:0;background:rgba(0,0,0,0.35);padding:6px 8px 8px;display:flex;flex-direction:column;gap:6px">
+          <div style="display:flex;gap:6px;overflow-x:auto;align-items:flex-end;min-height:96px;padding-bottom:2px">
+            ${activeGCs.map(gc=>gcMiniMob(gc,false)).join('')}
+            ${boostAvail?gcMiniMob(null,true):''}
+          </div>
+          <div>${actionBtn}${counter}</div>
         </div>`
       }
     })()}

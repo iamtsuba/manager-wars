@@ -779,9 +779,15 @@ function updateLastPlayer(game, ctx, playerId) {
 function confirmAttack(container, game, ctx) {
   if (game._timerInt) { clearInterval(game._timerInt); game._timerInt = null }
   updateLastPlayer(game, ctx, ctx.state.profile.id)
-  const selected = game.selected.map(s=>({...s,_line:s._role}))
+  // Re-piocher les objets joueurs À JOUR (boost inclus) depuis game.homeTeam :
+  // game.selected contient des copies figées au moment de la sélection, qui ne
+  // reflètent pas un boost appliqué après coup.
+  const selected = game.selected.map(s => {
+    const live = (game.homeTeam[s._role]||[]).find(x => x.cardId === s.cardId) || s
+    return { ...live, _line: s._role }
+  })
   const calc = calcAttack(selected, game.modifiers.home)
-  game.pendingAttack = { ...calc, players:[...game.selected], side:'home' }
+  game.pendingAttack = { ...calc, players:[...selected], side:'home' }
   game.selected.forEach(sel => {
     const p = (game.homeTeam[sel._role]||[]).find(pp => pp.cardId === sel.cardId)
     if (p) p.used = true
@@ -797,7 +803,11 @@ function confirmAttack(container, game, ctx) {
 function confirmDefense(container, game, ctx) {
   if (game._timerInt) { clearInterval(game._timerInt); game._timerInt = null }
   updateLastPlayer(game, ctx, ctx.state.profile.id)
-  const selected = game.selected.map(s=>({...s,_line:s._role}))
+  // Re-piocher les objets joueurs À JOUR (boost inclus) depuis game.homeTeam.
+  const selected = game.selected.map(s => {
+    const live = (game.homeTeam[s._role]||[]).find(x => x.cardId === s.cardId) || s
+    return { ...live, _line: s._role }
+  })
   const calc = calcDefense(selected, game.modifiers.home)
   game.selected.forEach(sel => {
     const p = (game.homeTeam[sel._role]||[]).find(pp => pp.cardId === sel.cardId)
@@ -808,7 +818,7 @@ function confirmDefense(container, game, ctx) {
     type: 'duel',
     title: 'Défense',
     aiPlayers:   (game.pendingAttack.players||[]).map(p => ({ name:p.name, note:p._line==='MIL'?p.note_m:p.note_a, portrait:getPortrait(p), job:p.job, country_code:p.country_code, rarity:p.rarity, clubName:p.clubName, clubLogo:p.clubLogo })),
-    homePlayers: game.selected.map(s => { const pp = (game.homeTeam[s._role]||[]).find(x=>x.cardId===s.cardId)||s; return { name:pp.name, note:pp._line==='GK'?pp.note_g:pp._line==='MIL'?pp.note_m:pp.note_d, portrait:getPortrait(pp), job:pp.job, country_code:pp.country_code, rarity:pp.rarity, clubName:pp.clubName, clubLogo:pp.clubLogo } }),
+    homePlayers: game.selected.map(s => { const pp = (game.homeTeam[s._role]||[]).find(x=>x.cardId===s.cardId)||s; return { name:pp.name, note:(pp._line==='GK'?Number(pp.note_g)||0:pp._line==='MIL'?Number(pp.note_m)||0:Number(pp.note_d)||0)+(pp.boost||0), portrait:getPortrait(pp), job:pp.job, country_code:pp.country_code, rarity:pp.rarity, clubName:pp.clubName, clubLogo:pp.clubLogo } }),
     homeTotal: calc.total,
     aiTotal: game.pendingAttack.total,
     isGoal: false, homeScored: false,

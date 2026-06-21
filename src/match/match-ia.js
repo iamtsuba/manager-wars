@@ -8,7 +8,7 @@ import {
   showMsg, getPortrait, playerFromCard, getColsForLine, buildTeam, rollBoost,
   _hideBottomNav, _showBottomNav, renderDeckSelect, showGCSelection,
   getClubLogo, renderMiniCardHTML, renderCardRow, flagImgUrl, countryFlag,
-  buildTeamSVG, renderTeam, renderMiniPlayer, loadMatchSetup,
+  buildTeamSVG, renderTeam, renderMiniPlayer, loadMatchSetup, FORMATIONS, JOB_COLORS,
 } from './match-shared.js'
 
 // ═══════════════════════════════════════════════════════════

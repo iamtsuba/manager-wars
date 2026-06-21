@@ -211,7 +211,7 @@ export function showGCSelection(container, gcCards, onConfirm) {
     container.style.display = 'flex'
     container.style.flexDirection = 'column'
 
-    const isFull = chosen.length === MAX
+    const canValidate = chosen.length > 0  // 1 à MAX cartes acceptées
 
     container.innerHTML = `
     <div id="gc-screen-wrap" style="position:relative;display:flex;flex-direction:column;height:100%;overflow:hidden;background:linear-gradient(180deg,#0a1628,#1a0a2e)">
@@ -220,8 +220,7 @@ export function showGCSelection(container, gcCards, onConfirm) {
         <div style="font-size:11px;color:rgba(255,255,255,0.5);letter-spacing:3px;text-transform:uppercase;margin-bottom:4px">Avant le match</div>
         <div style="font-size:20px;font-weight:900;color:#fff">Choisir ses Game Changers</div>
         <div style="font-size:13px;color:rgba(255,255,255,0.5);margin-top:3px">
-          Sélectionne <b style="color:#FFD700">${MAX}</b> cartes · ${chosen.length}/${MAX}
-          ${chosen.length > 0 && chosen.length < MAX ? ` · encore ${MAX - chosen.length}` : ''}
+          Jusqu'à <b style="color:#FFD700">${MAX}</b> cartes · ${chosen.length}/${MAX}
         </div>
       </div>
       <!-- Grille cartes -->
@@ -233,8 +232,8 @@ export function showGCSelection(container, gcCards, onConfirm) {
       </div>
       <!-- Barre fixe en bas : boutons d'action -->
       <div style="flex-shrink:0;padding:10px 16px 14px;display:flex;flex-direction:column;gap:8px;background:rgba(0,0,0,0.25);border-top:1px solid rgba(255,255,255,0.08)">
-        <button id="gc-launch" ${isFull?'':'disabled'} style="width:100%;padding:14px;border-radius:14px;border:none;background:${isFull?'linear-gradient(135deg,#5a0a9a,#9a28e8)':'rgba(255,255,255,0.08)'};color:${isFull?'#fff':'rgba(255,255,255,0.3)'};font-size:15px;font-weight:900;cursor:${isFull?'pointer':'default'};box-shadow:${isFull?'0 4px 20px rgba(122,40,184,0.5)':'none'}">
-          ⚡ Valider ${isFull ? `(${MAX} GC)` : `(${chosen.length}/${MAX})`}
+        <button id="gc-launch" ${canValidate?'':'disabled'} style="width:100%;padding:14px;border-radius:14px;border:none;background:${canValidate?'linear-gradient(135deg,#5a0a9a,#9a28e8)':'rgba(255,255,255,0.08)'};color:${canValidate?'#fff':'rgba(255,255,255,0.3)'};font-size:15px;font-weight:900;cursor:${canValidate?'pointer':'default'};box-shadow:${canValidate?'0 4px 20px rgba(122,40,184,0.5)':'none'}">
+          ⚡ Valider (${chosen.length}/${MAX})
         </button>
         <div style="display:flex;gap:8px">
           <button id="gc-no-gc" style="flex:1;padding:11px;border-radius:12px;border:2px solid rgba(255,255,255,0.2);background:transparent;color:rgba(255,255,255,0.7);font-size:13px;font-weight:600;cursor:pointer">
@@ -260,7 +259,7 @@ export function showGCSelection(container, gcCards, onConfirm) {
       })
     })
 
-    container.querySelector('#gc-launch')?.addEventListener('click', () => { if (isFull) _gcDone(chosen) })
+    container.querySelector('#gc-launch')?.addEventListener('click', () => { if (canValidate) _gcDone(chosen) })
     container.querySelector('#gc-no-gc')?.addEventListener('click', () => _gcDone([]))
     container.querySelector('#gc-reset')?.addEventListener('click', () => { if (chosen.length) { chosen = []; render() } })
   }

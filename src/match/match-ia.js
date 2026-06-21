@@ -567,20 +567,16 @@ function renderGame(container, game, ctx) {
   ;(function fixHeight() {
     const ms = container.querySelector('.match-screen')
     if (ms) {
-      // Hauteur calculée depuis le viewport réel (window.innerHeight - position
-      // actuelle de l'écran), totalement indépendante de la cascade de hauteurs
-      // en % CSS (#app → .page → .match-screen) qui peut mal se résoudre sur
-      // certains navigateurs mobiles juste après un remplacement complet
-      // d'écran (ex: juste après "Commencer le match"). Ce calcul ne peut pas
-      // se tromper puisqu'il se base sur la position réelle à l'écran.
-      const top = ms.getBoundingClientRect().top
-      const h = Math.round(window.innerHeight - top)
+      // container (#page-content / .page) est désormais correctement dimensionné
+      // grâce au fix #app global (window.innerHeight). On cale donc l'écran de
+      // match sur la hauteur réelle disponible du parent — valeur toujours
+      // positive et exacte, contrairement à un calcul via getBoundingClientRect
+      // qui pouvait renvoyer une hauteur trop grande (et couper le bas) si la
+      // mise en page n'était pas encore stabilisée juste après le rendu.
+      const h = container.clientHeight
       if (h > 50) {
         ms.style.height = h + 'px'
         ms.style.maxHeight = h + 'px'
-      } else {
-        ms.style.height = '100%'
-        ms.style.maxHeight = '100%'
       }
       ms.style.overflow = 'hidden'
     }

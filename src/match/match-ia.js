@@ -568,12 +568,12 @@ function renderGame(container, game, ctx) {
   ;(function fixHeight() {
     const ms = container.querySelector('.match-screen')
     if (ms) {
-      // L'écran de match est en position:fixed;inset:0 → il couvre déjà
-      // exactement la fenêtre. On fixe sa hauteur sur window.innerHeight
-      // (fenêtre visible réelle) pour être 100% certain qu'il ne dépasse
-      // jamais, indépendamment de tout parent / cascade CSS.
-      ms.style.height = window.innerHeight + 'px'
-      ms.style.maxHeight = window.innerHeight + 'px'
+      // visualViewport.height = zone réellement visible (hors barre d'URL).
+      // Plus fiable que innerHeight, qui peut renvoyer le layout viewport
+      // (plus grand) sur Android Chrome → le bas (bouton) débordait.
+      const vh = Math.round((window.visualViewport && window.visualViewport.height) || window.innerHeight)
+      ms.style.height = vh + 'px'
+      ms.style.maxHeight = vh + 'px'
       ms.style.overflow = 'hidden'
     }
   })()

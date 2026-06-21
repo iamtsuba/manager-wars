@@ -261,12 +261,16 @@ async function init() {
 
 // ── Fix viewport mobile (bug 100vh Android) ───────────────
 // Sur certains navigateurs mobiles, 100vh inclut la zone sous la barre
-// d'outils du navigateur, et 100dvh n'est pas toujours honoré. On force
-// donc la hauteur réelle de #app en pixels via window.innerHeight, mis à
-// jour au chargement et à chaque changement de taille / rotation.
+// d'outils du navigateur, et 100dvh n'est pas toujours honoré. window.
+// innerHeight peut lui aussi renvoyer la hauteur du *layout viewport*
+// (plus grande que la zone visible). window.visualViewport.height est la
+// mesure la plus fiable de la zone réellement visible (hors barre d'URL).
+function realViewportHeight() {
+  return Math.round((window.visualViewport && window.visualViewport.height) || window.innerHeight)
+}
 function applyAppHeight() {
   const app = document.getElementById('app')
-  if (app) app.style.height = window.innerHeight + 'px'
+  if (app) app.style.height = realViewportHeight() + 'px'
 }
 window.addEventListener('resize', applyAppHeight)
 window.addEventListener('orientationchange', () => setTimeout(applyAppHeight, 150))

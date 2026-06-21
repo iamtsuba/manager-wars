@@ -427,7 +427,7 @@ function renderGame(container, game, ctx) {
         const nameH  = Math.round(h * 0.22), effH = Math.round(h * 0.22), imgH = h - nameH - effH
         const fs     = name.length > 12 ? 7 : 9
         return `<div class="gc-mini" data-gc-id="${gc.id}" data-gc-type="${gc.gc_type}"
-          style="width:${w}px;height:${h}px;border-radius:10px;border:2px solid ${bord};background:${bg};display:flex;flex-direction:column;overflow:hidden;cursor:pointer;flex-shrink:0">
+          style="box-sizing:border-box;width:${w}px;height:${h}px;border-radius:10px;border:2px solid ${bord};background:${bg};display:flex;flex-direction:column;overflow:hidden;cursor:pointer;flex-shrink:0">
           <div style="height:${nameH}px;background:rgba(255,255,255,0.14);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0 3px">
             <span style="font-size:${fs}px;font-weight:900;color:#fff;text-align:center;line-height:1.1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:${w-6}px">${name}</span>
             <span style="font-size:6px;color:rgba(255,255,255,0.45)">⚡ GC</span>
@@ -441,19 +441,16 @@ function renderGame(container, game, ctx) {
         </div>`
       }
 
-      const gcMiniPC = (gc, isBoost) => isBoost
-        ? `<div id="boost-card" style="width:110px;height:150px;background:linear-gradient(135deg,#4a9fc4,#87CEEB);border:2px solid #87CEEB;border-radius:10px;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;text-align:center;flex-shrink:0">
-            <div style="font-size:30px">⚡</div>
-            <div style="font-size:13px;color:#000;font-weight:900">+${game.boostCard?.value}</div>
+      // ─── Carte Boost : MÊME boîte (box-sizing:border-box + dimensions identiques
+      // à gcCardDesign) pour garantir un alignement pixel-perfect avec les cartes GC ───
+      const boostCardDesign = (w, h) => `<div id="boost-card"
+          style="box-sizing:border-box;width:${w}px;height:${h}px;background:linear-gradient(135deg,#4a9fc4,#87CEEB);border:2px solid #87CEEB;border-radius:10px;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:${Math.round(h*0.04)}px;text-align:center;flex-shrink:0">
+            <div style="font-size:${Math.round(h*0.2)}px">⚡</div>
+            <div style="font-size:${Math.round(h*0.09)}px;color:#000;font-weight:900">+${game.boostCard?.value}</div>
           </div>`
-        : gcCardDesign(gc, 110, 150)
 
-      const gcMiniMob = (gc, isBoost) => isBoost
-        ? `<div id="boost-card" style="width:68px;height:95px;background:linear-gradient(135deg,#4a9fc4,#87CEEB);border:2px solid #87CEEB;border-radius:10px;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;text-align:center;flex-shrink:0">
-            <div style="font-size:20px">⚡</div>
-            <div style="font-size:10px;color:#000;font-weight:900">+${game.boostCard?.value}</div>
-          </div>`
-        : gcCardDesign(gc, 68, 95)
+      const gcMiniPC = (gc, isBoost) => isBoost ? boostCardDesign(110, 150) : gcCardDesign(gc, 110, 150)
+      const gcMiniMob = (gc, isBoost) => isBoost ? boostCardDesign(68, 95) : gcCardDesign(gc, 68, 95)
 
       // ─── Bouton action ────────────────────────────────────
       const btnStyle = _pc

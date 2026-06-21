@@ -563,25 +563,18 @@ function renderGame(container, game, ctx) {
     </div>
   </div>`
 
-  // ── Dimensionner le terrain exactement (hauteur disponible) ─
-  // ── Dimensionnement adapté PC / Mobile ───────────────────
-  ;(function fixSVG() {
-    const svg = container.querySelector('.terrain-wrapper svg')
-    if (!svg) return
-    svg.removeAttribute('width')
-    svg.removeAttribute('height')
-    svg.style.cssText = 'width:100%;height:100%;display:block;max-width:none;margin:0'
-    // viewBox resserré : PAD original=38, on réduit à 10 → plus de zoom
-    svg.setAttribute('viewBox', '-26 -26 352 352')
-    svg.setAttribute('preserveAspectRatio', 'xMidYMid meet')
+  // ── Dimensionner l'écran de match exactement (hauteur réelle visible) ─
+  ;(function fixHeight() {
     const ms = container.querySelector('.match-screen')
     if (ms) {
-      // Hauteur en pixels réels (clientHeight) plutôt que % CSS : le % peut ne pas
-      // se résoudre correctement juste après un remplacement d'écran complet
-      // (ex: juste après "Commencer le match"), ce qui coupait le bas de l'écran
-      // (cartes GC + bouton Attaquer/Défendre) sans possibilité de scroll
-      // (overflow:hidden). Même fix que côté PvP (match-random.js).
-      const h = container.clientHeight
+      // Hauteur calculée depuis le viewport réel (window.innerHeight - position
+      // actuelle de l'écran), totalement indépendante de la cascade de hauteurs
+      // en % CSS (#app → .page → .match-screen) qui peut mal se résoudre sur
+      // certains navigateurs mobiles juste après un remplacement complet
+      // d'écran (ex: juste après "Commencer le match"). Ce calcul ne peut pas
+      // se tromper puisqu'il se base sur la position réelle à l'écran.
+      const top = ms.getBoundingClientRect().top
+      const h = Math.round(window.innerHeight - top)
       if (h > 50) {
         ms.style.height = h + 'px'
         ms.style.maxHeight = h + 'px'
@@ -592,6 +585,19 @@ function renderGame(container, game, ctx) {
       ms.style.overflow = 'hidden'
     }
   })()
+
+  // ── Dimensionnement du SVG du terrain (PC / Mobile) ──────────
+  ;(function fixSVG() {
+    const svg = container.querySelector('.terrain-wrapper svg')
+    if (!svg) return
+    svg.removeAttribute('width')
+    svg.removeAttribute('height')
+    svg.style.cssText = 'width:100%;height:100%;display:block;max-width:none;margin:0'
+    // viewBox resserré : PAD original=38, on réduit à 10 → plus de zoom
+    svg.setAttribute('viewBox', '-26 -26 352 352')
+    svg.setAttribute('preserveAspectRatio', 'xMidYMid meet')
+  })()
+
   if (!game._resizeBound) {
     game._resizeBound = true
     window.addEventListener('resize', () => {

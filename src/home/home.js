@@ -1,5 +1,13 @@
 import { supabase } from '../lib/supabase.js'
 
+
+// Version de build, affichée uniquement aux admins. Construite à partir de la
+// date/heure réelle du build Vite (BUILD_TIME défini dans vite.config.js).
+// Fallback sur la date courante si la variable n'est pas injectée (dev local).
+const APP_VERSION = (typeof __BUILD_TIME__ !== 'undefined' && __BUILD_TIME__)
+  ? __BUILD_TIME__
+  : new Date().toISOString().slice(0,16).replace('T','-').replace(':','h')
+
 export async function renderHome(container, { state, navigate, toast }) {
   const p = state.profile
   if (!p) return
@@ -55,7 +63,8 @@ export async function renderHome(container, { state, navigate, toast }) {
         <a href="${import.meta.env.BASE_URL}admin.html" class="btn btn-sm" id="admin-editor-btn"
           style="background:var(--yellow);color:#111;font-weight:700;border:none;text-decoration:none;display:inline-block;padding:6px 16px;border-radius:8px">
           ⚙️ Admin Editor
-        </a>` : ''}
+        </a>
+        <div style="font-size:10px;color:var(--gray-400);font-family:monospace;letter-spacing:0.5px">build ${APP_VERSION}</div>` : ''}
       </div>
 
     </div>

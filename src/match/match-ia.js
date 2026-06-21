@@ -576,8 +576,19 @@ function renderGame(container, game, ctx) {
     svg.setAttribute('preserveAspectRatio', 'xMidYMid meet')
     const ms = container.querySelector('.match-screen')
     if (ms) {
-      ms.style.height = '100%'
-      ms.style.maxHeight = '100%'
+      // Hauteur en pixels réels (clientHeight) plutôt que % CSS : le % peut ne pas
+      // se résoudre correctement juste après un remplacement d'écran complet
+      // (ex: juste après "Commencer le match"), ce qui coupait le bas de l'écran
+      // (cartes GC + bouton Attaquer/Défendre) sans possibilité de scroll
+      // (overflow:hidden). Même fix que côté PvP (match-random.js).
+      const h = container.clientHeight
+      if (h > 50) {
+        ms.style.height = h + 'px'
+        ms.style.maxHeight = h + 'px'
+      } else {
+        ms.style.height = '100%'
+        ms.style.maxHeight = '100%'
+      }
       ms.style.overflow = 'hidden'
     }
   })()

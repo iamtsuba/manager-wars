@@ -939,7 +939,12 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
 
   // ── Action : confirmer attaque ──────────────────────────
   async function pvpConfirmAttack() {
-    const selected = (gameState['selected_'+myRole]||[]).map(s=>({...s,_line:s._role}))
+    // Re-piocher les joueurs À JOUR (boost inclus) depuis l'équipe : selected_*
+    // contient des copies figées à la sélection, sans un boost appliqué après.
+    const selected = (gameState['selected_'+myRole]||[]).map(s => {
+      const live = (gameState[myRole+'Team'][s._role]||[]).find(x => x.cardId === s.cardId) || s
+      return { ...live, _line: s._role }
+    })
     if (!selected.length) return
     const calc = calcAttack(selected, gameState.modifiers[myRole]||{})
     selected.forEach(sel => {
@@ -963,7 +968,11 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
 
   // ── Action : confirmer défense ──────────────────────────
   async function pvpConfirmDefense() {
-    const selected = (gameState['selected_'+myRole]||[]).map(s=>({...s,_line:s._role}))
+    // Re-piocher les joueurs À JOUR (boost inclus) depuis l'équipe.
+    const selected = (gameState['selected_'+myRole]||[]).map(s => {
+      const live = (gameState[myRole+'Team'][s._role]||[]).find(x => x.cardId === s.cardId) || s
+      return { ...live, _line: s._role }
+    })
     const calc = calcDefense(selected, gameState.modifiers[myRole]||{})
     selected.forEach(sel => {
       const p = (gameState[myRole+'Team'][sel._role]||[]).find(pp=>pp.cardId===sel.cardId)

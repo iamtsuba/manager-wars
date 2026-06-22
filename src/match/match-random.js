@@ -414,7 +414,7 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
       ? `<button id="pvp-action" style="${btnStyle};background:linear-gradient(135deg,#c47a00,#FFD700);border:none;color:#fff;box-shadow:0 0 18px rgba(255,215,0,0.4)" ${mySelected.length===0?'disabled':''}>⚔️ ATTAQUEZ <span id="pvp-timer"></span></button>`
       : isMyDefense
       ? `<button id="pvp-action" style="${btnStyle};background:linear-gradient(135deg,#1a4a8a,#3a7bd5);border:none;color:#fff;box-shadow:0 0 18px rgba(135,206,235,0.4)" ${mySelected.length===0?'disabled':''}>🛡️ DÉFENDEZ <span id="pvp-timer"></span></button>`
-      : `<div style="${btnStyle};background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);color:rgba(255,255,255,0.4)">⏳ Tour de ${oppName}</div>`
+      : `<div style="font-size:11px;color:rgba(255,255,255,0.3);text-align:center;padding:4px">⏳ Tour de ${oppName}</div>`
     const counter = (isMyAttack||isMyDefense) ? `<div style="font-size:9px;color:rgba(255,255,255,0.4);text-align:center;margin-top:2px">${mySelected.length}/3 sélectionné(s)</div>` : ''
 
     // ── Colonne remplaçants (GAUCHE, identique match-ia) ──
@@ -432,7 +432,32 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
       </div>
     </div>`
 
-    // ── Zone action (haut) ──
+    // ── renderLogEntry identique à match-ia ──
+    function renderLogEntry(entry) {
+      if (entry.type === 'duel') {
+        const hw = (entry.homeTotal||0) >= (entry.aiTotal||0)
+        return `<div style="background:rgba(255,255,255,0.05);border-radius:8px;padding:5px 6px;border:1px solid rgba(255,255,255,0.08)">
+          <div style="text-align:center;font-size:9px;font-weight:700;letter-spacing:1px;color:rgba(255,255,255,0.5);margin-bottom:4px">${(entry.title||'DUEL').toUpperCase()}</div>
+          <div style="display:flex;align-items:center;gap:3px;max-height:46px;overflow:hidden">
+            <div style="flex:1;display:flex;gap:2px;justify-content:flex-end;flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden">
+              ${(entry.homePlayers||[]).map(p=>renderMiniPlayer(p)).join('')}
+            </div>
+            <div style="text-align:center;padding:0 6px;flex-shrink:0">
+              <div style="font-size:${hw?20:14}px;font-weight:900;color:${hw?'#FFD700':'rgba(255,255,255,0.4)'};line-height:1">${entry.homeTotal}</div>
+              <div style="font-size:8px;color:rgba(255,255,255,0.3);margin:1px 0">VS</div>
+              <div style="font-size:${!hw?20:14}px;font-weight:900;color:${!hw?'#ff6b6b':'rgba(255,255,255,0.4)'};line-height:1">${entry.aiTotal}</div>
+            </div>
+            <div style="flex:1;display:flex;gap:2px;justify-content:flex-start;flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden">
+              ${(entry.aiPlayers||[]).map(p=>renderMiniPlayer(p)).join('')}
+            </div>
+          </div>
+          ${entry.isGoal?`<div style="text-align:center;font-size:11px;color:#FFD700;font-weight:900;margin-top:3px">${entry.homeScored?'⚽ BUT !':'⚽ BUT !'}</div>`:''}
+        </div>`
+      }
+      return `<div style="font-size:11px;color:${entry.type==='goal'?'#FFD700':'rgba(255,255,255,0.65)'};font-weight:${entry.type==='goal'?700:400};padding:3px 2px">${entry.text||''}</div>`
+    }
+
+    // ── Zone action (haut) — identique match-ia ──
     const logHTML = (() => {
       if (isMyDefense && gameState.pendingAttack?.players) {
         const atk = gameState.pendingAttack
@@ -441,10 +466,16 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
           ${renderCardRow((atk.players||[]).map(p=>({...p,used:false})),'#ff6b6b',atk.total)}
         </div>`
       }
+      if (isMyAttack && gameState.pendingAttack?.players) {
+        const atk = gameState.pendingAttack
+        return `<div style="padding:5px 8px;background:rgba(26,107,60,0.2);border-left:3px solid #00ff88">
+          <div style="font-size:8px;color:#00ff88;letter-spacing:2px;margin-bottom:4px;text-transform:uppercase">⚔️ VOUS ATTAQUEZ</div>
+          ${renderCardRow((atk.players||[]).map(p=>({...p,used:false})),'#00ff88',atk.total)}
+        </div>`
+      }
       const last = (gameState.log||[]).slice(-1)[0]
       if (!last) return '<div style="padding:6px 8px;font-size:11px;color:rgba(255,255,255,0.3)">⏳ Match en cours...</div>'
-      const col = last.type==='goal'?'#FFD700':last.type==='stop'?'#00ff88':'rgba(255,255,255,0.4)'
-      return `<div style="padding:7px 10px;border-left:3px solid ${col};font-size:12px;color:#fff">${last.text||''}</div>`
+      return '<div style="padding:2px 4px">' + renderLogEntry(last) + '</div>'
     })()
 
     // ── Header (identique match-ia) ──

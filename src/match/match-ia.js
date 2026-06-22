@@ -400,6 +400,14 @@ function renderGame(container, game, ctx) {
   const grayedPlayers = Object.values(game.homeTeam).flat().filter(p => p.used)
   const canSub = grayedPlayers.length > 0 && availSubs.length > 0 && game.subsUsed < game.maxSubs
 
+  // Défenseurs/GK autorisés à attaquer si : aucun MIL/ATT restant ET l'IA n'a
+  // plus aucun joueur disponible. Dans ce cas leur note est forcée à 1.
+  const aiHasNoOne = !['GK','DEF','MIL','ATT'].some(r => (game.aiTeam[r]||[]).some(p=>!p.used))
+  const homeMilAtt = [...(game.homeTeam.MIL||[]),...(game.homeTeam.ATT||[])].filter(p=>!p.used)
+  const extraSelectableIds = (game.phase==='attack' && aiHasNoOne && homeMilAtt.length===0)
+    ? [...(game.homeTeam.GK||[]),...(game.homeTeam.DEF||[])].filter(p=>!p.used).map(p=>p.cardId)
+    : []
+
   // Dernière action
   const lastLog  = game.log[game.log.length - 1]
   const isAITurn = game.phase === 'ai-attack' || game.phase === 'ai-defense'
@@ -542,7 +550,7 @@ function renderGame(container, game, ctx) {
       // ─── Terrain ──────────────────────────────────────────
       const terrainHTML = `<div style="overflow:hidden;min-width:0;flex:1;min-height:0;display:flex;align-items:center;justify-content:center" id="match-field">
         <div class="terrain-wrapper" style="overflow:hidden;flex-shrink:0;display:flex;align-items:center;justify-content:center">
-          ${renderTeam(game.homeTeam,game.formation,game.phase,selectedIds,300,300)}
+          ${renderTeam(game.homeTeam,game.formation,game.phase,selectedIds,300,300,extraSelectableIds)}
         </div>
       </div>`
 
@@ -571,7 +579,7 @@ function renderGame(container, game, ctx) {
           ${subsHTML}
           <div id="match-field" style="flex:1;min-width:0;min-height:0;overflow:hidden">
             <div class="terrain-wrapper" style="width:100%;height:100%;overflow:hidden">
-              ${renderTeam(game.homeTeam,game.formation,game.phase,selectedIds,300,300)}
+              ${renderTeam(game.homeTeam,game.formation,game.phase,selectedIds,300,300,extraSelectableIds)}
             </div>
           </div>
         </div>
@@ -779,12 +787,13 @@ function updateLastPlayer(game, ctx, playerId) {
 function confirmAttack(container, game, ctx) {
   if (game._timerInt) { clearInterval(game._timerInt); game._timerInt = null }
   updateLastPlayer(game, ctx, ctx.state.profile.id)
-  // Re-piocher les objets joueurs À JOUR (boost inclus) depuis game.homeTeam :
-  // game.selected contient des copies figées au moment de la sélection, qui ne
-  // reflètent pas un boost appliqué après coup.
+  // Re-piocher les objets joueurs À JOUR (boost inclus) depuis game.homeTeam.
+  // Pour les DEF/GK qui attaquent en mode spécial (IA sans joueurs), forcer note à 1.
+  const aiHasNoOneNow = !['GK','DEF','MIL','ATT'].some(r => (game.aiTeam[r]||[]).some(p=>!p.used))
   const selected = game.selected.map(s => {
     const live = (game.homeTeam[s._role]||[]).find(x => x.cardId === s.cardId) || s
-    return { ...live, _line: s._role }
+    const isDefAttacking = aiHasNoOneNow && ['GK','DEF'].includes(s._role)
+    return { ...live, _line: s._role, ...(isDefAttacking ? { note_a: Math.max(1, Number(live.note_a)||0) } : {}) }
   })
   const calc = calcAttack(selected, game.modifiers.home)
   game.pendingAttack = { ...calc, players:[...selected], side:'home' }

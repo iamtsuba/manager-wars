@@ -468,7 +468,7 @@ export function countryFlag(code) {
   } catch { return '🌍' }
 }
 
-export function buildTeamSVG(team, formation, phase, selectedIds, W=310, H=310) {
+export function buildTeamSVG(team, formation, phase, selectedIds, W=310, H=310, extraSelectableIds=[]) {
   const FPOS   = FORMATION_POSITIONS[formation] || {}
   const FLINKS = getActiveLinks(formation) || FORMATION_LINKS[formation] || []
   const R      = 26
@@ -514,12 +514,13 @@ export function buildTeamSVG(team, formation, phase, selectedIds, W=310, H=310) 
     const role = pos.replace(/[0-9]/g,'')
     const bg   = JOB_COLORS[role] || '#555'
 
-    const selectable = (phase==='attack' && ['MIL','ATT'].includes(role) && !p.used)
+    const isExtraSelectable = extraSelectableIds.includes(p.cardId)
+    const selectable = (phase==='attack' && (['MIL','ATT'].includes(role) || isExtraSelectable) && !p.used)
                     || (phase==='defense' && ['GK','DEF','MIL'].includes(role) && !p.used)
     const isSelected = selectedIds.includes(p.cardId)
 
     let note
-    if      (phase==='attack')  note = role==='MIL'?Number(p.note_m)||0 : Number(p.note_a)||0
+    if      (phase==='attack')  note = isExtraSelectable ? Math.max(1, Number(p.note_a)||0) : role==='MIL'?Number(p.note_m)||0 : Number(p.note_a)||0
     else if (phase==='defense') note = role==='GK'?Number(p.note_g)||0 : role==='MIL'?Number(p.note_m)||0 : Number(p.note_d)||0
     else                        note = Number(role==='GK'?p.note_g:role==='DEF'?p.note_d:role==='MIL'?p.note_m:p.note_a)||0
     note = note + (p.boost||0)
@@ -590,9 +591,9 @@ export function buildTeamSVG(team, formation, phase, selectedIds, W=310, H=310) 
   </svg>`
 }
 
-export function renderTeam(team, formation, phase, selectedIds, W=300, H=300) {
+export function renderTeam(team, formation, phase, selectedIds, W=300, H=300, extraSelectableIds=[]) {
   return `<div id="match-terrain-wrap" style="position:relative;padding:0 4px">
-    ${buildTeamSVG(team, formation, phase, selectedIds, W, H)}
+    ${buildTeamSVG(team, formation, phase, selectedIds, W, H, extraSelectableIds)}
   </div>`
 }
 

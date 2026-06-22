@@ -147,6 +147,8 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
   }
 
   let _pvpEnded = false
+  let _localTimerInt = null  // Timer LOCAL (pas dans gameState, sinon le JSON round-trip l'écrase)
+  let _vvBound = false       // idem pour le listener visualViewport
 
   function showPvpEndScreen(row) {
     try { supabase.removeChannel(channel) } catch {}
@@ -170,7 +172,7 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
       try {
         if (row.status === 'finished' || row.forfeit) {
           if (_pvpEnded) return; _pvpEnded = true
-          if (gameState._timerInt) { clearInterval(gameState._timerInt); gameState._timerInt = null }
+          if (_localTimerInt) { clearInterval(_localTimerInt); _localTimerInt = null }
           if (row.game_state) gameState = row.game_state
           showPvpEndScreen(row); return
         }
@@ -188,7 +190,7 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
 
   async function forfeitMatch() {
     if (_pvpEnded) return; _pvpEnded = true
-    if (gameState._timerInt) { clearInterval(gameState._timerInt); gameState._timerInt = null }
+    if (_localTimerInt) { clearInterval(_localTimerInt); _localTimerInt = null }
     const winnerId = amIHome ? match.away_id : match.home_id
     try { await supabase.from('matches').update({ status:'finished', forfeit:true, winner_id:winnerId }).eq('id', matchId) } catch {}
     try { supabase.removeChannel(channel) } catch {}
@@ -467,7 +469,6 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
       <div class="match-screen" style="position:fixed;top:0;left:0;right:0;bottom:auto;z-index:100;display:flex;flex-direction:column;overflow:hidden;background:#0a3d1e;width:100%">
         ${headerHTML}
         <div id="mobile-play-area" style="flex:1;min-height:0;display:flex;overflow:hidden">
-          ${subsHTML}
           <div id="match-field" style="flex:1;min-width:0;min-height:0;overflow:hidden">
             <div class="terrain-wrapper" style="width:100%;height:100%;overflow:hidden">
               ${renderTeam(myTeam, gameState[myRole+'Formation'], phase, selectedIds, 300, 300, extraSelectableIds)}
@@ -476,6 +477,7 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
         </div>
         <div id="mobile-action-bar" style="position:absolute;left:0;right:0;bottom:0;z-index:20;background:rgba(0,0,0,0.55);padding:6px 8px 8px;display:flex;flex-direction:column;gap:6px;box-shadow:0 -4px 16px rgba(0,0,0,0.5)">
           <div style="display:flex;gap:6px;overflow-x:auto;align-items:flex-end;min-height:96px;padding-bottom:2px">
+            ${availSubs.map(s=>`<div class="pvp-sub-btn" data-sub-id="${s.cardId}" style="cursor:pointer;flex-shrink:0">${renderMiniCardHTML(s,44,58)}</div>`).join('')}
             ${activeGCs.map(gc=>gcMiniCard(gc,68,95)).join('')}
             ${boostAvail?boostCardHTML(68,95):''}
           </div>
@@ -496,8 +498,8 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
     }
     updateMatchHeight()
     setTimeout(updateMatchHeight, 120); setTimeout(updateMatchHeight, 400)
-    if (!gameState._vvBound) {
-      gameState._vvBound = true
+    if (!_vvBound) {
+      _vvBound = true
       if (window.visualViewport) { window.visualViewport.addEventListener('resize', updateMatchHeight); window.visualViewport.addEventListener('scroll', updateMatchHeight) }
       window.addEventListener('resize', updateMatchHeight)
     }
@@ -551,16 +553,16 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
     container.querySelector('#pvp-view-opp')?.addEventListener('click', () => pvpShowOpponentTeam())
     container.querySelector('#pvp-toggle-history')?.addEventListener('click', () => pvpShowHistory())
 
-    // Timer (identique match-ia.js)
-    if (gameState._timerInt) { clearInterval(gameState._timerInt); gameState._timerInt = null }
+    // Timer local (stocké hors gameState pour survivre au JSON round-trip Supabase)
+    if (_localTimerInt) { clearInterval(_localTimerInt); _localTimerInt = null }
     if ((isMyAttack||isMyDefense) && !_pvpEnded) {
       let remaining=30, phase2=false
       const timerEl=()=>document.getElementById('pvp-timer')
       const paint=()=>{ if(timerEl()){timerEl().textContent=remaining+'s';timerEl().style.color=phase2?'#ff4444':'#fff'} }
       paint()
-      gameState._timerInt = setInterval(()=>{
+      _localTimerInt = setInterval(()=>{
         remaining--
-        if (remaining<0) { if(!phase2){phase2=true;remaining=15;paint()}else{clearInterval(gameState._timerInt);gameState._timerInt=null;forfeitMatch()} }
+        if (remaining<0) { if(!phase2){phase2=true;remaining=15;paint()}else{clearInterval(_localTimerInt);_localTimerInt=null;forfeitMatch()} }
         else paint()
       },1000)
     }

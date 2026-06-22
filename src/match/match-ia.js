@@ -933,7 +933,14 @@ function nextTurn(container, game, ctx, next) {
     const homeAtt = [...(game.homeTeam.MIL||[]),...(game.homeTeam.ATT||[])].filter(p=>!p.used)
     if (!homeAtt.length) {
       const homeDef = [...(game.homeTeam.GK||[]),...(game.homeTeam.DEF||[]),...(game.homeTeam.MIL||[])].filter(p=>!p.used)
-      if (!homeDef.length) { finishMatch(container, game, ctx); return }
+      if (!homeDef.length) {
+        // Plus aucun joueur capable de défendre → l'IA continue d'attaquer
+        // jusqu'à ce que isMatchOver se déclenche normalement
+        game.phase = 'ai-attack'
+        renderGame(container, game, ctx)
+        setTimeout(() => aiTurn(container, game, ctx), 800)
+        return
+      }
       game.phase = 'ai-attack'
       renderGame(container, game, ctx)
       setTimeout(() => aiTurn(container, game, ctx), 800)
@@ -1256,8 +1263,92 @@ function openGCPicker(pool, count, label, container, game, onConfirm) {
   document.body.appendChild(overlay)
 }
 
+// ── Moteur GC paramétrique ────────────────────────────────
+const GC_ENGINE = {
+  // Booste la stat d'un ou plusieurs joueurs
+  BOOST_STAT: ({ stat = 'all', value = 1, count = 1, roles = [] }, game) => {
+    const pool = Object.entries(game.homeTeam)
+      .filter(([r]) => !roles.length || roles.includes(r))
+      .flatMap(([, ps]) => ps.filter(p => !p.used))
+      .slice(0, count)
+    pool.forEach(p => {
+      p.boost = (p.boost || 0) + value
+      game.log.push({ text: `⚡ +${value} sur ${p.name}`, type: 'info' })
+    })
+    return false // synchrone → rerendre
+  },
+  // Débuff un ou plusieurs joueurs adverses
+  DEBUFF_STAT: ({ value = 1, count = 1, roles = [], target = 'ai' }, game) => {
+    const team = target === 'home' ? game.homeTeam : game.aiTeam
+    const pool = Object.entries(team)
+      .filter(([r]) => !roles.length || roles.includes(r))
+      .flatMap(([, ps]) => ps.filter(p => !p.used))
+      .sort((a, b) => (b.note_a || 0) - (a.note_a || 0))
+      .slice(0, count)
+    pool.forEach(p => {
+      p.boost = (p.boost || 0) - value
+      game.log.push({ text: `🎯 -${value} sur ${p.name} (IA)`, type: 'info' })
+    })
+    return false
+  },
+  // Grise (désactive) un ou plusieurs joueurs adverses
+  GRAY_PLAYER: ({ count = 1, roles = [], target = 'ai' }, game) => {
+    const team = target === 'home' ? game.homeTeam : game.aiTeam
+    const pool = Object.entries(team)
+      .filter(([r]) => !roles.length || roles.includes(r))
+      .flatMap(([, ps]) => ps.filter(p => !p.used))
+      .sort((a, b) => (b.note_a || 0) - (a.note_a || 0))
+      .slice(0, count)
+    pool.forEach(p => {
+      p.used = true
+      game.log.push({ text: `❌ ${p.name} (IA) exclu !`, type: 'info' })
+    })
+    return false
+  },
+  // Ressuscite un joueur de son équipe
+  REVIVE_PLAYER: ({ count = 1, roles = [] }, game) => {
+    const pool = Object.entries(game.homeTeam)
+      .filter(([r]) => !roles.length || roles.includes(r))
+      .flatMap(([, ps]) => ps.filter(p => p.used))
+      .slice(0, count)
+    if (!pool.length) { game.log.push({ text: '💫 Aucun joueur à ressusciter', type: 'info' }); return false }
+    pool.forEach(p => {
+      p.used = false
+      game.log.push({ text: `💫 ${p.name} ressuscité !`, type: 'info' })
+    })
+    return false
+  },
+  // Annule le dernier but encaissé
+  REMOVE_GOAL: ({}, game) => {
+    if (game.aiScore > 0) {
+      game.aiScore--
+      game.log.push({ text: '🚫 Dernier but IA annulé !', type: 'info' })
+    } else {
+      game.log.push({ text: '🚫 Aucun but à annuler', type: 'info' })
+    }
+    return false
+  },
+  // Ajoute un but si match nul
+  ADD_GOAL_DRAW: ({}, game) => {
+    if (game.homeScore === game.aiScore) {
+      game.homeScore++
+      game.log.push({ text: '🎯 But bonus (match nul) !', type: 'info' })
+    } else {
+      game.log.push({ text: '🎯 But bonus : non applicable (pas de match nul)', type: 'info' })
+    }
+    return false
+  },
+  // Ajoute un remplacement supplémentaire
+  ADD_SUB: ({ value = 1 }, game) => {
+    game.maxSubs = (game.maxSubs || 3) + value
+    game.log.push({ text: `🔄 +${value} remplacement(s) débloqué(s)`, type: 'info' })
+    return false
+  },
+  // Effets personnalisés → fallback sur le switch legacy
+  CUSTOM: () => false,
+}
+
 function useGameChanger(gcId, gcType, container, game, ctx) {
-  if (game.usedGc.includes(gcId)) return
   game.usedGc.push(gcId)
 
   // Chercher la définition DB en cache

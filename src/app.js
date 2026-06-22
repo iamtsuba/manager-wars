@@ -297,4 +297,31 @@ function hideLoader() {
   }
 }
 
-init()
+function showBootError(msg) {
+  const l = document.getElementById('app-loader')
+  if (l) l.style.display = 'none'
+  if (document.getElementById('boot-error')) return
+  const ov = document.createElement('div')
+  ov.id = 'boot-error'
+  ov.style.cssText = 'position:fixed;inset:0;background:#0a1628;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:99999;gap:16px;color:#fff;padding:24px;text-align:center'
+  ov.innerHTML = `
+    <div style="font-size:42px">📡</div>
+    <div style="font-size:18px;font-weight:900">Connexion impossible</div>
+    <div style="font-size:13px;color:rgba(255,255,255,0.6);max-width:280px">${msg || "Le chargement a échoué. Vérifie ta connexion et réessaie."}</div>
+    <button id="boot-retry" style="margin-top:8px;padding:12px 30px;border-radius:10px;border:none;background:#1A6B3C;color:#fff;font-size:15px;font-weight:700;cursor:pointer">Réessayer</button>`
+  document.body.appendChild(ov)
+  document.getElementById('boot-retry')?.addEventListener('click', () => window.location.reload())
+}
+
+init().catch(err => {
+  console.error('Échec du démarrage:', err)
+  showBootError()
+})
+
+// Watchdog : si le loader est encore visible après 12s, le démarrage est bloqué
+setTimeout(() => {
+  const l = document.getElementById('app-loader')
+  if (l && l.style.display !== 'none' && !l.classList.contains('zoom-out') && !document.getElementById('boot-error')) {
+    showBootError("Le serveur met trop de temps à répondre.")
+  }
+}, 12000)

@@ -628,7 +628,13 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
   }
 
   // ── Duel milieu (identique match-ia.js avec vraies cartes + animation) ──
+  let _midfieldAnimDone = false  // Protège l'animation du duel contre les re-renders Realtime
+
   function renderPvpMidfield() {
+    // Si l'animation est déjà en cours, ne pas la relancer (les Realtime updates
+    // déclenchent renderPvpScreen → renderPvpMidfield et cassent les setTimeout)
+    if (_midfieldAnimDone) return
+
     const myMils  = gameState[myRole+'Team'].MIL||[]
     const oppMils = gameState[oppRole+'Team'].MIL||[]
     function milScore(mils){return mils.reduce((s,p)=>s+getNoteForRole(p,'MIL'),0)}
@@ -693,16 +699,19 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
     function countUp(id,target,dur){const el=document.getElementById(id);if(!el)return;const t0=performance.now();const s=(t)=>{const k=Math.min(1,(t-t0)/dur);el.textContent=Math.round(target*(1-Math.pow(1-k,3)));if(k<1)requestAnimationFrame(s);else el.textContent=target};requestAnimationFrame(s)}
     setTimeout(()=>{countUp('pvp-score-me',myTotal,800);countUp('pvp-score-opp',oppTotal,800)},1500)
 
-    // Calcul boost
+    // Calcul boost (identique des 2 côtés via données gameState)
     const p1Mils=gameState.p1Team.MIL||[], p2Mils=gameState.p2Team.MIL||[]
     const p1T=milScore(p1Mils)+milLinks(p1Mils), p2T=milScore(p2Mils)+milLinks(p2Mils)
     const winnerRole=p1T>=p2T?'p1':'p2'
     let boostValueNow=gameState.boostValue
     if(boostValueNow==null){boostValueNow=rollBoost();gameState.boostValue=boostValueNow;gameState.boostOwner=winnerRole;gameState.boostUsed=false}
 
+    // Bloquer immédiatement les re-renders Realtime pendant l'animation
+    _midfieldAnimDone = true
+
     setTimeout(()=>{
-      const winRow=container.querySelector(`#duel-row-${myWins?'me':'opp'}`)
-      const loseRow=container.querySelector(`#duel-row-${myWins?'opp':'me'}`)
+      const winRow=container.querySelector('#duel-row-'+(myWins?'me':'opp'))
+      const loseRow=container.querySelector('#duel-row-'+(myWins?'opp':'me'))
       const elMe=document.getElementById('pvp-score-me'), elOpp=document.getElementById('pvp-score-opp')
       const elWin=myWins?elMe:elOpp, elLose=myWins?elOpp:elMe
       if(elWin){elWin.style.fontSize='80px';elWin.style.color=myWins?'#FFD700':'#ff6b6b';elWin.style.animation='duelPulse .5s ease'+(myWins?',duelGlow 1.5s ease infinite .5s':'')}
@@ -718,27 +727,21 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
         setTimeout(()=>{
           const fin=document.getElementById('pvp-duel-finale')
           if(!fin)return
-          fin.innerHTML = `
-            <div style="font-size:22px;font-weight:900;color:#fff;text-align:center;animation:fadeUp .4s ease both;text-shadow:0 2px 12px rgba(0,0,0,.5)">
-              ${myWins?`⚽ ${gameState[myRole+'Name']}<br>gagne le milieu et attaque !`:`😔 ${gameState[oppRole+'Name']}<br>gagne l'engagement et attaque !`}
-            </div>
-            ${myWins&&gameState.boostOwner===myRole?`
-            <div style="background:linear-gradient(135deg,#4a9fc4,#87CEEB);border:3px solid #cdeffd;border-radius:18px;padding:20px 34px;text-align:center;animation:boostFlipIn .7s cubic-bezier(.34,1.56,.64,1) both;box-shadow:0 10px 36px rgba(135,206,235,.5)">
-              <div style="font-size:10px;color:rgba(0,0,0,.6);letter-spacing:2px;text-transform:uppercase;margin-bottom:6px;font-weight:700">Carte Boost obtenue</div>
-              <div style="font-size:46px;line-height:1">⚡</div>
-              <div style="font-size:50px;font-weight:900;color:#063;line-height:1.1">+${boostValueNow}</div>
-              <div style="font-size:10px;color:rgba(0,0,0,.55);margin-top:4px">Applicable sur n'importe quel joueur</div>
-            </div>`:''}
-            <button id="pvp-start-match" style="margin-top:6px;padding:18px 46px;border-radius:14px;border:none;background:#1A6B3C;color:#fff;font-size:18px;font-weight:900;cursor:pointer;box-shadow:0 6px 24px rgba(0,0,0,.4);animation:fadeUp .4s ease both;animation-delay:.45s;opacity:0">
-              ▶ Commencer le match
-            </button>`
+          const boostHTML = gameState.boostOwner===myRole
+            ? '<div style="background:linear-gradient(135deg,#4a9fc4,#87CEEB);border:3px solid #cdeffd;border-radius:18px;padding:20px 34px;text-align:center;animation:boostFlipIn .7s cubic-bezier(.34,1.56,.64,1) both;box-shadow:0 10px 36px rgba(135,206,235,.5)"><div style="font-size:10px;color:rgba(0,0,0,.6);letter-spacing:2px;text-transform:uppercase;margin-bottom:6px;font-weight:700">Carte Boost obtenue</div><div style="font-size:46px;line-height:1">⚡</div><div style="font-size:50px;font-weight:900;color:#063;line-height:1.1">+'+boostValueNow+'</div><div style="font-size:10px;color:rgba(0,0,0,.55);margin-top:4px">Applicable sur n\'importe quel joueur</div></div>'
+            : ''
+          // p1 voit le bouton Commencer, p2 attend via Realtime
+          const ctaHTML = myRole==='p1'
+            ? '<button id="pvp-start-match" style="margin-top:6px;padding:18px 46px;border-radius:14px;border:none;background:#1A6B3C;color:#fff;font-size:18px;font-weight:900;cursor:pointer;box-shadow:0 6px 24px rgba(0,0,0,.4);animation:fadeUp .4s ease both;animation-delay:.45s;opacity:0">▶ Commencer le match</button>'
+            : '<div style="font-size:14px;color:rgba(255,255,255,0.5);text-align:center;margin-top:8px;animation:fadeUp .4s ease both">⏳ En attente de l\'adversaire...</div>'
+          fin.innerHTML = '<div style="font-size:22px;font-weight:900;color:#fff;text-align:center;animation:fadeUp .4s ease both;text-shadow:0 2px 12px rgba(0,0,0,.5)">'
+            + (myWins ? '⚽ '+gameState[myRole+'Name']+'<br>gagne le milieu et attaque !' : '😔 '+gameState[oppRole+'Name']+'<br>gagne l\'engagement et attaque !')
+            + '</div>' + boostHTML + ctaHTML
           fin.style.transition='opacity .45s ease'; fin.style.opacity='1'; fin.style.pointerEvents='auto'
           document.getElementById('pvp-start-match')?.addEventListener('click', async()=>{
-            if(myRole!=='p1')return // seul p1 écrit la transition de phase
             const attacker=winnerRole
             await pushState({phase:attacker+'-attack',attacker,round:1,boostValue:boostValueNow,boostUsed:false,boostOwner:attacker})
           })
-          // p2 attend la transition de phase via Realtime (pushState de p1 déclenche son renderPvpScreen)
         },600)
       },700)
     },2800)

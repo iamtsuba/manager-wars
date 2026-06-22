@@ -853,66 +853,82 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
   }
 
   async function pvpConfirmAttack() {
-    const myTeam=gameState[myRole+'Team']
-    const oppHasNoOne=!['GK','DEF','MIL','ATT'].some(r=>(gameState[oppRole+'Team'][r]||[]).some(p=>!p.used))
-    const selected=(gameState['selected_'+myRole]||[]).map(s=>{
-      const live=(myTeam[s._role]||[]).find(x=>x.cardId===s.cardId)||s
-      const isExtra=oppHasNoOne&&['GK','DEF'].includes(s._role)
-      return {...live,_line:s._role,...(isExtra?{note_a:Math.max(1,Number(live.note_a)||0)}:{})}
+    const myTeam = gameState[myRole+'Team']
+    const oppHasNoOne = !['GK','DEF','MIL','ATT'].some(r => (gameState[oppRole+'Team'][r]||[]).some(p=>!p.used))
+    // Re-fetch live (boost inclus), identique confirmAttack match-ia
+    const selected = (gameState['selected_'+myRole]||[]).map(s => {
+      const live = (myTeam[s._role]||[]).find(x => x.cardId===s.cardId) || s
+      const isExtra = oppHasNoOne && ['GK','DEF'].includes(s._role)
+      return { ...live, _line: s._role, ...(isExtra ? { note_a: Math.max(1, Number(live.note_a)||0) } : {}) }
     })
-    if(!selected.length)return
-    const calc=calcAttack(selected,gameState.modifiers[myRole]||{})
-    selected.forEach(sel=>{const p=(myTeam[sel._role]||[]).find(pp=>pp.cardId===sel.cardId);if(p)p.used=true})
-    const log=[...(gameState.log||[])]
-    log.push({type:'attack',text:`⚔️ ${gameState[myRole+'Name']} attaque (${calc.total})`,players:selected,total:calc.total,side:myRole})
+    if (!selected.length) return
+    const calc = calcAttack(selected, gameState.modifiers[myRole]||{})
+    selected.forEach(sel => { const p=(myTeam[sel._role]||[]).find(pp=>pp.cardId===sel.cardId); if(p) p.used=true })
+    const log = [...(gameState.log||[])]
 
-    // Vérifier si l'adversaire n'a plus personne : but automatique
-    if(oppHasNoOne) {
-      gameState[myRole+'Score']++
-      log.push({type:'goal',text:`⚽ BUT ! L'adversaire n'a plus de joueurs.`})
-      const round=(gameState.round||0)+1
-      const nextAttacker=myRole==='p1'?'p2':'p1'
-      const isFinished=checkMatchEnd({...gameState,[myRole+'Team']:myTeam})
-      await pushState({[myRole+'Team']:myTeam,['selected_'+myRole]:[],modifiers:{...gameState.modifiers,[myRole]:{}},pendingAttack:null,phase:isFinished?'finished':nextAttacker+'-attack',attacker:nextAttacker,round,log})
-      if(isFinished)await supabase.from('matches').update({status:'finished'}).eq('id',matchId)
+    if (oppHasNoOne) {
+      const newScore = (gameState[myRole+'Score']||0) + 1
+      log.push({ type:'duel', isGoal:true, homeScored:true,
+        text: `⚽ BUT ! L'adversaire n'a plus de joueurs.`,
+        homePlayers: selected.map(p=>({ name:p.name, note:getNoteForRole(p,p._line||'ATT'), portrait:getPortrait(p), job:p.job })),
+        homeTotal: calc.total, aiTotal: 0 })
+      const round = (gameState.round||0) + 1
+      const nextAttacker = myRole==='p1'?'p2':'p1'
+      const newState = { ...gameState, [myRole+'Team']: myTeam, [myRole+'Score']: newScore }
+      const isFinished = checkMatchEnd(newState)
+      await pushState({ [myRole+'Team']: myTeam, [myRole+'Score']: newScore,
+        ['selected_'+myRole]: [], modifiers: { ...gameState.modifiers, [myRole]:{} },
+        pendingAttack: null, phase: isFinished?'finished':nextAttacker+'-attack',
+        attacker: nextAttacker, round, log })
+      if (isFinished) await supabase.from('matches').update({ status:'finished' }).eq('id', matchId)
       return
     }
 
-    await pushState({[myRole+'Team']:myTeam,pendingAttack:{...calc,players:selected,side:myRole},['selected_'+myRole]:[],modifiers:{...gameState.modifiers,[myRole]:{}},phase:oppRole+'-defense',log})
+    log.push({ type:'duel', text:`⚔️ ${gameState[myRole+'Name']} attaque (${calc.total})`, players:selected, total:calc.total, side:myRole })
+    await pushState({ [myRole+'Team']: myTeam,
+      pendingAttack: { ...calc, players:selected, side:myRole },
+      ['selected_'+myRole]: [], modifiers: { ...gameState.modifiers, [myRole]:{} },
+      phase: oppRole+'-defense', log })
   }
 
   async function pvpConfirmDefense() {
-    const myTeam=gameState[myRole+'Team']
-    const selected=(gameState['selected_'+myRole]||[]).map(s=>{
-      const live=(myTeam[s._role]||[]).find(x=>x.cardId===s.cardId)||s
-      return {...live,_line:s._role}
+    const myTeam = gameState[myRole+'Team']
+    // Re-fetch live (boost inclus)
+    const selected = (gameState['selected_'+myRole]||[]).map(s => {
+      const live = (myTeam[s._role]||[]).find(x => x.cardId===s.cardId) || s
+      return { ...live, _line: s._role }
     })
-    const calc=calcDefense(selected,gameState.modifiers[myRole]||{})
-    selected.forEach(sel=>{const p=(myTeam[sel._role]||[]).find(pp=>pp.cardId===sel.cardId);if(p)p.used=true})
-    const result=resolveDuel(gameState.pendingAttack.total,calc.total,gameState.modifiers[myRole]||{})
-    const attackerRole=gameState.pendingAttack.side
-    const goal=result==='attack'||result?.goal
-    const nextAttacker=attackerRole==='p1'?'p2':'p1'
-    const round=(gameState.round||0)+1
+    const calc = calcDefense(selected, gameState.modifiers[myRole]||{})
+    selected.forEach(sel => { const p=(myTeam[sel._role]||[]).find(pp=>pp.cardId===sel.cardId); if(p) p.used=true })
+    const result = resolveDuel(gameState.pendingAttack.total, calc.total, gameState.modifiers[myRole]||{})
+    const attackerRole = gameState.pendingAttack.side
+    const goal = result==='attack' || result?.goal
+    const nextAttacker = attackerRole==='p1'?'p2':'p1'
+    const round = (gameState.round||0) + 1
 
-    const newState={...gameState,[myRole+'Team']:myTeam}
-    if(goal)newState[attackerRole+'Score']=(gameState[attackerRole+'Score']||0)+1
+    const log = [...(gameState.log||[])]
+    log.push({ type:'duel',
+      isGoal: goal, homeScored: goal && attackerRole===myRole,
+      text: goal
+        ? `⚽ BUT de ${gameState[attackerRole+'Name']} ! (${gameState.pendingAttack.total} vs ${calc.total})`
+        : `✋ Attaque stoppée (${gameState.pendingAttack.total} vs ${calc.total})`,
+      homePlayers: (gameState.pendingAttack.players||[]).map(p=>({ name:p.name, note:getNoteForRole(p,p._line||'ATT'), portrait:getPortrait(p), job:p.job })),
+      aiPlayers: selected.map(p=>({ name:p.name, note:getNoteForRole(p,p._line||'DEF'), portrait:getPortrait(p), job:p.job })),
+      homeTotal: gameState.pendingAttack.total, aiTotal: calc.total })
 
-    const log=[...(gameState.log||[])]
-    log.push({type:'defense',text:`🛡️ ${gameState[myRole+'Name']} défend (${calc.total})`})
-    log.push({type:goal?'goal':'stop',text:goal?`⚽ BUT de ${gameState[attackerRole+'Name']} ! (${gameState.pendingAttack.total} vs ${calc.total})`:`✋ Attaque stoppée (${gameState.pendingAttack.total} vs ${calc.total})`})
+    const newAttackerScore = goal ? (gameState[attackerRole+'Score']||0)+1 : (gameState[attackerRole+'Score']||0)
+    const newState = { ...gameState, [myRole+'Team']: myTeam, [attackerRole+'Score']: newAttackerScore }
+    const isFinished = checkMatchEnd(newState)
 
-    const isFinished=checkMatchEnd(newState)
+    // Prochain tour
+    const nextTeam = newState[nextAttacker+'Team']
+    const nextAny = ['GK','DEF','MIL','ATT'].some(r => (nextTeam[r]||[]).some(p=>!p.used))
+    const nextPhase = (!nextAny || isFinished) ? 'finished' : nextAttacker+'-attack'
 
-    // Vérifier si le prochain attaquant a encore des joueurs
-    const nextMilAtt=[...(newState[nextAttacker+'Team'].MIL||[]),...(newState[nextAttacker+'Team'].ATT||[])].filter(p=>!p.used)
-    const nextDef=[...(newState[nextAttacker+'Team'].GK||[]),...(newState[nextAttacker+'Team'].DEF||[]),...(newState[nextAttacker+'Team'].MIL||[])].filter(p=>!p.used)
-    let nextPhase=nextAttacker+'-attack'
-    if(!nextMilAtt.length&&!nextDef.length)nextPhase='finished'
-    else if(!nextMilAtt.length&&nextDef.length)nextPhase=nextAttacker+'-attack' // DEF peuvent attaquer si adversaire sans joueurs
-
-    await pushState({...newState,['selected_'+myRole]:[],modifiers:{...gameState.modifiers,[myRole]:{}},pendingAttack:null,phase:isFinished?'finished':nextPhase,attacker:nextAttacker,round,log})
-    if(isFinished)await supabase.from('matches').update({status:'finished'}).eq('id',matchId)
+    await pushState({ [myRole+'Team']: myTeam, [attackerRole+'Score']: newAttackerScore,
+      ['selected_'+myRole]: [], modifiers: { ...gameState.modifiers, [myRole]:{} },
+      pendingAttack: null, phase: nextPhase, attacker: nextAttacker, round, log })
+    if (nextPhase==='finished' || isFinished) await supabase.from('matches').update({ status:'finished' }).eq('id', matchId)
   }
 
   function checkMatchEnd(gs) {

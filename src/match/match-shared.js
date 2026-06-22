@@ -527,9 +527,9 @@ export function buildTeamSVG(team, formation, phase, selectedIds, W=310, H=310, 
 
     const rx0 = (c.x - CW/2).toFixed(1)
     const ry0 = (c.y - CH/2).toFixed(1)
-    const cardOp  = p.used ? 0.25 : 1
+    const cardOp  = p.used ? 0.25 : isSelected ? 0.45 : 1
     const rarity  = rarityBorder[p?.rarity] || rarityBorder.normal
-    const bStroke = isSelected ? '#ff3030' : rarity
+    const bStroke = isSelected ? '#FFD700' : rarity
     const bWidth  = isSelected ? 3 : (p?.rarity==='légende'||p?.rarity==='pépite' ? 2.5 : 2)
 
     // Clip portrait à la zone centrale (sans nom ni bas)

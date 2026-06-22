@@ -445,6 +445,11 @@ function showBoosterAnimation(cards, booster, navigate) {
       }
       .cut-flash-go { animation:cutFlash .5s ease-out forwards; }
       @keyframes cutFlash { 0%{opacity:0;transform:scale(0.4)} 30%{opacity:1} 100%{opacity:0;transform:scale(1.8)} }
+      @keyframes woIn  { 0%{opacity:0;transform:scale(.4) translateY(20px)} 60%{opacity:1;transform:scale(1.12)} 100%{opacity:1;transform:scale(1)} }
+      @keyframes woOut { 0%{opacity:1;transform:scale(1)} 100%{opacity:0;transform:scale(1.5)} }
+      @keyframes woGlow { 0%,100%{filter:drop-shadow(0 0 18px rgba(255,215,0,.5))} 50%{filter:drop-shadow(0 0 34px rgba(255,215,0,.95))} }
+      .wo-in  { animation:woIn .5s cubic-bezier(.34,1.56,.64,1) forwards, woGlow 1.6s ease-in-out infinite .5s; }
+      .wo-out { animation:woOut .45s ease-in forwards; }
       /* Carte révélation - une seule carte centrée */
       .single-card-reveal {
         animation:cardReveal 0.5s cubic-bezier(0.34,1.56,0.64,1) both;
@@ -504,6 +509,11 @@ function showBoosterAnimation(cards, booster, navigate) {
 
     <!-- (Phase 3 fusionnée dans le carrousel) -->
     <div id="recap-phase" style="display:none"></div>
+
+    <!-- Overlay WALKOUT (drapeau → club → carte) -->
+    <div id="walkout-overlay" style="display:none;position:fixed;inset:0;z-index:3000;align-items:center;justify-content:center;background:radial-gradient(circle at center, rgba(20,20,40,0.85), rgba(0,0,0,0.97))">
+      <div id="walkout-stage" style="display:flex;align-items:center;justify-content:center;width:240px;height:240px"></div>
+    </div>
 
     <!-- Canvas pour feu d'artifice -->
     <canvas id="fireworks-canvas" style="position:fixed;inset:0;pointer-events:none;z-index:3001"></canvas>
@@ -572,6 +582,7 @@ function showBoosterAnimation(cards, booster, navigate) {
 
   // ── Phase 2 : carrousel des cartes (glissement latéral) ──
   let currentIdx = 0
+  let walkoutPlaying = false
   const seen = new Set()
 
   function startCardReveal(idx) {
@@ -603,30 +614,79 @@ function showBoosterAnimation(cards, booster, navigate) {
     const firstSeen = !seen.has(idx)
     seen.add(idx)
 
-    track.innerHTML = `
-      <div id="current-card-wrap" style="display:flex;flex-direction:column;align-items:center;gap:8px;${isLegend?'filter:drop-shadow(0 0 20px #7a28b8)':''}">
-        <div style="transform:scale(1.3);transform-origin:center">${buildCardFace(card)}</div>
-        ${card.isDuplicate ? `<div style="font-size:11px;font-weight:700;color:#fff;background:#cc2222;border-radius:8px;padding:2px 10px">Doublon</div>` : ''}
-      </div>`
-
-    // Animation d'entrée (slide depuis le côté du swipe, ou pop si première fois)
-    const wrap = document.getElementById('current-card-wrap')
-    if (dir !== 0) {
-      wrap.style.transition = 'none'
-      wrap.style.transform = `translateX(${dir>0?100:-100}%)`
-      requestAnimationFrame(() => {
-        wrap.style.transition = 'transform .28s cubic-bezier(.25,1,.5,1)'
-        wrap.style.transform = 'translateX(0)'
-      })
-    } else if (firstSeen) {
-      wrap.animate([{opacity:0, transform:'scale(.7)'},{opacity:1, transform:'scale(1)'}], {duration:300, easing:'cubic-bezier(.34,1.56,.64,1)'})
+    // Note principale (poste affiché) pour décider du walkout
+    let mainNote = 0
+    if (card.card_type === 'player' && card.player) {
+      const p = card.player, j = p.job || 'ATT'
+      mainNote = Number(j==='GK'?p.note_g : j==='DEF'?p.note_d : j==='MIL'?p.note_m : p.note_a) || 0
     }
 
-    if (isLegend) launchFireworks(); else stopFireworks()
-    renderDots()
+    const paint = (withFireworks) => {
+      track.innerHTML = `
+        <div id="current-card-wrap" style="display:flex;flex-direction:column;align-items:center;gap:8px;${isLegend?'filter:drop-shadow(0 0 20px #7a28b8)':''}">
+          <div style="transform:scale(1.3);transform-origin:center">${buildCardFace(card)}</div>
+          ${card.isDuplicate ? `<div style="font-size:11px;font-weight:700;color:#fff;background:#cc2222;border-radius:8px;padding:2px 10px">Doublon</div>` : ''}
+        </div>`
+      const wrap = document.getElementById('current-card-wrap')
+      if (dir !== 0) {
+        wrap.style.transition = 'none'
+        wrap.style.transform = `translateX(${dir>0?100:-100}%)`
+        requestAnimationFrame(() => {
+          wrap.style.transition = 'transform .28s cubic-bezier(.25,1,.5,1)'
+          wrap.style.transform = 'translateX(0)'
+        })
+      } else {
+        wrap.animate([{opacity:0, transform:'scale(.7)'},{opacity:1, transform:'scale(1)'}], {duration:300, easing:'cubic-bezier(.34,1.56,.64,1)'})
+      }
+      if (withFireworks || isLegend) launchFireworks(); else stopFireworks()
+      renderDots()
+    }
+
+    // WALKOUT (style FIFA) : drapeau → club → carte + feu d'artifice
+    if (firstSeen && mainNote > 6 && card.card_type === 'player' && card.player) {
+      playWalkout(card, () => paint(true))
+    } else {
+      paint(false)
+    }
+  }
+
+  function playWalkout(card, onDone) {
+    walkoutPlaying = true
+    const p = card.player
+    const flagUrl  = `https://flagsapi.com/${p.country_code}/flat/64.png`
+    const clubLogo = p.clubs?.logo_url
+    const ov    = document.getElementById('walkout-overlay')
+    const stage = document.getElementById('walkout-stage')
+    if (!ov || !stage) { walkoutPlaying = false; onDone(); return }
+    ov.style.display = 'flex'
+    const fadeOut = () => { const el = stage.firstElementChild; if (el){ el.classList.remove('wo-in'); el.classList.add('wo-out') } }
+
+    // 1) Drapeau (2s)
+    stage.innerHTML = `<img class="wo-in" src="${flagUrl}" style="height:130px;border-radius:10px;box-shadow:0 10px 36px rgba(0,0,0,.6)" onerror="this.style.display='none'">`
+    if (navigator.vibrate) navigator.vibrate(30)
+    setTimeout(fadeOut, 2000)
+
+    // 2) Logo du club (2s)
+    setTimeout(() => {
+      stage.innerHTML = clubLogo
+        ? `<img class="wo-in" src="${clubLogo}" style="max-height:160px;max-width:210px;object-fit:contain">`
+        : `<div class="wo-in" style="font-size:34px;font-weight:900;color:#fff;text-align:center">${(p.clubs?.encoded_name||'CLUB')}</div>`
+      if (navigator.vibrate) navigator.vibrate(30)
+    }, 2450)
+    setTimeout(fadeOut, 4450)
+
+    // 3) La carte + feu d'artifice
+    setTimeout(() => {
+      ov.style.display = 'none'
+      stage.innerHTML = ''
+      walkoutPlaying = false
+      if (navigator.vibrate) navigator.vibrate([40, 30, 80])
+      onDone()
+    }, 4900)
   }
 
   function goTo(idx) {
+    if (walkoutPlaying) return
     if (idx < 0 || idx >= cards.length || idx === currentIdx) return
     const dir = idx > currentIdx ? 1 : -1
     currentIdx = idx

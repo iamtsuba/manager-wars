@@ -242,10 +242,15 @@ async function openMixedBooster(profile, booster) {
     if (!rate) continue
     if (rate.card_type === 'player') {
       // Tirer un joueur selon la rareté/note configurée
+      // Normaliser la rareté : les configs booster ont pu être enregistrées
+      // avec accent ('légende','pépite') alors que les joueurs sont stockés
+      // sans accent ('legende','pepite'). On aligne pour que le .eq matche.
+      const normRarity = (r) => ({ 'légende':'legende', 'pépite':'pepite', 'pépites':'pepite' }[r] || r)
+      const wantedRarity = rate.rarity ? normRarity(rate.rarity) : null
       let q = supabase.from('players')
         .select('id,job,firstname,surname_encoded,country_code,club_id,rarity,note_g,note_d,note_m,note_a,skin,hair,hair_length,sell_price,clubs(encoded_name,logo_url)')
         .eq('is_active', true)
-      if (rate.rarity) q = q.eq('rarity', rate.rarity)
+      if (wantedRarity) q = q.eq('rarity', wantedRarity)
       const { data: pool } = await q
       let filtered = pool || []
       if (rate.note_min || rate.note_max) {

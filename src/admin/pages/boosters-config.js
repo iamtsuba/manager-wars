@@ -10,9 +10,9 @@ const CARD_TYPES = [
 const RARITIES = [
   { value:'',        label:'Toutes' },
   { value:'normal',  label:'Normal' },
-  { value:'pépite',  label:'Pépite' },
+  { value:'pepite',  label:'Pépite' },
   { value:'papyte',  label:'Papyte' },
-  { value:'légende', label:'Légende' },
+  { value:'legende', label:'Légende' },
 ]
 const PRICE_TYPES = [
   { value:'credits', label:'Crédits' },

@@ -33,7 +33,7 @@ function getNote(p, job) {
 }
 
 // ── Rendu d'une carte joueur ──────────────────────────────
-export function renderCard(card, countBadge = '') {
+function renderCard(card, countBadge = '') {
   const p = card.player
   if (!p) return ''
 

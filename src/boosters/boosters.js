@@ -488,24 +488,22 @@ function showBoosterAnimation(cards, booster, navigate) {
       </div>
     </div>
 
-    <!-- Phase 2 : révélation une par une -->
-    <div id="reveal-phase" style="display:none;flex-direction:column;align-items:center;gap:16px;width:100%;padding:0 20px">
-      <div id="card-counter" style="font-size:13px;color:rgba(255,255,255,0.5)"></div>
-      <div id="single-card-slot" style="position:relative"></div>
-      <div id="card-tap-hint" style="font-size:13px;color:rgba(255,255,255,0.4);margin-top:4px">Appuie pour continuer →</div>
-    </div>
-
-    <!-- Phase 3 : récapitulatif -->
-    <div id="recap-phase" style="display:none;flex-direction:column;align-items:center;gap:0;width:100%">
-      <div style="font-size:14px;color:rgba(255,255,255,0.7);margin:12px 0 4px">
-        ${cards.length} carte${cards.length>1?'s obtenues':'obtenue'} !
+    <!-- Phase 2 : carrousel des cartes (navigation par glissement) -->
+    <div id="reveal-phase" style="display:none;flex-direction:column;align-items:center;gap:12px;width:100%;padding:8px 16px 18px">
+      <div id="card-counter" style="font-size:14px;font-weight:700;color:rgba(255,255,255,0.85)"></div>
+      <div id="card-viewport" style="position:relative;width:100%;max-width:300px;height:340px;overflow:hidden;touch-action:pan-y;user-select:none;-webkit-user-select:none">
+        <div id="card-track" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center"></div>
       </div>
-      <div class="recap-grid" id="recap-grid"></div>
-      <div style="display:flex;gap:10px;padding:0 16px 20px;width:100%;max-width:400px">
+      <div id="card-dots" style="display:flex;gap:6px;flex-wrap:wrap;justify-content:center;max-width:260px"></div>
+      <div id="card-tap-hint" style="font-size:12px;color:rgba(255,255,255,0.45)">‹ glisse pour naviguer ›</div>
+      <div style="display:flex;gap:10px;width:100%;max-width:400px;margin-top:4px">
         <button class="btn btn-primary" id="reveal-collection" style="flex:1">Voir ma collection</button>
         <button class="btn btn-ghost" id="reveal-more" style="flex:1;color:#fff;border-color:rgba(255,255,255,0.3)">Boosters</button>
       </div>
     </div>
+
+    <!-- (Phase 3 fusionnée dans le carrousel) -->
+    <div id="recap-phase" style="display:none"></div>
 
     <!-- Canvas pour feu d'artifice -->
     <canvas id="fireworks-canvas" style="position:fixed;inset:0;pointer-events:none;z-index:3001"></canvas>
@@ -572,74 +570,109 @@ function showBoosterAnimation(cards, booster, navigate) {
   window.addEventListener('touchmove', onMove, { passive:true })
   window.addEventListener('touchend', onUp)
 
-  // ── Phase 2 : révélation carte par carte ─────────────
+  // ── Phase 2 : carrousel des cartes (glissement latéral) ──
   let currentIdx = 0
+  const seen = new Set()
 
   function startCardReveal(idx) {
     currentIdx = idx
-    const revealPhase = document.getElementById('reveal-phase')
-    revealPhase.style.display = 'flex'
-    showCard(idx)
+    document.getElementById('reveal-phase').style.display = 'flex'
+    renderDots()
+    showCard(idx, 0)
+    bindSwipe()
   }
 
-  function showCard(idx) {
+  function renderDots() {
+    const dots = document.getElementById('card-dots')
+    if (!dots) return
+    dots.innerHTML = cards.map((_, i) =>
+      `<div class="card-dot" data-i="${i}" style="width:8px;height:8px;border-radius:50%;background:${i===currentIdx?'#FFD700':'rgba(255,255,255,0.3)'};transition:background .2s;cursor:pointer"></div>`
+    ).join('')
+    dots.querySelectorAll('.card-dot').forEach(d =>
+      d.addEventListener('click', () => goTo(parseInt(d.dataset.i)))
+    )
+  }
+
+  function showCard(idx, dir) {
     const card    = cards[idx]
     const counter = document.getElementById('card-counter')
-    const slot    = document.getElementById('single-card-slot')
-    const hint    = document.getElementById('card-tap-hint')
-
+    const track   = document.getElementById('card-track')
     if (counter) counter.textContent = `Carte ${idx+1} / ${cards.length}`
-    if (hint) hint.textContent = idx < cards.length-1 ? 'Appuie pour continuer →' : 'Appuie pour voir toutes tes cartes'
 
-    // Construire la carte (agrandie pour la révélation principale)
-    const cardHtml = `<div style="transform:scale(1.4);transform-origin:center;margin:30px 0">${buildCardFace(card)}</div>`
     const isLegend = card.card_type === 'player' && card.player?.rarity === 'legende'
+    const firstSeen = !seen.has(idx)
+    seen.add(idx)
 
-    // Wrapper cliquable
-    slot.innerHTML = `
-      <div id="current-card-wrap" class="single-card-reveal" style="cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:6px;${isLegend?'filter:drop-shadow(0 0 20px #7a28b8)':''}">
-        ${cardHtml}
+    track.innerHTML = `
+      <div id="current-card-wrap" style="display:flex;flex-direction:column;align-items:center;gap:8px;${isLegend?'filter:drop-shadow(0 0 20px #7a28b8)':''}">
+        <div style="transform:scale(1.3);transform-origin:center">${buildCardFace(card)}</div>
         ${card.isDuplicate ? `<div style="font-size:11px;font-weight:700;color:#fff;background:#cc2222;border-radius:8px;padding:2px 10px">Doublon</div>` : ''}
       </div>`
 
-    if (isLegend) {
-      // Lancer le feu d'artifice
-      launchFireworks()
+    // Animation d'entrée (slide depuis le côté du swipe, ou pop si première fois)
+    const wrap = document.getElementById('current-card-wrap')
+    if (dir !== 0) {
+      wrap.style.transition = 'none'
+      wrap.style.transform = `translateX(${dir>0?100:-100}%)`
+      requestAnimationFrame(() => {
+        wrap.style.transition = 'transform .28s cubic-bezier(.25,1,.5,1)'
+        wrap.style.transform = 'translateX(0)'
+      })
+    } else if (firstSeen) {
+      wrap.animate([{opacity:0, transform:'scale(.7)'},{opacity:1, transform:'scale(1)'}], {duration:300, easing:'cubic-bezier(.34,1.56,.64,1)'})
     }
 
-    // Clic pour passer à la suivante
-    const wrap = document.getElementById('current-card-wrap')
-    let tapped = false
-    wrap.addEventListener('click', () => {
-      if (tapped) return
-      tapped = true
-      const next = idx + 1
-      if (next < cards.length) {
-        // Sortie + entrée de la carte suivante
-        wrap.style.transition = 'all 0.25s ease'
-        wrap.style.transform = 'translateX(-120%) rotate(-15deg)'
-        wrap.style.opacity = '0'
-        setTimeout(() => showCard(next), 250)
-      } else {
-        // Toutes les cartes vues → récapitulatif
-        showRecap()
-      }
-    })
+    if (isLegend) launchFireworks(); else stopFireworks()
+    renderDots()
   }
 
-  // ── Phase 3 : récapitulatif ────────────────────────────
-  function showRecap() {
-    stopFireworks()
-    document.getElementById('reveal-phase').style.display = 'none'
-    const recapPhase = document.getElementById('recap-phase')
-    recapPhase.style.display = 'flex'
+  function goTo(idx) {
+    if (idx < 0 || idx >= cards.length || idx === currentIdx) return
+    const dir = idx > currentIdx ? 1 : -1
+    currentIdx = idx
+    showCard(idx, dir)
+  }
+  function next() { goTo(currentIdx + 1) }
+  function prev() { goTo(currentIdx - 1) }
 
-    const grid = document.getElementById('recap-grid')
-    grid.innerHTML = cards.map((card, i) => `
-      <div class="recap-card" style="--i:${i};animation-delay:${i*0.07}s;display:flex;flex-direction:column;align-items:center;gap:4px">
-        ${buildCardFace(card)}
-        ${card.isDuplicate ? `<div style="font-size:11px;font-weight:700;color:#fff;background:#cc2222;border-radius:8px;padding:2px 10px">Doublon</div>` : ''}
-      </div>`).join('')
+  function bindSwipe() {
+    const vp = document.getElementById('card-viewport')
+    if (!vp || vp._swipeBound) return
+    vp._swipeBound = true
+    let startX = 0, startY = 0, dx = 0, active = false
+    const cx = (e) => e.touches ? e.touches[0].clientX : e.clientX
+    const cy = (e) => e.touches ? e.touches[0].clientY : e.clientY
+    const down = (e) => { active = true; startX = cx(e); startY = cy(e); dx = 0 }
+    const move = (e) => {
+      if (!active) return
+      dx = cx(e) - startX
+      const dy = cy(e) - startY
+      if (Math.abs(dx) < Math.abs(dy)) return // scroll vertical : on ignore
+      const wrap = document.getElementById('current-card-wrap')
+      if (wrap) { wrap.style.transition = 'none'; wrap.style.transform = `translateX(${dx*0.6}px) rotate(${dx*0.02}deg)` }
+    }
+    const up = () => {
+      if (!active) return
+      active = false
+      const wrap = document.getElementById('current-card-wrap')
+      const TH = 55
+      if (dx <= -TH && currentIdx < cards.length-1) { next() }
+      else if (dx >= TH && currentIdx > 0) { prev() }
+      else if (wrap) { wrap.style.transition = 'transform .2s ease'; wrap.style.transform = 'translateX(0)' }
+    }
+    vp.addEventListener('pointerdown', down)
+    vp.addEventListener('pointermove', move)
+    vp.addEventListener('pointerup', up)
+    vp.addEventListener('pointercancel', up)
+    vp.addEventListener('touchstart', down, {passive:true})
+    vp.addEventListener('touchmove', move, {passive:true})
+    vp.addEventListener('touchend', up)
+    // Tap sur la moitié droite/gauche pour naviguer aussi
+    vp.addEventListener('click', (e) => {
+      if (Math.abs(dx) > 8) return
+      const r = vp.getBoundingClientRect()
+      if (e.clientX - r.left > r.width/2) next(); else prev()
+    })
   }
 
   // ── Feu d'artifice ────────────────────────────────────

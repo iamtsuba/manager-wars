@@ -192,7 +192,19 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
     if (_pvpEnded) return; _pvpEnded = true
     if (_localTimerInt) { clearInterval(_localTimerInt); _localTimerInt = null }
     const winnerId = amIHome ? match.away_id : match.home_id
-    try { await supabase.from('matches').update({ status:'finished', forfeit:true, winner_id:winnerId }).eq('id', matchId) } catch {}
+    const winnerRole = amIHome ? 'p2' : 'p1'
+    const loserRole  = amIHome ? 'p1' : 'p2'
+    // Score forfait : 3-0 pour le vainqueur
+    const forfeitState = { ...gameState,
+      [winnerRole+'Score']: 3, [loserRole+'Score']: 0,
+      phase: 'finished'
+    }
+    try {
+      await supabase.from('matches').update({
+        status:'finished', forfeit:true, winner_id:winnerId,
+        game_state: forfeitState
+      }).eq('id', matchId)
+    } catch {}
     try { supabase.removeChannel(channel) } catch {}
     _showBottomNav(container); navigate('home')
   }
@@ -747,6 +759,46 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
     },2800)
   }
 
+  function showGoalAnimation(players, myScore, oppScore, isMyGoal, callback) {
+    const overlay = document.createElement('div')
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.93);z-index:900;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;overflow:hidden;cursor:pointer'
+    const fw = Array.from({length:10},(_,i)=>`<div style="position:absolute;font-size:${16+Math.floor(Math.random()*24)}px;top:${5+Math.floor(Math.random()*65)}%;left:${3+Math.floor(Math.random()*94)}%;animation:fw${i%2===0?'A':'B'} ${0.7+Math.random()*0.7}s ease ${Math.random()*0.9}s both;opacity:0">${['✨','🌟','⭐','💥','🎇','🎆','🔥','🌈'][i%8]}</div>`).join('')
+    const JC = {GK:'#111',DEF:'#bb2020',MIL:'#D4A017',ATT:'#1A6B3C'}
+    overlay.innerHTML = `
+      <style>
+        @keyframes butPop{0%{transform:scale(0) rotate(-8deg);opacity:0}55%{transform:scale(1.25) rotate(2deg)}85%{transform:scale(0.92) rotate(-1deg)}100%{transform:scale(1);opacity:1}}
+        @keyframes ballIn{0%{transform:translate(-70px,18px);opacity:0}65%{opacity:1}100%{transform:translate(26px,-8px);opacity:1}}
+        @keyframes scoreIn{from{opacity:0;transform:translateY(-12px)}to{opacity:1;transform:translateY(0)}}
+        @keyframes fwA{0%{opacity:1;transform:scale(0)}100%{opacity:0;transform:scale(3.5)}}
+        @keyframes fwB{0%{opacity:1;transform:scale(0) rotate(45deg)}100%{opacity:0;transform:scale(2.8) rotate(45deg)}}
+      </style>
+      <div style="position:absolute;inset:0;pointer-events:none">${fw}</div>
+      <div style="font-size:68px;font-weight:900;color:#FFD700;text-shadow:0 0 50px rgba(255,215,0,0.9);animation:butPop .55s cubic-bezier(.36,.07,.19,.97) both;letter-spacing:6px;position:relative;z-index:1">
+        ${isMyGoal ? 'BUT !' : 'BUT ADV !'}
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;font-size:26px;position:relative;z-index:1">
+        <span style="animation:ballIn .8s ease .35s both">⚽</span>
+        <span style="font-size:36px">🥅</span>
+      </div>
+      <div style="font-size:38px;font-weight:900;color:#fff;animation:scoreIn .4s ease .75s both;letter-spacing:4px;position:relative;z-index:1">
+        ${myScore} – ${oppScore}
+      </div>
+      ${players?.length ? `<div style="display:flex;gap:10px;animation:scoreIn .4s ease 1s both;position:relative;z-index:1">
+        ${players.map(p=>`<div style="text-align:center">
+          <div style="width:50px;height:50px;border-radius:50%;background:${JC[p.job]||'#555'};border:2px solid #FFD700;position:relative;overflow:hidden;margin:0 auto">
+            ${p.portrait?`<img src="${p.portrait}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover">`:''}
+          </div>
+          <div style="font-size:8px;color:rgba(255,255,255,0.7);margin-top:3px">${(p.name||'').slice(0,8)}</div>
+        </div>`).join('')}
+      </div>` : ''}
+      <div style="font-size:11px;color:rgba(255,255,255,0.3);margin-top:8px;animation:scoreIn .3s ease 1.4s both;position:relative;z-index:1">Appuyer pour continuer</div>`
+    document.body.appendChild(overlay)
+    let dismissed = false
+    const dismiss = () => { if(dismissed)return; dismissed=true; overlay.remove(); setTimeout(()=>callback(),50) }
+    overlay.addEventListener('click', dismiss)
+    setTimeout(dismiss, 3500)
+  }
+
   function pvpShowGCDetail(gcId, gcType) {
     const myGcFull=gameState['gcCardsFull_'+myRole]||[]
     const card=myGcFull.find(c=>c.id===gcId)
@@ -889,7 +941,6 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
   async function pvpConfirmAttack() {
     const myTeam = gameState[myRole+'Team']
     const oppHasNoOne = !['GK','DEF','MIL','ATT'].some(r => (gameState[oppRole+'Team'][r]||[]).some(p=>!p.used))
-    // Re-fetch live (boost inclus), identique confirmAttack match-ia
     const selected = (gameState['selected_'+myRole]||[]).map(s => {
       const live = (myTeam[s._role]||[]).find(x => x.cardId===s.cardId) || s
       const isExtra = oppHasNoOne && ['GK','DEF'].includes(s._role)
@@ -897,24 +948,30 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
     })
     if (!selected.length) return
     const calc = calcAttack(selected, gameState.modifiers[myRole]||{})
+    // Bug 1 : marquer used immédiatement ET vider selected localement (pas besoin d'attendre pushState)
     selected.forEach(sel => { const p=(myTeam[sel._role]||[]).find(pp=>pp.cardId===sel.cardId); if(p) p.used=true })
+    gameState['selected_'+myRole] = []
+    renderPvpScreen()
     const log = [...(gameState.log||[])]
 
     if (oppHasNoOne) {
       const newScore = (gameState[myRole+'Score']||0) + 1
+      const players = selected.map(p=>({ name:p.name, note:getNoteForRole(p,p._line||'ATT'), portrait:getPortrait(p), job:p.job }))
       log.push({ type:'duel', isGoal:true, homeScored:true,
-        text: `⚽ BUT ! L'adversaire n'a plus de joueurs.`,
-        homePlayers: selected.map(p=>({ name:p.name, note:getNoteForRole(p,p._line||'ATT'), portrait:getPortrait(p), job:p.job })),
-        homeTotal: calc.total, aiTotal: 0 })
+        text:`⚽ BUT ! L'adversaire n'a plus de joueurs.`,
+        homePlayers: players, homeTotal: calc.total, aiTotal: 0 })
       const round = (gameState.round||0) + 1
       const nextAttacker = myRole==='p1'?'p2':'p1'
       const newState = { ...gameState, [myRole+'Team']: myTeam, [myRole+'Score']: newScore }
       const isFinished = checkMatchEnd(newState)
-      await pushState({ [myRole+'Team']: myTeam, [myRole+'Score']: newScore,
-        ['selected_'+myRole]: [], modifiers: { ...gameState.modifiers, [myRole]:{} },
-        pendingAttack: null, phase: isFinished?'finished':nextAttacker+'-attack',
-        attacker: nextAttacker, round, log })
-      if (isFinished) await supabase.from('matches').update({ status:'finished' }).eq('id', matchId)
+      // Bug 2 : showGoalAnimation avant pushState
+      showGoalAnimation(players, newScore, gameState[oppRole+'Score']||0, true, async () => {
+        await pushState({ [myRole+'Team']: myTeam, [myRole+'Score']: newScore,
+          ['selected_'+myRole]: [], modifiers: { ...gameState.modifiers, [myRole]:{} },
+          pendingAttack: null, phase: isFinished?'finished':nextAttacker+'-attack',
+          attacker: nextAttacker, round, log })
+        if (isFinished) await supabase.from('matches').update({ status:'finished' }).eq('id', matchId)
+      })
       return
     }
 
@@ -927,42 +984,56 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
 
   async function pvpConfirmDefense() {
     const myTeam = gameState[myRole+'Team']
-    // Re-fetch live (boost inclus)
     const selected = (gameState['selected_'+myRole]||[]).map(s => {
       const live = (myTeam[s._role]||[]).find(x => x.cardId===s.cardId) || s
       return { ...live, _line: s._role }
     })
     const calc = calcDefense(selected, gameState.modifiers[myRole]||{})
+    // Bug 1 : marquer used + vider selected immédiatement
     selected.forEach(sel => { const p=(myTeam[sel._role]||[]).find(pp=>pp.cardId===sel.cardId); if(p) p.used=true })
+    gameState['selected_'+myRole] = []
+    renderPvpScreen()
+
     const result = resolveDuel(gameState.pendingAttack.total, calc.total, gameState.modifiers[myRole]||{})
     const attackerRole = gameState.pendingAttack.side
     const goal = result==='attack' || result?.goal
     const nextAttacker = attackerRole==='p1'?'p2':'p1'
     const round = (gameState.round||0) + 1
 
+    const attackPlayers = (gameState.pendingAttack.players||[]).map(p=>({ name:p.name, note:getNoteForRole(p,p._line||'ATT'), portrait:getPortrait(p), job:p.job }))
     const log = [...(gameState.log||[])]
     log.push({ type:'duel',
       isGoal: goal, homeScored: goal && attackerRole===myRole,
       text: goal
         ? `⚽ BUT de ${gameState[attackerRole+'Name']} ! (${gameState.pendingAttack.total} vs ${calc.total})`
         : `✋ Attaque stoppée (${gameState.pendingAttack.total} vs ${calc.total})`,
-      homePlayers: (gameState.pendingAttack.players||[]).map(p=>({ name:p.name, note:getNoteForRole(p,p._line||'ATT'), portrait:getPortrait(p), job:p.job })),
+      homePlayers: attackPlayers,
       aiPlayers: selected.map(p=>({ name:p.name, note:getNoteForRole(p,p._line||'DEF'), portrait:getPortrait(p), job:p.job })),
       homeTotal: gameState.pendingAttack.total, aiTotal: calc.total })
 
     const newAttackerScore = goal ? (gameState[attackerRole+'Score']||0)+1 : (gameState[attackerRole+'Score']||0)
     const newState = { ...gameState, [myRole+'Team']: myTeam, [attackerRole+'Score']: newAttackerScore }
     const isFinished = checkMatchEnd(newState)
-
-    // Prochain tour
     const nextTeam = newState[nextAttacker+'Team']
     const nextAny = ['GK','DEF','MIL','ATT'].some(r => (nextTeam[r]||[]).some(p=>!p.used))
     const nextPhase = (!nextAny || isFinished) ? 'finished' : nextAttacker+'-attack'
 
-    await pushState({ [myRole+'Team']: myTeam, [attackerRole+'Score']: newAttackerScore,
-      ['selected_'+myRole]: [], modifiers: { ...gameState.modifiers, [myRole]:{} },
-      pendingAttack: null, phase: nextPhase, attacker: nextAttacker, round, log })
-    if (nextPhase==='finished' || isFinished) await supabase.from('matches').update({ status:'finished' }).eq('id', matchId)
+    const doNext = async () => {
+      await pushState({ [myRole+'Team']: myTeam, [attackerRole+'Score']: newAttackerScore,
+        ['selected_'+myRole]: [], modifiers: { ...gameState.modifiers, [myRole]:{} },
+        pendingAttack: null, phase: nextPhase, attacker: nextAttacker, round, log })
+      if (nextPhase==='finished' || isFinished) await supabase.from('matches').update({ status:'finished' }).eq('id', matchId)
+    }
+
+    // Bug 2 : showGoalAnimation si but
+    if (goal) {
+      const isMyGoal = attackerRole === myRole
+      const myNewScore = isMyGoal ? newAttackerScore : (gameState[myRole+'Score']||0)
+      const oppNewScore = isMyGoal ? (gameState[oppRole+'Score']||0) : newAttackerScore
+      showGoalAnimation(attackPlayers, myNewScore, oppNewScore, isMyGoal, doNext)
+    } else {
+      await doNext()
+    }
   }
 
   function checkMatchEnd(gs) {

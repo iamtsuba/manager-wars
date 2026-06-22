@@ -339,106 +339,124 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
     if (gameState.phase === 'midfield') return renderPvpMidfield()
     if (gameState.phase === 'finished') return renderPvpResult()
 
-    const myTeam  = gameState[myRole+'Team']
-    const oppTeam = gameState[oppRole+'Team']
-    const myScore = gameState[myRole+'Score']
-    const oppScore= gameState[oppRole+'Score']
-    const myName  = gameState[myRole+'Name']
-    const oppName = gameState[oppRole+'Name']
+    const myTeam   = gameState[myRole+'Team']
+    const oppTeam  = gameState[oppRole+'Team']
+    const myScore  = gameState[myRole+'Score']
+    const oppScore = gameState[oppRole+'Score']
+    const myName   = gameState[myRole+'Name']
+    const oppName  = gameState[oppRole+'Name']
+
     const isMyAttack  = gameState.phase === myRole+'-attack'
     const isMyDefense = gameState.phase === myRole+'-defense'
     const isOppTurn   = !isMyAttack && !isMyDefense
     const mySelected  = Array.isArray(gameState['selected_'+myRole]) ? gameState['selected_'+myRole] : []
-    const selectedIds = mySelected.map(s=>s.cardId)
+    const selectedIds = mySelected.map(s => s.cardId)
     const _pc = window.innerWidth >= 700
 
-    const mySubs = gameState[myRole+'Subs']||[]
-    const usedSubIds = gameState['usedSubIds_'+myRole]||[]
-    const availSubs = mySubs.filter(s=>!usedSubIds.includes(s.cardId))
-    const myGcFull = gameState['gcCardsFull_'+myRole]||[]
-    const myUsedGc = gameState['usedGc_'+myRole]||[]
-    const activeGCs = myGcFull.filter(gc=>!myUsedGc.includes(gc.id))
-    const boostAvail = gameState.boostOwner===myRole && !gameState.boostUsed
+    const mySubs     = gameState[myRole+'Subs'] || []
+    const usedSubIds = gameState['usedSubIds_'+myRole] || []
+    const availSubs  = mySubs.filter(s => !usedSubIds.includes(s.cardId))
+    const myGcFull   = gameState['gcCardsFull_'+myRole] || []
+    const myUsedGc   = gameState['usedGc_'+myRole] || []
+    const activeGCs  = myGcFull.filter(gc => !myUsedGc.includes(gc.id))
+    const boostAvail = gameState.boostOwner === myRole && !gameState.boostUsed
 
-    // Extra : DEF/GK peuvent attaquer si seuls restants ET adversaire sans joueurs
-    const oppHasNoOne = !['GK','DEF','MIL','ATT'].some(r=>(oppTeam[r]||[]).some(p=>!p.used))
-    const myMilAtt = [...(myTeam.MIL||[]),...(myTeam.ATT||[])].filter(p=>!p.used)
+    // DEF/GK attaquent si seuls restants ET adversaire sans joueurs
+    const oppHasNoOne = !['GK','DEF','MIL','ATT'].some(r => (oppTeam[r]||[]).some(p=>!p.used))
+    const myMilAtt    = [...(myTeam.MIL||[]),...(myTeam.ATT||[])].filter(p=>!p.used)
     const extraSelectableIds = (isMyAttack && oppHasNoOne && myMilAtt.length===0)
       ? [...(myTeam.GK||[]),...(myTeam.DEF||[])].filter(p=>!p.used).map(p=>p.cardId)
       : []
 
-    function gcMiniCard(gc, w, h) {
-      const def = gc._gcDef
-      const bg   = ({purple:'linear-gradient(160deg,#4a0a8a,#7a28b8)',light_blue:'linear-gradient(160deg,#006080,#00bcd4)'})[def?.color]||'linear-gradient(160deg,#4a0a8a,#7a28b8)'
-      const bord = ({purple:'#b06ce0',light_blue:'#00d4ef'})[def?.color]||'#b06ce0'
-      const name = def?.name||gc.gc_type, effect=def?.effect||GC_DEFS[gc.gc_type]?.desc||''
+    // ── Design cartes GC (identique match-ia) ──
+    function gcCardDesign(gc, w, h) {
+      const def    = gc._gcDef
+      const bg     = ({purple:'linear-gradient(160deg,#4a0a8a,#7a28b8)',light_blue:'linear-gradient(160deg,#006080,#00bcd4)'})[def?.color] || 'linear-gradient(160deg,#4a0a8a,#7a28b8)'
+      const bord   = ({purple:'#b06ce0',light_blue:'#00d4ef'})[def?.color] || '#b06ce0'
+      const name   = def?.name || gc.gc_type
+      const effect = def?.effect || GC_DEFS[gc.gc_type]?.desc || ''
       const imgUrl = def?.image_url ? `${import.meta.env.BASE_URL}icons/${def.image_url}` : null
-      const icon = GC_DEFS[gc.gc_type]?.icon||'⚡'
-      const nH=Math.round(h*0.22), eH=Math.round(h*0.22), iH=h-nH-eH
-      return `<div class="pvp-gc-mini" data-gc-id="${gc.id}" data-gc-type="${gc.gc_type}" style="box-sizing:border-box;width:${w}px;height:${h}px;border-radius:10px;border:2px solid ${bord};background:${bg};display:flex;flex-direction:column;overflow:hidden;cursor:pointer;flex-shrink:0">
-        <div style="height:${nH}px;background:rgba(255,255,255,0.14);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0 3px">
-          <span style="font-size:${name.length>12?7:9}px;font-weight:900;color:#fff;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:${w-6}px">${name}</span>
+      const icon   = GC_DEFS[gc.gc_type]?.icon || '⚡'
+      const nameH  = Math.round(h*0.22), effH = Math.round(h*0.22), imgH = h-nameH-effH
+      const fs     = name.length > 12 ? 7 : 9
+      return `<div class="pvp-gc-mini" data-gc-id="${gc.id}" data-gc-type="${gc.gc_type}"
+        style="box-sizing:border-box;width:${w}px;height:${h}px;border-radius:10px;border:2px solid ${bord};background:${bg};display:flex;flex-direction:column;overflow:hidden;cursor:pointer;flex-shrink:0">
+        <div style="height:${nameH}px;background:rgba(255,255,255,0.14);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0 3px">
+          <span style="font-size:${fs}px;font-weight:900;color:#fff;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:${w-6}px">${name}</span>
           <span style="font-size:6px;color:rgba(255,255,255,0.45)">⚡ GC</span>
         </div>
-        <div style="height:${iH}px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.06)">
-          ${imgUrl?`<img src="${imgUrl}" style="max-width:${w-10}px;max-height:${iH-6}px;object-fit:contain">`:`<span style="font-size:${Math.round(iH*.55)}px">${icon}</span>`}
+        <div style="height:${imgH}px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.06)">
+          ${imgUrl ? `<img src="${imgUrl}" style="max-width:${w-10}px;max-height:${imgH-6}px;object-fit:contain">` : `<span style="font-size:${Math.round(imgH*.55)}px">${icon}</span>`}
         </div>
-        <div style="height:${eH}px;background:rgba(0,0,0,0.38);display:flex;align-items:center;justify-content:center;padding:0 3px">
+        <div style="height:${effH}px;background:rgba(0,0,0,0.38);display:flex;align-items:center;justify-content:center;padding:0 3px">
           <span style="font-size:6px;color:rgba(255,255,255,0.9);text-align:center;line-height:1.25">${effect.slice(0,38)}</span>
         </div>
       </div>`
     }
-    function boostCardHTML(w,h) {
-      return `<div id="pvp-boost-card" style="box-sizing:border-box;width:${w}px;height:${h}px;flex-shrink:0;background:linear-gradient(135deg,#4a9fc4,#87CEEB);border:2px solid #87CEEB;border-radius:10px;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px">
-        <div style="font-size:${_pc?22:18}px">⚡</div>
-        <div style="font-size:${_pc?11:9}px;color:#000;font-weight:900">+${gameState.boostValue}</div>
+
+    function boostCardDesign(w, h) {
+      return `<div id="pvp-boost-card"
+        style="box-sizing:border-box;width:${w}px;height:${h}px;background:linear-gradient(135deg,#4a9fc4,#87CEEB);border:2px solid #87CEEB;border-radius:10px;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:${Math.round(h*0.04)}px;text-align:center;flex-shrink:0">
+        <div style="font-size:${Math.round(h*0.2)}px">⚡</div>
+        <div style="font-size:${Math.round(h*0.09)}px;color:#000;font-weight:900">+${gameState.boostValue}</div>
       </div>`
     }
 
-    const subsHTML = `<div style="display:flex;flex-direction:column;gap:4px;padding:4px 2px;width:${_pc?56:50}px;align-items:center;overflow-y:auto;flex-shrink:0;background:rgba(0,0,0,0.15)">
-      ${availSubs.length===0
-        ?`<div style="font-size:7px;color:rgba(255,255,255,0.25);text-align:center;margin-top:6px;line-height:1.4">Pas de<br>rempl.</div>`
-        :availSubs.map(s=>`<div class="pvp-sub-btn" data-sub-id="${s.cardId}" style="cursor:pointer;flex-shrink:0">${renderMiniCardHTML(s,_pc?60:44,_pc?78:58)}</div>`).join('')}
-    </div>`
+    const gcMiniPC  = (gc, isBoost) => isBoost ? boostCardDesign(110,150) : gcCardDesign(gc,110,150)
+    const gcMiniMob = (gc, isBoost) => isBoost ? boostCardDesign(68,95)  : gcCardDesign(gc,68,95)
 
-    const phase = isMyAttack?'attack':isMyDefense?'defense':'idle'
-    const terrainHTML = `<div style="overflow:hidden;min-width:0;flex:1;min-height:0" id="match-field">
-      <div class="terrain-wrapper" style="width:100%;height:100%;overflow:hidden">
-        ${renderTeam(myTeam, gameState[myRole+'Formation'], phase, selectedIds, 300, 300, extraSelectableIds)}
-      </div>
-    </div>`
-
+    // ── Bouton action (identique match-ia) ──
     const btnStyle = _pc
       ? 'padding:28px 20px;border-radius:14px;font-size:16px;font-weight:900;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;width:100%'
       : 'padding:22px 8px;border-radius:12px;font-size:14px;font-weight:900;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;width:100%'
 
     const actionBtn = isMyAttack
-      ? `<button id="pvp-action" style="${btnStyle};background:linear-gradient(135deg,#c47a00,#FFD700);border:none;color:#fff;box-shadow:0 0 18px rgba(255,215,0,0.4)" ${mySelected.length===0&&extraSelectableIds.length===0&&myMilAtt.length===0?'disabled':mySelected.length===0?'disabled':''}>⚔️ ATTAQUEZ <span id="pvp-timer"></span></button>`
+      ? `<button id="pvp-action" style="${btnStyle};background:linear-gradient(135deg,#c47a00,#FFD700);border:none;color:#fff;box-shadow:0 0 18px rgba(255,215,0,0.4)" ${mySelected.length===0?'disabled':''}>⚔️ ATTAQUEZ <span id="pvp-timer"></span></button>`
       : isMyDefense
       ? `<button id="pvp-action" style="${btnStyle};background:linear-gradient(135deg,#1a4a8a,#3a7bd5);border:none;color:#fff;box-shadow:0 0 18px rgba(135,206,235,0.4)" ${mySelected.length===0?'disabled':''}>🛡️ DÉFENDEZ <span id="pvp-timer"></span></button>`
       : `<div style="${btnStyle};background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);color:rgba(255,255,255,0.4)">⏳ Tour de ${oppName}</div>`
     const counter = (isMyAttack||isMyDefense) ? `<div style="font-size:9px;color:rgba(255,255,255,0.4);text-align:center;margin-top:2px">${mySelected.length}/3 sélectionné(s)</div>` : ''
 
-    const lastLog = (gameState.log||[]).slice(-1)[0]
-    const logHTML = isMyDefense && gameState.pendingAttack?.players
-      ? `<div style="padding:5px 8px;background:rgba(180,30,30,0.2);border-left:3px solid #ff6b6b">
-          <div style="font-size:8px;color:#ff6b6b;letter-spacing:2px;margin-bottom:4px;text-transform:uppercase">⚔️ ${oppName} ATTAQUE</div>
-          ${renderCardRow(gameState.pendingAttack.players.map(p=>({...p,used:false})),'#ff6b6b',gameState.pendingAttack.total)}
-        </div>`
-      : lastLog
-      ? `<div style="padding:7px 10px;border-left:3px solid ${lastLog.type==='goal'?'#FFD700':lastLog.type==='stop'?'#00ff88':'rgba(255,255,255,0.4)'};font-size:12px;color:#fff">${lastLog.text||''}</div>`
-      : '<div style="padding:6px 8px;font-size:11px;color:rgba(255,255,255,0.3)">⏳ Match en cours...</div>'
+    // ── Colonne remplaçants (GAUCHE, identique match-ia) ──
+    const subsHTML = `<div style="display:flex;flex-direction:column;gap:4px;padding:4px 2px;width:${_pc?56:50}px;align-items:center;overflow-y:auto;flex-shrink:0;background:rgba(0,0,0,0.15)">
+      ${availSubs.length===0
+        ? `<div style="font-size:7px;color:rgba(255,255,255,0.25);text-align:center;margin-top:6px;line-height:1.4">Pas de<br>rempl.</div>`
+        : availSubs.map(s=>`<div class="pvp-sub-btn" data-sub-id="${s.cardId}" style="cursor:pointer;flex-shrink:0">${renderMiniCardHTML(s,_pc?60:44,_pc?78:58)}</div>`).join('')}
+    </div>`
 
+    // ── Terrain ──
+    const phase = isMyAttack?'attack':isMyDefense?'defense':'idle'
+    const terrainHTML = `<div style="overflow:hidden;min-width:0;flex:1;min-height:0;display:flex;align-items:center;justify-content:center" id="match-field">
+      <div class="terrain-wrapper" style="overflow:hidden;flex-shrink:0;display:flex;align-items:center;justify-content:center">
+        ${renderTeam(myTeam, gameState[myRole+'Formation'], phase, selectedIds, 300, 300, extraSelectableIds)}
+      </div>
+    </div>`
+
+    // ── Zone action (haut) ──
+    const logHTML = (() => {
+      if (isMyDefense && gameState.pendingAttack?.players) {
+        const atk = gameState.pendingAttack
+        return `<div style="padding:5px 8px;background:rgba(180,30,30,0.2);border-left:3px solid #ff6b6b">
+          <div style="font-size:8px;color:#ff6b6b;letter-spacing:2px;margin-bottom:4px;text-transform:uppercase">⚔️ ${oppName} ATTAQUE — Défendez !</div>
+          ${renderCardRow((atk.players||[]).map(p=>({...p,used:false})),'#ff6b6b',atk.total)}
+        </div>`
+      }
+      const last = (gameState.log||[]).slice(-1)[0]
+      if (!last) return '<div style="padding:6px 8px;font-size:11px;color:rgba(255,255,255,0.3)">⏳ Match en cours...</div>'
+      const col = last.type==='goal'?'#FFD700':last.type==='stop'?'#00ff88':'rgba(255,255,255,0.4)'
+      return `<div style="padding:7px 10px;border-left:3px solid ${col};font-size:12px;color:#fff">${last.text||''}</div>`
+    })()
+
+    // ── Header (identique match-ia) ──
     const headerHTML = `
-      <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:rgba(0,0,0,0.25);flex-shrink:0">
-        <button id="pvp-quit" style="background:rgba(220,53,69,0.9);border:none;color:#fff;width:32px;height:32px;border-radius:50%;font-size:16px;cursor:pointer">✕</button>
-        <div style="flex:1;text-align:center;color:#fff;font-size:14px;font-weight:700">
-          ${myName} <span style="color:#FFD700;font-size:18px">${myScore}</span> – <span style="color:#FFD700;font-size:18px">${oppScore}</span> ${oppName}
+      <div style="display:flex;align-items:center;padding:8px 10px;background:rgba(0,0,0,0.5);gap:6px;flex-shrink:0">
+        <button id="pvp-quit" style="width:34px;height:34px;border-radius:50%;background:rgba(220,50,50,0.7);border:none;color:#fff;font-size:16px;cursor:pointer;flex-shrink:0">✕</button>
+        <div style="flex:1;display:flex;align-items:center;justify-content:center;gap:8px">
+          <span style="font-size:13px;font-weight:700;color:rgba(255,255,255,0.9);max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${myName}</span>
+          <span style="font-size:26px;font-weight:900;color:#FFD700;letter-spacing:2px">${myScore} – ${oppScore}</span>
+          <span style="font-size:12px;color:rgba(255,255,255,0.5)">${oppName}</span>
         </div>
         <button id="pvp-view-opp" style="width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.3);color:#fff;font-size:16px;cursor:pointer;flex-shrink:0">👁</button>
-      </div>
-      <div style="text-align:center;padding:4px;background:rgba(0,0,0,0.15);font-size:11px;color:${isOppTurn?'rgba(255,255,255,0.4)':'#FFD700'};font-weight:700;flex-shrink:0">
-        ${isOppTurn ? `⏳ Tour de ${oppName}` : isMyAttack ? "⚔️ À vous d'attaquer !" : "🛡️ À vous de défendre !"}
       </div>
       <div style="background:rgba(0,0,0,0.3);flex-shrink:0;overflow:hidden;max-height:100px">${logHTML}</div>
       <button id="pvp-toggle-history" style="width:100%;padding:3px 10px;background:rgba(0,0,0,0.15);border:none;border-bottom:1px solid rgba(255,255,255,0.05);color:rgba(255,255,255,0.3);font-size:9px;cursor:pointer;letter-spacing:1px;flex-shrink:0;text-transform:uppercase">
@@ -452,13 +470,13 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
       container.innerHTML = `
       <div class="match-screen" style="position:fixed;top:0;left:0;right:0;bottom:auto;z-index:100;display:flex;flex-direction:column;overflow:hidden;background:#0a3d1e;width:100%">
         ${headerHTML}
-        <div style="display:flex;flex:1;min-height:0;overflow:hidden">
+        <div style="display:flex;flex:0.8;min-height:0;overflow:hidden">
           ${subsHTML}
           ${terrainHTML}
           <div style="width:140px;flex-shrink:0;display:flex;flex-direction:column;padding:10px 8px;background:rgba(0,0,0,0.2)">
             <div style="flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;align-items:center;gap:10px">
-              ${activeGCs.map(gc=>gcMiniCard(gc,110,150)).join('')}
-              ${boostAvail?boostCardHTML(110,150):''}
+              ${activeGCs.map(gc=>gcMiniPC(gc,false)).join('')}
+              ${boostAvail?gcMiniPC(null,true):''}
             </div>
             <div style="width:100%;flex-shrink:0;padding-top:8px">${actionBtn}${counter}</div>
           </div>
@@ -469,6 +487,7 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
       <div class="match-screen" style="position:fixed;top:0;left:0;right:0;bottom:auto;z-index:100;display:flex;flex-direction:column;overflow:hidden;background:#0a3d1e;width:100%">
         ${headerHTML}
         <div id="mobile-play-area" style="flex:1;min-height:0;display:flex;overflow:hidden">
+          ${subsHTML}
           <div id="match-field" style="flex:1;min-width:0;min-height:0;overflow:hidden">
             <div class="terrain-wrapper" style="width:100%;height:100%;overflow:hidden">
               ${renderTeam(myTeam, gameState[myRole+'Formation'], phase, selectedIds, 300, 300, extraSelectableIds)}
@@ -477,16 +496,15 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
         </div>
         <div id="mobile-action-bar" style="position:absolute;left:0;right:0;bottom:0;z-index:20;background:rgba(0,0,0,0.55);padding:6px 8px 8px;display:flex;flex-direction:column;gap:6px;box-shadow:0 -4px 16px rgba(0,0,0,0.5)">
           <div style="display:flex;gap:6px;overflow-x:auto;align-items:flex-end;min-height:96px;padding-bottom:2px">
-            ${availSubs.map(s=>`<div class="pvp-sub-btn" data-sub-id="${s.cardId}" style="cursor:pointer;flex-shrink:0">${renderMiniCardHTML(s,44,58)}</div>`).join('')}
-            ${activeGCs.map(gc=>gcMiniCard(gc,68,95)).join('')}
-            ${boostAvail?boostCardHTML(68,95):''}
+            ${activeGCs.map(gc=>gcMiniMob(gc,false)).join('')}
+            ${boostAvail?gcMiniMob(null,true):''}
           </div>
           <div>${actionBtn}${counter}</div>
         </div>
       </div>`
     }
 
-    // Fix hauteur mobile (identique match-ia.js)
+    // ── Fix hauteur mobile (visualViewport, identique match-ia) ──
     function updateMatchHeight() {
       const ms = container.querySelector('.match-screen')
       if (!ms) return
@@ -504,7 +522,7 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
       window.addEventListener('resize', updateMatchHeight)
     }
 
-    // Fix SVG terrain
+    // ── Fix SVG terrain ──
     ;(function fixSVG() {
       const svg = container.querySelector('.terrain-wrapper svg')
       if (!svg) return
@@ -514,13 +532,12 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
       svg.setAttribute('preserveAspectRatio', 'xMidYMid meet')
     })()
 
-    // Événements
+    // ── Événements ──
     container.querySelectorAll('.match-slot-hit').forEach(el => {
       el.addEventListener('click', () => {
         if (!isMyAttack && !isMyDefense) return
-        const cardId=el.dataset.cardId, role=el.dataset.role
-        const team = gameState[myRole+'Team']
-        const p = (team[role]||[]).find(pp=>pp.cardId===cardId)
+        const cardId = el.dataset.cardId, role = el.dataset.role
+        const p = (myTeam[role]||[]).find(pp=>pp.cardId===cardId)
         if (!p || p.used) return
         const isExtra = extraSelectableIds.includes(cardId)
         if (isMyAttack && !['MIL','ATT'].includes(role) && !isExtra) return
@@ -535,8 +552,7 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
     container.querySelectorAll('.pvp-sub-btn').forEach(el => {
       el.addEventListener('click', () => {
         if (!isMyAttack) { toast('Remplacement uniquement avant une attaque','warning'); return }
-        const subId = el.dataset.subId
-        pvpOpenSubPicker(subId)
+        pvpOpenSubPicker(el.dataset.subId)
       })
     })
 
@@ -553,18 +569,18 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
     container.querySelector('#pvp-view-opp')?.addEventListener('click', () => pvpShowOpponentTeam())
     container.querySelector('#pvp-toggle-history')?.addEventListener('click', () => pvpShowHistory())
 
-    // Timer local (stocké hors gameState pour survivre au JSON round-trip Supabase)
+    // ── Timer local (hors gameState) ──
     if (_localTimerInt) { clearInterval(_localTimerInt); _localTimerInt = null }
     if ((isMyAttack||isMyDefense) && !_pvpEnded) {
       let remaining=30, phase2=false
-      const timerEl=()=>document.getElementById('pvp-timer')
-      const paint=()=>{ if(timerEl()){timerEl().textContent=remaining+'s';timerEl().style.color=phase2?'#ff4444':'#fff'} }
+      const timerEl = () => document.getElementById('pvp-timer')
+      const paint = () => { if(timerEl()){timerEl().textContent=remaining+'s';timerEl().style.color=phase2?'#ff4444':'#fff'} }
       paint()
-      _localTimerInt = setInterval(()=>{
+      _localTimerInt = setInterval(() => {
         remaining--
         if (remaining<0) { if(!phase2){phase2=true;remaining=15;paint()}else{clearInterval(_localTimerInt);_localTimerInt=null;forfeitMatch()} }
         else paint()
-      },1000)
+      }, 1000)
     }
   }
 

@@ -889,6 +889,28 @@ function aiTurn(container, game, ctx) {
 function aiDefend(container, game, ctx) {
   const allAi = [...(game.aiTeam.GK||[]),...(game.aiTeam.DEF||[]),...(game.aiTeam.MIL||[])]
   const selected = aiSelectPlayers(allAi, 'defense', game.difficulty)
+
+  // Nouvelle règle : si l'IA n'a plus aucun joueur sur le terrain,
+  // le joueur marque automatiquement, même avec un défenseur.
+  const aiAvailable = ['GK','DEF','MIL','ATT'].flatMap(r => (game.aiTeam[r]||[]).filter(p=>!p.used))
+  if (!aiAvailable.length) {
+    game.homeScore++
+    const att = game.pendingAttack?.players || []
+    const duelEntry = {
+      type:'duel', isGoal:true, homeScored:true,
+      homePlayers: att.map(p => ({ name:p.name, note:getNoteForRole(p,p._line||p.job), portrait:getPortrait(p), job:p.job, country_code:p.country_code, rarity:p.rarity, clubName:p.clubName, clubLogo:p.clubLogo })),
+      homeTotal: game.pendingAttack?.total || 0, aiTotal: 0,
+      text: `⚽ BUT ! L'IA n'a plus de joueurs — but automatique !`,
+    }
+    game.log.push(duelEntry)
+    game.modifiers.ai = {}
+    game.pendingAttack = null
+    renderGame(container, game, ctx)
+    showGoalAnimation(duelEntry.homePlayers, game.homeScore, game.aiScore, true, () => {
+      nextTurn(container, game, ctx, 'ai-attack')
+    })
+    return
+  }
   const defVal = selected.length > 0 ? calcDefense(selected, game.modifiers.ai).total : 0
   selected.forEach(s => { s.used = true })
   const result = resolveDuel(game.pendingAttack.total, defVal, game.modifiers.ai)
@@ -1264,86 +1286,90 @@ function openGCPicker(pool, count, label, container, game, onConfirm) {
 
 // ── Moteur GC paramétrique ────────────────────────────────
 const GC_ENGINE = {
-  // Booste la stat d'un ou plusieurs joueurs
-  BOOST_STAT: ({ stat = 'all', value = 1, count = 1, roles = [] }, game) => {
+  // Booste la stat d'un ou plusieurs joueurs : le joueur CHOISIT
+  BOOST_STAT: ({ value = 1, count = 1, roles = [] }, game, container, ctx) => {
     const pool = Object.entries(game.homeTeam)
       .filter(([r]) => !roles.length || roles.includes(r))
-      .flatMap(([, ps]) => ps.filter(p => !p.used))
-      .slice(0, count)
-    pool.forEach(p => {
-      p.boost = (p.boost || 0) + value
-      game.log.push({ text: `⚡ +${value} sur ${p.name}`, type: 'info' })
+      .flatMap(([r, ps]) => ps.filter(p => !p.used).map(p => ({ ...p, _line: r })))
+    if (!pool.length) { game.log.push({ text: '⚡ Aucun joueur disponible', type:'info' }); renderGame(container, game, ctx); return true }
+    openGCPicker(pool, count, `Choisir ${count} joueur(s) à booster (+${value})`, container, game, (chosen) => {
+      chosen.forEach(p => {
+        const live = (game.homeTeam[p._line]||[]).find(x => x.cardId === p.cardId)
+        if (live) { live.boost = (live.boost||0) + value; game.log.push({ text: `⚡ +${value} sur ${live.name}`, type:'info' }) }
+      })
+      renderGame(container, game, ctx)
     })
-    return false // synchrone → rerendre
+    return true
   },
-  // Débuff un ou plusieurs joueurs adverses
-  DEBUFF_STAT: ({ value = 1, count = 1, roles = [], target = 'ai' }, game) => {
+  // Débuff : si target=ai → joueur choisit quel adverse cibler ; sinon propre équipe
+  DEBUFF_STAT: ({ value = 1, count = 1, roles = [], target = 'ai' }, game, container, ctx) => {
     const team = target === 'home' ? game.homeTeam : game.aiTeam
+    const teamLabel = target === 'ai' ? 'adverse' : 'allié'
     const pool = Object.entries(team)
       .filter(([r]) => !roles.length || roles.includes(r))
-      .flatMap(([, ps]) => ps.filter(p => !p.used))
-      .sort((a, b) => (b.note_a || 0) - (a.note_a || 0))
-      .slice(0, count)
-    pool.forEach(p => {
-      p.boost = (p.boost || 0) - value
-      game.log.push({ text: `🎯 -${value} sur ${p.name} (IA)`, type: 'info' })
+      .flatMap(([r, ps]) => ps.filter(p => !p.used).map(p => ({ ...p, _line: r })))
+    if (!pool.length) { game.log.push({ text: `🎯 Aucun joueur ${teamLabel} disponible`, type:'info' }); renderGame(container, game, ctx); return true }
+    openGCPicker(pool, count, `Choisir ${count} joueur(s) ${teamLabel}(s) à débuffer (-${value})`, container, game, (chosen) => {
+      chosen.forEach(p => {
+        const teamObj = target === 'home' ? game.homeTeam : game.aiTeam
+        const live = (teamObj[p._line]||[]).find(x => x.cardId === p.cardId)
+        if (live) { live.boost = (live.boost||0) - value; game.log.push({ text: `🎯 -${value} sur ${live.name}${target==='ai'?' (IA)':''}`, type:'info' }) }
+      })
+      renderGame(container, game, ctx)
     })
-    return false
+    return true
   },
-  // Grise (désactive) un ou plusieurs joueurs adverses
-  GRAY_PLAYER: ({ count = 1, roles = [], target = 'ai' }, game) => {
+  // Grise un joueur : le joueur choisit lequel (le sien ou l'adverse)
+  GRAY_PLAYER: ({ count = 1, roles = [], target = 'ai' }, game, container, ctx) => {
     const team = target === 'home' ? game.homeTeam : game.aiTeam
+    const teamLabel = target === 'ai' ? 'adverse' : 'allié'
     const pool = Object.entries(team)
       .filter(([r]) => !roles.length || roles.includes(r))
-      .flatMap(([, ps]) => ps.filter(p => !p.used))
-      .sort((a, b) => (b.note_a || 0) - (a.note_a || 0))
-      .slice(0, count)
-    pool.forEach(p => {
-      p.used = true
-      game.log.push({ text: `❌ ${p.name} (IA) exclu !`, type: 'info' })
+      .flatMap(([r, ps]) => ps.filter(p => !p.used).map(p => ({ ...p, _line: r })))
+    if (!pool.length) { game.log.push({ text: `❌ Aucun joueur ${teamLabel} à exclure`, type:'info' }); renderGame(container, game, ctx); return true }
+    openGCPicker(pool, count, `Choisir ${count} joueur(s) ${teamLabel}(s) à exclure`, container, game, (chosen) => {
+      chosen.forEach(p => {
+        const teamObj = target === 'home' ? game.homeTeam : game.aiTeam
+        const live = (teamObj[p._line]||[]).find(x => x.cardId === p.cardId)
+        if (live) { live.used = true; game.log.push({ text: `❌ ${live.name}${target==='ai'?' (IA)':''} exclu !`, type:'info' }) }
+      })
+      renderGame(container, game, ctx)
     })
-    return false
+    return true
   },
-  // Ressuscite un joueur de son équipe
-  REVIVE_PLAYER: ({ count = 1, roles = [] }, game) => {
+  // Ressuscite : le joueur choisit qui faire revenir
+  REVIVE_PLAYER: ({ count = 1, roles = [] }, game, container, ctx) => {
     const pool = Object.entries(game.homeTeam)
       .filter(([r]) => !roles.length || roles.includes(r))
-      .flatMap(([, ps]) => ps.filter(p => p.used))
-      .slice(0, count)
-    if (!pool.length) { game.log.push({ text: '💫 Aucun joueur à ressusciter', type: 'info' }); return false }
-    pool.forEach(p => {
-      p.used = false
-      game.log.push({ text: `💫 ${p.name} ressuscité !`, type: 'info' })
+      .flatMap(([r, ps]) => ps.filter(p => p.used).map(p => ({ ...p, _line: r })))
+    if (!pool.length) { game.log.push({ text: '💫 Aucun joueur à ressusciter', type:'info' }); renderGame(container, game, ctx); return true }
+    openGCPicker(pool, count, `Choisir ${count} joueur(s) à ressusciter`, container, game, (chosen) => {
+      chosen.forEach(p => {
+        const live = (game.homeTeam[p._line]||[]).find(x => x.cardId === p.cardId)
+        if (live) { live.used = false; game.log.push({ text: `💫 ${live.name} ressuscité !`, type:'info' }) }
+      })
+      renderGame(container, game, ctx)
     })
-    return false
+    return true
   },
   // Annule le dernier but encaissé
   REMOVE_GOAL: ({}, game) => {
-    if (game.aiScore > 0) {
-      game.aiScore--
-      game.log.push({ text: '🚫 Dernier but IA annulé !', type: 'info' })
-    } else {
-      game.log.push({ text: '🚫 Aucun but à annuler', type: 'info' })
-    }
+    if (game.aiScore > 0) { game.aiScore--; game.log.push({ text: '🚫 Dernier but IA annulé !', type:'info' }) }
+    else game.log.push({ text: '🚫 Aucun but à annuler', type:'info' })
     return false
   },
   // Ajoute un but si match nul
   ADD_GOAL_DRAW: ({}, game) => {
-    if (game.homeScore === game.aiScore) {
-      game.homeScore++
-      game.log.push({ text: '🎯 But bonus (match nul) !', type: 'info' })
-    } else {
-      game.log.push({ text: '🎯 But bonus : non applicable (pas de match nul)', type: 'info' })
-    }
+    if (game.homeScore === game.aiScore) { game.homeScore++; game.log.push({ text: '🎯 But bonus (match nul) !', type:'info' }) }
+    else game.log.push({ text: '🎯 But bonus : non applicable (pas de match nul)', type:'info' })
     return false
   },
   // Ajoute un remplacement supplémentaire
   ADD_SUB: ({ value = 1 }, game) => {
     game.maxSubs = (game.maxSubs || 3) + value
-    game.log.push({ text: `🔄 +${value} remplacement(s) débloqué(s)`, type: 'info' })
+    game.log.push({ text: `🔄 +${value} remplacement(s) débloqué(s)`, type:'info' })
     return false
   },
-  // Effets personnalisés → fallback sur le switch legacy
   CUSTOM: () => false,
 }
 

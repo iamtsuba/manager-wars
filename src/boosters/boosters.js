@@ -155,16 +155,22 @@ async function openBooster(booster, { state, toast, navigate, container }) {
   const ownedFormations = new Set((existingCards||[]).filter(c => c.card_type === 'formation').map(c => c.formation))
 
   let newCards = []
-  const type = booster.type || 'player'
-  if (type === 'player') {
-    newCards = await openPlayersBooster(state.profile, booster.cardCount, booster.cost)
-  } else if (type === 'game_changer') {
-    newCards = await openGCBooster(state.profile, booster.cardCount, booster.cost)
-  } else if (type === 'formation') {
-    newCards = await openFormationBooster(state.profile, booster.cost)
-  } else {
-    // Type mixte DB : tirage carte par carte selon les taux
+  if (booster.rates?.length) {
+    // Booster configuré dans l'admin → tirage piloté par les taux de drop
+    // (rareté, note_min/max, type) tels que définis. C'est la source de vérité.
     newCards = await openMixedBooster(state.profile, booster)
+  } else {
+    // Boosters legacy / fallback sans taux configurés
+    const type = booster.type || 'player'
+    if (type === 'player') {
+      newCards = await openPlayersBooster(state.profile, booster.cardCount, booster.cost)
+    } else if (type === 'game_changer') {
+      newCards = await openGCBooster(state.profile, booster.cardCount, booster.cost)
+    } else if (type === 'formation') {
+      newCards = await openFormationBooster(state.profile, booster.cost)
+    } else {
+      newCards = await openMixedBooster(state.profile, booster)
+    }
   }
 
   // Marquer les doublons (déjà possédés avant ce tirage)

@@ -932,18 +932,17 @@ function nextTurn(container, game, ctx, next) {
   if (next === 'home-attack') {
     const homeAtt = [...(game.homeTeam.MIL||[]),...(game.homeTeam.ATT||[])].filter(p=>!p.used)
     if (!homeAtt.length) {
+      // Plus d'attaquants — s'il reste des défenseurs, l'IA attaque et le joueur
+      // peut encore défendre. Sans ça, le match se terminait prématurément.
       const homeDef = [...(game.homeTeam.GK||[]),...(game.homeTeam.DEF||[]),...(game.homeTeam.MIL||[])].filter(p=>!p.used)
       if (!homeDef.length) {
-        // Plus aucun joueur capable de défendre → l'IA continue d'attaquer
-        // jusqu'à ce que isMatchOver se déclenche normalement
-        game.phase = 'ai-attack'
-        renderGame(container, game, ctx)
-        setTimeout(() => aiTurn(container, game, ctx), 800)
-        return
+        // Vraiment plus aucun joueur → fin de match normale
+        checkEnd(container, game, ctx); return
       }
-      game.phase = 'ai-attack'
-      renderGame(container, game, ctx)
-      setTimeout(() => aiTurn(container, game, ctx), 800)
+      // Il reste des défenseurs : l'IA attaque, le joueur doit défendre
+      const aiAtt2 = [...(game.aiTeam.MIL||[]),...(game.aiTeam.ATT||[])].filter(p=>!p.used)
+      if (!aiAtt2.length) { checkEnd(container, game, ctx); return }
+      setTimeout(() => aiTurn(container, game, ctx), 100)
       return
     }
     game.phase = 'attack'
@@ -1351,8 +1350,11 @@ const GC_ENGINE = {
 function useGameChanger(gcId, gcType, container, game, ctx) {
   game.usedGc.push(gcId)
 
-  // Chercher la définition DB en cache
-  const def = (game.gcDefs||[]).find(d => d.name === gcType)
+  // Chercher la définition DB en cache : matcher sur name (exact) puis
+  // sur name insensible à la casse, pour éviter les problèmes de casse/espaces
+  const gcDefs = game.gcDefs || []
+  const def = gcDefs.find(d => d.name === gcType)
+    || gcDefs.find(d => d.name?.toLowerCase().trim() === gcType?.toLowerCase().trim())
 
   let needsRerender = false
 

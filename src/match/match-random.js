@@ -453,8 +453,8 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
 
     // ── Terrain ──
     const phase = isMyAttack?'attack':isMyDefense?'defense':'idle'
-    const terrainHTML = `<div style="overflow:hidden;min-width:0;flex:1;min-height:0;height:100%;display:flex;align-items:stretch;justify-content:center" id="match-field">
-      <div class="terrain-wrapper" style="overflow:hidden;width:100%;height:100%;display:flex;align-items:center;justify-content:center">
+    const terrainHTML = `<div style="overflow:hidden;min-width:0;flex:1;min-height:0;display:flex;flex-direction:column" id="match-field">
+      <div class="terrain-wrapper" style="overflow:hidden;width:100%;flex:1;min-height:0;display:flex;align-items:center;justify-content:center">
         ${renderTeam(myTeam, gameState[myRole+'Formation'], phase, selectedIds, 300, 300, extraSelectableIds)}
       </div>
     </div>`

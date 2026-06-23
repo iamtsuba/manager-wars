@@ -991,7 +991,7 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
     }
 
     log.push({ type:'duel', text:`⚔️ ${gameState[myRole+'Name']} attaque (${calc.total})`, players:selected, total:calc.total, side:myRole })
-    await pushState({ [myRole+'Team']: myTeam,
+    await pushState({ [myRole+'Team']: myTeam, [oppRole+'Team']: gameState[oppRole+'Team'],
       pendingAttack: { ...calc, players:selected, side:myRole },
       ['selected_'+myRole]: [], modifiers: { ...gameState.modifiers, [myRole]:{} },
       phase: oppRole+'-defense', log })
@@ -1034,7 +1034,8 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
     const nextPhase = (!nextAny || isFinished) ? 'finished' : nextAttacker+'-attack'
 
     const doNext = async () => {
-      await pushState({ [myRole+'Team']: myTeam, [attackerRole+'Score']: newAttackerScore,
+      await pushState({ [myRole+'Team']: myTeam, [oppRole+'Team']: gameState[oppRole+'Team'],
+        [attackerRole+'Score']: newAttackerScore,
         ['selected_'+myRole]: [], modifiers: { ...gameState.modifiers, [myRole]:{} },
         pendingAttack: null, phase: nextPhase, attacker: nextAttacker, round, log })
       if (nextPhase==='finished' || isFinished) await supabase.from('matches').update({ status:'finished' }).eq('id', matchId)

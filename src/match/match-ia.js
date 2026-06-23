@@ -578,7 +578,6 @@ function renderGame(container, game, ctx) {
         // Elle NE PEUT PAS être coupée, quoi qu'il arrive au-dessus.
         return `
         <div id="mobile-play-area" style="flex:1;min-height:0;display:flex;overflow:hidden">
-          ${subsHTML}
           <div id="match-field" style="flex:1;min-width:0;min-height:0;overflow:hidden">
             <div class="terrain-wrapper" style="width:100%;height:100%;overflow:hidden">
               ${renderTeam(game.homeTeam,game.formation,game.phase,selectedIds,300,300,extraSelectableIds)}
@@ -590,6 +589,20 @@ function renderGame(container, game, ctx) {
           <div style="display:flex;gap:6px;overflow-x:auto;align-items:flex-end;min-height:96px;padding-bottom:2px">
             ${activeGCs.map(gc=>gcMiniMob(gc,false)).join('')}
             ${boostAvail?gcMiniMob(null,true):''}
+            <div id="sub-btn-main" style="cursor:${canSub?'pointer':'default'};flex-shrink:0;box-sizing:border-box;width:68px;height:95px;border-radius:10px;border:2px solid ${canSub?'rgba(255,255,255,0.5)':'rgba(255,255,255,0.15)'};background:${canSub?'rgba(60,60,60,0.9)':'rgba(40,40,40,0.5)'};display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;opacity:${canSub?1:0.4}">
+              <div style="display:flex;gap:6px;align-items:center">
+                <div style="text-align:center">
+                  <div style="font-size:7px;color:#00ff88;font-weight:700;letter-spacing:1px">IN</div>
+                  <div style="font-size:18px;font-weight:900;color:#00ff88">${availSubs.length}</div>
+                </div>
+                <div style="font-size:14px;color:rgba(255,255,255,0.4)">⇄</div>
+                <div style="text-align:center">
+                  <div style="font-size:7px;color:#ff6b6b;font-weight:700;letter-spacing:1px">OUT</div>
+                  <div style="font-size:18px;font-weight:900;color:#ff6b6b">${game.subsUsed}</div>
+                </div>
+              </div>
+              <div style="font-size:6px;color:rgba(255,255,255,0.4);letter-spacing:1px;text-transform:uppercase">${game.subsUsed}/${game.maxSubs} rempl.</div>
+            </div>
           </div>
           <div>${actionBtn}${counter}</div>
         </div>`

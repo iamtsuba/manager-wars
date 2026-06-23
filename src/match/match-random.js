@@ -547,7 +547,6 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
       <div class="match-screen" style="position:fixed;top:0;left:0;right:0;bottom:auto;z-index:100;display:flex;flex-direction:column;overflow:hidden;background:#0a3d1e;width:100%">
         ${headerHTML}
         <div id="mobile-play-area" style="flex:1;min-height:0;display:flex;overflow:hidden">
-          ${subsHTML}
           <div id="match-field" style="flex:1;min-width:0;min-height:0;overflow:hidden">
             <div class="terrain-wrapper" style="width:100%;height:100%;overflow:hidden">
               ${renderTeam(myTeam, gameState[myRole+'Formation'], phase, selectedIds, 300, 300, extraSelectableIds)}
@@ -558,6 +557,20 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
           <div style="display:flex;gap:6px;overflow-x:auto;align-items:flex-end;min-height:96px;padding-bottom:2px">
             ${activeGCs.map(gc=>gcMiniMob(gc,false)).join('')}
             ${boostAvail?gcMiniMob(null,true):''}
+            <div id="pvp-sub-open" style="cursor:${(isMyAttack&&availSubs.length>0)?'pointer':'default'};flex-shrink:0;box-sizing:border-box;width:68px;height:95px;border-radius:10px;border:2px solid ${(isMyAttack&&availSubs.length>0)?'rgba(255,255,255,0.5)':'rgba(255,255,255,0.15)'};background:${(isMyAttack&&availSubs.length>0)?'rgba(60,60,60,0.9)':'rgba(40,40,40,0.5)'};display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;opacity:${(isMyAttack&&availSubs.length>0)?1:0.4}">
+              <div style="display:flex;gap:6px;align-items:center">
+                <div style="text-align:center">
+                  <div style="font-size:7px;color:#00ff88;font-weight:700;letter-spacing:1px">IN</div>
+                  <div style="font-size:18px;font-weight:900;color:#00ff88">${availSubs.length}</div>
+                </div>
+                <div style="font-size:14px;color:rgba(255,255,255,0.4)">⇄</div>
+                <div style="text-align:center">
+                  <div style="font-size:7px;color:#ff6b6b;font-weight:700;letter-spacing:1px">OUT</div>
+                  <div style="font-size:18px;font-weight:900;color:#ff6b6b">${(gameState['usedSubIds_'+myRole]||[]).length}</div>
+                </div>
+              </div>
+              <div style="font-size:6px;color:rgba(255,255,255,0.4);letter-spacing:1px;text-transform:uppercase">${(gameState['usedSubIds_'+myRole]||[]).length}/${gameState.maxSubs||3} rempl.</div>
+            </div>
           </div>
           <div>${actionBtn}${counter}</div>
         </div>
@@ -614,6 +627,12 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
         if (!isMyAttack) { toast('Remplacement uniquement avant une attaque','warning'); return }
         pvpOpenSubPicker(el.dataset.subId)
       })
+    })
+    // Bouton carte grise mobile → liste des subs entrants
+    container.querySelector('#pvp-sub-open')?.addEventListener('click', () => {
+      if (!isMyAttack) { toast('Remplacement uniquement avant une attaque','warning'); return }
+      if (!availSubs.length) { toast('Aucun remplaçant disponible','warning'); return }
+      pvpOpenSubSelector()
     })
 
     container.querySelectorAll('.pvp-gc-mini').forEach(el => {
@@ -881,6 +900,39 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
         overlay.remove()
         await pushState({[myRole+'Team']:team,boostUsed:true})
       })
+    })
+  }
+
+  // Sélectionner d'abord le remplaçant entrant (mobile carte grise)
+  function pvpOpenSubSelector() {
+    const mySubs = gameState[myRole+'Subs']||[]
+    const usedSubIds = gameState['usedSubIds_'+myRole]||[]
+    const avail = mySubs.filter(s=>!usedSubIds.includes(s.cardId))
+    if (!avail.length) return
+    if (avail.length===1) { pvpOpenSubPicker(avail[0].cardId); return }
+    const JC = {GK:'#111',DEF:'#bb2020',MIL:'#D4A017',ATT:'#1A6B3C'}
+    const overlay = document.createElement('div')
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.9);z-index:900;display:flex;flex-direction:column;overflow:hidden'
+    overlay.innerHTML = `
+      <div style="padding:12px 16px;background:rgba(255,255,255,0.08);display:flex;align-items:center;gap:10px;flex-shrink:0">
+        <div style="flex:1;font-size:14px;font-weight:700;color:#fff">Choisir le remplaçant entrant</div>
+        <button id="ss-close" style="background:none;border:none;color:rgba(255,255,255,0.5);font-size:22px;cursor:pointer">✕</button>
+      </div>
+      <div style="flex:1;overflow-y:auto;padding:12px;display:flex;flex-wrap:wrap;gap:8px;align-content:flex-start">
+        ${avail.map(s=>{
+          const bg=JC[s.job]||'#555'
+          const note = Math.max(s.note_g||0,s.note_d||0,s.note_m||0,s.note_a||0)
+          return `<div class="ss-item" data-sub-id="${s.cardId}" style="width:80px;border-radius:8px;border:2px solid rgba(255,255,255,0.25);background:${bg};overflow:hidden;cursor:pointer">
+            <div style="background:rgba(255,255,255,0.9);text-align:center;padding:2px;font-size:7px;font-weight:900;color:#111;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">${s.name||'?'}</div>
+            <div style="height:50px;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:900;color:#fff">${note}</div>
+            <div style="background:rgba(255,255,255,0.9);text-align:center;padding:2px;font-size:8px;font-weight:700;color:#333">${s.job||''}</div>
+          </div>`
+        }).join('')}
+      </div>`
+    document.body.appendChild(overlay)
+    overlay.querySelector('#ss-close')?.addEventListener('click',()=>overlay.remove())
+    overlay.querySelectorAll('.ss-item').forEach(el=>{
+      el.addEventListener('click',()=>{ overlay.remove(); pvpOpenSubPicker(el.dataset.subId) })
     })
   }
 

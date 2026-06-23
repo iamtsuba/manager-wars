@@ -429,7 +429,7 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
       </div>`
     }
 
-    const gcMiniPC  = (gc, isBoost) => isBoost ? boostCardDesign(110,150) : gcCardDesign(gc,110,150)
+    const gcMiniPC  = (gc, isBoost) => isBoost ? boostCardDesign(130,175) : gcCardDesign(gc,130,175)
     const gcMiniMob = (gc, isBoost) => isBoost ? boostCardDesign(68,95)  : gcCardDesign(gc,68,95)
 
     // ── Bouton action (identique match-ia) ──
@@ -445,16 +445,16 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
     const counter = (isMyAttack||isMyDefense) ? `<div style="font-size:9px;color:rgba(255,255,255,0.4);text-align:center;margin-top:2px">${mySelected.length}/3 sélectionné(s)</div>` : ''
 
     // ── Colonne remplaçants (GAUCHE, identique match-ia) ──
-    const subsHTML = `<div style="display:flex;flex-direction:column;gap:4px;padding:4px 2px;width:${_pc?72:50}px;align-items:center;overflow-y:auto;flex-shrink:0;background:rgba(0,0,0,0.15)">
+    const subsHTML = `<div style="display:flex;flex-direction:column;gap:4px;padding:4px 2px;width:${_pc?90:50}px;align-items:center;overflow-y:auto;flex-shrink:0;background:rgba(0,0,0,0.15)">
       ${availSubs.length===0
         ? `<div style="font-size:7px;color:rgba(255,255,255,0.25);text-align:center;margin-top:6px;line-height:1.4">Pas de<br>rempl.</div>`
-        : availSubs.map(s=>`<div class="pvp-sub-btn" data-sub-id="${s.cardId}" style="cursor:pointer;flex-shrink:0">${renderMiniCardHTML(s,_pc?60:44,_pc?78:58)}</div>`).join('')}
+        : availSubs.map(s=>`<div class="pvp-sub-btn" data-sub-id="${s.cardId}" style="cursor:pointer;flex-shrink:0">${renderMiniCardHTML(s,_pc?76:44,_pc?100:58)}</div>`).join('')}
     </div>`
 
     // ── Terrain ──
     const phase = isMyAttack?'attack':isMyDefense?'defense':'idle'
-    const terrainHTML = `<div style="overflow:hidden;min-width:0;flex:1;min-height:0;display:flex;align-items:center;justify-content:center" id="match-field">
-      <div class="terrain-wrapper" style="overflow:hidden;flex-shrink:0;display:flex;align-items:center;justify-content:center">
+    const terrainHTML = `<div style="overflow:hidden;min-width:0;flex:1;min-height:0;height:100%;display:flex;align-items:stretch;justify-content:center" id="match-field">
+      <div class="terrain-wrapper" style="overflow:hidden;width:100%;height:100%;display:flex;align-items:center;justify-content:center">
         ${renderTeam(myTeam, gameState[myRole+'Formation'], phase, selectedIds, 300, 300, extraSelectableIds)}
       </div>
     </div>`
@@ -516,7 +516,7 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
         </div>
         <button id="pvp-view-opp" style="width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.3);color:#fff;font-size:16px;cursor:pointer;flex-shrink:0">👁</button>
       </div>
-      <div style="background:rgba(0,0,0,0.3);flex-shrink:0;overflow:hidden;max-height:100px">${logHTML}</div>
+      <div style="background:rgba(0,0,0,0.3);flex-shrink:0;overflow:hidden;max-height:140px">${logHTML}</div>
       <button id="pvp-toggle-history" style="width:100%;padding:3px 10px;background:rgba(0,0,0,0.15);border:none;border-bottom:1px solid rgba(255,255,255,0.05);color:rgba(255,255,255,0.3);font-size:9px;cursor:pointer;letter-spacing:1px;flex-shrink:0;text-transform:uppercase">
         ▼ Historique (${(gameState.log||[]).length})
       </button>`
@@ -536,7 +536,7 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
               ${actionBtn}${counter}
             </div>
           </div>
-          <div style="width:150px;flex-shrink:0;display:flex;flex-direction:column;padding:10px 8px;background:rgba(0,0,0,0.2);overflow-y:auto;gap:10px;align-items:center">
+          <div style="width:160px;flex-shrink:0;display:flex;flex-direction:column;padding:10px 8px;background:rgba(0,0,0,0.2);overflow-y:auto;gap:10px;align-items:center">
             ${activeGCs.map(gc=>gcMiniPC(gc,false)).join('')}
             ${boostAvail?gcMiniPC(null,true):''}
           </div>

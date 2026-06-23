@@ -453,7 +453,7 @@ function renderGame(container, game, ctx) {
     </div>
 
     <!-- ZONE ACTIONS -->
-    <div id="last-action-zone" style="background:rgba(0,0,0,0.3);flex-shrink:0;overflow:hidden;max-height:100px">
+    <div id="last-action-zone" style="background:rgba(0,0,0,0.3);flex-shrink:0;overflow:hidden;max-height:140px">
       ${(()=>{
         // Attaque IA en cours → panel visuel rouge
         if (game.phase === 'defense' && game.pendingAttack) {
@@ -520,7 +520,7 @@ function renderGame(container, game, ctx) {
             <div style="font-size:${Math.round(h*0.09)}px;color:#000;font-weight:900">+${game.boostCard?.value}</div>
           </div>`
 
-      const gcMiniPC = (gc, isBoost) => isBoost ? boostCardDesign(110, 150) : gcCardDesign(gc, 110, 150)
+      const gcMiniPC = (gc, isBoost) => isBoost ? boostCardDesign(130, 175) : gcCardDesign(gc, 130, 175)
       const gcMiniMob = (gc, isBoost) => isBoost ? boostCardDesign(68, 95) : gcCardDesign(gc, 68, 95)
 
       // ─── Bouton action ────────────────────────────────────
@@ -541,15 +541,15 @@ function renderGame(container, game, ctx) {
       const counter = (isAttack||isDefense) ? `<div style="font-size:9px;color:rgba(255,255,255,0.4);text-align:center;margin-top:2px">${game.selected.length}/3 sélectionné(s)</div>` : ''
 
       // ─── Subs column (commun) ─────────────────────────────
-      const subsHTML = `<div style="display:flex;flex-direction:column;gap:4px;padding:4px 2px;width:${_pc?72:50}px;align-items:center;overflow-y:auto;flex-shrink:0;background:rgba(0,0,0,0.15)">
+      const subsHTML = `<div style="display:flex;flex-direction:column;gap:4px;padding:4px 2px;width:${_pc?90:50}px;align-items:center;overflow-y:auto;flex-shrink:0;background:rgba(0,0,0,0.15)">
         ${availSubs.length===0
           ? `<div style="font-size:7px;color:rgba(255,255,255,0.25);text-align:center;margin-top:6px;line-height:1.4">Pas de<br>rempl.</div>`
-          : availSubs.map(s=>`<div class="sub-btn-col" data-sub-id="${s.cardId}" style="cursor:pointer;flex-shrink:0">${renderMiniCardHTML(s,60,78)}</div>`).join('')}
+          : availSubs.map(s=>`<div class="sub-btn-col" data-sub-id="${s.cardId}" style="cursor:pointer;flex-shrink:0">${renderMiniCardHTML(s,76,100)}</div>`).join('')}
       </div>`
 
       // ─── Terrain ──────────────────────────────────────────
-      const terrainHTML = `<div style="overflow:hidden;min-width:0;flex:1;min-height:0;display:flex;align-items:center;justify-content:center" id="match-field">
-        <div class="terrain-wrapper" style="overflow:hidden;flex-shrink:0;display:flex;align-items:center;justify-content:center">
+      const terrainHTML = `<div style="overflow:hidden;min-width:0;flex:1;min-height:0;height:100%;display:flex;align-items:stretch;justify-content:center" id="match-field">
+        <div class="terrain-wrapper" style="overflow:hidden;width:100%;height:100%;display:flex;align-items:center;justify-content:center">
           ${renderTeam(game.homeTeam,game.formation,game.phase,selectedIds,300,300,extraSelectableIds)}
         </div>
       </div>`
@@ -566,7 +566,7 @@ function renderGame(container, game, ctx) {
             </div>
           </div>
           <!-- Colonne droite : GC uniquement -->
-          <div style="width:150px;flex-shrink:0;display:flex;flex-direction:column;padding:10px 8px;background:rgba(0,0,0,0.2);overflow-y:auto;gap:10px;align-items:center">
+          <div style="width:160px;flex-shrink:0;display:flex;flex-direction:column;padding:10px 8px;background:rgba(0,0,0,0.2);overflow-y:auto;gap:10px;align-items:center">
             ${activeGCs.map(gc=>gcMiniPC(gc,false)).join('')}
             ${boostAvail?gcMiniPC(null,true):''}
           </div>

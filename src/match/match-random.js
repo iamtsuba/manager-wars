@@ -445,7 +445,7 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
     const counter = (isMyAttack||isMyDefense) ? `<div style="font-size:9px;color:rgba(255,255,255,0.4);text-align:center;margin-top:2px">${mySelected.length}/3 sélectionné(s)</div>` : ''
 
     // ── Colonne remplaçants (GAUCHE, identique match-ia) ──
-    const subsHTML = `<div style="display:flex;flex-direction:column;gap:4px;padding:4px 2px;width:${_pc?56:50}px;align-items:center;overflow-y:auto;flex-shrink:0;background:rgba(0,0,0,0.15)">
+    const subsHTML = `<div style="display:flex;flex-direction:column;gap:4px;padding:4px 2px;width:${_pc?72:50}px;align-items:center;overflow-y:auto;flex-shrink:0;background:rgba(0,0,0,0.15)">
       ${availSubs.length===0
         ? `<div style="font-size:7px;color:rgba(255,255,255,0.25);text-align:center;margin-top:6px;line-height:1.4">Pas de<br>rempl.</div>`
         : availSubs.map(s=>`<div class="pvp-sub-btn" data-sub-id="${s.cardId}" style="cursor:pointer;flex-shrink:0">${renderMiniCardHTML(s,_pc?60:44,_pc?78:58)}</div>`).join('')}
@@ -528,10 +528,10 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
       container.innerHTML = `
       <div class="match-screen" style="position:fixed;top:0;left:0;right:0;bottom:auto;z-index:100;display:flex;flex-direction:column;overflow:hidden;background:#0a3d1e;width:100%">
         ${headerHTML}
-        <div style="display:flex;flex:0.8;min-height:0;overflow:hidden">
+        <div style="display:flex;flex:1;min-height:0;overflow:hidden">
           ${subsHTML}
           ${terrainHTML}
-          <div style="width:140px;flex-shrink:0;display:flex;flex-direction:column;padding:10px 8px;background:rgba(0,0,0,0.2)">
+          <div style="width:150px;flex-shrink:0;display:flex;flex-direction:column;padding:10px 8px;background:rgba(0,0,0,0.2)">
             <div style="flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;align-items:center;gap:10px">
               ${activeGCs.map(gc=>gcMiniPC(gc,false)).join('')}
               ${boostAvail?gcMiniPC(null,true):''}

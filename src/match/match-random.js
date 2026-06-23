@@ -530,13 +530,15 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
         ${headerHTML}
         <div style="display:flex;flex:1;min-height:0;overflow:hidden">
           ${subsHTML}
-          ${terrainHTML}
-          <div style="width:150px;flex-shrink:0;display:flex;flex-direction:column;padding:10px 8px;background:rgba(0,0,0,0.2)">
-            <div style="flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;align-items:center;gap:10px">
-              ${activeGCs.map(gc=>gcMiniPC(gc,false)).join('')}
-              ${boostAvail?gcMiniPC(null,true):''}
+          <div style="flex:1;min-width:0;min-height:0;display:flex;flex-direction:column;overflow:hidden">
+            ${terrainHTML}
+            <div style="flex-shrink:0;padding:10px 16px 12px;background:rgba(0,0,0,0.25);display:flex;flex-direction:column;align-items:center;gap:4px">
+              ${actionBtn}${counter}
             </div>
-            <div style="width:100%;flex-shrink:0;padding-top:8px">${actionBtn}${counter}</div>
+          </div>
+          <div style="width:150px;flex-shrink:0;display:flex;flex-direction:column;padding:10px 8px;background:rgba(0,0,0,0.2);overflow-y:auto;gap:10px;align-items:center">
+            ${activeGCs.map(gc=>gcMiniPC(gc,false)).join('')}
+            ${boostAvail?gcMiniPC(null,true):''}
           </div>
         </div>
       </div>`

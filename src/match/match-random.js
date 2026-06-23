@@ -153,8 +153,10 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
   function showPvpEndScreen(row) {
     try { supabase.removeChannel(channel) } catch {}
     const iWon = row.winner_id === state.profile.id
-    overlay2.remove?.()
+    // Supprimer un éventuel overlay précédent
+    document.getElementById('pvp-end-overlay')?.remove()
     const overlay2 = document.createElement('div')
+    overlay2.id = 'pvp-end-overlay'
     overlay2.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.92);z-index:1500;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;color:#fff;padding:24px;text-align:center'
     overlay2.innerHTML = `
       <div style="font-size:64px">${iWon?'🏆':'😞'}</div>
@@ -176,7 +178,19 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
           if (row.game_state) gameState = row.game_state
           showPvpEndScreen(row); return
         }
-        if (row.game_state) { gameState = row.game_state; renderPvpScreen() }
+        if (row.game_state) {
+          const prev = gameState
+          gameState = row.game_state
+          // Préserver les .used locaux (évite re-sélectionnabilité après round-trip Supabase)
+          for (const role of ['p1','p2']) {
+            for (const line of ['GK','DEF','MIL','ATT']) {
+              const prevLine = (prev[role+'Team']||{})[line] || []
+              const newLine  = (gameState[role+'Team']||{})[line] || []
+              newLine.forEach(p => { const lp = prevLine.find(x=>x.cardId===p.cardId); if(lp?.used) p.used = true })
+            }
+          }
+          renderPvpScreen()
+        }
       } catch(e) { console.error('[PvP] crash:', e) }
     }).subscribe()
 
@@ -206,7 +220,8 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
       }).eq('id', matchId)
     } catch {}
     try { supabase.removeChannel(channel) } catch {}
-    _showBottomNav(container); navigate('home')
+    // Court délai pour que le Realtime atteigne l'adversaire avant navigation
+    setTimeout(() => { _showBottomNav(container); navigate('home') }, 800)
   }
 
   // ── GC_ENGINE PvP (identique à match-ia.js mais sur gameState.p1/p2Team) ──

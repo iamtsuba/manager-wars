@@ -537,6 +537,8 @@ export function buildTeamSVG(team, formation, phase, selectedIds, W=310, H=310, 
       svg += `<rect x=\"${rx0}\" y=\"${ry0}\" width=\"${CW}\" height=\"${CH}\" rx=\"5\" fill=\"#161616\"/>`
       svg += `<image href=\"${backUrl}\" xlink:href=\"${backUrl}\" x=\"${rx0}\" y=\"${ry0}\" width=\"${CW}\" height=\"${CH}\" preserveAspectRatio=\"xMidYMid slice\"/>`
       svg += `<rect x=\"${rx0}\" y=\"${ry0}\" width=\"${CW}\" height=\"${CH}\" rx=\"5\" fill=\"none\" stroke=\"${rarity}\" stroke-width=\"2\" opacity=\"0.7\"/>`
+      // Zone cliquable → ouvre le remplacement avec ce joueur présélectionné comme sortant
+      svg += `<rect x=\"${rx0}\" y=\"${ry0}\" width=\"${CW}\" height=\"${CH}\" rx=\"5\" fill=\"rgba(0,0,0,0.01)\" class=\"match-used-hit\" data-card-id=\"${p.cardId}\" data-role=\"${role}\" style=\"cursor:pointer\"/>`
       continue
     }
 

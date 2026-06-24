@@ -768,6 +768,10 @@ function renderGame(container, game, ctx) {
   container.querySelectorAll('.match-slot-hit').forEach(el => {
     el.addEventListener('click', () => toggleSelect(el, game, container, ctx))
   })
+  // Clic sur une carte dos (joueur utilisé) → ouvre le remplacement présélectionné
+  container.querySelectorAll('.match-used-hit').forEach(el => {
+    el.addEventListener('click', () => openSubstitution(container, game, ctx, null, el.dataset.cardId))
+  })
   container.querySelectorAll('.gc-mini').forEach(el => {
     el.addEventListener('click', () => openGCDetail(el.dataset.gcId, el.dataset.gcType, container, game, ctx))
   })
@@ -1096,17 +1100,21 @@ function renderSubCard(p) {
   </div>`
 }
 
-function openSubstitution(container, game, ctx, preferredSubId = null) {
+function openSubstitution(container, game, ctx, preferredSubId = null, preferredOutId = null) {
   if (game.phase !== 'attack') { showGameToast('⏰ Remplacement uniquement avant une attaque','rgba(180,100,0,0.9)'); return }
   if (!game.usedSubIds) game.usedSubIds = []
   if (game.subsUsed >= game.maxSubs) { showGameToast(`Maximum ${game.maxSubs} remplacements atteint`,'rgba(180,30,30,0.9)'); return }
-  const grayedPlayers = Object.values(game.homeTeam).flat().filter(p => p.used)
+  const grayedPlayers = Object.entries(game.homeTeam).flatMap(([r,ps]) => (ps||[]).filter(p => p.used).map(p => ({...p, _line:p._line||r})))
   const availSubs     = game.homeSubs.filter(s => !game.usedSubIds.includes(s.cardId))
   if (!grayedPlayers.length) { showGameToast('Aucun joueur utilisé à remplacer'); return }
   if (!availSubs.length)     { showGameToast('Aucun remplaçant disponible'); return }
 
-  let outIdx = 0
-  let inIdx  = Math.max(0, availSubs.findIndex(s => s.cardId === preferredSubId))
+  // Présélection : joueur sortant cliqué + 1er remplaçant au même poste
+  let outIdx = Math.max(0, grayedPlayers.findIndex(p => p.cardId === preferredOutId))
+  const _outRole = grayedPlayers[outIdx]?._line || grayedPlayers[outIdx]?.job
+  let inIdx  = preferredSubId
+    ? Math.max(0, availSubs.findIndex(s => s.cardId === preferredSubId))
+    : Math.max(0, availSubs.findIndex(s => s.job === _outRole))
   let subConfirmDone = false
 
   const overlay = document.createElement('div')

@@ -153,15 +153,19 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
 
   function showPvpEndScreen(row) {
     try { supabase.removeChannel(channel) } catch {}
+    const isDraw = !row.forfeit && !row.winner_id && (gameState[myRole+'Score']||0) === (gameState[oppRole+'Score']||0)
     const iWon = row.winner_id === state.profile.id
     // Supprimer un éventuel overlay précédent
     document.getElementById('pvp-end-overlay')?.remove()
     const overlay2 = document.createElement('div')
     overlay2.id = 'pvp-end-overlay'
     overlay2.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.92);z-index:1500;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;color:#fff;padding:24px;text-align:center'
+    const _emoji = isDraw ? '🤝' : iWon ? '🏆' : '😞'
+    const _titleTxt = isDraw ? 'MATCH NUL' : iWon ? 'VICTOIRE !' : 'DÉFAITE'
+    const _titleCol = isDraw ? '#fff' : iWon ? '#FFD700' : '#ff6b6b'
     overlay2.innerHTML = `
-      <div style="font-size:64px">${iWon?'🏆':'😞'}</div>
-      <div style="font-size:26px;font-weight:900;color:${iWon?'#FFD700':'#ff6b6b'}">${iWon?'VICTOIRE !':'DÉFAITE'}</div>
+      <div style="font-size:64px">${_emoji}</div>
+      <div style="font-size:26px;font-weight:900;color:${_titleCol}">${_titleTxt}</div>
       <div style="font-size:18px">${gameState[myRole+'Name']} ${gameState[myRole+'Score']} – ${gameState[oppRole+'Score']} ${gameState[oppRole+'Name']}</div>
       ${row.forfeit?`<div style="font-size:13px;color:rgba(255,255,255,0.5)">${iWon?"L'adversaire a quitté":'Perdu par forfait'}</div>`:''}
       <button id="pvp-end-home" style="margin-top:10px;padding:14px 32px;border-radius:12px;border:none;background:#1A6B3C;color:#fff;font-size:16px;font-weight:900;cursor:pointer">Retour à l'accueil</button>`
@@ -495,7 +499,7 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
 
     // ── renderLogEntry identique à match-ia ──
     function renderLogEntry(entry) {
-      if (entry.type === 'duel') {
+      if (entry.type === 'duel' && (entry.homeTotal != null || entry.aiTotal != null)) {
         const hw = (entry.homeTotal||0) >= (entry.aiTotal||0)
         return `<div style="background:rgba(255,255,255,0.05);border-radius:8px;padding:5px 6px;border:1px solid rgba(255,255,255,0.08)">
           <div style="text-align:center;font-size:9px;font-weight:700;letter-spacing:1px;color:rgba(255,255,255,0.5);margin-bottom:4px">${(entry.title||'DUEL').toUpperCase()}</div>
@@ -654,6 +658,11 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
         if (idx>-1) arr.splice(idx,1); else if (arr.length<3) arr.push({...p,_role:role})
         renderPvpScreen()
       })
+    })
+
+    // Clic sur une carte dos (joueur utilisé) → ouvre le remplacement présélectionné
+    container.querySelectorAll('.match-used-hit').forEach(el => {
+      el.addEventListener('click', () => pvpOpenSubSelector(el.dataset.cardId))
     })
 
     container.querySelectorAll('.pvp-sub-btn').forEach(el => {
@@ -932,7 +941,7 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
 
   // Sélectionner d'abord le remplaçant entrant (mobile carte grise)
   // Panel de remplacement carousel IN/OUT (identique à match-ia)
-  function pvpOpenSubSelector() {
+  function pvpOpenSubSelector(preferredOutId = null) {
     const _isMyAttack = gameState.phase === myRole+'-attack'
     if (!_isMyAttack) { toast('Remplacement uniquement avant votre attaque','warning'); return }
     const myTeam = gameState[myRole+'Team']
@@ -944,7 +953,11 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
     if (!grayedPlayers.length) { toast('Aucun joueur utilisé à remplacer','warning'); return }
     if (!availSubsList.length) { toast('Aucun remplaçant disponible','warning'); return }
 
-    let outIdx = 0, inIdx = 0, subConfirmDone = false
+    // Présélection : joueur sortant cliqué + 1er remplaçant au même poste
+    let outIdx = Math.max(0, grayedPlayers.findIndex(p => p.cardId === preferredOutId))
+    const outRole = grayedPlayers[outIdx]?._line || grayedPlayers[outIdx]?.job
+    let inIdx = Math.max(0, availSubsList.findIndex(s => (s.job === outRole)))
+    let subConfirmDone = false
     const overlay = document.createElement('div')
     overlay.id = 'pvp-sub-overlay'
     overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.95);z-index:700;display:flex;flex-direction:column;overflow:hidden'
@@ -1120,12 +1133,12 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
           ['selected_'+myRole]: [], modifiers: { ...gameState.modifiers, [myRole]:{} },
           pendingAttack: null, phase: isFinished?'finished':nextAttacker+'-attack',
           attacker: nextAttacker, round, log })
-        if (isFinished) await supabase.from('matches').update({ status:'finished' }).eq('id', matchId)
+        if (isFinished) await supabase.from('matches').update({ status:'finished', winner_id: computeWinnerId({ ...gameState, [myRole+'Score']: newScore }) }).eq('id', matchId)
       })
       return
     }
 
-    log.push({ type:'duel', text:`⚔️ ${gameState[myRole+'Name']} attaque (${calc.total})`, players:selected, total:calc.total, side:myRole })
+    log.push({ type:'pending', text:`⚔️ ${gameState[myRole+'Name']} attaque (${calc.total})` })
     await pushState({ [myRole+'Team']: myTeam, [oppRole+'Team']: gameState[oppRole+'Team'],
       pendingAttack: { ...calc, players:selected, side:myRole },
       ['selected_'+myRole]: [], modifiers: { ...gameState.modifiers, [myRole]:{} },
@@ -1174,7 +1187,7 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
         [attackerRole+'Score']: newAttackerScore,
         ['selected_'+myRole]: [], modifiers: { ...gameState.modifiers, [myRole]:{} },
         pendingAttack: null, phase: nextPhase, attacker: nextAttacker, round, log })
-      if (nextPhase==='finished' || isFinished) await supabase.from('matches').update({ status:'finished' }).eq('id', matchId)
+      if (nextPhase==='finished' || isFinished) await supabase.from('matches').update({ status:'finished', winner_id: computeWinnerId({ ...gameState, [attackerRole+'Score']: newAttackerScore }) }).eq('id', matchId)
     }
 
     // Bug 2 : showGoalAnimation si but
@@ -1194,6 +1207,13 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
     const p1OK=['MIL','ATT','GK','DEF'].some(r=>(gs.p1Team[r]||[]).some(p=>!p.used))
     const p2OK=['MIL','ATT','GK','DEF'].some(r=>(gs.p2Team[r]||[]).some(p=>!p.used))
     return !p1OK && !p2OK
+  }
+
+  // winner_id basé sur les scores finaux (null = match nul)
+  function computeWinnerId(gs) {
+    const p1 = gs.p1Score||0, p2 = gs.p2Score||0
+    if (p1 === p2) return null
+    return p1 > p2 ? match.home_id : match.away_id
   }
 
   function renderPvpResult() {

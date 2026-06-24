@@ -531,11 +531,12 @@ export function buildTeamSVG(team, formation, phase, selectedIds, W=310, H=310, 
 
     // ── Joueur utilisé : afficher le DOS de la carte (carte retournée) ──
     if (p.used) {
-      const backUrl = `${import.meta.env.BASE_URL}icons/carte-dos.png`
-      svg += `<defs><clipPath id=\"cpback-${pos}\"><rect x=\"${rx0}\" y=\"${ry0}\" width=\"${CW}\" height=\"${CH}\" rx=\"5\"/></clipPath></defs>`
-      svg += `<rect x=\"${rx0}\" y=\"${ry0}\" width=\"${CW}\" height=\"${CH}\" rx=\"5\" fill=\"#1a1a1a\"/>`
-      svg += `<image href=\"${backUrl}\" x=\"${rx0}\" y=\"${ry0}\" width=\"${CW}\" height=\"${CH}\" clip-path=\"url(#cpback-${pos})\" preserveAspectRatio=\"xMidYMid slice\" opacity=\"0.92\"/>`
-      svg += `<rect x=\"${rx0}\" y=\"${ry0}\" width=\"${CW}\" height=\"${CH}\" rx=\"5\" fill=\"none\" stroke=\"${rarity}\" stroke-width=\"2\" opacity=\"0.6\"/>`
+      const _base = (typeof import.meta !== 'undefined' && import.meta.env?.BASE_URL) || '/'
+      const _origin = (typeof window !== 'undefined' && window.location?.origin) || ''
+      const backUrl = `${_origin}${_base}icons/carte-dos.png`.replace(/([^:])\/\//g, '$1/')
+      svg += `<rect x=\"${rx0}\" y=\"${ry0}\" width=\"${CW}\" height=\"${CH}\" rx=\"5\" fill=\"#161616\"/>`
+      svg += `<image href=\"${backUrl}\" xlink:href=\"${backUrl}\" x=\"${rx0}\" y=\"${ry0}\" width=\"${CW}\" height=\"${CH}\" preserveAspectRatio=\"xMidYMid slice\"/>`
+      svg += `<rect x=\"${rx0}\" y=\"${ry0}\" width=\"${CW}\" height=\"${CH}\" rx=\"5\" fill=\"none\" stroke=\"${rarity}\" stroke-width=\"2\" opacity=\"0.7\"/>`
       continue
     }
 
@@ -553,7 +554,7 @@ export function buildTeamSVG(team, formation, phase, selectedIds, W=310, H=310, 
     // Portrait
     const portrait = getPortrait(p)
     if (portrait) {
-      svg += `<image href="${portrait}" x="${rx0}" y="${(c.y - CH/2 + NAMEH).toFixed(1)}" width="${CW}" height="${portH}" clip-path="url(#cp-${pos})" preserveAspectRatio="xMidYMin slice"/>`
+      svg += `<image href="${portrait}" xlink:href="${portrait}" x="${rx0}" y="${(c.y - CH/2 + NAMEH).toFixed(1)}" width="${CW}" height="${portH}" clip-path="url(#cp-${pos})" preserveAspectRatio="xMidYMin slice"/>`
     }
 
     // Barre nom (haut, fond blanc)
@@ -567,14 +568,14 @@ export function buildTeamSVG(team, formation, phase, selectedIds, W=310, H=310, 
     {
       // Drapeau pays (gauche)
       const flagU = flagImgUrl(p.country_code)
-      if (flagU) svg += `<image href="${flagU}" x="${(c.x - 20).toFixed(1)}" y="${(c.y + CH/2 - BOTHH + 3).toFixed(1)}" width="13" height="10" preserveAspectRatio="xMidYMid slice"/>`
+      if (flagU) svg += `<image href="${flagU}" xlink:href="${flagU}" x="${(c.x - 20).toFixed(1)}" y="${(c.y + CH/2 - BOTHH + 3).toFixed(1)}" width="13" height="10" preserveAspectRatio="xMidYMid slice"/>`
       else svg += `<text x="${(c.x - 13).toFixed(1)}" y="${(c.y + CH/2 - BOTHH/2).toFixed(1)}" text-anchor="middle" dominant-baseline="central" font-size="10">${countryFlag(p.country_code)}</text>`
       // Note (centre)
       svg += `<text x="${c.x.toFixed(1)}" y="${(c.y + CH/2 - BOTHH/2).toFixed(1)}" text-anchor="middle" dominant-baseline="central" font-size="12" font-weight="900" fill="#111" font-family="Arial Black">${note}</text>`
       // Club (droite, 3 lettres)
       const logoUrl = getClubLogo(p)
       if (logoUrl) {
-        svg += `<image href="${logoUrl}" x="${(c.x + CW/2 - 14).toFixed(1)}" y="${(c.y + CH/2 - BOTHH + 2).toFixed(1)}" width="12" height="12" preserveAspectRatio="xMidYMid meet"/>`
+        svg += `<image href="${logoUrl}" xlink:href="${logoUrl}" x="${(c.x + CW/2 - 14).toFixed(1)}" y="${(c.y + CH/2 - BOTHH + 2).toFixed(1)}" width="12" height="12" preserveAspectRatio="xMidYMid meet"/>`
       } else if (p.clubName) {
         svg += `<text x="${(c.x + 14).toFixed(1)}" y="${(c.y + CH/2 - BOTHH/2).toFixed(1)}" text-anchor="middle" dominant-baseline="central" font-size="5.5" font-weight="700" fill="#333">${(p.clubName||'').slice(0,3).toUpperCase()}</text>`
       }
@@ -595,7 +596,7 @@ export function buildTeamSVG(team, formation, phase, selectedIds, W=310, H=310, 
   }
 
   const PAD = 38  // marge pour cartes rectangulaires
-  return `<svg viewBox="${-PAD} ${-PAD} ${W+PAD*2} ${H+PAD*2}" width="100%" style="display:block;width:100%;max-width:440px;margin:0 auto">
+  return `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="${-PAD} ${-PAD} ${W+PAD*2} ${H+PAD*2}" width="100%" style="display:block;width:100%;max-width:440px;margin:0 auto">
     ${svg}
   </svg>`
 }

@@ -149,6 +149,7 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
   let _pvpEnded = false
   let _localTimerInt = null  // Timer LOCAL (pas dans gameState, sinon le JSON round-trip l'écrase)
   let _vvBound = false       // idem pour le listener visualViewport
+  const _goalAnimShownFor = new Set()  // rounds dont l'animation BUT a déjà été montrée localement
 
   function showPvpEndScreen(row) {
     try { supabase.removeChannel(channel) } catch {}
@@ -188,6 +189,22 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
               const newLine  = (gameState[role+'Team']||{})[line] || []
               newLine.forEach(p => { const lp = prevLine.find(x=>x.cardId===p.cardId); if(lp?.used) p.used = true })
             }
+          }
+          // Animation BUT pour le joueur qui reçoit le résultat via Realtime
+          // (le scoring est calculé par le défenseur ; l'attaquant doit voir son animation)
+          const prevMy  = prev[myRole+'Score']||0
+          const prevOpp = prev[oppRole+'Score']||0
+          const newMy   = gameState[myRole+'Score']||0
+          const newOpp  = gameState[oppRole+'Score']||0
+          const iScored   = newMy  > prevMy
+          const oppScored = newOpp > prevOpp
+          if ((iScored || oppScored) && !_goalAnimShownFor.has(gameState.round)) {
+            _goalAnimShownFor.add(gameState.round)
+            // Récupérer les joueurs du dernier but depuis le log
+            const lastGoal = [...(gameState.log||[])].reverse().find(e => e.isGoal)
+            const goalPlayers = (lastGoal?.homePlayers||[]).map(p=>({ name:p.name, note:p.note, portrait:p.portrait, job:p.job }))
+            showGoalAnimation(goalPlayers, newMy, newOpp, iScored, () => renderPvpScreen())
+            return
           }
           renderPvpScreen()
         }
@@ -625,7 +642,7 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
     container.querySelectorAll('.pvp-sub-btn').forEach(el => {
       el.addEventListener('click', () => {
         if (!isMyAttack) { toast('Remplacement uniquement avant une attaque','warning'); return }
-        pvpOpenSubPicker(el.dataset.subId)
+        pvpOpenSubSelector()
       })
     })
     // Bouton carte grise mobile → liste des subs entrants
@@ -904,78 +921,129 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
   }
 
   // Sélectionner d'abord le remplaçant entrant (mobile carte grise)
+  // Panel de remplacement carousel IN/OUT (identique à match-ia)
   function pvpOpenSubSelector() {
-    const mySubs = gameState[myRole+'Subs']||[]
+    if (!isMyAttack) { toast('Remplacement uniquement avant une attaque','warning'); return }
+    const myTeam = gameState[myRole+'Team']
     const usedSubIds = gameState['usedSubIds_'+myRole]||[]
-    const avail = mySubs.filter(s=>!usedSubIds.includes(s.cardId))
-    if (!avail.length) return
-    if (avail.length===1) { pvpOpenSubPicker(avail[0].cardId); return }
-    const JC = {GK:'#111',DEF:'#bb2020',MIL:'#D4A017',ATT:'#1A6B3C'}
+    const maxSubs = gameState.maxSubs||3
+    if (usedSubIds.length >= maxSubs) { toast(`Maximum ${maxSubs} remplacements atteint`,'warning'); return }
+    const grayedPlayers = Object.entries(myTeam).flatMap(([r,ps])=>(ps||[]).filter(p=>p.used).map(p=>({...p,_line:r})))
+    const availSubsList = (gameState[myRole+'Subs']||[]).filter(s=>!usedSubIds.includes(s.cardId))
+    if (!grayedPlayers.length) { toast('Aucun joueur utilisé à remplacer','warning'); return }
+    if (!availSubsList.length) { toast('Aucun remplaçant disponible','warning'); return }
+
+    let outIdx = 0, inIdx = 0, subConfirmDone = false
     const overlay = document.createElement('div')
-    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.9);z-index:900;display:flex;flex-direction:column;overflow:hidden'
-    overlay.innerHTML = `
-      <div style="padding:12px 16px;background:rgba(255,255,255,0.08);display:flex;align-items:center;gap:10px;flex-shrink:0">
-        <div style="flex:1;font-size:14px;font-weight:700;color:#fff">Choisir le remplaçant entrant</div>
-        <button id="ss-close" style="background:none;border:none;color:rgba(255,255,255,0.5);font-size:22px;cursor:pointer">✕</button>
+    overlay.id = 'pvp-sub-overlay'
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.95);z-index:700;display:flex;flex-direction:column;overflow:hidden'
+
+    function rebuild() {
+      const outP = grayedPlayers[outIdx]
+      const inP  = availSubsList[inIdx]
+      const CARD_W = Math.min(130, Math.round((window.innerWidth - 90) / 2))
+      const CARD_H = Math.round(CARD_W * 1.35)
+      const arrowStyle = (disabled) => `background:rgba(255,255,255,0.12);border:none;color:${disabled?'rgba(255,255,255,0.2)':'#fff'};width:40px;height:40px;border-radius:50%;font-size:20px;cursor:${disabled?'default':'pointer'};flex-shrink:0`
+
+      overlay.innerHTML = `
+      <div style="display:flex;align-items:center;padding:12px 16px;background:rgba(0,0,0,0.5);flex-shrink:0">
+        <div style="flex:1;font-size:15px;font-weight:900;color:#fff">🔄 Remplacement (${usedSubIds.length}/${maxSubs})</div>
+        <button id="psub-close" style="background:none;border:none;color:rgba(255,255,255,0.5);font-size:24px;cursor:pointer;padding:0">✕</button>
       </div>
-      <div style="flex:1;overflow-y:auto;padding:12px;display:flex;flex-wrap:wrap;gap:8px;align-content:flex-start">
-        ${avail.map(s=>{
-          const bg=JC[s.job]||'#555'
-          const note = Math.max(s.note_g||0,s.note_d||0,s.note_m||0,s.note_a||0)
-          return `<div class="ss-item" data-sub-id="${s.cardId}" style="width:80px;border-radius:8px;border:2px solid rgba(255,255,255,0.25);background:${bg};overflow:hidden;cursor:pointer">
-            <div style="background:rgba(255,255,255,0.9);text-align:center;padding:2px;font-size:7px;font-weight:900;color:#111;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">${s.name||'?'}</div>
-            <div style="height:50px;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:900;color:#fff">${note}</div>
-            <div style="background:rgba(255,255,255,0.9);text-align:center;padding:2px;font-size:8px;font-weight:700;color:#333">${s.job||''}</div>
-          </div>`
-        }).join('')}
+      <div style="flex:1;display:flex;gap:0;overflow:hidden">
+        <div id="pin-panel" style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:12px 6px;border-right:1px solid rgba(255,255,255,0.08)">
+          <div style="font-size:9px;color:#00ff88;letter-spacing:2px;text-transform:uppercase;font-weight:700">Joueur qui entre</div>
+          <button id="pin-up" style="${arrowStyle(inIdx===0)}" ${inIdx===0?'disabled':''}>▲</button>
+          <div>${inP ? renderMiniCardHTML({...inP, used:false, boost:0}, CARD_W, CARD_H) : '<div>—</div>'}</div>
+          <button id="pin-down" style="${arrowStyle(inIdx>=availSubsList.length-1)}" ${inIdx>=availSubsList.length-1?'disabled':''}>▼</button>
+          <div style="font-size:10px;color:rgba(255,255,255,0.35)">${inIdx+1}/${availSubsList.length}</div>
+        </div>
+        <div id="pout-panel" style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:12px 6px">
+          <div style="font-size:9px;color:#ff6b6b;letter-spacing:2px;text-transform:uppercase;font-weight:700">Joueur qui sort</div>
+          <button id="pout-up" style="${arrowStyle(outIdx===0)}" ${outIdx===0?'disabled':''}>▲</button>
+          <div>${outP ? renderMiniCardHTML({...outP, used:false, boost:0}, CARD_W, CARD_H) : '<div>—</div>'}</div>
+          <button id="pout-down" style="${arrowStyle(outIdx>=grayedPlayers.length-1)}" ${outIdx>=grayedPlayers.length-1?'disabled':''}>▼</button>
+          <div style="font-size:10px;color:rgba(255,255,255,0.35)">${outIdx+1}/${grayedPlayers.length}</div>
+        </div>
+      </div>
+      <div style="padding:12px 16px;background:rgba(0,0,0,0.4);flex-shrink:0">
+        <button id="psub-confirm" style="width:100%;padding:14px;border-radius:10px;border:none;background:#1A6B3C;color:#fff;font-size:15px;font-weight:900;cursor:pointer">✅ Confirmer</button>
       </div>`
+
+      overlay.querySelector('#psub-close')?.addEventListener('click', () => overlay.remove())
+      overlay.querySelector('#pout-up')?.addEventListener('click',   () => { if(outIdx>0){outIdx--;rebuild()} })
+      overlay.querySelector('#pout-down')?.addEventListener('click', () => { if(outIdx<grayedPlayers.length-1){outIdx++;rebuild()} })
+      overlay.querySelector('#pin-up')?.addEventListener('click',    () => { if(inIdx>0){inIdx--;rebuild()} })
+      overlay.querySelector('#pin-down')?.addEventListener('click',  () => { if(inIdx<availSubsList.length-1){inIdx++;rebuild()} })
+
+      const bindSwipe = (panelId, getIdx, setIdx, maxLen) => {
+        const panel = overlay.querySelector('#'+panelId)
+        if (!panel) return
+        let ty0 = 0
+        panel.addEventListener('touchstart', e => { ty0 = e.touches[0].clientY }, {passive:true})
+        panel.addEventListener('touchend', e => {
+          const dy = e.changedTouches[0].clientY - ty0
+          if (Math.abs(dy) < 30) return
+          const i = getIdx()
+          if (dy < 0 && i < maxLen-1) { setIdx(i+1); rebuild() }
+          else if (dy > 0 && i > 0)   { setIdx(i-1); rebuild() }
+        }, {passive:true})
+      }
+      bindSwipe('pin-panel',  () => inIdx,  v => inIdx = v,  availSubsList.length)
+      bindSwipe('pout-panel', () => outIdx, v => outIdx = v, grayedPlayers.length)
+
+      overlay.querySelector('#psub-confirm')?.addEventListener('click', async (ev) => {
+        ev.preventDefault(); ev.stopPropagation()
+        if (subConfirmDone) return
+        subConfirmDone = true
+        const outPlayer = grayedPlayers[outIdx]
+        const subPlayer = availSubsList[inIdx]
+        if (!outPlayer || !subPlayer) return
+        const role = outPlayer._line
+        const idx = (myTeam[role]||[]).findIndex(p=>p.cardId===outPlayer.cardId)
+        if (idx === -1) { toast('Erreur : joueur introuvable','error'); overlay.remove(); return }
+        // Remplacer en place (splice) — garde la position sur le terrain
+        const inPlayer = { ...subPlayer, _line:role, position:outPlayer.position, used:false, boost:0 }
+        myTeam[role].splice(idx, 1, inPlayer)
+        const usedSubIdsNew = [...usedSubIds, subPlayer.cardId]
+        overlay.remove()
+        pvpShowSubAnimation(outPlayer, subPlayer, async () => {
+          await pushState({ [myRole+'Team']: myTeam, [oppRole+'Team']: gameState[oppRole+'Team'],
+            ['usedSubIds_'+myRole]: usedSubIdsNew })
+        })
+      })
+    }
+
     document.body.appendChild(overlay)
-    overlay.querySelector('#ss-close')?.addEventListener('click',()=>overlay.remove())
-    overlay.querySelectorAll('.ss-item').forEach(el=>{
-      el.addEventListener('click',()=>{ overlay.remove(); pvpOpenSubPicker(el.dataset.subId) })
-    })
+    rebuild()
   }
 
-  function pvpOpenSubPicker(subId) {
-    const mySubs=gameState[myRole+'Subs']||[]
-    const usedSubIds=gameState['usedSubIds_'+myRole]||[]
-    const sub=mySubs.find(s=>s.cardId===subId)
-    if(!sub)return
-    const myTeam=gameState[myRole+'Team']
-    const pool=Object.entries(myTeam).flatMap(([r,ps])=>(ps||[]).filter(p=>!p.used&&p.job===sub.job).map(p=>({...p,_line:r})))
-    if(!pool.length){toast('Aucun joueur compatible à remplacer','error');return}
-    const overlay=document.createElement('div')
-    overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.9);z-index:900;display:flex;flex-direction:column;overflow:hidden'
-    overlay.innerHTML=`
-      <div style="padding:12px 16px;background:rgba(255,255,255,0.08);display:flex;align-items:center;gap:10px;flex-shrink:0">
-        <div style="flex:1;font-size:14px;font-weight:700;color:#fff">Remplacer par ${sub.firstname} ${sub.name}</div>
-        <button id="sp-close" style="background:none;border:none;color:rgba(255,255,255,0.5);font-size:22px;cursor:pointer">✕</button>
+  // Animation de remplacement
+  function pvpShowSubAnimation(outPlayer, inPlayer, callback) {
+    const JC = {GK:'#111',DEF:'#bb2020',MIL:'#D4A017',ATT:'#1A6B3C'}
+    const overlay = document.createElement('div')
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.92);z-index:850;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;overflow:hidden;cursor:pointer'
+    const card = (p, color, lbl) => `<div style="text-align:center">
+      <div style="font-size:9px;color:${color};letter-spacing:2px;text-transform:uppercase;font-weight:700;margin-bottom:6px">${lbl}</div>
+      <div style="width:70px;height:70px;border-radius:50%;background:${JC[p.job]||'#555'};border:3px solid ${color};position:relative;overflow:hidden;margin:0 auto">
+        ${getPortrait(p)?`<img src="${getPortrait(p)}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover">`:''}
       </div>
-      <div style="flex:1;overflow-y:auto;padding:12px;display:flex;flex-wrap:wrap;gap:8px;align-content:flex-start">
-        ${pool.map(p=>{
-          const bg=({GK:'#111',DEF:'#bb2020',MIL:'#D4A017',ATT:'#1A6B3C'})[p._line]||'#555'
-          const note=getNoteForRole(p,p._line)+(p.boost||0)
-          return `<div class="sp-item" data-cid="${p.cardId}" data-role="${p._line}" style="width:80px;border-radius:8px;border:2px solid rgba(255,255,255,0.25);background:${bg};overflow:hidden;cursor:pointer">
-            <div style="background:rgba(255,255,255,0.9);text-align:center;padding:2px;font-size:7px;font-weight:900;color:#111">${p.name||'?'}</div>
-            <div style="height:50px;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:900;color:#fff">${note}</div>
-          </div>`
-        }).join('')}
-      </div>`
+      <div style="font-size:11px;color:#fff;margin-top:6px;font-weight:700">${(p.name||'').slice(0,12)}</div>
+    </div>`
+    overlay.innerHTML = `
+      <style>@keyframes subSwap{0%{transform:scale(0.6);opacity:0}60%{transform:scale(1.1)}100%{transform:scale(1);opacity:1}}</style>
+      <div style="font-size:30px;font-weight:900;color:#00bcd4;letter-spacing:3px;animation:subSwap .5s ease both">🔄 REMPLACEMENT</div>
+      <div style="display:flex;align-items:center;gap:24px;animation:subSwap .5s ease .15s both">
+        ${card(inPlayer,'#00ff88','Entre')}
+        <div style="font-size:30px;color:rgba(255,255,255,0.5)">⇄</div>
+        ${card(outPlayer,'#ff6b6b','Sort')}
+      </div>
+      <div style="font-size:11px;color:rgba(255,255,255,0.3);margin-top:6px">Appuyer pour continuer</div>`
     document.body.appendChild(overlay)
-    overlay.querySelector('#sp-close')?.addEventListener('click',()=>overlay.remove())
-    overlay.querySelectorAll('.sp-item').forEach(el=>{
-      el.addEventListener('click',async()=>{
-        const cid=el.dataset.cid, role=el.dataset.role
-        const outPlayer=(myTeam[role]||[]).find(pp=>pp.cardId===cid)
-        if(!outPlayer)return
-        outPlayer.used=true
-        const inPlayer={...sub,_line:role,position:outPlayer.position};
-        (myTeam[role]=myTeam[role]||[]).push(inPlayer)
-        const usedSubIdsNew=[...usedSubIds,subId]
-        overlay.remove()
-        await pushState({[myRole+'Team']:myTeam,['usedSubIds_'+myRole]:usedSubIdsNew})
-      })
-    })
+    let dismissed = false
+    const dismiss = () => { if(dismissed)return; dismissed=true; overlay.remove(); setTimeout(()=>callback(),50) }
+    overlay.addEventListener('click', dismiss)
+    setTimeout(dismiss, 2200)
   }
 
   function pvpShowOpponentTeam() {
@@ -1033,7 +1101,8 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
       const nextAttacker = myRole==='p1'?'p2':'p1'
       const newState = { ...gameState, [myRole+'Team']: myTeam, [myRole+'Score']: newScore }
       const isFinished = checkMatchEnd(newState)
-      // Bug 2 : showGoalAnimation avant pushState
+      // Marquer le round pour éviter le double-affichage via le Realtime du propre pushState
+      _goalAnimShownFor.add(round)
       showGoalAnimation(players, newScore, gameState[oppRole+'Score']||0, true, async () => {
         await pushState({ [myRole+'Team']: myTeam, [myRole+'Score']: newScore,
           ['selected_'+myRole]: [], modifiers: { ...gameState.modifiers, [myRole]:{} },
@@ -1100,6 +1169,8 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
       const isMyGoal = attackerRole === myRole
       const myNewScore = isMyGoal ? newAttackerScore : (gameState[myRole+'Score']||0)
       const oppNewScore = isMyGoal ? (gameState[oppRole+'Score']||0) : newAttackerScore
+      // Marquer le round pour éviter le double-affichage via le Realtime du propre pushState
+      _goalAnimShownFor.add(round)
       showGoalAnimation(attackPlayers, myNewScore, oppNewScore, isMyGoal, doNext)
     } else {
       await doNext()

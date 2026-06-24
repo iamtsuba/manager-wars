@@ -353,8 +353,8 @@ function showMidfieldAnimation(container, game, ctx) {
 }
 
 function renderLogEntry(entry) {
-  if (entry.type === 'duel') {
-    const hw = entry.homeTotal >= entry.aiTotal
+  if (entry.type === 'duel' && (entry.homeTotal != null || entry.aiTotal != null)) {
+    const hw = (entry.homeTotal||0) >= (entry.aiTotal||0)
     return `
     <div style="background:rgba(255,255,255,0.05);border-radius:8px;padding:5px 6px;border:1px solid rgba(255,255,255,0.08)">
       <div style="text-align:center;font-size:9px;font-weight:700;letter-spacing:1px;color:rgba(255,255,255,0.5);margin-bottom:4px">${(entry.title||'DUEL').toUpperCase()}</div>

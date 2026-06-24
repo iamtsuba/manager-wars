@@ -153,8 +153,21 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
 
   function showPvpEndScreen(row) {
     try { supabase.removeChannel(channel) } catch {}
-    const isDraw = !row.forfeit && !row.winner_id && (gameState[myRole+'Score']||0) === (gameState[oppRole+'Score']||0)
-    const iWon = row.winner_id === state.profile.id
+    const myScore  = gameState[myRole+'Score']||0
+    const oppScore = gameState[oppRole+'Score']||0
+    // Source de vérité : winner_id si présent, sinon comparaison des scores
+    let iWon, isDraw
+    if (row.winner_id) {
+      iWon = row.winner_id === state.profile.id
+      isDraw = false
+    } else if (row.forfeit) {
+      // Forfait sans winner_id lisible → se fier au score (le vainqueur a 3)
+      iWon = myScore > oppScore
+      isDraw = false
+    } else {
+      isDraw = myScore === oppScore
+      iWon = myScore > oppScore
+    }
     // Supprimer un éventuel overlay précédent
     document.getElementById('pvp-end-overlay')?.remove()
     const overlay2 = document.createElement('div')
@@ -166,7 +179,7 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
     overlay2.innerHTML = `
       <div style="font-size:64px">${_emoji}</div>
       <div style="font-size:26px;font-weight:900;color:${_titleCol}">${_titleTxt}</div>
-      <div style="font-size:18px">${gameState[myRole+'Name']} ${gameState[myRole+'Score']} – ${gameState[oppRole+'Score']} ${gameState[oppRole+'Name']}</div>
+      <div style="font-size:18px">${gameState[myRole+'Name']} ${myScore} – ${oppScore} ${gameState[oppRole+'Name']}</div>
       ${row.forfeit?`<div style="font-size:13px;color:rgba(255,255,255,0.5)">${iWon?"L'adversaire a quitté":'Perdu par forfait'}</div>`:''}
       <button id="pvp-end-home" style="margin-top:10px;padding:14px 32px;border-radius:12px;border:none;background:#1A6B3C;color:#fff;font-size:16px;font-weight:900;cursor:pointer">Retour à l'accueil</button>`
     document.body.appendChild(overlay2)
@@ -705,7 +718,7 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
     container.innerHTML = `
     <div class="match-screen" style="display:flex;flex-direction:column;align-items:center;justify-content:flex-start;height:100%;overflow:hidden;gap:12px;padding:12px 16px;background:#0a3d1e;overflow-y:auto">
       <div style="font-size:11px;color:rgba(255,255,255,0.5);letter-spacing:3px;text-transform:uppercase;margin-top:8px">Équipe adverse</div>
-      <div style="font-size:20px;font-weight:900;color:#ff6b6b">${gameState[oppRole+'Name']}</div>
+      <div style="font-size:20px;font-weight:900;color:#ff6b6b">${gameState[oppRole+'Name']||'Adversaire'}</div>
       <div style="width:min(90vw,420px)">${buildTeamSVG(gameState[oppRole+'Team'],gameState[oppRole+'Formation'],null,[],300,300)}</div>
     </div>`
     if (myRole==='p1') setTimeout(async()=>{ await pushState({ phase:'midfield' }) }, 5000)
@@ -764,13 +777,13 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
       <div style="text-align:center;color:#fff">
         <div style="font-size:11px;opacity:.5;letter-spacing:3px;text-transform:uppercase">Duel du milieu de terrain</div>
       </div>
-      ${renderMilRow(myMils, gameState[myRole+'Name'], 'me')}
+      ${renderMilRow(myMils, gameState[myRole+'Name']||'Vous', 'me')}
       <div style="display:flex;flex-direction:column;align-items:center;gap:2px;margin:4px 0">
         <div id="pvp-score-me" style="font-size:48px;font-weight:900;color:#D4A017;transition:all .5s ease">0</div>
         <div id="pvp-vs" style="font-size:14px;color:rgba(255,255,255,.4);letter-spacing:3px;opacity:0">VS</div>
         <div id="pvp-score-opp" style="font-size:48px;font-weight:900;color:rgba(255,255,255,.7);transition:all .5s ease">0</div>
       </div>
-      ${renderMilRow(oppMils, gameState[oppRole+'Name'], 'opp')}
+      ${renderMilRow(oppMils, gameState[oppRole+'Name']||'Adversaire', 'opp')}
       <div id="duel-shock" style="position:absolute;left:50%;top:50%;width:120px;height:120px;border-radius:50%;border:6px solid #FFD700;opacity:0;pointer-events:none"></div>
       <div id="pvp-duel-finale" style="position:fixed;inset:0;z-index:200;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:24px;opacity:0;pointer-events:none;background:radial-gradient(circle at center,rgba(10,61,30,.4),rgba(10,61,30,.92))"></div>
     </div>`

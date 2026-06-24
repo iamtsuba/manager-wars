@@ -527,8 +527,19 @@ export function buildTeamSVG(team, formation, phase, selectedIds, W=310, H=310, 
 
     const rx0 = (c.x - CW/2).toFixed(1)
     const ry0 = (c.y - CH/2).toFixed(1)
-    const cardOp  = p.used ? 0.25 : isSelected ? 0.45 : 1
     const rarity  = rarityBorder[p?.rarity] || rarityBorder.normal
+
+    // ── Joueur utilisé : afficher le DOS de la carte (carte retournée) ──
+    if (p.used) {
+      const backUrl = `${import.meta.env.BASE_URL}icons/carte-dos.png`
+      svg += `<defs><clipPath id=\"cpback-${pos}\"><rect x=\"${rx0}\" y=\"${ry0}\" width=\"${CW}\" height=\"${CH}\" rx=\"5\"/></clipPath></defs>`
+      svg += `<rect x=\"${rx0}\" y=\"${ry0}\" width=\"${CW}\" height=\"${CH}\" rx=\"5\" fill=\"#1a1a1a\"/>`
+      svg += `<image href=\"${backUrl}\" x=\"${rx0}\" y=\"${ry0}\" width=\"${CW}\" height=\"${CH}\" clip-path=\"url(#cpback-${pos})\" preserveAspectRatio=\"xMidYMid slice\" opacity=\"0.92\"/>`
+      svg += `<rect x=\"${rx0}\" y=\"${ry0}\" width=\"${CW}\" height=\"${CH}\" rx=\"5\" fill=\"none\" stroke=\"${rarity}\" stroke-width=\"2\" opacity=\"0.6\"/>`
+      continue
+    }
+
+    const cardOp  = isSelected ? 0.45 : 1
     const bStroke = isSelected ? '#FFD700' : rarity
     const bWidth  = isSelected ? 3 : (p?.rarity==='légende'||p?.rarity==='pépite' ? 2.5 : 2)
 
@@ -541,7 +552,7 @@ export function buildTeamSVG(team, formation, phase, selectedIds, W=310, H=310, 
 
     // Portrait
     const portrait = getPortrait(p)
-    if (portrait && !p.used) {
+    if (portrait) {
       svg += `<image href="${portrait}" x="${rx0}" y="${(c.y - CH/2 + NAMEH).toFixed(1)}" width="${CW}" height="${portH}" clip-path="url(#cp-${pos})" preserveAspectRatio="xMidYMin slice"/>`
     }
 
@@ -553,9 +564,7 @@ export function buildTeamSVG(team, formation, phase, selectedIds, W=310, H=310, 
     const by0 = (c.y + CH/2 - BOTHH).toFixed(1)
     svg += `<rect x="${rx0}" y="${by0}" width="${CW}" height="${BOTHH}" fill="rgba(255,255,255,0.92)"/>`
 
-    if (p.used) {
-      svg += `<text x="${c.x.toFixed(1)}" y="${(c.y + CH/2 - BOTHH/2).toFixed(1)}" text-anchor="middle" dominant-baseline="central" font-size="13" font-weight="900" fill="rgba(0,0,0,0.4)" font-family="Arial Black">–</text>`
-    } else {
+    {
       // Drapeau pays (gauche)
       const flagU = flagImgUrl(p.country_code)
       if (flagU) svg += `<image href="${flagU}" x="${(c.x - 20).toFixed(1)}" y="${(c.y + CH/2 - BOTHH + 3).toFixed(1)}" width="13" height="10" preserveAspectRatio="xMidYMid slice"/>`

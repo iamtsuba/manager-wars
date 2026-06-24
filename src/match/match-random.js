@@ -640,17 +640,10 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
     })
 
     container.querySelectorAll('.pvp-sub-btn').forEach(el => {
-      el.addEventListener('click', () => {
-        if (!isMyAttack) { toast('Remplacement uniquement avant une attaque','warning'); return }
-        pvpOpenSubSelector()
-      })
+      el.addEventListener('click', () => pvpOpenSubSelector())
     })
-    // Bouton carte grise mobile → liste des subs entrants
-    container.querySelector('#pvp-sub-open')?.addEventListener('click', () => {
-      if (!isMyAttack) { toast('Remplacement uniquement avant une attaque','warning'); return }
-      if (!availSubs.length) { toast('Aucun remplaçant disponible','warning'); return }
-      pvpOpenSubSelector()
-    })
+    // Bouton carte grise mobile → panel de remplacement
+    container.querySelector('#pvp-sub-open')?.addEventListener('click', () => pvpOpenSubSelector())
 
     container.querySelectorAll('.pvp-gc-mini').forEach(el => {
       el.addEventListener('click', () => pvpShowGCDetail(el.dataset.gcId, el.dataset.gcType))
@@ -923,7 +916,8 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
   // Sélectionner d'abord le remplaçant entrant (mobile carte grise)
   // Panel de remplacement carousel IN/OUT (identique à match-ia)
   function pvpOpenSubSelector() {
-    if (!isMyAttack) { toast('Remplacement uniquement avant une attaque','warning'); return }
+    const _isMyAttack = gameState.phase === myRole+'-attack'
+    if (!_isMyAttack) { toast('Remplacement uniquement avant votre attaque','warning'); return }
     const myTeam = gameState[myRole+'Team']
     const usedSubIds = gameState['usedSubIds_'+myRole]||[]
     const maxSubs = gameState.maxSubs||3

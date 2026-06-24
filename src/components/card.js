@@ -25,6 +25,10 @@ const COUNTRY_NAMES = {
   AL:'ALBANIE', HR:'CROATIE', RS:'SERBIE', TR:'TURQUIE', MA:'MAROC'
 }
 
+// Import lazy pour éviter les imports circulaires — on l'injecte via la fonction utilitaire
+let _generateAvatarSVG = null
+export function registerAvatarGenerator(fn) { _generateAvatarSVG = fn }
+
 /**
  * Génère le SVG d'une étoile avec note
  * @param {string} color - couleur de fond
@@ -72,10 +76,17 @@ export function renderCardHTML(player, opts = {}) {
   const cname    = COUNTRY_NAMES[country] || country
   const w        = size === 'sm' ? 120 : 160
 
-  // Portrait
-  const portraitHTML = portraitUrl
-    ? `<img src="${portraitUrl}" alt="" style="width:100%;height:100%;object-fit:cover;object-position:center top;display:block">`
-    : `<div style="width:100%;height:100%;background:#c5d8ec;display:flex;align-items:center;justify-content:center;font-size:32px;color:#8fa5be">👤</div>`
+  // Portrait — avatar_config SVG en priorité, sinon URL image, sinon placeholder
+  let portraitHTML
+  if (!portraitUrl && player.avatar_config && _generateAvatarSVG) {
+    const kit = opts.kitConfig || null
+    const svg = _generateAvatarSVG(player.avatar_config, kit, w === 120 ? 100 : 130)
+    portraitHTML = `<div style="width:100%;height:100%;display:flex;align-items:flex-end;justify-content:center;overflow:hidden">${svg}</div>`
+  } else if (portraitUrl) {
+    portraitHTML = `<img src="${portraitUrl}" alt="" style="width:100%;height:100%;object-fit:cover;object-position:center top;display:block">`
+  } else {
+    portraitHTML = `<div style="width:100%;height:100%;background:#c5d8ec;display:flex;align-items:center;justify-content:center;font-size:32px;color:#8fa5be">👤</div>`
+  }
 
   // Club
   const clubHTML = clubLogoUrl

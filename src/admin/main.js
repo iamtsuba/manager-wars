@@ -1,4 +1,8 @@
 import { supabase } from '../lib/supabase.js'
+import { registerAvatarGenerator } from '../components/card.js'
+import { generateAvatarSVG }       from '../components/avatar.js'
+registerAvatarGenerator(generateAvatarSVG)
+
 import { pageDashboard }    from './pages/dashboard.js'
 import { pagePlayers }      from './pages/players.js'
 import { pageClubs }        from './pages/clubs.js'

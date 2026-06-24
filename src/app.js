@@ -4,6 +4,10 @@
  * Le shell (top-nav + bottom-nav) est rendu une seule fois et jamais écrasé.
  */
 import { supabase } from './lib/supabase.js'
+import { registerAvatarGenerator } from './components/card.js'
+import { generateAvatarSVG }       from './components/avatar.js'
+registerAvatarGenerator(generateAvatarSVG)
+
 import { renderAuth }       from './auth/auth.js'
 import { renderSetup }      from './auth/setup.js'
 import { renderHome }       from './home/home.js'

@@ -182,16 +182,9 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
         if (row.game_state) {
           const prev = gameState
           gameState = row.game_state
-          // Préserver les .used locaux (évite re-sélectionnabilité après round-trip Supabase)
-          for (const role of ['p1','p2']) {
-            for (const line of ['GK','DEF','MIL','ATT']) {
-              const prevLine = (prev[role+'Team']||{})[line] || []
-              const newLine  = (gameState[role+'Team']||{})[line] || []
-              newLine.forEach(p => { const lp = prevLine.find(x=>x.cardId===p.cardId); if(lp?.used) p.used = true })
-            }
-          }
+          // Les joueurs utilisés sont recalculés depuis usedCardIds_* dans renderPvpScreen
+          // (registre plat persisté, immunisé contre la perte de flag via JSON round-trip).
           // Animation BUT pour le joueur qui reçoit le résultat via Realtime
-          // (le scoring est calculé par le défenseur ; l'attaquant doit voir son animation)
           const prevMy  = prev[myRole+'Score']||0
           const prevOpp = prev[oppRole+'Score']||0
           const newMy   = gameState[myRole+'Score']||0
@@ -200,7 +193,6 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
           const oppScored = newOpp > prevOpp
           if ((iScored || oppScored) && !_goalAnimShownFor.has(gameState.round)) {
             _goalAnimShownFor.add(gameState.round)
-            // Récupérer les joueurs du dernier but depuis le log
             const lastGoal = [...(gameState.log||[])].reverse().find(e => e.isGoal)
             const goalPlayers = (lastGoal?.homePlayers||[]).map(p=>({ name:p.name, note:p.note, portrait:p.portrait, job:p.job }))
             showGoalAnimation(goalPlayers, newMy, newOpp, iScored, () => renderPvpScreen())
@@ -377,6 +369,27 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
     await pushState(gs)
   }
 
+  // ── Gestion infaillible des joueurs utilisés (tableau plat persisté) ──
+  // markUsed : ajoute des cardIds au registre persisté du joueur
+  function markUsed(role, cardIds) {
+    const key = 'usedCardIds_' + role
+    const set = new Set(gameState[key] || [])
+    cardIds.forEach(id => set.add(id))
+    gameState[key] = [...set]
+  }
+  // applyUsedFlags : recalcule p.used sur les 2 équipes depuis le registre persisté.
+  // Appelé à chaque rendu → immunisé contre la perte de flag via JSON round-trip.
+  function applyUsedFlags() {
+    for (const role of ['p1', 'p2']) {
+      const used = new Set(gameState['usedCardIds_' + role] || [])
+      const team = gameState[role + 'Team']
+      if (!team) continue
+      for (const line of ['GK', 'DEF', 'MIL', 'ATT']) {
+        (team[line] || []).forEach(p => { p.used = used.has(p.cardId) })
+      }
+    }
+  }
+
   // ── Rendu principal ──────────────────────────────────────
   function renderPvpScreen() {
     if (gameState.phase === 'reveal') return renderPvpReveal()
@@ -385,6 +398,10 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
 
     const myTeam   = gameState[myRole+'Team']
     const oppTeam  = gameState[oppRole+'Team']
+    // ── Source de vérité INFAILLIBLE pour "joueur utilisé" ──
+    // Un tableau plat de cardIds survit parfaitement au round-trip JSON Supabase,
+    // contrairement aux flags .used sur objets imbriqués qui se perdent entre clients.
+    applyUsedFlags()
     const myScore  = gameState[myRole+'Score']
     const oppScore = gameState[oppRole+'Score']
     const myName   = gameState[myRole+'Name']
@@ -1079,7 +1096,8 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
     })
     if (!selected.length) return
     const calc = calcAttack(selected, gameState.modifiers[myRole]||{})
-    // Bug 1 : marquer used immédiatement ET vider selected localement (pas besoin d'attendre pushState)
+    // Marquer used dans le registre persisté (source de vérité) + flag local immédiat
+    markUsed(myRole, selected.map(s => s.cardId))
     selected.forEach(sel => { const p=(myTeam[sel._role]||[]).find(pp=>pp.cardId===sel.cardId); if(p) p.used=true })
     gameState['selected_'+myRole] = []
     renderPvpScreen()
@@ -1121,7 +1139,8 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
       return { ...live, _line: s._role }
     })
     const calc = calcDefense(selected, gameState.modifiers[myRole]||{})
-    // Bug 1 : marquer used + vider selected immédiatement
+    // Marquer used dans le registre persisté (source de vérité) + flag local immédiat
+    markUsed(myRole, selected.map(s => s.cardId))
     selected.forEach(sel => { const p=(myTeam[sel._role]||[]).find(pp=>pp.cardId===sel.cardId); if(p) p.used=true })
     gameState['selected_'+myRole] = []
     renderPvpScreen()

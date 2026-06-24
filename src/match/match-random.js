@@ -489,11 +489,15 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
       : 'padding:22px 8px;border-radius:12px;font-size:14px;font-weight:900;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;width:100%'
 
     const actionBtn = isMyAttack
-      ? `<button id="pvp-action" style="${btnStyle};background:linear-gradient(135deg,#c47a00,#FFD700);border:none;color:#fff;box-shadow:0 0 18px rgba(255,215,0,0.4)" ${mySelected.length===0?'disabled':''}>⚔️ ATTAQUEZ <span id="pvp-timer"></span></button>`
+      ? (canAttack(myRole)
+          ? `<button id="pvp-action" style="${btnStyle};background:linear-gradient(135deg,#c47a00,#FFD700);border:none;color:#fff;box-shadow:0 0 18px rgba(255,215,0,0.4)" ${mySelected.length===0?'disabled':''}>⚔️ ATTAQUEZ <span id="pvp-timer"></span></button>`
+          : `<button id="pvp-action" data-pass="1" style="${btnStyle};background:linear-gradient(135deg,#555,#888);border:none;color:#fff">⏭️ PASSER <span id="pvp-timer"></span></button>`)
       : isMyDefense
       ? `<button id="pvp-action" style="${btnStyle};background:linear-gradient(135deg,#1a4a8a,#3a7bd5);border:none;color:#fff;box-shadow:0 0 18px rgba(135,206,235,0.4)" ${mySelected.length===0?'disabled':''}>🛡️ DÉFENDEZ <span id="pvp-timer"></span></button>`
       : `<div style="font-size:11px;color:rgba(255,255,255,0.3);text-align:center;padding:4px">⏳ Tour de ${oppName}</div>`
-    const counter = (isMyAttack||isMyDefense) ? `<div style="font-size:9px;color:rgba(255,255,255,0.4);text-align:center;margin-top:2px">${mySelected.length}/3 sélectionné(s)</div>` : ''
+    const counter = (isMyAttack && !canAttack(myRole))
+      ? `<div style="font-size:9px;color:rgba(255,255,255,0.4);text-align:center;margin-top:2px">Aucun attaquant — passez la main</div>`
+      : (isMyAttack||isMyDefense) ? `<div style="font-size:9px;color:rgba(255,255,255,0.4);text-align:center;margin-top:2px">${mySelected.length}/3 sélectionné(s)</div>` : ''
 
     // ── Colonne remplaçants (GAUCHE, identique match-ia) ──
     const subsHTML = `<div style="display:flex;flex-direction:column;gap:4px;padding:4px 2px;width:${_pc?90:50}px;align-items:center;overflow-y:auto;flex-shrink:0;background:rgba(0,0,0,0.15)">
@@ -688,8 +692,11 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
       el.addEventListener('click', () => pvpShowGCDetail(el.dataset.gcId, el.dataset.gcType))
     })
     container.querySelector('#pvp-boost-card')?.addEventListener('click', () => pvpOpenBoostPicker())
-    container.querySelector('#pvp-action')?.addEventListener('click', () => {
-      if (isMyAttack) pvpConfirmAttack(); else if (isMyDefense) pvpConfirmDefense()
+    container.querySelector('#pvp-action')?.addEventListener('click', (e) => {
+      if (isMyAttack) {
+        if (e.currentTarget.dataset.pass === '1' || !canAttack(myRole)) pvpPassTurn()
+        else pvpConfirmAttack()
+      } else if (isMyDefense) pvpConfirmDefense()
     })
     container.querySelector('#pvp-quit')?.addEventListener('click', () => {
       if (confirm('Quitter ? Vous perdrez par forfait.')) forfeitMatch()
@@ -706,7 +713,15 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
       paint()
       _localTimerInt = setInterval(() => {
         remaining--
-        if (remaining<0) { if(!phase2){phase2=true;remaining=15;paint()}else{clearInterval(_localTimerInt);_localTimerInt=null;forfeitMatch()} }
+        if (remaining<0) {
+          if(!phase2){phase2=true;remaining=15;paint()}
+          else {
+            clearInterval(_localTimerInt);_localTimerInt=null
+            // Si l'action attendue est seulement PASSER (aucun attaquant), auto-passer au lieu de forfait
+            if (isMyAttack && !canAttack(myRole)) pvpPassTurn()
+            else forfeitMatch()
+          }
+        }
         else paint()
       }, 1000)
     }
@@ -1112,6 +1127,28 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
     overlay.querySelector('#pvp-hist-close')?.addEventListener('click',()=>overlay.remove())
   }
 
+  // Passer son tour d'attaque (aucun attaquant valide) → l'adversaire reprend l'attaque.
+  async function pvpPassTurn() {
+    if (gameState.phase !== myRole+'-attack') return
+    const nextAttacker = myRole==='p1'?'p2':'p1'
+    const round = (gameState.round||0) + 1
+    const log = [...(gameState.log||[])]
+    log.push({ type:'info', text:`⏭️ ${gameState[myRole+'Name']||'Vous'} passe (aucun attaquant disponible)` })
+
+    // Fin de match si plus personne ne peut marquer
+    const isFinished = checkMatchEnd(gameState)
+    // Si l'adversaire ne peut pas attaquer non plus, le match se termine
+    const oppCanAttack = canAttack(nextAttacker)
+    const nextPhase = (isFinished || !oppCanAttack) ? 'finished' : nextAttacker+'-attack'
+
+    await pushState({
+      ['selected_'+myRole]: [], modifiers: { ...gameState.modifiers, [myRole]:{} },
+      pendingAttack: null, phase: nextPhase, attacker: nextAttacker, round, log })
+    if (nextPhase === 'finished') {
+      await supabase.from('matches').update({ status:'finished', winner_id: computeWinnerId(gameState) }).eq('id', matchId)
+    }
+  }
+
   async function pvpConfirmAttack() {
     const myTeam = gameState[myRole+'Team']
     const oppHasNoOne = !['GK','DEF','MIL','ATT'].some(r => (gameState[oppRole+'Team'][r]||[]).some(p=>!p.used))
@@ -1191,9 +1228,9 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
     const newAttackerScore = goal ? (gameState[attackerRole+'Score']||0)+1 : (gameState[attackerRole+'Score']||0)
     const newState = { ...gameState, [myRole+'Team']: myTeam, [attackerRole+'Score']: newAttackerScore }
     const isFinished = checkMatchEnd(newState)
-    const nextTeam = newState[nextAttacker+'Team']
-    const nextAny = ['GK','DEF','MIL','ATT'].some(r => (nextTeam[r]||[]).some(p=>!p.used))
-    const nextPhase = (!nextAny || isFinished) ? 'finished' : nextAttacker+'-attack'
+    // Le prochain attaquant garde la main même s'il ne peut pas attaquer (il verra PASSER).
+    // Le match ne se termine que si plus personne ne peut marquer (checkMatchEnd).
+    const nextPhase = isFinished ? 'finished' : nextAttacker+'-attack'
 
     const doNext = async () => {
       await pushState({ [myRole+'Team']: myTeam, [oppRole+'Team']: gameState[oppRole+'Team'],
@@ -1216,10 +1253,42 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
     }
   }
 
+  // ── Helpers de capacité (règles de fin de partie) ──────────────────
+  // Un joueur "attaquant valide" = MIL ou ATT non utilisé.
+  function hasAttacker(team) {
+    return ['MIL','ATT'].some(r => (team[r]||[]).some(p => !p.used))
+  }
+  // A-t-il encore au moins un joueur (toutes lignes) sur le terrain ?
+  function hasAnyPlayer(team) {
+    return ['GK','DEF','MIL','ATT'].some(r => (team[r]||[]).some(p => !p.used))
+  }
+  // N'a plus QUE des défenseurs/gardiens (pas de MIL/ATT) mais en a au moins un.
+  function onlyDefenders(team) {
+    return hasAnyPlayer(team) && !hasAttacker(team)
+  }
+  // Le rôle peut-il réellement attaquer ce tour-ci ?
+  //  - oui s'il a un MIL/ATT
+  //  - oui si l'adversaire est vide ET qu'il lui reste des GK/DEF (qui obtiennent note 1)
+  //  - non sinon (→ bouton PASSER)
+  function canAttack(role) {
+    const myT  = gameState[role+'Team']
+    const oppT = gameState[(role==='p1'?'p2':'p1')+'Team']
+    if (hasAttacker(myT)) return true
+    if (!hasAnyPlayer(oppT) && onlyDefenders(myT)) return true   // def → note 1
+    return false
+  }
+  // Fin de match : aucun des deux ne peut plus marquer.
+  // = les deux n'ont plus que des défenseurs (ou plus rien du tout).
   function checkMatchEnd(gs) {
-    const p1OK=['MIL','ATT','GK','DEF'].some(r=>(gs.p1Team[r]||[]).some(p=>!p.used))
-    const p2OK=['MIL','ATT','GK','DEF'].some(r=>(gs.p2Team[r]||[]).some(p=>!p.used))
-    return !p1OK && !p2OK
+    const p1CanScore = ['MIL','ATT'].some(r=>(gs.p1Team[r]||[]).some(p=>!p.used))
+    const p2CanScore = ['MIL','ATT'].some(r=>(gs.p2Team[r]||[]).some(p=>!p.used))
+    // Si l'un n'a plus que des def mais l'autre est vide, le def peut encore marquer (note 1)
+    const p1Any = hasAnyPlayer(gs.p1Team), p2Any = hasAnyPlayer(gs.p2Team)
+    const p1CouldScoreVsEmpty = !p2Any && p1Any
+    const p2CouldScoreVsEmpty = !p1Any && p2Any
+    const p1Done = !p1CanScore && !p1CouldScoreVsEmpty
+    const p2Done = !p2CanScore && !p2CouldScoreVsEmpty
+    return p1Done && p2Done
   }
 
   // winner_id basé sur les scores finaux (null = match nul)

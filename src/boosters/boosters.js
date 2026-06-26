@@ -941,7 +941,7 @@ function showBoosterOdds(booster) {
   if (booster?.rates?.length) {
     const overlay = document.createElement('div')
     overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:4000;padding:16px'
-    const RARITY_COLORS = { normal:'#ccc', pépite:'#D4A017', papyte:'#909090', légende:'#7a28b8' }
+    const RARITY_COLORS = { normal:'#ccc', pepite:'#D4A017', pépite:'#D4A017', papyte:'#909090', legende:'#7a28b8', légende:'#7a28b8' }
     const TYPE_LABELS = { player:'Joueur', formation:'Formation', game_changer:'Game Changer', game_helper:'Game Helper' }
     overlay.innerHTML = `
       <div style="background:#fff;border-radius:16px;padding:20px;max-width:360px;width:100%;max-height:80vh;overflow-y:auto">

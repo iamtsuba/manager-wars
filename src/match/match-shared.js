@@ -416,7 +416,7 @@ export function renderMiniCardHTML(p, w=44, h=58) {
   const logoUrl  = getClubLogo(p)
   const role     = p._line || p.job || 'MIL'
   const jobColor = JOB_COLORS[role] || '#555'
-  const rarityBorder = { normal:'#aaa', pépite:'#D4A017', papyte:'#222', légende:'#7a28b8' }[p?.rarity] || '#aaa'
+  const rarityBorder = { normal:'#aaa', pepite:'#D4A017', pépite:'#D4A017', papyte:'#222', legende:'#7a28b8', légende:'#7a28b8' }[p?.rarity] || '#aaa'
   const note = p.note !== undefined ? Number(p.note)||0 : (Number(getNoteForRole(p, role))||0) + (p.boost||0)
   const flag = countryFlag(p?.country_code)
   const nameH = Math.round(h*0.19), botH = Math.round(h*0.25), portH = h - Math.round(h*0.19) - Math.round(h*0.25)
@@ -506,7 +506,7 @@ export function buildTeamSVG(team, formation, phase, selectedIds, W=310, H=310, 
 
   // 2. Cartes joueurs (style carte à la FUT)
   const CW = 48, CH = 64, NAMEH = 13, BOTHH = 16
-  const rarityBorder = { normal:'#aaaaaa', pépite:'#D4A017', papyte:'#111111', légende:'#7a28b8' }
+  const rarityBorder = { normal:'#aaaaaa', pepite:'#D4A017', pépite:'#D4A017', papyte:'#111111', legende:'#7a28b8', légende:'#7a28b8' }
 
   for (const [pos, p] of Object.entries(slots)) {
     const c = px(pos)
@@ -544,7 +544,7 @@ export function buildTeamSVG(team, formation, phase, selectedIds, W=310, H=310, 
 
     const cardOp  = isSelected ? 0.45 : 1
     const bStroke = isSelected ? '#FFD700' : rarity
-    const bWidth  = isSelected ? 3 : (p?.rarity==='légende'||p?.rarity==='pépite' ? 2.5 : 2)
+    const bWidth  = isSelected ? 3 : (p?.rarity==='legende'||p?.rarity==='légende'||p?.rarity==='pepite'||p?.rarity==='pépite' ? 2.5 : 2)
 
     // Clip portrait à la zone centrale (sans nom ni bas)
     const portH = CH - NAMEH - BOTHH

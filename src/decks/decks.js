@@ -53,7 +53,7 @@ function renderMiniCardHTML(p, w=44, h=58) {
   const flag     = flagImgUrl(p?.country_code)
   const role     = p?.job || 'MIL'
   const jobColor = JOB_COLORS[role] || '#555'
-  const rarityBorder = { normal:'#aaa', pépite:'#D4A017', papyte:'#222', légende:'#7a28b8' }[p?.rarity] || '#aaa'
+  const rarityBorder = { normal:'#aaa', pepite:'#D4A017', pépite:'#D4A017', papyte:'#222', legende:'#7a28b8', légende:'#7a28b8' }[p?.rarity] || '#aaa'
   const note = Number(role==='GK'?p?.note_g:role==='DEF'?p?.note_d:role==='MIL'?p?.note_m:p?.note_a)||0
   const nameH = Math.round(h*0.19), botH = Math.round(h*0.25), portH = h-nameH-botH
   if (!p) return `<div style="width:${w}px;height:${h}px;border:2px dashed rgba(255,255,255,0.3);border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:20px;color:rgba(255,255,255,0.3)">+</div>`
@@ -329,7 +329,7 @@ function renderDeckField(container, builder, positions, ctx) {
     const bg   = JOB_COLORS[role] || '#555'
     const x0   = (c.x - CW/2).toFixed(1)
     const y0   = (c.y - CH/2).toFixed(1)
-    const rarityBorder = { normal:'#aaa', pépite:'#D4A017', papyte:'#222', légende:'#7a28b8' }[p?.rarity] || '#aaa'
+    const rarityBorder = { normal:'#aaa', pepite:'#D4A017', pépite:'#D4A017', papyte:'#222', legende:'#7a28b8', légende:'#7a28b8' }[p?.rarity] || '#aaa'
 
     if (p) {
       const portrait = getPortrait(p)

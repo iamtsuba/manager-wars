@@ -1082,7 +1082,7 @@ function showGameToast(msg, color='rgba(0,0,0,0.8)') {
 function renderSubCard(p) {
   const portrait = getPortrait(p)
   const jobColor = JOB_COLORS[p.job] || '#555'
-  const rarityBorder = { normal:'rgba(255,255,255,0.2)', pépite:'#D4A017', papyte:'#909090', légende:'#7a28b8' }[p.rarity] || 'rgba(255,255,255,0.2)'
+  const rarityBorder = { normal:'rgba(255,255,255,0.2)', pepite:'#D4A017', pépite:'#D4A017', papyte:'#909090', legende:'#7a28b8', légende:'#7a28b8' }[p.rarity] || 'rgba(255,255,255,0.2)'
   const note = p.job==='GK'?p.note_g:p.job==='DEF'?p.note_d:p.job==='MIL'?p.note_m:p.note_a
   return `
   <div style="width:72px;overflow:hidden;border-radius:8px;border:2px solid ${rarityBorder};background:rgba(0,0,0,0.5);flex-shrink:0">

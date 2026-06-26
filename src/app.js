@@ -13,7 +13,7 @@ import { renderSetup }      from './auth/setup.js'
 import { renderHome }       from './home/home.js'
 import { renderCollection } from './collection/collection.js'
 import { renderDecks }      from './decks/decks.js'
-import { renderBoosters }   from './boosters/boosters.js'
+import { renderBoosters, renderStarterOnboarding }   from './boosters/boosters.js'
 import { renderMatchIA }     from './match/match-ia.js'
 import { renderMatchRandom } from './match/match-random.js'
 import { renderMarket }     from './market/market.js'
@@ -242,6 +242,13 @@ async function init() {
 
   if (!state.profile) {
     renderSetup(document.getElementById('app'), { state, navigate: async () => { await refreshProfile(); launchApp() }, toast, refreshProfile })
+    return
+  }
+
+  // Onboarding : si des boosters de démarrage sont en attente, les faire ouvrir d'abord
+  const pendingBoosters = Array.isArray(state.profile.pending_boosters) ? state.profile.pending_boosters : []
+  if (!state.profile.onboarding_done && pendingBoosters.length > 0) {
+    renderStarterOnboarding(document.getElementById('app'), { state, navigate: () => launchApp(), toast, refreshProfile })
     return
   }
 

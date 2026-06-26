@@ -449,7 +449,7 @@ async function openFormationBooster(profile, cost) {
 // ── Animation FIFA ─────────────────────────────────────────
 // Phase 1 : booster qui tremble et s'ouvre
 // Phase 2 : les cartes apparaissent une par une avec flip
-function showBoosterAnimation(cards, booster, navigate) {
+function showBoosterAnimation(cards, booster, navigate, onClose = null) {
   // Guard : si aucune carte (insert DB échoué), afficher message d'erreur
   if (!cards || cards.length === 0) {
     const ov = document.createElement('div')
@@ -867,12 +867,24 @@ function showBoosterAnimation(cards, booster, navigate) {
   }
 
   // ── Boutons fin ───────────────────────────────────────
-  document.getElementById('reveal-collection').addEventListener('click', () => {
-    stopFireworks(); overlay.remove(); navigate('collection')
-  })
-  document.getElementById('reveal-more').addEventListener('click', () => {
-    stopFireworks(); overlay.remove(); navigate('boosters')
-  })
+  if (onClose) {
+    // Mode onboarding : un seul bouton "Continuer" qui enchaîne le booster suivant
+    const revealPhase = document.getElementById('reveal-phase')
+    const btnRow = revealPhase?.querySelector('div[style*="display:flex"][style*="gap:10px"]')
+    if (btnRow) {
+      btnRow.innerHTML = `<button class="btn btn-primary" id="reveal-next" style="flex:1">Continuer →</button>`
+    }
+    document.getElementById('reveal-next')?.addEventListener('click', () => {
+      stopFireworks(); overlay.remove(); onClose()
+    })
+  } else {
+    document.getElementById('reveal-collection').addEventListener('click', () => {
+      stopFireworks(); overlay.remove(); navigate('collection')
+    })
+    document.getElementById('reveal-more').addEventListener('click', () => {
+      stopFireworks(); overlay.remove(); navigate('boosters')
+    })
+  }
 }
 
 
@@ -1125,4 +1137,98 @@ function shuffle(arr) {
     [arr[i],arr[j]] = [arr[j],arr[i]]
   }
   return arr
+}
+
+// ── Onboarding : ouverture des boosters de démarrage offerts ──────────────
+// Lit users.pending_boosters (file de boosters non ouverts) et les fait ouvrir
+// un par un avec l'animation FIFA standard. Marque onboarding_done à la fin.
+export async function renderStarterOnboarding(container, { state, navigate, toast, refreshProfile }) {
+  // Recharger le profil pour avoir la file à jour
+  const { data: prof } = await supabase.from('users').select('*').eq('id', state.user.id).single()
+  if (prof) state.profile = prof
+
+  let queue = Array.isArray(state.profile?.pending_boosters) ? [...state.profile.pending_boosters] : []
+
+  // Rien à ouvrir → aller à l'accueil
+  if (!queue.length) {
+    await supabase.from('users').update({ onboarding_done: true }).eq('id', state.user.id)
+    navigate('home'); return
+  }
+
+  const total = queue.length
+  let index = 0
+
+  // Écran d'intro
+  container.innerHTML = `
+  <div class="page" style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(160deg,#0a3d1e,#063015);padding:24px">
+    <div style="max-width:420px;text-align:center;color:#fff">
+      <div style="font-size:56px;margin-bottom:10px">🎁</div>
+      <h2 style="font-size:24px;font-weight:900;margin-bottom:8px">Bienvenue ${state.profile.pseudo} !</h2>
+      <p style="font-size:14px;color:rgba(255,255,255,0.7);line-height:1.6;margin-bottom:8px">
+        Pour démarrer ton aventure, voici tes cadeaux :
+      </p>
+      <div style="font-size:14px;color:#FFD700;font-weight:700;line-height:1.8;margin-bottom:24px">
+        ⚽ 4 boosters de 5 joueurs<br>
+        📋 1 booster Formation
+      </div>
+      <p style="font-size:13px;color:rgba(255,255,255,0.55);margin-bottom:24px">
+        Ouvre-les un par un pour découvrir tes cartes !
+      </p>
+      <button class="btn btn-primary" id="onboard-start" style="width:100%;font-size:16px;padding:14px">
+        Ouvrir mon 1er booster 🎉
+      </button>
+    </div>
+  </div>`
+
+  // Marquer le profil pour que le 1er booster Players garantisse un GK
+  // (openPlayersBooster regarde first_booster_opened)
+  const persistQueue = async () => {
+    await supabase.from('users').update({ pending_boosters: queue }).eq('id', state.user.id)
+  }
+
+  async function openNext() {
+    if (index >= total || !queue.length) {
+      // Terminé
+      await supabase.from('users')
+        .update({ pending_boosters: [], onboarding_done: true })
+        .eq('id', state.user.id)
+      if (refreshProfile) await refreshProfile()
+      toast('Tous tes boosters sont ouverts ! Bon jeu 🎮', 'success', 4000)
+      navigate('home')
+      return
+    }
+
+    const spec = queue[0]
+    // Recharger le profil (crédits/first_booster_opened à jour)
+    const { data: p } = await supabase.from('users').select('*').eq('id', state.user.id).single()
+    if (p) state.profile = p
+
+    let newCards = []
+    try {
+      if (spec.type === 'formation') {
+        newCards = await openFormationBooster(state.profile, 0)
+      } else {
+        // Booster Players gratuit (cost 0)
+        newCards = await openPlayersBooster(state.profile, spec.count || 5, 0)
+      }
+    } catch (err) {
+      toast(err.message || 'Erreur ouverture booster', 'error')
+      return
+    }
+
+    // Retirer ce booster de la file et persister
+    queue.shift()
+    index++
+    await persistQueue()
+
+    // Booster "fictif" pour l'animation (nom + visuel)
+    const fakeBooster = spec.type === 'formation'
+      ? { name: 'Booster Formation', type: 'formation', img: `${import.meta.env.BASE_URL}icons/booster-formation.png` }
+      : { name: `Booster Joueurs (${index}/${total})`, type: 'player', img: `${import.meta.env.BASE_URL}icons/booster-players.png` }
+
+    // Lancer l'animation, puis enchaîner au booster suivant
+    showBoosterAnimation(newCards, fakeBooster, navigate, () => { openNext() })
+  }
+
+  document.getElementById('onboard-start')?.addEventListener('click', () => openNext())
 }

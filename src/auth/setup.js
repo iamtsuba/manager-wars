@@ -185,64 +185,23 @@ export function renderSetup(container, { state, navigate, toast, refreshProfile 
 }
 
 async function distributeStarterRewards(userId) {
-  // Récupérer des joueurs aléatoires
-  const { data: allPlayers } = await supabase
-    .from('players')
-    .select('id,job,firstname,surname_encoded,country_code,rarity,note_g,note_d,note_m,note_a,note_min,note_max,skin,hair,hair_length,sell_price')
-    .eq('is_active', true)
+  // Au lieu de distribuer les cartes directement, on crée une FILE de boosters
+  // que l'utilisateur devra ouvrir un par un (avec animation) lors de l'onboarding.
+  //  - 4 boosters Players de 5 cartes (le 1er garantit un Gardien)
+  //  - 1 booster Formation de 1 carte
+  const pending = [
+    { type: 'player', count: 5, guaranteeGK: true },
+    { type: 'player', count: 5 },
+    { type: 'player', count: 5 },
+    { type: 'player', count: 5 },
+    { type: 'formation', count: 1 },
+  ]
 
-  if (!allPlayers || allPlayers.length === 0) return // Pas de joueurs en BDD
-
-  const players     = allPlayers
-  const gks         = players.filter(p => p.job === 'GK')
-  const nonGks      = players.filter(p => p.job !== 'GK')
-
-  const cardsToInsert = []
-
-  // 5 boosters Players (4 cartes chacun)
-  for (let b = 0; b < 5; b++) {
-    let boosterPlayers = []
-    if (b === 0 && gks.length > 0) {
-      // 1er booster : GK obligatoire
-      const gk = gks[Math.floor(Math.random() * gks.length)]
-      boosterPlayers.push(gk)
-      const rest = shuffle([...nonGks]).slice(0, 3)
-      boosterPlayers.push(...rest)
-    } else {
-      boosterPlayers = shuffle([...players]).slice(0, 4)
-    }
-    boosterPlayers.forEach(p => {
-      cardsToInsert.push({ owner_id: userId, player_id: p.id, card_type: 'player' })
-    })
+  try {
+    await supabase.from('users')
+      .update({ pending_boosters: pending, onboarding_done: false, first_booster_opened: false })
+      .eq('id', userId)
+  } catch (e) {
+    console.warn('[Setup] Colonnes pending_boosters/onboarding_done absentes — migration requise', e)
   }
-
-  // 3 cartes Game Changer
-  const gcTypes = ['Ressusciter', 'Double attaque', 'Bouclier']
-  gcTypes.forEach(type => {
-    cardsToInsert.push({ owner_id: userId, card_type: 'game_changer', gc_type: type })
-  })
-
-  // 1 carte Formation aléatoire
-  const formations = ['4-4-2','4-3-3','3-4-3','3-5-2','5-3-2']
-  cardsToInsert.push({
-    owner_id: userId, card_type: 'formation',
-    formation: formations[Math.floor(Math.random() * formations.length)]
-  })
-
-  if (cardsToInsert.length > 0) {
-    await supabase.from('cards').insert(cardsToInsert)
-  }
-
-  // Marquer le premier booster comme ouvert
-  await supabase.from('users')
-    .update({ first_booster_opened: true })
-    .eq('id', userId)
-}
-
-function shuffle(arr) {
-  for (let i = arr.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [arr[i], arr[j]] = [arr[j], arr[i]]
-  }
-  return arr
 }

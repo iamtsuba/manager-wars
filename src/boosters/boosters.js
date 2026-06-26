@@ -593,7 +593,7 @@ function showBoosterAnimation(cards, booster, navigate, onClose = null) {
     <!-- Phase 2 : carrousel des cartes (navigation par glissement) -->
     <div id="reveal-phase" style="display:none;flex-direction:column;align-items:center;gap:12px;width:100%;padding:8px 16px 18px">
       <div id="card-counter" style="font-size:14px;font-weight:700;color:rgba(255,255,255,0.85)"></div>
-      <div id="card-viewport" style="position:relative;width:100%;max-width:300px;height:340px;overflow:hidden;touch-action:pan-y;user-select:none;-webkit-user-select:none">
+      <div id="card-viewport" style="position:relative;width:100%;max-width:300px;height:400px;overflow:hidden;touch-action:pan-y;user-select:none;-webkit-user-select:none">
         <div id="card-track" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center"></div>
       </div>
       <div id="card-dots" style="display:flex;gap:6px;flex-wrap:wrap;justify-content:center;max-width:260px"></div>
@@ -720,9 +720,9 @@ function showBoosterAnimation(cards, booster, navigate, onClose = null) {
 
     const paint = (withFireworks) => {
       track.innerHTML = `
-        <div id="current-card-wrap" style="display:flex;flex-direction:column;align-items:center;gap:8px;${isLegend?'filter:drop-shadow(0 0 20px #7a28b8)':''}">
-          <div style="transform:scale(1.3);transform-origin:center">${buildCardFace(card)}</div>
-          ${card.isDuplicate ? `<div style="font-size:12px;font-weight:900;color:#fff;background:linear-gradient(135deg,#cc2222,#ff5555);border-radius:20px;padding:4px 16px;letter-spacing:1px;text-transform:uppercase;box-shadow:0 2px 10px rgba(204,34,34,0.5);animation:dupPulse 1.2s ease-in-out infinite">🔁 Doublon</div>` : ''}
+        <div id="current-card-wrap" style="position:relative;display:flex;flex-direction:column;align-items:center;gap:8px;${isLegend?'filter:drop-shadow(0 0 20px #7a28b8)':''}">
+          <div style="transform:scale(1.25);transform-origin:center">${buildCardFace(card)}</div>
+          ${card.isDuplicate ? `<div style="position:absolute;bottom:14px;left:50%;transform:translateX(-50%);z-index:5;font-size:12px;font-weight:900;color:#fff;background:linear-gradient(135deg,#cc2222,#ff5555);border-radius:20px;padding:4px 16px;letter-spacing:1px;text-transform:uppercase;box-shadow:0 2px 10px rgba(0,0,0,0.4);animation:dupPulse 1.2s ease-in-out infinite;white-space:nowrap">🔁 Doublon</div>` : ''}
         </div>`
       const wrap = document.getElementById('current-card-wrap')
       if (dir !== 0) {

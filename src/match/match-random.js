@@ -121,6 +121,7 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
       gcCardsFull_p1: amIHome ? myGCFull : [], gcCardsFull_p2: amIHome ? [] : myGCFull,
       usedGc_p1: [], usedGc_p2: [],
       boostValue: null, boostOwner: null, boostUsed: false,
+      gcDefs: gcDefs || [],
       lastActionAt: new Date().toISOString(),
     }
   }
@@ -150,6 +151,7 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
   let _localTimerInt = null  // Timer LOCAL (pas dans gameState, sinon le JSON round-trip l'écrase)
   let _vvBound = false       // idem pour le listener visualViewport
   const _goalAnimShownFor = new Set()  // rounds dont l'animation BUT a déjà été montrée localement
+  const _gcAnimShownFor = new Set()    // séquences GC dont l'animation a déjà été montrée localement
 
   function showPvpEndScreen(row) {
     try { supabase.removeChannel(channel) } catch {}
@@ -199,6 +201,15 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
         if (row.game_state) {
           const prev = gameState
           gameState = row.game_state
+          // Animation GC pour l'adversaire (le joueur qui a joué la carte l'a déjà vue localement)
+          const lastGC = gameState._lastGC
+          if (lastGC && lastGC.seq && !_gcAnimShownFor.has(lastGC.seq)) {
+            _gcAnimShownFor.add(lastGC.seq)
+            if (lastGC.by !== myRole) {
+              pvpShowGCAnimation(lastGC.type, lastGC.by, () => renderPvpScreen())
+              return
+            }
+          }
           // Les joueurs utilisés sont recalculés depuis usedCardIds_* dans renderPvpScreen
           // (registre plat persisté, immunisé contre la perte de flag via JSON round-trip).
           // Animation BUT pour le joueur qui reçoit le résultat via Realtime
@@ -242,6 +253,7 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
     try {
       await supabase.from('matches').update({
         status:'finished', forfeit:true, winner_id:winnerId,
+        home_score: forfeitState.p1Score||0, away_score: forfeitState.p2Score||0,
         game_state: forfeitState
       }).eq('id', matchId)
     } catch {}
@@ -364,26 +376,40 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
     const card = myGcFull.find(c=>c.id===gcId)
     const def = card?._gcDef || (gameState.gcDefs||[]).find(d=>d.name===gcType||d.name?.toLowerCase().trim()===gcType?.toLowerCase().trim())
     const used = [...(gameState['usedGc_'+myRole]||[]), gcId]
+    // Tag d'animation (compteur unique) pour déclencher l'anim chez les 2 joueurs
+    const gcAnim = { type: gcType, by: myRole, seq: (gameState._gcAnimSeq||0) + 1 }
 
-    if (def?.effect_type && def.effect_type !== 'CUSTOM') {
-      const handler = PVP_GC_ENGINE[def.effect_type]
-      if (handler) {
-        const gs = { ...gameState }
-        handler(def.effect_params||{}, gs, async (updated) => {
-          updated['usedGc_'+myRole] = used
-          await pushState(updated)
-        })
-        return
+    // Animation locale immédiate pour le joueur qui joue la carte
+    _gcAnimShownFor.add(gcAnim.seq)
+
+    const applyAndPush = async (extra) => {
+      const payload = { ...extra, _lastGC: gcAnim, _gcAnimSeq: gcAnim.seq, ['usedGc_'+myRole]: used }
+      await pushState(payload)
+    }
+
+    pvpShowGCAnimation(gcType, myRole, async () => {
+      if (def?.effect_type && def.effect_type !== 'CUSTOM') {
+        const handler = PVP_GC_ENGINE[def.effect_type]
+        if (handler) {
+          const gs = { ...gameState }
+          handler(def.effect_params||{}, gs, async (updated) => {
+            updated['usedGc_'+myRole] = used
+            updated._lastGC = gcAnim; updated._gcAnimSeq = gcAnim.seq
+            await pushState(updated)
+          })
+          return
+        }
       }
-    }
-    // Fallback legacy
-    const gs = { ...gameState }
-    switch(gcType) {
-      case 'Remplacement+': gs.maxSubs=(gs.maxSubs||3)+1; gs.log.push({text:'🔄 +1 remplacement',type:'info'}); break
-      case 'VAR': { const aS=oppRole+'Score'; if(gs[aS]>0){gs[aS]--;gs.log.push({text:'🚫 But annulé',type:'info'})} break }
-    }
-    gs['usedGc_'+myRole] = used
-    await pushState(gs)
+      // Fallback legacy
+      const gs = { ...gameState }
+      switch(gcType) {
+        case 'Remplacement+': gs.maxSubs=(gs.maxSubs||3)+1; gs.log.push({text:'🔄 +1 remplacement',type:'info'}); break
+        case 'VAR': { const aS=oppRole+'Score'; if(gs[aS]>0){gs[aS]--;gs.log.push({text:'🚫 But annulé',type:'info'})} break }
+      }
+      gs['usedGc_'+myRole] = used
+      gs._lastGC = gcAnim; gs._gcAnimSeq = gcAnim.seq
+      await pushState(gs)
+    })
   }
 
   // ── Gestion infaillible des joueurs utilisés (tableau plat persisté) ──
@@ -899,6 +925,46 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
     setTimeout(dismiss, 3500)
   }
 
+  // Animation d'une carte Game Changer (visible par les 2 joueurs)
+  function pvpShowGCAnimation(gcType, byRole, callback) {
+    const def = (gameState.gcDefs||[]).find(d => d.name===gcType || d.name?.toLowerCase().trim()===gcType?.toLowerCase().trim())
+    const bg   = ({purple:'linear-gradient(160deg,#4a0a8a,#7a28b8)',light_blue:'linear-gradient(160deg,#006080,#00bcd4)'})[def?.color] || 'linear-gradient(160deg,#4a0a8a,#7a28b8)'
+    const bord = ({purple:'#b06ce0',light_blue:'#00d4ef'})[def?.color] || '#b06ce0'
+    const name = def?.name || gcType
+    const effect = def?.effect || GC_DEFS[gcType]?.desc || ''
+    const imgUrl = def?.image_url ? `${import.meta.env.BASE_URL}icons/${def.image_url}` : null
+    const icon = GC_DEFS[gcType]?.icon || '⚡'
+    const byMe = byRole === myRole
+    const byName = byMe ? 'Vous' : (gameState[byRole+'Name']||'Adversaire')
+    const overlay = document.createElement('div')
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.93);z-index:1100;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;overflow:hidden;cursor:pointer;padding:24px'
+    overlay.innerHTML = `
+      <style>
+        @keyframes gcFlipIn{0%{transform:perspective(800px) rotateY(90deg) scale(.7);opacity:0}55%{transform:perspective(800px) rotateY(-12deg) scale(1.08);opacity:1}100%{transform:perspective(800px) rotateY(0) scale(1);opacity:1}}
+        @keyframes gcGlow{0%,100%{box-shadow:0 0 30px ${bord}66}50%{box-shadow:0 0 60px ${bord}cc}}
+        @keyframes gcLabel{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+      </style>
+      <div style="font-size:11px;color:${bord};letter-spacing:3px;text-transform:uppercase;font-weight:700;animation:gcLabel .4s ease both">${byName} joue une carte</div>
+      <div style="width:200px;border-radius:18px;border:3px solid ${bord};background:${bg};display:flex;flex-direction:column;overflow:hidden;animation:gcFlipIn .7s cubic-bezier(.34,1.56,.64,1) both,gcGlow 1.8s ease infinite .7s">
+        <div style="padding:12px;background:rgba(255,255,255,0.14);text-align:center">
+          <div style="font-size:${name.length>14?12:15}px;font-weight:900;color:#fff;letter-spacing:.5px;text-transform:uppercase">${name}</div>
+          <div style="font-size:8px;color:rgba(255,255,255,0.5);margin-top:2px">⚡ GAME CHANGER</div>
+        </div>
+        <div style="height:170px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.06)">
+          ${imgUrl ? `<img src="${imgUrl}" style="max-width:160px;max-height:160px;object-fit:contain">` : `<span style="font-size:76px">${icon}</span>`}
+        </div>
+        <div style="padding:12px;background:rgba(0,0,0,0.38);text-align:center">
+          <div style="font-size:12px;color:rgba(255,255,255,0.92);line-height:1.5">${effect}</div>
+        </div>
+      </div>
+      <div style="font-size:11px;color:rgba(255,255,255,0.3);margin-top:4px;animation:gcLabel .3s ease 1.2s both">Appuyer pour continuer</div>`
+    document.body.appendChild(overlay)
+    let dismissed = false
+    const dismiss = () => { if(dismissed)return; dismissed=true; overlay.remove(); setTimeout(()=>callback&&callback(),50) }
+    overlay.addEventListener('click', dismiss)
+    setTimeout(dismiss, 3000)
+  }
+
   function pvpShowGCDetail(gcId, gcType) {
     const myGcFull=gameState['gcCardsFull_'+myRole]||[]
     const card=myGcFull.find(c=>c.id===gcId)
@@ -1145,7 +1211,7 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
       ['selected_'+myRole]: [], modifiers: { ...gameState.modifiers, [myRole]:{} },
       pendingAttack: null, phase: nextPhase, attacker: nextAttacker, round, log })
     if (nextPhase === 'finished') {
-      await supabase.from('matches').update({ status:'finished', winner_id: computeWinnerId(gameState) }).eq('id', matchId)
+      await finishMatch(gameState)
     }
   }
 
@@ -1155,7 +1221,12 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
     const selected = (gameState['selected_'+myRole]||[]).map(s => {
       const live = (myTeam[s._role]||[]).find(x => x.cardId===s.cardId) || s
       const isExtra = oppHasNoOne && ['GK','DEF'].includes(s._role)
-      return { ...live, _line: s._role, ...(isExtra ? { note_a: Math.max(1, Number(live.note_a)||0) } : {}) }
+      // Réhydrater _col depuis la position du joueur dans sa ligne (survie au round-trip JSON)
+      const lineArr = myTeam[s._role]||[]
+      const colIdx = lineArr.findIndex(x => x.cardId === s.cardId)
+      const cols = getColsForLine(lineArr.length)
+      const _col = colIdx>=0 ? cols[colIdx] : (live._col ?? 1)
+      return { ...live, _line: s._role, _col, ...(isExtra ? { note_a: Math.max(1, Number(live.note_a)||0) } : {}) }
     })
     if (!selected.length) return
     const calc = calcAttack(selected, gameState.modifiers[myRole]||{})
@@ -1183,7 +1254,7 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
           ['selected_'+myRole]: [], modifiers: { ...gameState.modifiers, [myRole]:{} },
           pendingAttack: null, phase: isFinished?'finished':nextAttacker+'-attack',
           attacker: nextAttacker, round, log })
-        if (isFinished) await supabase.from('matches').update({ status:'finished', winner_id: computeWinnerId({ ...gameState, [myRole+'Score']: newScore }) }).eq('id', matchId)
+        if (isFinished) await finishMatch({ ...gameState, [myRole+'Score']: newScore })
       })
       return
     }
@@ -1199,7 +1270,11 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
     const myTeam = gameState[myRole+'Team']
     const selected = (gameState['selected_'+myRole]||[]).map(s => {
       const live = (myTeam[s._role]||[]).find(x => x.cardId===s.cardId) || s
-      return { ...live, _line: s._role }
+      const lineArr = myTeam[s._role]||[]
+      const colIdx = lineArr.findIndex(x => x.cardId === s.cardId)
+      const cols = getColsForLine(lineArr.length)
+      const _col = colIdx>=0 ? cols[colIdx] : (live._col ?? 1)
+      return { ...live, _line: s._role, _col }
     })
     const calc = calcDefense(selected, gameState.modifiers[myRole]||{})
     // Marquer used dans le registre persisté (source de vérité) + flag local immédiat
@@ -1237,7 +1312,7 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
         [attackerRole+'Score']: newAttackerScore,
         ['selected_'+myRole]: [], modifiers: { ...gameState.modifiers, [myRole]:{} },
         pendingAttack: null, phase: nextPhase, attacker: nextAttacker, round, log })
-      if (nextPhase==='finished' || isFinished) await supabase.from('matches').update({ status:'finished', winner_id: computeWinnerId({ ...gameState, [attackerRole+'Score']: newAttackerScore }) }).eq('id', matchId)
+      if (nextPhase==='finished' || isFinished) await finishMatch({ ...gameState, [attackerRole+'Score']: newAttackerScore })
     }
 
     // Bug 2 : showGoalAnimation si but
@@ -1296,6 +1371,18 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
     const p1 = gs.p1Score||0, p2 = gs.p2Score||0
     if (p1 === p2) return null
     return p1 > p2 ? match.home_id : match.away_id
+  }
+
+  // Termine le match en DB : statut + winner + scores (home=p1, away=p2)
+  async function finishMatch(finalState) {
+    try {
+      await supabase.from('matches').update({
+        status: 'finished',
+        winner_id: computeWinnerId(finalState),
+        home_score: finalState.p1Score||0,
+        away_score: finalState.p2Score||0
+      }).eq('id', matchId)
+    } catch(e) { console.error('[PvP] finishMatch:', e) }
   }
 
   function renderPvpResult() {

@@ -56,20 +56,25 @@ export function calcLinks(selected) {
       const b = selected[j]
       if (!a || !b) continue
 
-      const sameCol  = a._col !== undefined && b._col !== undefined && a._col === b._col
-      const adjCols  = a._col !== undefined && b._col !== undefined && Math.abs(a._col - b._col) === 1
-      const lineIdxA = LINE_ORDER.indexOf(a._line)
-      const lineIdxB = LINE_ORDER.indexOf(b._line)
+      const sameCol  = a._col != null && b._col != null && a._col === b._col
+      const adjCols  = a._col != null && b._col != null && Math.abs(a._col - b._col) === 1
+      const lineIdxA = LINE_ORDER.indexOf(a._line || a.job)
+      const lineIdxB = LINE_ORDER.indexOf(b._line || b.job)
       const adjLines = Math.abs(lineIdxA - lineIdxB) === 1
-      const sameLine = a._line === b._line
+      const sameLine = (a._line || a.job) === (b._line || b.job)
 
       // Lien valide si : même ligne + cols adjacentes, OU même col + lignes adjacentes
       const linked = (sameLine && adjCols) || (sameCol && adjLines)
       if (!linked) continue
 
-      // +1 par lien pays, +1 par lien club
-      if (a.country_code && b.country_code && a.country_code === b.country_code) bonus++
-      if (a.club_id && b.club_id && a.club_id === b.club_id) bonus++
+      // Cohérence avec l'affichage : on compte selon linkColor.
+      //  vert (#00ff88) = pays + club = +2
+      //  jaune (#FFD700) = pays OU club = +1
+      //  rouge = aucun lien = +0
+      const sc = a.country_code && b.country_code && a.country_code === b.country_code
+      const sk = a.club_id && b.club_id && a.club_id === b.club_id
+      if (sc && sk) bonus += 2
+      else if (sc || sk) bonus += 1
     }
   }
   return bonus

@@ -294,8 +294,9 @@ async function openMixedBooster(profile, booster) {
   }
   // Joueurs déjà possédés (pour réduire les doublons quand le pool le permet)
   const { data: ownedCards } = await supabase.from('cards')
-    .select('player_id').eq('owner_id', profile.id).eq('card_type', 'player')
-  const ownedPlayerIds = new Set((ownedCards||[]).map(c => c.player_id))
+    .select('player_id, card_type, formation').eq('owner_id', profile.id)
+  const ownedPlayerIds = new Set((ownedCards||[]).filter(c=>c.card_type==='player').map(c => c.player_id))
+  const ownedFormations = new Set((ownedCards||[]).filter(c=>c.card_type==='formation').map(c => c.formation))
   const drawnThisBooster = new Set()  // joueurs déjà tirés dans CE booster
   const results = []
   for (let i = 0; i < (booster.cardCount||5); i++) {
@@ -331,17 +332,18 @@ async function openMixedBooster(profile, booster) {
         }
       }
       if (!filtered.length) continue
-      // Anti-doublon : privilégier les joueurs ni déjà tirés dans ce booster,
-      // ni déjà possédés. Si le pool restreint est vide, on relâche progressivement.
-      let pickPool = filtered.filter(p => !drawnThisBooster.has(p.id) && !ownedPlayerIds.has(p.id))
-      if (!pickPool.length) pickPool = filtered.filter(p => !drawnThisBooster.has(p.id)) // au moins pas de doublon dans ce booster
-      if (!pickPool.length) pickPool = filtered                                          // sinon, tout le pool
+      // On autorise les doublons (TCG classique). On évite seulement de tirer
+      // deux fois le MÊME joueur dans un même booster, si le pool le permet.
+      let pickPool = filtered.filter(p => !drawnThisBooster.has(p.id))
+      if (!pickPool.length) pickPool = filtered
       const player = pickPool[Math.floor(Math.random()*pickPool.length)]
       drawnThisBooster.add(player.id)
+      // Doublon = joueur déjà possédé AVANT ce booster
+      const isDup = ownedPlayerIds.has(player.id)
       const { data: card } = await supabase.from('cards')
         .insert({ owner_id:profile.id, player_id:player.id, card_type:'player' }).select().single()
       if (card) {
-        results.push({ ...card, player })
+        results.push({ ...card, player, isDuplicate: isDup })
         supabase.rpc('record_transfer', {
           p_card_id: card.id, p_player_id: player.id,
           p_club_name: profile.club_name || profile.pseudo,
@@ -361,9 +363,10 @@ async function openMixedBooster(profile, booster) {
     } else if (rate.card_type === 'formation') {
       const formations = ALL_FORMATIONS()
       const formation = formations[Math.floor(Math.random()*formations.length)]
+      const isDupF = ownedFormations.has(formation)
       const { data: cards } = await supabase.from('cards')
         .insert({ owner_id:profile.id, card_type:'formation', formation }).select()
-      if (cards?.[0]) results.push(cards[0])
+      if (cards?.[0]) results.push({ ...cards[0], isDuplicate: isDupF })
     }
   }
   return results
@@ -449,12 +452,18 @@ async function openFormationBooster(profile, cost) {
     .update({ credits: profile.credits - cost }).eq('id', profile.id)
   if (error) throw error
 
+  // Détecter doublon (formation déjà possédée)
+  const { data: ownedF } = await supabase.from('cards')
+    .select('formation').eq('owner_id', profile.id).eq('card_type', 'formation')
+  const ownedFormations = new Set((ownedF||[]).map(c => c.formation))
+
   const formations = ALL_FORMATIONS()
   const formation  = formations[Math.floor(Math.random() * formations.length)]
+  const isDup = ownedFormations.has(formation)
   const { data: created, error: insertErr } = await supabase.from('cards')
     .insert({ owner_id: profile.id, card_type: 'formation', formation }).select()
   if (insertErr) console.error('[Booster Formation] Erreur insert:', insertErr.message, insertErr)
-  return created || []
+  return (created || []).map(c => ({ ...c, isDuplicate: isDup }))
 }
 
 // ── Animation FIFA ─────────────────────────────────────────
@@ -560,6 +569,7 @@ function showBoosterAnimation(cards, booster, navigate, onClose = null) {
       }
       .recap-card { animation:recapAppear 0.3s ease both; }
       @keyframes recapAppear { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:none} }
+      @keyframes dupPulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.08)} }
     </style>
 
     <!-- Phase 1 : booster (à découper) -->
@@ -712,7 +722,7 @@ function showBoosterAnimation(cards, booster, navigate, onClose = null) {
       track.innerHTML = `
         <div id="current-card-wrap" style="display:flex;flex-direction:column;align-items:center;gap:8px;${isLegend?'filter:drop-shadow(0 0 20px #7a28b8)':''}">
           <div style="transform:scale(1.3);transform-origin:center">${buildCardFace(card)}</div>
-          ${card.isDuplicate ? `<div style="font-size:11px;font-weight:700;color:#fff;background:#cc2222;border-radius:8px;padding:2px 10px">Doublon</div>` : ''}
+          ${card.isDuplicate ? `<div style="font-size:12px;font-weight:900;color:#fff;background:linear-gradient(135deg,#cc2222,#ff5555);border-radius:20px;padding:4px 16px;letter-spacing:1px;text-transform:uppercase;box-shadow:0 2px 10px rgba(204,34,34,0.5);animation:dupPulse 1.2s ease-in-out infinite">🔁 Doublon</div>` : ''}
         </div>`
       const wrap = document.getElementById('current-card-wrap')
       if (dir !== 0) {

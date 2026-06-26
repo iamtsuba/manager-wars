@@ -1155,6 +1155,16 @@ export async function renderStarterOnboarding(container, { state, navigate, toas
     navigate('home'); return
   }
 
+  // Charger la config "Booster (new player)" pour calquer ses taux de drop
+  let newPlayerBooster = null
+  try {
+    const all = await loadActiveBoosters()
+    const found = all.find(b => (b.name||'').toLowerCase().includes('new player'))
+    if (found) newPlayerBooster = dbToUI(found)
+  } catch(e) {
+    console.warn('[Onboarding] Config "Booster (new player)" introuvable, fallback taux par défaut', e)
+  }
+
   const total = queue.length
   let index = 0
 
@@ -1169,6 +1179,7 @@ export async function renderStarterOnboarding(container, { state, navigate, toas
       </p>
       <div style="font-size:14px;color:#FFD700;font-weight:700;line-height:1.8;margin-bottom:24px">
         ⚽ 4 boosters de 5 joueurs<br>
+        ⚡ 1 booster Game Changer<br>
         📋 1 booster Formation
       </div>
       <p style="font-size:13px;color:rgba(255,255,255,0.55);margin-bottom:24px">
@@ -1180,8 +1191,6 @@ export async function renderStarterOnboarding(container, { state, navigate, toas
     </div>
   </div>`
 
-  // Marquer le profil pour que le 1er booster Players garantisse un GK
-  // (openPlayersBooster regarde first_booster_opened)
   const persistQueue = async () => {
     await supabase.from('users').update({ pending_boosters: queue }).eq('id', state.user.id)
   }
@@ -1199,7 +1208,7 @@ export async function renderStarterOnboarding(container, { state, navigate, toas
     }
 
     const spec = queue[0]
-    // Recharger le profil (crédits/first_booster_opened à jour)
+    // Recharger le profil (first_booster_opened à jour pour la garantie GK)
     const { data: p } = await supabase.from('users').select('*').eq('id', state.user.id).single()
     if (p) state.profile = p
 
@@ -1207,9 +1216,23 @@ export async function renderStarterOnboarding(container, { state, navigate, toas
     try {
       if (spec.type === 'formation') {
         newCards = await openFormationBooster(state.profile, 0)
+      } else if (spec.type === 'game_changer') {
+        newCards = await openGCBooster(state.profile, spec.count || 3, 0)
       } else {
-        // Booster Players gratuit (cost 0)
-        newCards = await openPlayersBooster(state.profile, spec.count || 5, 0)
+        // Booster Joueurs : se baser sur "Booster (new player)" + ses taux de drop
+        if (newPlayerBooster && newPlayerBooster.rates?.length) {
+          const cfg = { ...newPlayerBooster, cost: 0, cardCount: spec.count || newPlayerBooster.cardCount || 5 }
+          newCards = await openMixedBooster(state.profile, cfg)
+          // Garantie GK sur le 1er booster joueurs : si aucun GK tiré, en forcer un
+          if (spec.guaranteeGK && !state.profile.first_booster_opened) {
+            const hasGK = newCards.some(c => c.player && c.player.job === 'GK')
+            if (!hasGK) await ensureGKInBooster(state.profile, newCards)
+            await supabase.from('users').update({ first_booster_opened: true }).eq('id', state.profile.id)
+          }
+        } else {
+          // Fallback : ancien tirage par défaut
+          newCards = await openPlayersBooster(state.profile, spec.count || 5, 0)
+        }
       }
     } catch (err) {
       toast(err.message || 'Erreur ouverture booster', 'error')
@@ -1224,11 +1247,30 @@ export async function renderStarterOnboarding(container, { state, navigate, toas
     // Booster "fictif" pour l'animation (nom + visuel)
     const fakeBooster = spec.type === 'formation'
       ? { name: 'Booster Formation', type: 'formation', img: `${import.meta.env.BASE_URL}icons/booster-formation.png` }
-      : { name: `Booster Joueurs (${index}/${total})`, type: 'player', img: `${import.meta.env.BASE_URL}icons/booster-players.png` }
+      : spec.type === 'game_changer'
+      ? { name: 'Booster Game Changer', type: 'game_changer', img: `${import.meta.env.BASE_URL}icons/booster-gamechanger.png` }
+      : { name: `Booster Joueurs (${index}/${total})`, type: 'player', img: (newPlayerBooster?.img) || `${import.meta.env.BASE_URL}icons/booster-players.png` }
 
     // Lancer l'animation, puis enchaîner au booster suivant
     showBoosterAnimation(newCards, fakeBooster, navigate, () => { openNext() })
   }
 
   document.getElementById('onboard-start')?.addEventListener('click', () => openNext())
+}
+
+// Garantit qu'au moins un GK figure dans le booster : remplace la 1ère carte par un GK.
+async function ensureGKInBooster(profile, newCards) {
+  try {
+    const { data: gks } = await supabase.from('players')
+      .select('id,job,firstname,surname_encoded,country_code,club_id,rarity,note_g,note_d,note_m,note_a,skin,hair,hair_length,sell_price,clubs(encoded_name,logo_url)')
+      .eq('is_active', true).eq('job', 'GK')
+    if (!gks?.length) return
+    const gk = gks[Math.floor(Math.random()*gks.length)]
+    // Remplacer la 1ère carte joueur tirée par ce GK (en DB aussi)
+    const replaceIdx = newCards.findIndex(c => c.player)
+    if (replaceIdx === -1) return
+    const oldCard = newCards[replaceIdx]
+    await supabase.from('cards').update({ player_id: gk.id }).eq('id', oldCard.id)
+    newCards[replaceIdx] = { ...oldCard, player_id: gk.id, player: gk }
+  } catch(e) { console.warn('[Onboarding] ensureGK échec', e) }
 }

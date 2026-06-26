@@ -188,12 +188,14 @@ async function distributeStarterRewards(userId) {
   // Au lieu de distribuer les cartes directement, on crée une FILE de boosters
   // que l'utilisateur devra ouvrir un par un (avec animation) lors de l'onboarding.
   //  - 4 boosters Players de 5 cartes (le 1er garantit un Gardien)
+  //  - 1 booster Game Changer de 3 cartes
   //  - 1 booster Formation de 1 carte
   const pending = [
     { type: 'player', count: 5, guaranteeGK: true },
     { type: 'player', count: 5 },
     { type: 'player', count: 5 },
     { type: 'player', count: 5 },
+    { type: 'game_changer', count: 3 },
     { type: 'formation', count: 1 },
   ]
 

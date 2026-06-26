@@ -292,6 +292,11 @@ async function openMixedBooster(profile, booster) {
       .update({ credits: profile.credits - booster.cost }).eq('id', profile.id)
     if (error) throw error
   }
+  // Joueurs déjà possédés (pour réduire les doublons quand le pool le permet)
+  const { data: ownedCards } = await supabase.from('cards')
+    .select('player_id').eq('owner_id', profile.id).eq('card_type', 'player')
+  const ownedPlayerIds = new Set((ownedCards||[]).map(c => c.player_id))
+  const drawnThisBooster = new Set()  // joueurs déjà tirés dans CE booster
   const results = []
   for (let i = 0; i < (booster.cardCount||5); i++) {
     const rate = rollDropRate(booster.rates)
@@ -326,7 +331,13 @@ async function openMixedBooster(profile, booster) {
         }
       }
       if (!filtered.length) continue
-      const player = filtered[Math.floor(Math.random()*filtered.length)]
+      // Anti-doublon : privilégier les joueurs ni déjà tirés dans ce booster,
+      // ni déjà possédés. Si le pool restreint est vide, on relâche progressivement.
+      let pickPool = filtered.filter(p => !drawnThisBooster.has(p.id) && !ownedPlayerIds.has(p.id))
+      if (!pickPool.length) pickPool = filtered.filter(p => !drawnThisBooster.has(p.id)) // au moins pas de doublon dans ce booster
+      if (!pickPool.length) pickPool = filtered                                          // sinon, tout le pool
+      const player = pickPool[Math.floor(Math.random()*pickPool.length)]
+      drawnThisBooster.add(player.id)
       const { data: card } = await supabase.from('cards')
         .insert({ owner_id:profile.id, player_id:player.id, card_type:'player' }).select().single()
       if (card) {

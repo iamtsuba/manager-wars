@@ -463,6 +463,15 @@ function showBoosterAnimation(cards, booster, navigate, onClose = null) {
     ov.querySelector('#anim-close-err')?.addEventListener('click', () => ov.remove())
     return
   }
+
+  // Trier les cartes : la carte joueur avec la note la plus haute apparaît en 1er.
+  // (les cartes non-joueur — formation, GC — gardent leur ordre, placées après)
+  cards = [...cards].sort((a, b) => {
+    const na = a.player ? maxNote(a.player) : -1
+    const nb = b.player ? maxNote(b.player) : -1
+    return nb - na
+  })
+
   const overlay = document.createElement('div')
   overlay.id = 'booster-anim-overlay'
 

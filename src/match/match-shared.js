@@ -387,7 +387,11 @@ export async function renderDeckSelect(container, ctx, matchMode) {
     })
     document.getElementById('validate-deck')?.addEventListener('click', () => {
       if (!complete) return
-      ctx.navigate('match', { matchMode, deckId: deck.id })
+      // Préserver les params existants (friendId, friendName, matchMode réel) et
+      // n'ajouter que le deckId. Ne JAMAIS écraser matchMode par la valeur locale,
+      // sinon un match ami repasserait en random.
+      const prev = ctx.state.params || {}
+      ctx.navigate('match', { ...prev, matchMode: prev.matchMode || matchMode, deckId: deck.id })
     })
     document.getElementById('cancel-deck-select')?.addEventListener('click', () => { _showBottomNav(container); navigate('home') })
 

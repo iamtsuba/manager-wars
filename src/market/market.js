@@ -137,7 +137,7 @@ async function loadMarket(container, ctx) {
 
 // ── Achat de carte ────────────────────────────────────────
 async function buyCard(listingId, list, container, ctx) {
-  const { state, toast } = ctx
+  const { state, toast, refreshProfile } = ctx
   const listing = list.find(l => l.id === listingId)
   if (!listing) return
 
@@ -146,40 +146,29 @@ async function buyCard(listingId, list, container, ctx) {
   const player   = listing.card?.player
 
   if (myCredit < price) { toast('Crédits insuffisants', 'error'); return }
-  if (!confirm(`Acheter ${player?.firstname} ${player?.surname_encoded} pour ${price.toLocaleString('fr')} crédits ?`)) return
+
+  // ── Popup de confirmation custom (remplace confirm() natif du navigateur) ──
+  const confirmed = await showBuyConfirm(player, price)
+  if (!confirmed) return
 
   // Désactiver le bouton pendant la transaction
   const btn = document.querySelector(`[data-buy="${listingId}"]`)
   if (btn) { btn.disabled = true; btn.textContent = '⏳' }
 
   try {
-    // Transaction atomique côté serveur (RPC) : transfère la carte, met à jour
-    // les crédits des deux parties, marque l'annonce vendue, notifie le vendeur.
-    // Contourne les limitations RLS qui empêchent un acheteur de modifier
-    // la ligne 'users' ou 'market_listings' du vendeur.
     const { data: result, error: rpcErr } = await supabase
       .rpc('buy_market_card', { p_listing_id: listingId, p_buyer_id: state.profile.id })
 
     if (rpcErr) throw new Error(rpcErr.message)
     if (!result?.success) throw new Error(result?.error || 'Achat impossible')
 
-    // Enregistrer le transfert (club acheteur + prix) dans l'historique de CETTE carte
-    if (listing.card_id || listing.card?.id) {
-      const cardId = listing.card_id || listing.card.id
-      supabase.rpc('record_transfer', {
-        p_card_id: cardId,
-        p_player_id: player?.id || null,
-        p_club_name: state.profile.club_name || state.profile.pseudo,
-        p_manager_name: state.profile.pseudo,
-        p_source: 'market', p_price: price
-      }).then(()=>{}).catch(()=>{})
-    }
+    // NOTE : record_transfer est appelé par buy_market_card côté serveur.
+    // Ne pas le rappeler ici pour éviter les doublons dans l'historique.
 
-    // Mettre à jour les crédits localement
+    // Mettre à jour les crédits dans le state et l'affichage immédiatement
     state.profile.credits = myCredit - price
-
-    const headerCredits = document.querySelector('[data-credits]') || document.querySelector('.credits-display')
-    if (headerCredits) headerCredits.textContent = (myCredit - price).toLocaleString('fr') + ' cr.'
+    const credEl = document.getElementById('nav-credits')
+    if (credEl) credEl.textContent = `💰 ${(myCredit - price).toLocaleString('fr')}`
 
     toast(`✅ ${player?.surname_encoded} ajouté à ta collection !`, 'success')
     loadMarket(container, ctx)
@@ -188,6 +177,31 @@ async function buyCard(listingId, list, container, ctx) {
     toast('❌ ' + err.message, 'error')
     if (btn) { btn.disabled = false; btn.textContent = 'Acheter' }
   }
+}
+
+// Popup de confirmation d'achat (remplace window.confirm)
+function showBuyConfirm(player, price) {
+  return new Promise(resolve => {
+    const ov = document.createElement('div')
+    ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:9000;display:flex;align-items:center;justify-content:center;padding:20px'
+    ov.innerHTML = `
+      <div style="background:#fff;border-radius:16px;padding:24px;max-width:360px;width:100%;box-shadow:0 8px 40px rgba(0,0,0,0.25)">
+        <div style="font-size:18px;font-weight:900;margin-bottom:6px">Confirmer l'achat</div>
+        <div style="font-size:14px;color:#555;margin-bottom:16px;line-height:1.5">
+          Acheter <b>${player?.firstname || ''} ${player?.surname_encoded || ''}</b><br>
+          pour <span style="color:#c47a00;font-weight:900;font-size:16px">${price.toLocaleString('fr')} crédits</span> ?
+        </div>
+        <div style="display:flex;gap:10px">
+          <button id="buy-cancel" style="flex:1;padding:12px;border-radius:10px;border:1.5px solid #ddd;background:#fff;font-size:14px;font-weight:700;cursor:pointer;color:#555">Annuler</button>
+          <button id="buy-ok" style="flex:1;padding:12px;border-radius:10px;border:none;background:linear-gradient(135deg,#1A6B3C,#2a9d5c);color:#fff;font-size:14px;font-weight:900;cursor:pointer">Acheter ✅</button>
+        </div>
+      </div>`
+    document.body.appendChild(ov)
+    const close = (val) => { ov.remove(); resolve(val) }
+    ov.querySelector('#buy-ok').addEventListener('click', () => close(true))
+    ov.querySelector('#buy-cancel').addEventListener('click', () => close(false))
+    ov.addEventListener('click', e => { if (e.target === ov) close(false) })
+  })
 }
 
 // ── Annuler une annonce ───────────────────────────────────

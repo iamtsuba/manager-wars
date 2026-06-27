@@ -18,10 +18,22 @@ import {
 // ═══════════════════════════════════════════════════════════
 
 export async function renderMatchFriend(container, ctx, friendId, friendName) {
-  // Étanchéité immédiate : quitter toute file de matchmaking random dès l'entrée
-  // en mode ami, avant même la sélection du deck.
+  // Étanchéité immédiate : un joueur qui entre en match ami ne doit JAMAIS rester
+  // appariable en random. On nettoie : (1) les canaux Realtime de matchmaking
+  // restés actifs d'une session random précédente, (2) la file de matchmaking.
   try {
     const uid = ctx?.state?.profile?.id
+    // (1) Supprimer tout canal Realtime fantôme (matchmaking + pvp orphelins)
+    try {
+      const chans = supabase.getChannels ? supabase.getChannels() : []
+      chans.forEach(ch => {
+        const topic = ch.topic || ''
+        if (topic.includes('matchmaking') || topic.includes('pvp-match')) {
+          supabase.removeChannel(ch)
+        }
+      })
+    } catch (e) { console.warn('[FriendMatch] cleanup canaux:', e) }
+    // (2) Quitter la file de matchmaking
     if (uid) {
       await supabase.rpc('cancel_matchmaking', { p_user_id: uid }).catch(()=>{})
       await supabase.from('matchmaking_queue').delete().eq('user_id', uid).then(()=>{}, ()=>{})

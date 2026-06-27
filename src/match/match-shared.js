@@ -273,6 +273,16 @@ export function showGCSelection(container, gcCards, onConfirm) {
   render()
 }
 
+// Calcule le libellé d'en-tête selon le mode de match (IA / Random / Ami)
+function matchTitleLabel(ctx) {
+  const params = (ctx?.state?.params) || {}
+  const mm = params.matchMode || 'vs_ai_easy'
+  if (mm === 'friend') return `Match vs ${params.friendName || 'Ami'}`
+  if (mm === 'random') return 'Match vs Random'
+  // Modes IA : vs_ai_easy / vs_ai_medium / vs_ai_hard
+  return `Match vs IA — ${mm.replace('vs_ai_','').toUpperCase()}`
+}
+
 export async function renderDeckSelect(container, ctx, matchMode) {
   const { state, navigate } = ctx
   container.innerHTML = '<div style="padding:40px;text-align:center;color:#aaa">⚽ Chargement...</div>'
@@ -316,7 +326,7 @@ export async function renderDeckSelect(container, ctx, matchMode) {
 
       <!-- Header -->
       <div style="padding:10px 16px;background:rgba(0,0,0,0.4);text-align:center;flex-shrink:0">
-        <div style="font-size:10px;opacity:.6;letter-spacing:2px;text-transform:uppercase">Match vs IA — ${matchMode.replace('vs_ai_','').toUpperCase()}</div>
+        <div style="font-size:10px;opacity:.6;letter-spacing:2px;text-transform:uppercase">${matchTitleLabel(ctx)}</div>
         <div style="font-size:17px;font-weight:900;margin-top:2px">Choisis ton deck</div>
       </div>
 

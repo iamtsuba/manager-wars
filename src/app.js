@@ -113,7 +113,7 @@ async function renderPage() {
     case 'match': {
       const mm = (state.params && state.params.matchMode) || 'vs_ai_easy'
       if (mm === 'random') await renderMatchRandom(container, ctx)
-      else if (mm === 'friend') await renderMatchFriend(container, ctx, state.params?.friendId, state.params?.lobbyId || null)
+      else if (mm === 'friend') await renderMatchFriend(container, ctx, state.params?.friendId, state.params?.friendName)
       else                 await renderMatchIA(container, ctx)
       break
     }

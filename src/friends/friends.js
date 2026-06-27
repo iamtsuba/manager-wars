@@ -1,5 +1,4 @@
 import { supabase } from '../lib/supabase.js'
-import { renderMatchFriend } from '../match/match-friend.js'
 
 // ── Couleurs par défaut ─────────────────────────────────────────────────────
 const GREEN  = '#1A6B3C'
@@ -119,9 +118,7 @@ async function loadFriendsList(state, toast, ctx = {}) {
   })
   list.querySelectorAll('[data-match]').forEach(btn => {
     btn.addEventListener('click', () => {
-      const friendId = btn.dataset.friendId
-      const container = document.getElementById('page-content') || document.getElementById('app')
-      renderMatchFriend(container, ctx, friendId, null)
+      navigate('match', { matchMode: 'friend', friendId: btn.dataset.friendId, friendName: btn.dataset.friendName })
     })
   })
 }
@@ -152,7 +149,7 @@ function friendCardHTML(friend, friendshipId) {
       </div>
       <!-- Boutons -->
       <div style="display:flex;gap:8px;flex-shrink:0">
-        <button data-match="${friendshipId}" data-friend-id="${friend.id}" title="Jouer un match"
+        <button data-match="${friendshipId}" data-friend-id="${friend.id}" data-friend-name="${name}" title="Jouer un match"
           style="width:38px;height:38px;border-radius:50%;border:1.5px solid #ddd;background:#fff;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center">⚽</button>
         <button data-stats="${friend.id}" data-friend-name="${name}" title="Voir les stats"
           style="width:38px;height:38px;border-radius:50%;border:1.5px solid ${YELLOW};background:#fff;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center">📊</button>

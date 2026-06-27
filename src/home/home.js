@@ -19,6 +19,8 @@ export async function renderHome(container, { state, navigate, toast }) {
 
       <!-- Demandes d'amis en attente (injecté dynamiquement) -->
       <div id="friend-requests-banner"></div>
+      <!-- Invitations de match ami en attente -->
+      <div id="match-invite-banner"></div>
       <!-- Invitation match ami en attente -->
       <div id="friend-lobby-banner"></div>
 
@@ -111,8 +113,61 @@ export async function renderHome(container, { state, navigate, toast }) {
 
   // Charger les demandes d'amis en attente (sans bloquer le rendu)
   loadFriendRequestsBanner(state, toast)
+  // Charger les invitations de match ami en attente
+  loadMatchInviteBanner(state, toast, navigate)
   // Vérifier si un ami nous invite à jouer
   loadFriendLobbyBanner(state, toast, navigate)
+}
+
+// ── Bannière invitation de match ami en attente ──────────────────────────────
+async function loadMatchInviteBanner(state, toast, navigate) {
+  const banner = document.getElementById('match-invite-banner')
+  if (!banner) return
+
+  const { data: invites } = await supabase
+    .from('friend_match_invites')
+    .select('id, inviter_id, inviter:users!inviter_id(pseudo, club_name)')
+    .eq('invitee_id', state.user.id)
+    .eq('status', 'pending')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  if (!invites) { banner.innerHTML = ''; return }
+
+  const inviterName = invites.inviter?.club_name || invites.inviter?.pseudo || '?'
+  const inviterId = invites.inviter_id
+
+  banner.innerHTML = `
+    <div id="match-invite-btn" style="
+      display:flex;align-items:center;gap:10px;
+      background:linear-gradient(135deg,#1a0a2e,#4a0a8a);
+      color:#fff;border-radius:12px;padding:12px 16px;
+      margin-bottom:10px;cursor:pointer;
+      box-shadow:0 3px 12px rgba(74,10,138,0.4);
+      animation:matchInvPulse 2s ease-in-out infinite;
+    ">
+      <style>@keyframes matchInvPulse{0%,100%{box-shadow:0 3px 12px rgba(74,10,138,0.4)}50%{box-shadow:0 3px 24px rgba(74,10,138,0.8)}}</style>
+      <div style="background:rgba(255,255,255,0.2);border-radius:50%;width:36px;height:36px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">⚽</div>
+      <div style="flex:1">
+        <div style="font-size:13px;font-weight:900">${inviterName} t'invite à jouer !</div>
+        <div style="font-size:11px;opacity:0.75">Accepter la partie ?</div>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button id="match-inv-accept" style="padding:6px 12px;border-radius:8px;border:none;background:#22c55e;color:#fff;font-size:12px;font-weight:900;cursor:pointer">Jouer !</button>
+        <button id="match-inv-decline" style="padding:6px 12px;border-radius:8px;border:none;background:rgba(255,255,255,0.15);color:#fff;font-size:12px;cursor:pointer">Refuser</button>
+      </div>
+    </div>`
+
+  document.getElementById('match-inv-accept')?.addEventListener('click', () => {
+    banner.innerHTML = ''
+    navigate('match', { matchMode: 'friend', friendId: inviterId, friendName: inviterName })
+  })
+  document.getElementById('match-inv-decline')?.addEventListener('click', async () => {
+    await supabase.from('friend_match_invites').update({ status: 'declined' }).eq('id', invites.id)
+    banner.innerHTML = ''
+    toast('Invitation refusée', 'info')
+  })
 }
 
 // ── Bannière demandes d'amis en attente ─────────────────────────────────────

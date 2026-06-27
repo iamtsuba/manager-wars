@@ -17,149 +17,128 @@ import {
 // pickers, règles de but défenseur, hauteur mobile robuste, etc.
 // ═══════════════════════════════════════════════════════════
 
-export async function renderMatchFriend(container, ctx, friendId, lobbyId = null) {
-  // Si on est l'inviteur : créer le lobby et attendre
-  // Si on est l'invité (lobbyId fourni) : rejoindre le lobby existant
+export async function renderMatchFriend(container, ctx, friendId, friendName) {
   await loadMatchSetup(container, ctx, 'random', ({ deckId, formation, starters, subsRaw, gcCardsEnriched, gcDefs }) => {
-    const start = (selectedGC) => showFriendLobby(
-      container, ctx, friendId, lobbyId, deckId, formation, starters, subsRaw, selectedGC, gcDefs || []
-    )
+    const start = (selectedGC) => showFriendLobby(container, ctx, deckId, formation, starters, subsRaw, selectedGC, gcDefs || [], friendId, friendName)
     if (!gcCardsEnriched.length) { start([]); return }
     showGCSelection(container, gcCardsEnriched, start)
   })
 }
 
-async function showFriendLobby(container, ctx, friendId, existingLobbyId, deckId, formation, starters, subsRaw, myGC = [], gcDefs = []) {
+async function showFriendLobby(container, ctx, deckId, formation, starters, subsRaw, myGC = [], gcDefs = [], friendId, friendName) {
   const { state, navigate, toast } = ctx
   const uid = state.profile.id
   let cancelled = false
-  let channel = null
+  let lobbyChannel = null
 
   _hideBottomNav(container)
 
-  // Charger le nom de l'ami
-  const { data: friendProfile } = await supabase.from('users').select('pseudo, club_name').eq('id', friendId).single()
-  const friendName = friendProfile?.club_name || friendProfile?.pseudo || 'Ami'
-
-  container.innerHTML = `
-    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:24px;background:linear-gradient(180deg,#0a1628,#1a0a2e);padding:24px;text-align:center">
-      <div style="width:64px;height:64px;border:4px solid rgba(255,255,255,0.15);border-top-color:#00ff88;border-radius:50%;animation:mmspin 0.9s linear infinite"></div>
-      <div style="font-size:18px;font-weight:900;color:#fff">Salon ami — ${friendName}</div>
-      <div id="lobby-status" style="font-size:13px;color:rgba(255,255,255,0.5)">Connexion au salon...</div>
-      <div id="lobby-players" style="display:flex;gap:20px;margin-top:4px">
-        <div style="text-align:center">
-          <div id="p-me" style="width:48px;height:48px;border-radius:50%;background:rgba(255,255,255,0.1);display:flex;align-items:center;justify-content:center;font-size:20px;margin:0 auto 4px">⏳</div>
-          <div style="font-size:11px;color:rgba(255,255,255,0.5)">Moi</div>
+  const renderLobby = (myReady, friendReady, inviteId, amInviter) => {
+    container.innerHTML = `
+      <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:20px;background:linear-gradient(180deg,#0a1628,#1a0a2e);padding:24px;text-align:center;color:#fff">
+        <div style="font-size:22px;font-weight:900">⚽ Match ami</div>
+        <div style="font-size:14px;color:rgba(255,255,255,0.6)">vs ${friendName}</div>
+        <div style="display:flex;gap:24px;align-items:center">
+          <div style="display:flex;flex-direction:column;align-items:center;gap:6px">
+            <div style="width:52px;height:52px;border-radius:50%;background:${myReady?'#1A6B3C':'rgba(255,255,255,0.1)'};display:flex;align-items:center;justify-content:center;font-size:22px;border:2px solid ${myReady?'#22c55e':'rgba(255,255,255,0.2)'}">
+              ${myReady?'✅':'⏳'}
+            </div>
+            <div style="font-size:12px;font-weight:700">${state.profile.club_name||state.profile.pseudo}</div>
+            <div style="font-size:11px;color:${myReady?'#22c55e':'#aaa'}">${myReady?'Prêt':'En attente'}</div>
+          </div>
+          <div style="font-size:28px;font-weight:900;color:#FFD700">VS</div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:6px">
+            <div style="width:52px;height:52px;border-radius:50%;background:${friendReady?'#1A6B3C':'rgba(255,255,255,0.1)'};display:flex;align-items:center;justify-content:center;font-size:22px;border:2px solid ${friendReady?'#22c55e':'rgba(255,255,255,0.2)'}">
+              ${friendReady?'✅':'⏳'}
+            </div>
+            <div style="font-size:12px;font-weight:700">${friendName}</div>
+            <div style="font-size:11px;color:${friendReady?'#22c55e':'#aaa'}">${friendReady?'Prêt':'En attente'}</div>
+          </div>
         </div>
-        <div style="font-size:28px;color:rgba(255,255,255,0.3);line-height:48px">VS</div>
-        <div style="text-align:center">
-          <div id="p-friend" style="width:48px;height:48px;border-radius:50%;background:rgba(255,255,255,0.1);display:flex;align-items:center;justify-content:center;font-size:20px;margin:0 auto 4px">⏳</div>
-          <div style="font-size:11px;color:rgba(255,255,255,0.5)">${friendName}</div>
-        </div>
-      </div>
-      <button id="lobby-cancel" style="margin-top:12px;padding:12px 28px;border-radius:12px;border:1.5px solid rgba(255,255,255,0.25);background:transparent;color:rgba(255,255,255,0.7);font-size:14px;cursor:pointer">Annuler</button>
-    </div>
-    <style>@keyframes mmspin{to{transform:rotate(360deg)}}</style>`
+        ${!myReady?'<div style="font-size:13px;color:rgba(255,255,255,0.5)">Ton deck est sélectionné. En attente de confirmation...</div>':''}
+        ${!friendReady&&myReady?'<div style="font-size:13px;color:rgba(255,255,255,0.5);animation:lobbyPulse 1.5s ease-in-out infinite">En attente de ton ami...</div>':''}
+        <button id="lobby-cancel" style="padding:10px 24px;border-radius:10px;border:1.5px solid rgba(255,255,255,0.2);background:transparent;color:rgba(255,255,255,0.6);font-size:13px;cursor:pointer">Annuler</button>
+        <style>@keyframes lobbyPulse{0%,100%{opacity:1}50%{opacity:0.4}}</style>
+      </div>`
 
-  const setStatus = (msg) => { const el = document.getElementById('lobby-status'); if(el) el.textContent = msg }
-  const setReady = (who, ready) => {
-    const el = document.getElementById(who === 'me' ? 'p-me' : 'p-friend')
-    if (el) { el.textContent = ready ? '✅' : '⏳'; el.style.background = ready ? 'rgba(0,255,136,0.2)' : 'rgba(255,255,255,0.1)' }
+    document.getElementById('lobby-cancel')?.addEventListener('click', async () => {
+      cancelled = true
+      if (lobbyChannel) { supabase.removeChannel(lobbyChannel); lobbyChannel = null }
+      if (inviteId) await supabase.from('friend_match_invites').update({ status: 'declined' }).eq('id', inviteId)
+      _showBottomNav(container); navigate('home')
+    })
   }
 
-  const cleanup = async (deleteLobby = false) => {
+  const startMatch = async (matchId, amIHome) => {
     cancelled = true
-    if (channel) { try { supabase.removeChannel(channel) } catch{} channel = null }
-    if (deleteLobby && existingLobbyId) {
-      await supabase.from('friend_match_lobbies').update({ status:'cancelled' }).eq('id', existingLobbyId).catch(()=>{})
-    }
-  }
-
-  document.getElementById('lobby-cancel')?.addEventListener('click', async () => {
-    await cleanup(true)
-    _showBottomNav(container); navigate('home')
-  })
-
-  const launchMatch = async (matchId, amIHome) => {
-    if (cancelled) return
-    cancelled = true
-    if (channel) { try { supabase.removeChannel(channel) } catch{} channel = null }
-    setStatus('C\'est parti ! 🚀')
+    if (lobbyChannel) { supabase.removeChannel(lobbyChannel); lobbyChannel = null }
     await new Promise(r => setTimeout(r, 600))
     if (!container.isConnected) return
     renderPvpMatch(container, ctx, matchId, amIHome, myGC, gcDefs)
   }
 
-  const amInviter = !existingLobbyId
+  // ── Vérifier si une invite existe déjà (l'ami a peut-être déjà invité) ──
+  const { data: existingInvite } = await supabase
+    .from('friend_match_invites')
+    .select('*')
+    .eq('status', 'pending')
+    .or(`and(inviter_id.eq.${uid},invitee_id.eq.${friendId}),and(inviter_id.eq.${friendId},invitee_id.eq.${uid})`)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
 
-  if (amInviter) {
-    // ── JE SUIS L'INVITEUR : créer le lobby ──────────────────────────────
-    // Annuler les vieux lobbys en attente entre nous 2
-    await supabase.from('friend_match_lobbies')
-      .update({ status: 'cancelled' })
-      .eq('inviter_id', uid).eq('invitee_id', friendId).eq('status', 'waiting')
+  let inviteId, amInviter
 
-    const { data: lobby, error: lobbyErr } = await supabase
-      .from('friend_match_lobbies')
-      .insert({ inviter_id: uid, invitee_id: friendId, inviter_deck_id: deckId, inviter_ready: true })
-      .select().single()
-
-    if (lobbyErr || !lobby) { toast('Erreur création salon', 'error'); _showBottomNav(container); navigate('home'); return }
-    existingLobbyId = lobby.id
-
-    setStatus('En attente de ' + friendName + '...')
-    setReady('me', true)
-
-    // Écouter les changements du lobby
-    channel = supabase.channel('friend-lobby-' + lobby.id)
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'friend_match_lobbies', filter: `id=eq.${lobby.id}` },
-        async (payload) => {
-          const row = payload.new
-          if (cancelled) return
-          if (row.status === 'cancelled') { toast("L'ami a annulé", 'info'); await cleanup(false); _showBottomNav(container); navigate('home'); return }
-          setReady('friend', row.invitee_ready)
-          if (row.match_id && row.status === 'started') { launchMatch(row.match_id, true); return }
-          // Les 2 sont prêts → créer le match (inviteur = home)
-          if (row.inviter_ready && row.invitee_ready && !row.match_id && row.status === 'waiting') {
-            setStatus('Création du match...')
-            const { data: match, error: matchErr } = await supabase.from('matches').insert({
-              home_id: uid, away_id: friendId, status: 'active', mode: 'friend'
-            }).select().single()
-            if (matchErr || !match) { toast('Erreur création match', 'error'); return }
-            await supabase.from('friend_match_lobbies')
-              .update({ match_id: match.id, status: 'started' })
-              .eq('id', lobby.id)
-            launchMatch(match.id, true)
-          }
-        })
-      .subscribe()
-
+  if (existingInvite && existingInvite.inviter_id === friendId) {
+    // L'ami a déjà invité → on rejoint
+    amInviter = false
+    inviteId = existingInvite.id
+    await supabase.from('friend_match_invites').update({
+      invitee_deck_id: deckId, invitee_ready: true, status: 'accepted'
+    }).eq('id', inviteId)
   } else {
-    // ── JE SUIS L'INVITÉ : rejoindre le lobby ───────────────────────────
-    const { data: lobby } = await supabase.from('friend_match_lobbies').select('*').eq('id', existingLobbyId).single()
-    if (!lobby || lobby.status !== 'waiting') { toast('Salon invalide ou expiré', 'error'); _showBottomNav(container); navigate('home'); return }
-
-    setReady('friend', lobby.inviter_ready)
-
-    const { error: joinErr } = await supabase.from('friend_match_lobbies')
-      .update({ invitee_deck_id: deckId, invitee_ready: true })
-      .eq('id', existingLobbyId)
-    if (joinErr) { toast('Erreur rejoindre salon', 'error'); _showBottomNav(container); navigate('home'); return }
-
-    setStatus('Attente du lancement...')
-    setReady('me', true)
-
-    // Écouter le match_id quand l'inviteur le crée
-    channel = supabase.channel('friend-lobby-inv-' + existingLobbyId)
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'friend_match_lobbies', filter: `id=eq.${existingLobbyId}` },
-        async (payload) => {
-          const row = payload.new
-          if (cancelled) return
-          if (row.status === 'cancelled') { toast('Match annulé', 'info'); await cleanup(false); _showBottomNav(container); navigate('home'); return }
-          if (row.match_id && row.status === 'started') { launchMatch(row.match_id, false) }
-        })
-      .subscribe()
+    // Créer une invitation
+    amInviter = true
+    const { data: inv, error: invErr } = await supabase.from('friend_match_invites').insert({
+      inviter_id: uid, invitee_id: friendId, friend_id: friendId,
+      inviter_deck_id: deckId, inviter_ready: true, status: 'pending'
+    }).select().single()
+    if (invErr || !inv) { toast('Erreur création invitation', 'error'); _showBottomNav(container); navigate('home'); return }
+    inviteId = inv.id
   }
+
+  renderLobby(true, amInviter ? false : true, inviteId, amInviter)
+
+  // Si on est l'invité et les 2 sont prêts → créer le match immédiatement
+  if (!amInviter) {
+    // Créer le match (l'inviteur est home, l'invité est away)
+    const { data: matchRow } = await supabase.from('matches').insert({
+      home_id: friendId, away_id: uid,
+      home_deck_id: existingInvite.inviter_deck_id, away_deck_id: deckId,
+      status: 'active', mode: 'friend'
+    }).select().single()
+    if (!matchRow) { toast('Erreur création match', 'error'); _showBottomNav(container); navigate('home'); return }
+    await supabase.from('friend_match_invites').update({ match_id: matchRow.id, status: 'matched' }).eq('id', inviteId)
+    startMatch(matchRow.id, false)
+    return
+  }
+
+  // En tant qu'inviteur, écouter les mises à jour de l'invite
+  lobbyChannel = supabase.channel('friend-invite-' + inviteId)
+    .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'friend_match_invites', filter: `id=eq.${inviteId}` },
+      async (payload) => {
+        if (cancelled) return
+        const row = payload.new
+        if (row.status === 'matched' && row.match_id) {
+          startMatch(row.match_id, true)
+        } else if (row.status === 'declined') {
+          toast(`${friendName} a décliné l'invitation`, 'warning')
+          _showBottomNav(container); navigate('home')
+        } else if (row.invitee_ready) {
+          renderLobby(true, true, inviteId, true)
+        }
+      })
+    .subscribe()
 }
 
 async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDefs = []) {

@@ -18,6 +18,15 @@ import {
 // ═══════════════════════════════════════════════════════════
 
 export async function renderMatchFriend(container, ctx, friendId, friendName) {
+  // Étanchéité immédiate : quitter toute file de matchmaking random dès l'entrée
+  // en mode ami, avant même la sélection du deck.
+  try {
+    const uid = ctx?.state?.profile?.id
+    if (uid) {
+      await supabase.rpc('cancel_matchmaking', { p_user_id: uid }).catch(()=>{})
+      await supabase.from('matchmaking_queue').delete().eq('user_id', uid).then(()=>{}, ()=>{})
+    }
+  } catch {}
   await loadMatchSetup(container, ctx, 'random', ({ deckId, formation, starters, subsRaw, gcCardsEnriched, gcDefs }) => {
     const start = (selectedGC) => showFriendLobby(container, ctx, deckId, formation, starters, subsRaw, selectedGC, gcDefs || [], friendId, friendName)
     if (!gcCardsEnriched.length) { start([]); return }
@@ -32,6 +41,12 @@ async function showFriendLobby(container, ctx, deckId, formation, starters, subs
   let lobbyChannel = null
 
   _hideBottomNav(container)
+
+  // ── Étanchéité : sortir de toute file de matchmaking random ──
+  // Un joueur engagé dans un match ami ne doit JAMAIS pouvoir être apparié
+  // en random. On le retire de la queue avant d'entrer dans le lobby.
+  try { await supabase.rpc('cancel_matchmaking', { p_user_id: uid }) } catch {}
+  try { await supabase.from('matchmaking_queue').delete().eq('user_id', uid) } catch {}
 
   const renderLobby = (myReady, friendReady, inviteId, amInviter) => {
     container.innerHTML = `

@@ -18,6 +18,24 @@ import {
 // ═══════════════════════════════════════════════════════════
 
 export async function renderMatchRandom(container, ctx) {
+  // Nettoyage à l'entrée : supprimer tout canal Realtime de matchmaking/pvp
+  // resté actif d'une session précédente + repartir d'une file propre.
+  // Évite qu'un ancien canal fantôme déclenche un match indésirable.
+  try {
+    const uid = ctx?.state?.profile?.id
+    try {
+      const chans = supabase.getChannels ? supabase.getChannels() : []
+      chans.forEach(ch => {
+        const topic = ch.topic || ''
+        if (topic.includes('matchmaking') || topic.includes('pvp-match') || topic.includes('friend-invite')) {
+          supabase.removeChannel(ch)
+        }
+      })
+    } catch (e) { console.warn('[Random] cleanup canaux:', e) }
+    if (uid) {
+      await supabase.rpc('cancel_matchmaking', { p_user_id: uid }).catch(()=>{})
+    }
+  } catch {}
   await loadMatchSetup(container, ctx, 'random', ({ deckId, formation, starters, subsRaw, gcCardsEnriched, gcDefs }) => {
     const start = (selectedGC) => showMatchmakingSearch(container, ctx, deckId, formation, starters, subsRaw, selectedGC, gcDefs || [])
     if (!gcCardsEnriched.length) { start([]); return }

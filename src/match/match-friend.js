@@ -112,12 +112,20 @@ async function showFriendLobby(container, ctx, deckId, formation, starters, subs
   // Si on est l'invité et les 2 sont prêts → créer le match immédiatement
   if (!amInviter) {
     // Créer le match (l'inviteur est home, l'invité est away)
-    const { data: matchRow } = await supabase.from('matches').insert({
+    let matchRow = null
+    const baseMatch = {
       home_id: friendId, away_id: uid,
       home_deck_id: existingInvite.inviter_deck_id, away_deck_id: deckId,
-      status: 'active', mode: 'friend'
-    }).select().single()
-    if (!matchRow) { toast('Erreur création match', 'error'); _showBottomNav(container); navigate('home'); return }
+      status: 'active'
+    }
+    // Essai avec mode:'friend', fallback sans si la colonne n'existe pas
+    let res = await supabase.from('matches').insert({ ...baseMatch, mode: 'friend' }).select().single()
+    if (res.error) {
+      console.warn('[FriendMatch] insert avec mode échoué, retry sans mode:', res.error.message)
+      res = await supabase.from('matches').insert(baseMatch).select().single()
+    }
+    matchRow = res.data
+    if (!matchRow) { toast('Erreur création match: ' + (res.error?.message||''), 'error'); _showBottomNav(container); navigate('home'); return }
     await supabase.from('friend_match_invites').update({ match_id: matchRow.id, status: 'matched' }).eq('id', inviteId)
     startMatch(matchRow.id, false)
     return

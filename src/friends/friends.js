@@ -119,7 +119,14 @@ async function loadFriendsList(state, toast, ctx = {}) {
   })
   list.querySelectorAll('[data-match]').forEach(btn => {
     btn.addEventListener('click', () => {
-      navigate('match', { matchMode: 'friend', friendId: btn.dataset.friendId, friendName: btn.dataset.friendName })
+      const fid = btn.dataset.friendId
+      const fname = btn.dataset.friendName
+      console.log('[Friends] clic match', { fid, fname, hasNavigate: typeof navigate })
+      if (typeof navigate === 'function') {
+        navigate('match', { matchMode: 'friend', friendId: fid, friendName: fname })
+      } else {
+        toast('Erreur navigation', 'error')
+      }
     })
   })
 }

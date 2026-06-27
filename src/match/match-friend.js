@@ -147,14 +147,22 @@ async function showFriendLobby(container, ctx, deckId, formation, starters, subs
   }
 
   // En tant qu'inviteur, écouter les mises à jour de l'invite
+  // + nettoyer périodiquement la file random pour rester 100% étanche
+  const queueGuard = setInterval(() => {
+    if (cancelled) { clearInterval(queueGuard); return }
+    supabase.from('matchmaking_queue').delete().eq('user_id', uid).then(()=>{}, ()=>{})
+  }, 3000)
+
   lobbyChannel = supabase.channel('friend-invite-' + inviteId)
     .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'friend_match_invites', filter: `id=eq.${inviteId}` },
       async (payload) => {
         if (cancelled) return
         const row = payload.new
         if (row.status === 'matched' && row.match_id) {
+          clearInterval(queueGuard)
           startMatch(row.match_id, true)
         } else if (row.status === 'declined') {
+          clearInterval(queueGuard)
           toast(`${friendName} a décliné l'invitation`, 'warning')
           _showBottomNav(container); navigate('home')
         } else if (row.invitee_ready) {

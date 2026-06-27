@@ -46,13 +46,10 @@ async function loadFriendsList(state, toast) {
   const uid = state.user.id
 
   // Récupérer les amitiés acceptées (je suis requester ou addressee)
+  // 1. Récupérer les amitiés acceptées (sans jointure complexe pour fiabilité)
   const { data: rows, error } = await supabase
     .from('friendships')
-    .select(`
-      id, requester_id, addressee_id, status,
-      requester:users!requester_id(id, pseudo, club_name, club_logo_url),
-      addressee:users!addressee_id(id, pseudo, club_name, club_logo_url)
-    `)
+    .select('id, requester_id, addressee_id')
     .eq('status', 'accepted')
     .or(`requester_id.eq.${uid},addressee_id.eq.${uid}`)
 
@@ -77,17 +74,26 @@ async function loadFriendsList(state, toast) {
   if (!list) return
 
   if (error) {
-    list.innerHTML = `<div style="color:${RED};text-align:center;padding:16px">Erreur chargement des amis</div>`
+    console.error('[Friends] Erreur:', error)
+    list.innerHTML = `<div style="color:${RED};text-align:center;padding:16px">Erreur chargement : ${error.message}</div>`
     return
   }
 
-  const friends = (rows || []).map(row => {
-    const isRequester = row.requester_id === uid
-    return {
-      friendshipId: row.id,
-      friend: isRequester ? row.addressee : row.requester,
-    }
-  })
+  // 2. Charger les profils des amis
+  const friendIds = (rows || []).map(r => r.requester_id === uid ? r.addressee_id : r.requester_id)
+  let profilesMap = {}
+  if (friendIds.length) {
+    const { data: profiles } = await supabase
+      .from('users')
+      .select('id, pseudo, club_name')
+      .in('id', friendIds)
+    ;(profiles || []).forEach(p => { profilesMap[p.id] = p })
+  }
+
+  const friends = (rows || []).map(row => ({
+    friendshipId: row.id,
+    friend: profilesMap[row.requester_id === uid ? row.addressee_id : row.requester_id] || { pseudo: '?' }
+  }))
 
   if (!friends.length) {
     list.innerHTML = `
@@ -211,12 +217,21 @@ function showAddFriendPopup(state, toast) {
 // ══════════════════════════════════════════════════════════════════════════════
 export async function showPendingPopup(state, toast, onUpdate = null) {
   const uid = state.user.id
-  const { data: pending } = await supabase
+  const { data: pendingRows } = await supabase
     .from('friendships')
-    .select(`id, requester_id, requester:users!requester_id(id, pseudo, club_name)`)
+    .select('id, requester_id')
     .eq('addressee_id', uid)
     .eq('status', 'pending')
     .order('created_at', { ascending: false })
+
+  // Charger les profils des requeteurs
+  const reqIds = (pendingRows || []).map(r => r.requester_id)
+  let reqProfiles = {}
+  if (reqIds.length) {
+    const { data: profs } = await supabase.from('users').select('id, pseudo, club_name').in('id', reqIds)
+    ;(profs || []).forEach(p => { reqProfiles[p.id] = p })
+  }
+  const pending = (pendingRows || []).map(r => ({ ...r, requester: reqProfiles[r.requester_id] || { pseudo: '?' } }))
 
   const ov = createOverlay()
   const rows = pending || []

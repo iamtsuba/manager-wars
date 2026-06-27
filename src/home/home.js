@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase.js'
 import { showPendingPopup } from '../friends/friends.js'
+import { resumePvpMatch } from '../match/match-random.js'
 
 
 // Version de build, affichée uniquement aux admins. Construite à partir de la
@@ -21,6 +22,8 @@ export async function renderHome(container, { state, navigate, toast }) {
       <div id="friend-requests-banner"></div>
       <!-- Invitations de match ami en attente -->
       <div id="match-invite-banner"></div>
+      <!-- Match(s) en cours à reprendre -->
+      <div id="ongoing-match-banner"></div>
       <!-- Invitation match ami en attente -->
 
       <!-- Bandeau pseudo (couleurs du club) -->
@@ -114,7 +117,105 @@ export async function renderHome(container, { state, navigate, toast }) {
   loadFriendRequestsBanner(state, toast)
   // Charger les invitations de match ami en attente
   loadMatchInviteBanner(state, toast, navigate)
+  // Charger les matchs en cours à reprendre
+  loadOngoingMatchBanner(state, toast, navigate)
   // Vérifier si un ami nous invite à jouer
+}
+
+// ── Bannière : match(s) en cours à reprendre ────────────────────────────────
+async function loadOngoingMatchBanner(state, toast, navigate) {
+  const banner = document.getElementById('ongoing-match-banner')
+  if (!banner) return
+  const uid = state.profile.id
+
+  // Matchs actifs où je suis impliqué
+  const { data: matches } = await supabase
+    .from('matches')
+    .select('id, home_id, away_id, status, mode')
+    .eq('status', 'active')
+    .or(`home_id.eq.${uid},away_id.eq.${uid}`)
+    .order('created_at', { ascending: false })
+
+  if (!matches?.length) { banner.innerHTML = ''; return }
+
+  // Récupérer les noms des adversaires
+  const oppIds = matches.map(m => m.home_id === uid ? m.away_id : m.home_id).filter(Boolean)
+  let names = {}
+  if (oppIds.length) {
+    const { data: profs } = await supabase.from('users').select('id, pseudo, club_name').in('id', oppIds)
+    ;(profs||[]).forEach(p => { names[p.id] = p.club_name || p.pseudo })
+  }
+
+  banner.innerHTML = matches.map(m => {
+    const oppId = m.home_id === uid ? m.away_id : m.home_id
+    const oppName = names[oppId] || 'Adversaire'
+    const modeLabel = m.mode === 'friend' ? 'Match ami' : 'Match'
+    return `
+      <div style="display:flex;align-items:center;gap:10px;background:linear-gradient(135deg,#0a3d1e,#1A6B3C);color:#fff;border-radius:12px;padding:12px 16px;margin-bottom:10px;box-shadow:0 3px 12px rgba(26,107,60,0.4)">
+        <div style="background:rgba(255,255,255,0.2);border-radius:50%;width:36px;height:36px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">⚽</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:900">${modeLabel} en cours</div>
+          <div style="font-size:11px;opacity:0.8;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">vs ${oppName}</div>
+        </div>
+        <button data-resume="${m.id}" title="Reprendre" style="width:38px;height:38px;border-radius:50%;border:none;background:#22c55e;color:#fff;font-size:18px;cursor:pointer;flex-shrink:0">⚽</button>
+        <button data-abandon="${m.id}" data-opp="${oppId}" title="Abandonner" style="width:38px;height:38px;border-radius:50%;border:none;background:#cc2222;color:#fff;font-size:18px;cursor:pointer;flex-shrink:0">✕</button>
+      </div>`
+  }).join('')
+
+  banner.querySelectorAll('[data-resume]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const container = document.getElementById('page-content') || document.getElementById('app')
+      resumePvpMatch(container, { state, navigate, toast, openModal:null, closeModal:null, refreshProfile:null }, btn.dataset.resume)
+    })
+  })
+
+  banner.querySelectorAll('[data-abandon]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      showAbandonConfirm(async () => {
+        await abandonMatch(btn.dataset.abandon, btn.dataset.opp, uid)
+        toast('Match abandonné (défaite 3-0)', 'info')
+        loadOngoingMatchBanner(state, toast, navigate)
+      })
+    })
+  })
+}
+
+// Abandonner un match : défaite 3-0 pour celui qui abandonne, victoire pour l'adversaire
+async function abandonMatch(matchId, oppId, uid) {
+  // Récupérer le match pour savoir qui est home/away
+  const { data: m } = await supabase.from('matches').select('home_id, away_id, game_state').eq('id', matchId).single()
+  if (!m) return
+  const amIHome = m.home_id === uid
+  // L'adversaire gagne 3-0
+  const home_score = amIHome ? 0 : 3
+  const away_score = amIHome ? 3 : 0
+  const gs = m.game_state || {}
+  gs.p1Score = home_score; gs.p2Score = away_score
+  gs.phase = 'finished'; gs.forfeit = true
+  await supabase.from('matches').update({
+    status: 'finished', forfeit: true, winner_id: oppId,
+    home_score, away_score, game_state: gs
+  }).eq('id', matchId)
+}
+
+// Popup de confirmation d'abandon
+function showAbandonConfirm(onConfirm) {
+  const ov = document.createElement('div')
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:9000;display:flex;align-items:center;justify-content:center;padding:20px'
+  ov.innerHTML = `
+    <div style="background:#fff;border-radius:16px;padding:24px;max-width:340px;width:100%;text-align:center">
+      <div style="font-size:40px;margin-bottom:8px">⚠️</div>
+      <div style="font-size:17px;font-weight:900;margin-bottom:6px">Abandonner le match ?</div>
+      <div style="font-size:13px;color:#666;margin-bottom:18px">Tu perdras par forfait <b>3-0</b>. Cette action est définitive.</div>
+      <div style="display:flex;gap:10px">
+        <button id="ab-cancel" style="flex:1;padding:12px;border-radius:10px;border:1.5px solid #ddd;background:#fff;font-weight:700;cursor:pointer;color:#555">Annuler</button>
+        <button id="ab-ok" style="flex:1;padding:12px;border-radius:10px;border:none;background:#cc2222;color:#fff;font-weight:900;cursor:pointer">Abandonner</button>
+      </div>
+    </div>`
+  document.body.appendChild(ov)
+  ov.querySelector('#ab-cancel').addEventListener('click', () => ov.remove())
+  ov.querySelector('#ab-ok').addEventListener('click', () => { ov.remove(); onConfirm() })
+  ov.addEventListener('click', e => { if (e.target === ov) ov.remove() })
 }
 
 // ── Bannière invitation de match ami en attente ──────────────────────────────

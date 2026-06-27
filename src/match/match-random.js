@@ -92,6 +92,22 @@ async function showMatchmakingSearch(container, ctx, deckId, formation, starters
     .subscribe()
 }
 
+// Reprendre un match PvP en cours (random OU ami) à partir de son ID.
+// Le game_state est déjà en DB ; on détermine simplement notre rôle.
+export async function resumePvpMatch(container, ctx, matchId) {
+  const { state, navigate, toast } = ctx
+  // Nettoyer les canaux fantômes avant de reprendre
+  try {
+    const chans = supabase.getChannels ? supabase.getChannels() : []
+    chans.forEach(ch => { const t = ch.topic||''; if (t.includes('matchmaking')||t.includes('pvp-match')||t.includes('friend-invite')) supabase.removeChannel(ch) })
+  } catch {}
+  const { data: match } = await supabase.from('matches').select('home_id, away_id, status').eq('id', matchId).single()
+  if (!match) { toast('Match introuvable', 'error'); navigate('home'); return }
+  if (match.status === 'finished') { toast('Ce match est terminé', 'info'); navigate('home'); return }
+  const amIHome = match.home_id === state.profile.id
+  renderPvpMatch(container, ctx, matchId, amIHome, [], [])
+}
+
 async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDefs = []) {
   const { state, navigate, toast } = ctx
   const myRole  = amIHome ? 'p1' : 'p2'

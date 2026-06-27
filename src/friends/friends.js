@@ -36,13 +36,14 @@ export async function renderFriends(container, ctx) {
   await loadFriendsList(state, toast, ctx)
 
   document.getElementById('btn-add-friend').addEventListener('click', () => showAddFriendPopup(state, toast))
-  document.getElementById('btn-accept-friend').addEventListener('click', () => showPendingPopup(state, toast))
+  document.getElementById('btn-accept-friend').addEventListener('click', () => showPendingPopup(state, toast, null, ctx))
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
 // Charger la liste d'amis acceptés
 // ══════════════════════════════════════════════════════════════════════════════
 async function loadFriendsList(state, toast, ctx = {}) {
+  const { navigate } = ctx
   const uid = state.user.id
 
   // Récupérer les amitiés acceptées (je suis requester ou addressee)
@@ -226,7 +227,7 @@ function showAddFriendPopup(state, toast) {
 // ══════════════════════════════════════════════════════════════════════════════
 // Popup : Demandes en attente
 // ══════════════════════════════════════════════════════════════════════════════
-export async function showPendingPopup(state, toast, onUpdate = null) {
+export async function showPendingPopup(state, toast, onUpdate = null, ctx = {}) {
   const uid = state.user.id
   const { data: pendingRows } = await supabase
     .from('friendships')
@@ -283,7 +284,7 @@ export async function showPendingPopup(state, toast, onUpdate = null) {
       btn.closest('div[style]').remove()
       toast('✅ Ami accepté !', 'success')
       // Recharger la liste amis et la bannière home si callback fourni
-      loadFriendsList(state, toast)
+      loadFriendsList(state, toast, ctx)
       if (onUpdate) onUpdate()
     })
   })

@@ -251,7 +251,7 @@ async function showPendingPopup(state, toast) {
   ov.querySelectorAll('[data-accept]').forEach(btn => {
     btn.addEventListener('click', async () => {
       const { error } = await supabase.from('friendships')
-        .update({ status: 'accepted', updated_at: new Date().toISOString() })
+        .update({ status: 'accepted' })
         .eq('id', btn.dataset.accept)
       if (error) { toast('Erreur : ' + error.message, 'error'); return }
       btn.closest('div[style]').remove()
@@ -264,7 +264,7 @@ async function showPendingPopup(state, toast) {
   ov.querySelectorAll('[data-decline]').forEach(btn => {
     btn.addEventListener('click', async () => {
       await supabase.from('friendships')
-        .update({ status: 'declined', updated_at: new Date().toISOString() })
+        .delete()
         .eq('id', btn.dataset.decline)
       btn.closest('div[style]').remove()
       toast('Demande refusée', 'info')
@@ -404,8 +404,7 @@ export async function updateFriendMatchStats({ player1Id, player2Id, score1, sco
       goals_p2: existing.goals_p2 + s2,
       gc_used_p1: existing.gc_used_p1 + g1,
       gc_used_p2: existing.gc_used_p2 + g2,
-      matches_total: existing.matches_total + 1,
-      updated_at: new Date().toISOString()
+      matches_total: existing.matches_total + 1
     }).eq('player1_id', p1).eq('player2_id', p2)
   } else {
     await supabase.from('friend_match_stats').insert({

@@ -154,29 +154,40 @@ async function showFriendLobby(container, ctx, deckId, formation, starters, subs
     return
   }
 
-  // En tant qu'inviteur, écouter les mises à jour de l'invite
-  // + nettoyer périodiquement la file random pour rester 100% étanche
+  // En tant qu'inviteur, écouter les mises à jour de l'invite (Realtime)
+  // + POLLING de secours (si Realtime non activé sur friend_match_invites)
+  // + nettoyage périodique de la file random pour rester 100% étanche
+  let _matchStarted = false
+  const handleInviteRow = (row) => {
+    if (cancelled || _matchStarted) return
+    if (row.status === 'matched' && row.match_id) {
+      _matchStarted = true
+      clearInterval(queueGuard); clearInterval(pollGuard)
+      startMatch(row.match_id, true)
+    } else if (row.status === 'declined') {
+      clearInterval(queueGuard); clearInterval(pollGuard)
+      toast(`${friendName} a décliné l'invitation`, 'warning')
+      _showBottomNav(container); navigate('home')
+    } else if (row.invitee_ready) {
+      renderLobby(true, true, inviteId, true)
+    }
+  }
+
   const queueGuard = setInterval(() => {
     if (cancelled) { clearInterval(queueGuard); return }
     supabase.from('matchmaking_queue').delete().eq('user_id', uid).then(()=>{}, ()=>{})
   }, 3000)
 
+  // Polling : re-lit la ligne d'invite toutes les 1.2s tant qu'on n'a pas démarré
+  const pollGuard = setInterval(async () => {
+    if (cancelled || _matchStarted) { clearInterval(pollGuard); return }
+    const { data: r } = await supabase.from('friend_match_invites').select('*').eq('id', inviteId).maybeSingle()
+    if (r) handleInviteRow(r)
+  }, 1200)
+
   lobbyChannel = supabase.channel('friend-invite-' + inviteId)
     .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'friend_match_invites', filter: `id=eq.${inviteId}` },
-      async (payload) => {
-        if (cancelled) return
-        const row = payload.new
-        if (row.status === 'matched' && row.match_id) {
-          clearInterval(queueGuard)
-          startMatch(row.match_id, true)
-        } else if (row.status === 'declined') {
-          clearInterval(queueGuard)
-          toast(`${friendName} a décliné l'invitation`, 'warning')
-          _showBottomNav(container); navigate('home')
-        } else if (row.invitee_ready) {
-          renderLobby(true, true, inviteId, true)
-        }
-      })
+      (payload) => handleInviteRow(payload.new))
     .subscribe()
 }
 
@@ -242,7 +253,7 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
       else gameState = check.game_state
     } else {
       container.innerHTML = '<div style="padding:40px;text-align:center;color:#aaa">⚽ Synchronisation...</div>'
-      for (let i = 0; i < 30 && !gameState; i++) {
+      for (let i = 0; i < 60 && !gameState; i++) {
         await new Promise(r => setTimeout(r, 400))
         const { data: m2 } = await supabase.from('matches').select('game_state').eq('id', matchId).single()
         if (m2?.game_state && Object.keys(m2.game_state).length) gameState = m2.game_state

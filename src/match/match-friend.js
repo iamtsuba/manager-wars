@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase.js'
+import { updateFriendMatchStats } from '../friends/friends.js'
 import {
   GC_DEFS, getNoteForRole, calcAttack, calcDefense,
   calcMidfieldDuel, resolveDuel, aiSelectPlayers, getRewards, rollBoost as rollBoostFn,
@@ -253,6 +254,7 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
   }
 
   let _pvpEnded = false
+  let _statsRecorded = false  // évite le double comptage des stats ami
   let _localTimerInt = null  // Timer LOCAL (pas dans gameState, sinon le JSON round-trip l'écrase)
   let _vvBound = false       // idem pour le listener visualViewport
   const _goalAnimShownFor = new Set()  // rounds dont l'animation BUT a déjà été montrée localement
@@ -262,6 +264,20 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
     try { supabase.removeChannel(channel) } catch {}
     const myScore  = gameState[myRole+'Score']||0
     const oppScore = gameState[oppRole+'Score']||0
+
+    // Mettre à jour les stats entre amis — UNIQUEMENT le joueur home (autorité),
+    // pour éviter le double comptage. On utilise les scores p1/p2 et les GC utilisés.
+    if (amIHome && !_statsRecorded) {
+      _statsRecorded = true
+      const p1Score = gameState.p1Score || 0
+      const p2Score = gameState.p2Score || 0
+      const gc1 = (gameState.usedGc_p1 || []).length
+      const gc2 = (gameState.usedGc_p2 || []).length
+      updateFriendMatchStats({
+        player1Id: match.home_id, player2Id: match.away_id,
+        score1: p1Score, score2: p2Score, gc1, gc2
+      }).catch(e => console.warn('[FriendMatch] updateStats:', e))
+    }
     // Source de vérité : winner_id si présent, sinon comparaison des scores
     let iWon, isDraw
     if (row.winner_id) {

@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase.js'
+import { showPendingPopup } from '../friends/friends.js'
 
 
 // Version de build, affichée uniquement aux admins. Construite à partir de la
@@ -15,6 +16,9 @@ export async function renderHome(container, { state, navigate, toast }) {
   container.innerHTML = `
   <div class="page">
     <div class="page-body">
+
+      <!-- Demandes d'amis en attente (injecté dynamiquement) -->
+      <div id="friend-requests-banner"></div>
 
       <!-- Bandeau pseudo (couleurs du club) -->
       <div class="hero hero-compact" style="background:${p.club_color1};border:2px solid ${p.club_color2}">
@@ -101,6 +105,61 @@ export async function renderHome(container, { state, navigate, toast }) {
   document.getElementById('logout-btn').addEventListener('click', async () => {
     await supabase.auth.signOut()
     window.location.reload()
+  })
+
+  // Charger les demandes d'amis en attente (sans bloquer le rendu)
+  loadFriendRequestsBanner(state, toast)
+}
+
+// ── Bannière demandes d'amis en attente ─────────────────────────────────────
+async function loadFriendRequestsBanner(state, toast) {
+  const banner = document.getElementById('friend-requests-banner')
+  if (!banner) return
+
+  const { data: pending, error } = await supabase
+    .from('friendships')
+    .select('id, requester:users!requester_id(pseudo, club_name)')
+    .eq('addressee_id', state.user.id)
+    .eq('status', 'pending')
+
+  if (error || !pending?.length) {
+    banner.innerHTML = ''
+    return
+  }
+
+  const count = pending.length
+  const names = pending.slice(0, 2).map(r => r.requester?.pseudo || '?').join(', ')
+  const extra = count > 2 ? ` +${count - 2}` : ''
+
+  banner.innerHTML = `
+    <div id="friend-req-btn" style="
+      display:flex;align-items:center;gap:10px;
+      background:linear-gradient(135deg,#1A6B3C,#2a9d5c);
+      color:#fff;border-radius:12px;padding:12px 16px;
+      margin-bottom:10px;cursor:pointer;
+      box-shadow:0 3px 12px rgba(26,107,60,0.35);
+      animation:friendReqPulse 2.5s ease-in-out infinite;
+    ">
+      <style>
+        @keyframes friendReqPulse {
+          0%,100% { box-shadow:0 3px 12px rgba(26,107,60,0.35) }
+          50% { box-shadow:0 3px 22px rgba(26,107,60,0.65) }
+        }
+      </style>
+      <div style="background:rgba(255,255,255,0.25);border-radius:50%;width:36px;height:36px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">👥</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:900">
+          ${count} demande${count > 1 ? 's' : ''} d'ami${count > 1 ? 's' : ''} en attente
+        </div>
+        <div style="font-size:11px;opacity:0.85;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+          ${names}${extra}
+        </div>
+      </div>
+      <div style="font-size:20px;flex-shrink:0">›</div>
+    </div>`
+
+  document.getElementById('friend-req-btn').addEventListener('click', () => {
+    showPendingPopup(state, toast, () => loadFriendRequestsBanner(state, toast))
   })
 }
 

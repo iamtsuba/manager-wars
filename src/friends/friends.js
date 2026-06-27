@@ -209,7 +209,7 @@ function showAddFriendPopup(state, toast) {
 // ══════════════════════════════════════════════════════════════════════════════
 // Popup : Demandes en attente
 // ══════════════════════════════════════════════════════════════════════════════
-async function showPendingPopup(state, toast) {
+export async function showPendingPopup(state, toast, onUpdate = null) {
   const uid = state.user.id
   const { data: pending } = await supabase
     .from('friendships')
@@ -256,8 +256,9 @@ async function showPendingPopup(state, toast) {
       if (error) { toast('Erreur : ' + error.message, 'error'); return }
       btn.closest('div[style]').remove()
       toast('✅ Ami accepté !', 'success')
-      // Recharger la liste
+      // Recharger la liste amis et la bannière home si callback fourni
       loadFriendsList(state, toast)
+      if (onUpdate) onUpdate()
     })
   })
 
@@ -268,6 +269,7 @@ async function showPendingPopup(state, toast) {
         .eq('id', btn.dataset.decline)
       btn.closest('div[style]').remove()
       toast('Demande refusée', 'info')
+      if (onUpdate) onUpdate()
     })
   })
 }

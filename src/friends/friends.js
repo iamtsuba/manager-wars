@@ -85,7 +85,7 @@ async function loadFriendsList(state, toast) {
   if (friendIds.length) {
     const { data: profiles } = await supabase
       .from('users')
-      .select('id, pseudo, club_name')
+      .select('id, pseudo, club_name, last_seen_at')
       .in('id', friendIds)
     ;(profiles || []).forEach(p => { profilesMap[p.id] = p })
   }
@@ -125,16 +125,25 @@ async function loadFriendsList(state, toast) {
 function friendCardHTML(friend, friendshipId) {
   const name = friend.club_name || friend.pseudo || '?'
   const initials = (friend.pseudo || '?').slice(0, 2).toUpperCase()
+
+  // Présence : vert si vu il y a moins de 3 minutes, rouge sinon
+  const lastSeen = friend.last_seen_at ? new Date(friend.last_seen_at) : null
+  const isOnline = lastSeen && (Date.now() - lastSeen.getTime()) < 3 * 60 * 1000
+  const dot = `<div style="width:10px;height:10px;border-radius:50%;background:${isOnline ? '#22c55e' : '#ef4444'};border:2px solid #fff;position:absolute;bottom:1px;right:1px;flex-shrink:0"></div>`
+
   return `
     <div style="display:flex;align-items:center;gap:12px;background:#fff;border-radius:12px;padding:12px 14px;box-shadow:0 1px 6px rgba(0,0,0,0.08)">
-      <!-- Avatar -->
-      <div style="width:42px;height:42px;border-radius:50%;background:${GREEN};display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:900;color:#fff;flex-shrink:0">
-        ${initials}
+      <!-- Avatar + point de présence -->
+      <div style="position:relative;width:42px;height:42px;flex-shrink:0">
+        <div style="width:42px;height:42px;border-radius:50%;background:${GREEN};display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:900;color:#fff">
+          ${initials}
+        </div>
+        ${dot}
       </div>
       <!-- Infos -->
       <div style="flex:1;min-width:0">
         <div style="font-size:14px;font-weight:900;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${name}</div>
-        <div style="font-size:11px;color:#999">${friend.pseudo || ''}</div>
+        <div style="font-size:11px;color:${isOnline ? '#22c55e' : '#999'};font-weight:600">${isOnline ? 'En ligne' : 'Hors ligne'}</div>
       </div>
       <!-- Boutons -->
       <div style="display:flex;gap:8px;flex-shrink:0">

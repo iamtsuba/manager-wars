@@ -292,6 +292,15 @@ if (window.visualViewport) {
 }
 
 function launchApp() {
+  // Ping de présence : mise à jour last_seen_at au démarrage et toutes les 60s
+  const pingPresence = () => {
+    if (state.user?.id) {
+      supabase.from('users').update({ last_seen_at: new Date().toISOString() }).eq('id', state.user.id).then(() => {})
+    }
+  }
+  pingPresence()
+  if (window._presencePingInterval) clearInterval(window._presencePingInterval)
+  window._presencePingInterval = setInterval(pingPresence, 60_000)
   const app = document.getElementById('app')
   app.style.display = 'flex'
   app.style.flexDirection = 'column'

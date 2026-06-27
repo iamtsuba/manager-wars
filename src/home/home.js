@@ -92,6 +92,7 @@ export async function renderHome(container, { state, navigate, toast }) {
       const action = el.dataset.action
       if (action === 'match-ai') { showDifficultyPicker(navigate); return }
       if (action === 'match-random') { navigate('match', { matchMode: 'random' }); return }
+      if (action === 'match-friend') { navigate('friends'); return }
       // Modes pas encore développés : bientôt disponible
       toast('Bientôt disponible', 'info')
     })

@@ -16,6 +16,7 @@ import { renderDecks }      from './decks/decks.js'
 import { renderBoosters, renderStarterOnboarding }   from './boosters/boosters.js'
 import { renderMatchIA }     from './match/match-ia.js'
 import { renderMatchRandom } from './match/match-random.js'
+import { renderMatchFriend } from './match/match-friend.js'
 import { renderMarket }     from './market/market.js'
 import { renderRankings }   from './rankings/rankings.js'
 import { renderMatches }    from './matches/matches.js'
@@ -112,6 +113,7 @@ async function renderPage() {
     case 'match': {
       const mm = (state.params && state.params.matchMode) || 'vs_ai_easy'
       if (mm === 'random') await renderMatchRandom(container, ctx)
+      else if (mm === 'friend') await renderMatchFriend(container, ctx, state.params?.friendId, state.params?.lobbyId || null)
       else                 await renderMatchIA(container, ctx)
       break
     }

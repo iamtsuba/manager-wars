@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase.js'
+import { renderMatchFriend } from '../match/match-friend.js'
 
 // ── Couleurs par défaut ─────────────────────────────────────────────────────
 const GREEN  = '#1A6B3C'
@@ -33,7 +34,7 @@ export async function renderFriends(container, ctx) {
       </div>
     </div>`
 
-  await loadFriendsList(state, toast)
+  await loadFriendsList(state, toast, ctx)
 
   document.getElementById('btn-add-friend').addEventListener('click', () => showAddFriendPopup(state, toast))
   document.getElementById('btn-accept-friend').addEventListener('click', () => showPendingPopup(state, toast))
@@ -42,7 +43,7 @@ export async function renderFriends(container, ctx) {
 // ══════════════════════════════════════════════════════════════════════════════
 // Charger la liste d'amis acceptés
 // ══════════════════════════════════════════════════════════════════════════════
-async function loadFriendsList(state, toast) {
+async function loadFriendsList(state, toast, ctx = {}) {
   const uid = state.user.id
 
   // Récupérer les amitiés acceptées (je suis requester ou addressee)
@@ -117,7 +118,11 @@ async function loadFriendsList(state, toast) {
     btn.addEventListener('click', () => showStatsPopup(state, btn.dataset.stats, btn.dataset.friendName))
   })
   list.querySelectorAll('[data-match]').forEach(btn => {
-    btn.addEventListener('click', () => toast('⚽ Match ami — Bientôt disponible !', 'info'))
+    btn.addEventListener('click', () => {
+      const friendId = btn.dataset.friendId
+      const container = document.getElementById('page-content') || document.getElementById('app')
+      renderMatchFriend(container, ctx, friendId, null)
+    })
   })
 }
 
@@ -147,7 +152,7 @@ function friendCardHTML(friend, friendshipId) {
       </div>
       <!-- Boutons -->
       <div style="display:flex;gap:8px;flex-shrink:0">
-        <button data-match="${friendshipId}" title="Jouer un match"
+        <button data-match="${friendshipId}" data-friend-id="${friend.id}" title="Jouer un match"
           style="width:38px;height:38px;border-radius:50%;border:1.5px solid #ddd;background:#fff;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center">⚽</button>
         <button data-stats="${friend.id}" data-friend-name="${name}" title="Voir les stats"
           style="width:38px;height:38px;border-radius:50%;border:1.5px solid ${YELLOW};background:#fff;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center">📊</button>

@@ -19,6 +19,8 @@ export async function renderHome(container, { state, navigate, toast }) {
 
       <!-- Demandes d'amis en attente (injecté dynamiquement) -->
       <div id="friend-requests-banner"></div>
+      <!-- Invitation match ami en attente -->
+      <div id="friend-lobby-banner"></div>
 
       <!-- Bandeau pseudo (couleurs du club) -->
       <div class="hero hero-compact" style="background:${p.club_color1};border:2px solid ${p.club_color2}">
@@ -109,6 +111,8 @@ export async function renderHome(container, { state, navigate, toast }) {
 
   // Charger les demandes d'amis en attente (sans bloquer le rendu)
   loadFriendRequestsBanner(state, toast)
+  // Vérifier si un ami nous invite à jouer
+  loadFriendLobbyBanner(state, toast, navigate)
 }
 
 // ── Bannière demandes d'amis en attente ─────────────────────────────────────
@@ -160,6 +164,58 @@ async function loadFriendRequestsBanner(state, toast) {
 
   document.getElementById('friend-req-btn').addEventListener('click', () => {
     showPendingPopup(state, toast, () => loadFriendRequestsBanner(state, toast))
+  })
+}
+
+// ── Bannière invitation match ami en attente ─────────────────────────────────
+async function loadFriendLobbyBanner(state, toast, navigate) {
+  const banner = document.getElementById('friend-lobby-banner')
+  if (!banner) return
+
+  // Chercher un lobby en attente où je suis l'invité
+  const { data: lobbies } = await supabase
+    .from('friend_match_lobbies')
+    .select('id, inviter_id, created_at')
+    .eq('invitee_id', state.user.id)
+    .eq('status', 'waiting')
+    .order('created_at', { ascending: false })
+    .limit(1)
+
+  if (!lobbies?.length) { banner.innerHTML = ''; return }
+
+  const lobby = lobbies[0]
+  const { data: inviter } = await supabase
+    .from('users').select('pseudo, club_name').eq('id', lobby.inviter_id).single()
+  const inviterName = inviter?.club_name || inviter?.pseudo || 'Un ami'
+
+  banner.innerHTML = `
+    <div id="friend-lobby-btn" style="
+      display:flex;align-items:center;gap:10px;
+      background:linear-gradient(135deg,#1a0a2e,#3d1a6e);
+      color:#fff;border-radius:12px;padding:12px 16px;
+      margin-bottom:10px;cursor:pointer;
+      box-shadow:0 3px 14px rgba(100,50,200,0.45);
+      animation:friendReqPulse 2s ease-in-out infinite;
+    ">
+      <div style="background:rgba(255,255,255,0.2);border-radius:50%;width:36px;height:36px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">⚽</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:900">${inviterName} t'invite à jouer !</div>
+        <div style="font-size:11px;opacity:0.75">Rejoindre le salon d'attente</div>
+      </div>
+      <div style="display:flex;gap:6px;flex-shrink:0">
+        <button id="lobby-accept" style="padding:8px 14px;border-radius:8px;border:none;background:#22c55e;color:#fff;font-weight:900;font-size:13px;cursor:pointer">Rejoindre</button>
+        <button id="lobby-decline" style="padding:8px 12px;border-radius:8px;border:none;background:rgba(255,255,255,0.15);color:#fff;font-size:13px;cursor:pointer">✕</button>
+      </div>
+    </div>`
+
+  document.getElementById('lobby-accept')?.addEventListener('click', () => {
+    banner.innerHTML = ''
+    navigate('match', { matchMode: 'friend', friendId: lobby.inviter_id, lobbyId: lobby.id })
+  })
+  document.getElementById('lobby-decline')?.addEventListener('click', async () => {
+    await supabase.from('friend_match_lobbies').update({ status: 'cancelled' }).eq('id', lobby.id)
+    banner.innerHTML = ''
+    toast('Invitation refusée', 'info')
   })
 }
 

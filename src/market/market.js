@@ -163,6 +163,18 @@ async function buyCard(listingId, list, container, ctx) {
     if (rpcErr) throw new Error(rpcErr.message)
     if (!result?.success) throw new Error(result?.error || 'Achat impossible')
 
+    // Enregistrer le transfert (club acheteur + prix) dans l'historique de CETTE carte
+    if (listing.card_id || listing.card?.id) {
+      const cardId = listing.card_id || listing.card.id
+      supabase.rpc('record_transfer', {
+        p_card_id: cardId,
+        p_player_id: player?.id || null,
+        p_club_name: state.profile.club_name || state.profile.pseudo,
+        p_manager_name: state.profile.pseudo,
+        p_source: 'market', p_price: price
+      }).then(()=>{}).catch(()=>{})
+    }
+
     // Mettre à jour les crédits localement
     state.profile.credits = myCredit - price
 

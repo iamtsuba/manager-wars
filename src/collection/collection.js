@@ -779,22 +779,44 @@ async function openCardDetail(card, allPlayerCards, countByPlayer, ctx) {
   const rarColor  = RAR_COLORS[p.rarity] || '#ccc'
   const country   = COUNTRY_NAMES[p.country_code] || p.country_code || ''
 
-  // Historique des transferts (clubs traversés)
-  const { data: transfers } = await supabase
-    .from('transfer_history')
-    .select('club_name, manager_name, source, price, transferred_at')
-    .eq('player_id', p.id)
-    .order('transferred_at', { ascending: true })
+  // Historique des transferts PAR CARTE (chaque carte est unique).
+  // On récupère l'historique de chacune des cartes possédées de ce joueur.
+  const myCardIds = samePlayerCards.map(c => c.id)
+  let transfersByCard = {}
+  if (myCardIds.length) {
+    const { data: allTransfers } = await supabase
+      .from('transfer_history')
+      .select('card_id, club_name, manager_name, source, price, transferred_at')
+      .in('card_id', myCardIds)
+      .order('transferred_at', { ascending: true })
+    ;(allTransfers || []).forEach(t => {
+      if (!transfersByCard[t.card_id]) transfersByCard[t.card_id] = []
+      transfersByCard[t.card_id].push(t)
+    })
+  }
 
-  const clubsHTML = (transfers && transfers.length) ? `
+  const lineHTML = (t) => `
+    <div style="display:flex;justify-content:space-between;align-items:center;background:#f9f9f9;border-radius:8px;padding:8px 12px">
+      <div style="font-size:13px">${t.club_name} <span style="color:var(--gray-600)">(${t.manager_name})</span></div>
+      <div style="font-size:13px;font-weight:700;color:${t.source==='booster'?'var(--gray-600)':'var(--yellow)'}">${t.source==='booster' ? 'Booster' : (t.price ? t.price.toLocaleString('fr')+' crédits' : '—')}</div>
+    </div>`
+
+  // Un bloc par carte possédée ; chaque bloc liste les clubs traversés par CETTE carte.
+  const clubsHTML = myCardIds.length ? `
     <div style="margin-top:16px;border-top:1px solid var(--gray-200);padding-top:14px">
-      <div style="font-size:13px;font-weight:700;margin-bottom:10px">🏟️ Clubs</div>
-      <div style="display:flex;flex-direction:column;gap:6px">
-        ${transfers.map(t => `
-          <div style="display:flex;justify-content:space-between;align-items:center;background:#f9f9f9;border-radius:8px;padding:8px 12px">
-            <div style="font-size:13px">${t.club_name} <span style="color:var(--gray-600)">(${t.manager_name})</span></div>
-            <div style="font-size:13px;font-weight:700;color:${t.source==='booster'?'var(--gray-600)':'var(--yellow)'}">${t.source==='booster' ? 'Booster' : (t.price ? t.price.toLocaleString('fr')+'€' : '—')}</div>
-          </div>`).join('')}
+      <div style="font-size:13px;font-weight:700;margin-bottom:10px">🏟️ Clubs ${count>1?`(${count} exemplaires)`:''}</div>
+      <div style="display:flex;flex-direction:column;gap:12px">
+        ${samePlayerCards.map((c, i) => {
+          const hist = transfersByCard[c.id] || []
+          if (!hist.length) return ''
+          return `
+            <div>
+              ${count>1?`<div style="font-size:11px;color:var(--gray-600);font-weight:700;margin-bottom:4px;text-transform:uppercase">Exemplaire ${i+1}</div>`:''}
+              <div style="display:flex;flex-direction:column;gap:6px">
+                ${hist.map(lineHTML).join('')}
+              </div>
+            </div>`
+        }).join('')}
       </div>
     </div>` : ''
 
@@ -808,17 +830,18 @@ async function openCardDetail(card, allPlayerCards, countByPlayer, ctx) {
             <div style="font-size:8px;letter-spacing:1.2px;text-transform:uppercase;color:#666">${p.firstname}</div>
             <div style="font-size:14px;font-weight:900;color:#111;font-family:Arial Black,Arial;line-height:1.1">${(p.surname_encoded||'').toUpperCase()}</div>
           </div>
-          <div style="position:relative;height:80px;background:#f2e8d2;display:flex;flex-direction:column;align-items:center">
-            <div style="position:absolute;top:16px;width:100%;height:28px;background:${jobColor}"></div>
-            <svg width="54" height="52" viewBox="0 0 54 52" style="position:absolute;top:4px;z-index:2;display:block">
-              <polygon points="27,3 33,18 50,18 37,29 41,47 27,37 13,47 17,29 4,18 21,18" fill="${jobColor}" stroke="white" stroke-width="2.5"/>
-              <text x="27" y="33" text-anchor="middle" font-size="16" font-weight="900" fill="white" font-family="Arial Black,Arial">${note1}</text>
-            </svg>
-            ${note2 !== null ? `
-            <svg width="32" height="31" viewBox="0 0 32 31" style="position:absolute;top:50px;z-index:2;display:block">
-              <polygon points="16,2 19.5,11 30,11 22,17.5 25,27 16,21.5 7,27 10,17.5 2,11 12.5,11" fill="${job2Color}" stroke="white" stroke-width="1.5"/>
-              <text x="16" y="20" text-anchor="middle" font-size="9" font-weight="900" fill="white" font-family="Arial Black,Arial">${note2}</text>
-            </svg>` : ''}
+          <div style="position:relative;height:80px;background:#f2e8d2;display:flex;align-items:center;justify-content:center">
+            <div style="position:absolute;top:26px;width:100%;height:28px;background:rgba(0,0,0,0.06)"></div>
+            <div style="position:relative;z-index:2;display:flex;align-items:center;justify-content:center;gap:2px">
+              ${[['GK',p.note_g],['DEF',p.note_d],['MIL',p.note_m],['ATT',p.note_a]].map(([j,n]) => {
+                const col = JOB_COLORS[j]
+                const val = Number(n)||0
+                return `<svg width="34" height="33" viewBox="0 0 34 33" style="display:block">
+                  <polygon points="17,2 21,12 32,12 23,19 26,30 17,23 8,30 11,19 2,12 13,12" fill="${col}" stroke="white" stroke-width="1.5"/>
+                  <text x="17" y="20" text-anchor="middle" font-size="11" font-weight="900" fill="white" font-family="Arial Black,Arial">${val}</text>
+                </svg>`
+              }).join('')}
+            </div>
           </div>
           <div style="height:110px;overflow:hidden;background:#b8d4f0">
             ${portrait

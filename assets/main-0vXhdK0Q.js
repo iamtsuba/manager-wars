@@ -679,7 +679,7 @@ import{s as T,l as Ze,j as Ii,F as oi,h as Mt,i as Zi,k as en,b as tn}from"./for
       <div style="font-size:24px;font-weight:900;color:#fff">${x?"Victoire !":h?"Match nul":"Défaite"}</div>
       <div style="font-size:32px;font-weight:900;color:#FFD700">${A} - ${u}</div>
       <button id="pvp-home" style="padding:16px 40px;border-radius:14px;border:none;background:#1A6B3C;color:#fff;font-size:16px;font-weight:900;cursor:pointer">🏠 Retour</button>
-    </div>`,(y=document.getElementById("pvp-home"))==null||y.addEventListener("click",()=>{try{T.removeChannel(C)}catch{}Oe(e),l("home")})}B()}const yn="2026.06.28-1124";async function bi(e,{state:t,navigate:n,toast:r}){var d,s;const p=t.profile;p&&(e.innerHTML=`
+    </div>`,(y=document.getElementById("pvp-home"))==null||y.addEventListener("click",()=>{try{T.removeChannel(C)}catch{}Oe(e),l("home")})}B()}const yn="2026.06.28-1559";async function bi(e,{state:t,navigate:n,toast:r}){var d,s;const p=t.profile;p&&(e.innerHTML=`
   <div class="page">
     <div class="page-body">
 
@@ -1149,7 +1149,7 @@ import{s as T,l as Ze,j as Ii,F as oi,h as Mt,i as Zi,k as en,b as tn}from"./for
       ${p?`<img src="${p}" style="width:${f-4}px;height:${f-4}px;object-fit:contain">`:(g=e==null?void 0:e.clubs)!=null&&g.encoded_name?`<span style="font-size:${Math.max(4,f-8)}px;font-weight:700;color:#333">${(e.clubs.encoded_name||"").slice(0,3).toUpperCase()}</span>`:"<span></span>"}
     </div>
   </div>`:`<div style="width:${t}px;height:${n}px;border:2px dashed rgba(255,255,255,0.3);border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:20px;color:rgba(255,255,255,0.3)">+</div>`}async function Qt(e,t){const{state:n,navigate:r,toast:p}=t;e.innerHTML='<div class="page" style="padding:40px;text-align:center;color:#aaa">⚽ Chargement...</div>';const{data:d}=await T.from("decks").select("id,name,formation_card_id").eq("owner_id",n.profile.id).order("created_at",{ascending:!1});e.innerHTML=`
-  <div class="page">
+  <div style="height:100%;overflow-y:auto;padding-bottom:80px;background:var(--page-bg)">
     <div class="page-header">
       <h2>Mes decks</h2>
       <p>${(d==null?void 0:d.length)||0} deck(s) · 11 titulaires + 5 remplaçants max</p>
@@ -1174,7 +1174,7 @@ import{s as T,l as Ze,j as Ii,F as oi,h as Mt,i as Zi,k as en,b as tn}from"./for
       player:players(id, firstname, surname_encoded, country_code, club_id, job, job2,
         note_g, note_d, note_m, note_a, rarity, skin, hair, hair_length,
         clubs(encoded_name, logo_url))`).eq("owner_id",r.profile.id),l=(s||[]).filter(g=>g.card_type==="player"&&g.player),c=(s||[]).filter(g=>g.card_type==="formation"),i=c.map(g=>g.formation).filter(Boolean),{data:a}=await T.from("deck_cards").select("card_id, position, is_starter, slot_order").eq("deck_id",e);let f=d.formation||"4-4-2";i.length>0&&!i.includes(f)&&(f=i[0]);const m={deckId:e,name:d.name,formation:f,formationCardId:d.formation_card_id,slots:{},subs:[],playerCards:l,formationCards:c,availableFormations:i};(a||[]).forEach(g=>{g.is_starter?m.slots[g.position]=g.card_id:m.subs.includes(g.card_id)||m.subs.push(g.card_id)}),gt(t,m,n)}function gt(e,t,n){var c;const{navigate:r}=n;Gt[t.formation];const p=$i(t.formation),d=p.filter(i=>t.slots[i]).length,s=t.availableFormations.length>0?t.availableFormations:Object.keys(Gt),l=t.subs.map(i=>t.playerCards.find(a=>a.id===i)).filter(Boolean);[...Object.values(t.slots),...t.subs],e.innerHTML=`
-  <div class="page">
+  <div style="height:100%;overflow-y:auto;padding-bottom:80px;background:var(--page-bg)">
     <div class="page-header" style="display:flex;align-items:center;gap:10px">
       <button class="btn-icon" id="builder-back" style="font-size:20px">←</button>
       <div style="flex:1">

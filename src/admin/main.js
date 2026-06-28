@@ -12,6 +12,7 @@ import { pageMarket }       from './pages/market.js'
 import { pageImportExport } from './pages/import-export.js'
 import { pageFormations }      from './pages/formations.js'
 import { renderBoostersConfig } from './pages/boosters-config.js'
+import { renderSellPriceConfig } from './pages/sell-price-config.js'
 import { renderGCCards }         from './pages/gc-cards.js'
 
 // ── Toast helper ──────────────────────────────────────────
@@ -45,6 +46,7 @@ const PAGES = {
   'import-export': { title: 'Import / Export CSV', fn: pageImportExport },
   formations:          { title: 'Formations & Liens',  fn: pageFormations },
   'boosters-config': { title: 'Boosters',              fn: renderBoostersConfig },
+  'sell-price':      { title: 'Prix vente directe',    fn: renderSellPriceConfig },
   'gc-cards':         { title: 'Game Changers',          fn: renderGCCards },
 }
 

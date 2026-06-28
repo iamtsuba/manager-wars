@@ -765,8 +765,17 @@ async function openCardDetail(card, allPlayerCards, countByPlayer, ctx) {
   const samePlayerCards = allPlayerCards.filter(c => c.player.id === p.id)
   const count           = samePlayerCards.length
 
-  // Prix de vente directe
-  const directPrice = DIRECT_SELL_PRICE[p.rarity] || 1000
+  // Prix de vente directe depuis sell_price_configs (note = max des notes du joueur)
+  const playerMaxNote = Math.max(Number(p.note_g)||0, Number(p.note_d)||0, Number(p.note_m)||0, Number(p.note_a)||0)
+  const rarity = p.rarity || 'normal'
+  const { data: priceConfigs } = await supabase
+    .from('sell_price_configs').select('*')
+    .eq('rarity', rarity)
+    .lte('note_min', playerMaxNote)
+    .gte('note_max', playerMaxNote)
+    .order('note_min', { ascending: false }) // règle la plus précise en premier
+    .limit(1)
+  const directPrice = priceConfigs?.[0]?.price ?? DIRECT_SELL_PRICE[rarity] ?? 1000
 
   // Règles revente marché : Légende non vendable
   const canMarket = p.rarity !== 'legende'
@@ -895,15 +904,24 @@ async function openCardDetail(card, allPlayerCards, countByPlayer, ctx) {
     <!-- Vente directe -->
     <div style="margin-top:16px;border-top:1px solid var(--gray-200);padding-top:14px">
       <div style="font-size:13px;font-weight:700;margin-bottom:10px">💰 Vente directe</div>
-      <div style="background:#f9f9f9;border-radius:10px;padding:12px;display:flex;justify-content:space-between;align-items:center">
-        <div>
-          <div style="font-size:12px;color:var(--gray-600)">Prix fixe selon rareté</div>
-          <div style="font-size:18px;font-weight:900;color:var(--yellow)">${directPrice.toLocaleString('fr')} crédits</div>
-          <div style="font-size:11px;color:var(--gray-600);margin-top:2px">Il vous restera ×${count-1} carte${count-1>1?'s':''}</div>
+      <div style="background:#f9f9f9;border-radius:10px;padding:12px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <div>
+            <div style="font-size:12px;color:var(--gray-600)">Prix unitaire</div>
+            <div style="font-size:18px;font-weight:900;color:var(--yellow)">${directPrice.toLocaleString('fr')} cr.</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <button id="qty-minus" style="width:30px;height:30px;border-radius:50%;border:1.5px solid #ddd;background:#fff;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:900">−</button>
+            <span id="qty-val" style="font-size:18px;font-weight:900;min-width:20px;text-align:center">1</span>
+            <button id="qty-plus" style="width:30px;height:30px;border-radius:50%;border:1.5px solid #ddd;background:#fff;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:900">+</button>
+          </div>
         </div>
-        <button class="btn btn-yellow" id="direct-sell-btn" ${count <= 0 ? 'disabled' : ''}>
-          Vendre 1 carte
-        </button>
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div style="font-size:12px;color:var(--gray-600)">Total : <span id="qty-total" style="font-weight:900;color:#D4A017">${directPrice.toLocaleString('fr')} cr.</span></div>
+          <button class="btn btn-yellow" id="direct-sell-btn" ${count <= 0 ? 'disabled' : ''}>
+            Vendre
+          </button>
+        </div>
       </div>
     </div>
 
@@ -928,23 +946,40 @@ async function openCardDetail(card, allPlayerCards, countByPlayer, ctx) {
   // Fermer
   document.getElementById('close-detail')?.addEventListener('click', closeModal)
 
-  // Vente directe
+  // Sélecteur de quantité
+  let sellQty = 1
+  const maxQty = samePlayerCards.filter(c => !c.is_for_sale).length
+  const updateQtyUI = () => {
+    document.getElementById('qty-val').textContent = sellQty
+    document.getElementById('qty-total').textContent = (sellQty * directPrice).toLocaleString('fr') + ' cr.'
+    document.getElementById('qty-minus').disabled = sellQty <= 1
+    document.getElementById('qty-plus').disabled = sellQty >= maxQty
+  }
+  document.getElementById('qty-minus')?.addEventListener('click', () => { if (sellQty > 1) { sellQty--; updateQtyUI() } })
+  document.getElementById('qty-plus')?.addEventListener('click', () => { if (sellQty < maxQty) { sellQty++; updateQtyUI() } })
+  updateQtyUI()
+
+  // Vente directe (multi-cartes)
   document.getElementById('direct-sell-btn')?.addEventListener('click', async () => {
-    if (!confirm(`Vendre 1 carte ${p.surname_encoded} pour ${directPrice.toLocaleString('fr')} crédits ? Cette action est irréversible.`)) return
+    const total = sellQty * directPrice
+    if (!confirm(`Vendre ${sellQty} carte${sellQty>1?'s':''} ${p.surname_encoded} pour ${total.toLocaleString('fr')} crédits ? Action irréversible.`)) return
 
-    // Trouver UNE carte de ce joueur (pas forcément celle en vente)
-    const cardToSell = samePlayerCards.find(c => !c.is_for_sale) || samePlayerCards[0]
-    if (!cardToSell) { toast('Aucune carte à vendre', 'error'); return }
+    // Prendre les cartes non en vente, dans la limite de sellQty
+    const cardsToSell = samePlayerCards.filter(c => !c.is_for_sale).slice(0, sellQty)
+    if (!cardsToSell.length) { toast('Aucune carte disponible à vendre', 'error'); return }
 
-    const { error } = await supabase.from('cards').delete().eq('id', cardToSell.id)
+    const ids = cardsToSell.map(c => c.id)
+    const { error } = await supabase.from('cards').delete().in('id', ids)
     if (error) { toast(error.message, 'error'); return }
 
     await supabase.from('users')
-      .update({ credits: (state.profile.credits||0) + directPrice })
+      .update({ credits: (state.profile.credits||0) + total })
       .eq('id', state.profile.id)
 
     await refreshProfile()
-    toast(`+${directPrice.toLocaleString('fr')} crédits ! Carte vendue.`, 'success')
+    const credEl = document.getElementById('nav-credits')
+    if (credEl) credEl.textContent = `💰 ${((state.profile.credits||0)).toLocaleString('fr')}`
+    toast(`+${total.toLocaleString('fr')} crédits ! ${cardsToSell.length} carte${cardsToSell.length>1?'s':''} vendue${cardsToSell.length>1?'s':''}.`, 'success')
     closeModal()
     navigate('collection')
   })

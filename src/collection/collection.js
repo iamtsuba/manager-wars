@@ -680,21 +680,6 @@ function openFormationModal(card, allFormationCards, ctx, openModal) {
     </div>
     ${clubsHTML}
 
-    <!-- Vente directe -->
-    <div style="margin-top:16px;border-top:1px solid var(--gray-200);padding-top:14px">
-      <div style="font-size:13px;font-weight:700;margin-bottom:10px">💰 Vente directe</div>
-      <div style="background:#f9f9f9;border-radius:10px;padding:12px;display:flex;justify-content:space-between;align-items:center">
-        <div>
-          <div style="font-size:12px;color:var(--gray-600)">Prix fixe carte Formation</div>
-          <div style="font-size:18px;font-weight:900;color:var(--yellow)">${FORMATION_DIRECT_SELL_PRICE.toLocaleString('fr')} crédits</div>
-          <div style="font-size:11px;color:var(--gray-600);margin-top:2px">Il vous restera ×${count-1} carte${count-1>1?'s':''}</div>
-        </div>
-        <button class="btn btn-yellow" id="direct-sell-form-btn" ${count <= 0 ? 'disabled' : ''}>
-          Vendre 1 carte
-        </button>
-      </div>
-    </div>
-
     <!-- Marché (optionnel) -->
     ${canMarket ? `
     <div style="margin-top:12px;border-top:1px solid var(--gray-200);padding-top:12px">
@@ -810,22 +795,67 @@ async function openCardDetail(card, allPlayerCards, countByPlayer, ctx) {
       <div style="font-size:13px;font-weight:700;color:${t.source==='booster'?'var(--gray-600)':'var(--yellow)'}">${t.source==='booster' ? 'Booster' : (t.price ? t.price.toLocaleString('fr')+' crédits' : '—')}</div>
     </div>`
 
-  // Un bloc par carte possédée ; chaque bloc liste les clubs traversés par CETTE carte.
+  // Un bloc par carte possédée avec checkbox de sélection
   const clubsHTML = myCardIds.length ? `
     <div style="margin-top:16px;border-top:1px solid var(--gray-200);padding-top:14px">
-      <div style="font-size:13px;font-weight:700;margin-bottom:10px">🏟️ Clubs ${count>1?`(${count} exemplaires)`:''}</div>
-      <div style="display:flex;flex-direction:column;gap:12px">
+      <div style="font-size:13px;font-weight:700;margin-bottom:10px">🏟️ Mes exemplaires ${count>1?`(${count})`:''}</div>
+      <div style="display:flex;flex-direction:column;gap:10px">
         ${samePlayerCards.map((c, i) => {
           const hist = transfersByCard[c.id] || []
-          if (!hist.length) return ''
+          const isForSale = c.is_for_sale
+          const lastClub = hist.length ? hist[hist.length-1] : null
           return `
-            <div>
-              ${count>1?`<div style="font-size:11px;color:var(--gray-600);font-weight:700;margin-bottom:4px;text-transform:uppercase">Exemplaire ${i+1}</div>`:''}
-              <div style="display:flex;flex-direction:column;gap:6px">
+            <div data-card-id="${c.id}" data-card-idx="${i}" class="exemplaire-row"
+              style="border:2px solid #eee;border-radius:10px;padding:10px;cursor:pointer;transition:border-color .15s;${isForSale?'opacity:0.6':''}">
+              <div style="display:flex;align-items:center;gap:10px">
+                <input type="checkbox" class="expl-check" data-id="${c.id}" ${isForSale?'disabled':''} style="width:18px;height:18px;cursor:pointer;accent-color:#1A6B3C;flex-shrink:0">
+                <div style="flex:1;min-width:0">
+                  <div style="font-size:12px;font-weight:700">Exemplaire ${i+1}${isForSale?' 🏷️ En vente':''}</div>
+                  ${lastClub?`<div style="font-size:11px;color:#888;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+                    ${lastClub.club_name} · ${lastClub.source==='booster'?'Booster':(lastClub.price?lastClub.price.toLocaleString('fr')+' cr.':'—')}
+                  </div>`:''}
+                </div>
+                <button class="expl-hist-toggle" data-idx="${i}" style="font-size:11px;color:#999;border:none;background:none;cursor:pointer;padding:2px 6px;flex-shrink:0">
+                  ${hist.length ? `${hist.length} club${hist.length>1?'s':''}` : ''} ▾
+                </button>
+              </div>
+              <div class="expl-hist" data-hist="${i}" style="display:none;margin-top:8px;display:flex;flex-direction:column;gap:4px">
                 ${hist.map(lineHTML).join('')}
               </div>
             </div>`
         }).join('')}
+      </div>
+
+      <!-- Panneau d'action (visible quand au moins 1 sélectionné) -->
+      <div id="sell-action-panel" style="display:none;margin-top:12px;background:#f0fdf4;border:2px solid #1A6B3C;border-radius:12px;padding:14px">
+        <div style="font-size:13px;font-weight:900;color:#1A6B3C;margin-bottom:10px">
+          <span id="sell-selected-count">0</span> exemplaire(s) sélectionné(s)
+        </div>
+
+        <!-- Vente directe -->
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+          <div>
+            <div style="font-size:11px;color:#555">Vente directe</div>
+            <div id="sell-direct-total" style="font-size:16px;font-weight:900;color:#D4A017">${directPrice.toLocaleString('fr')} cr.</div>
+          </div>
+          <button id="direct-sell-btn" class="btn btn-yellow" style="padding:8px 16px">
+            Vendre
+          </button>
+        </div>
+
+        <!-- Marché -->
+        ${canMarket ? `
+        <div style="border-top:1px solid #d1fae5;padding-top:8px">
+          <div style="font-size:11px;color:#555;margin-bottom:6px">Marché des transferts (prix par carte)</div>
+          <div style="display:flex;gap:8px">
+            <input type="number" id="sell-market-price" min="1" placeholder="Prix par carte"
+              value="${p.sell_price||5000}"
+              style="flex:1;padding:8px;border:1.5px solid #ddd;border-radius:8px;font-size:14px">
+            <button id="market-sell-btn" class="btn btn-primary" style="padding:8px 14px;white-space:nowrap">
+              Mettre en vente
+            </button>
+          </div>
+        </div>` : ''}
       </div>
     </div>` : ''
 
@@ -924,64 +954,87 @@ async function openCardDetail(card, allPlayerCards, countByPlayer, ctx) {
         </div>
       </div>
     </div>
-
-    <!-- Marché (optionnel) -->
-    ${canMarket && !card.is_for_sale ? `
-    <div style="margin-top:12px;border-top:1px solid var(--gray-200);padding-top:12px">
-      <div style="font-size:13px;font-weight:700;margin-bottom:8px">🛒 Marché des transferts</div>
-      <div style="display:flex;gap:8px">
-        <input type="number" id="sell-price" min="1" placeholder="Prix en crédits" value="${(p.sell_price||5000)}"
-          style="flex:1;padding:8px;border:1.5px solid var(--gray-200);border-radius:8px;font-size:14px">
-        <button class="btn btn-primary" id="market-sell-btn">Mettre en vente</button>
-      </div>
-    </div>` : ''}
-    ${card.is_for_sale ? `
-    <div style="margin-top:12px;padding:10px;background:#fff8e1;border-radius:8px;display:flex;justify-content:space-between;align-items:center">
-      <div style="font-size:13px;color:#D4A017;font-weight:600">🏷️ En vente : ${(card.sale_price||0).toLocaleString('fr')} cr.</div>
-      <button class="btn btn-ghost btn-sm" id="cancel-sell-btn">Retirer</button>
-    </div>` : ''}`,
+`,
     `<button class="btn btn-ghost" id="close-detail">Fermer</button>`
   )
 
   // Fermer
   document.getElementById('close-detail')?.addEventListener('click', closeModal)
 
-  // Sélecteur de quantité
-  let sellQty = 1
-  const maxQty = samePlayerCards.filter(c => !c.is_for_sale).length
-  const updateQtyUI = () => {
-    document.getElementById('qty-val').textContent = sellQty
-    document.getElementById('qty-total').textContent = (sellQty * directPrice).toLocaleString('fr') + ' cr.'
-    document.getElementById('qty-minus').disabled = sellQty <= 1
-    document.getElementById('qty-plus').disabled = sellQty >= maxQty
+  // ── Logique de sélection des exemplaires ──────────────────────────────────
+  let selectedCardIds = new Set()
+
+  const updatePanel = () => {
+    const n = selectedCardIds.size
+    const panel = document.getElementById('sell-action-panel')
+    if (!panel) return
+    panel.style.display = n > 0 ? 'block' : 'none'
+    document.getElementById('sell-selected-count').textContent = n
+    document.getElementById('sell-direct-total').textContent =
+      (n * directPrice).toLocaleString('fr') + ' cr.'
   }
-  document.getElementById('qty-minus')?.addEventListener('click', () => { if (sellQty > 1) { sellQty--; updateQtyUI() } })
-  document.getElementById('qty-plus')?.addEventListener('click', () => { if (sellQty < maxQty) { sellQty++; updateQtyUI() } })
-  updateQtyUI()
 
-  // Vente directe (multi-cartes)
+  // Checkboxes
+  document.querySelectorAll('.expl-check').forEach(cb => {
+    cb.addEventListener('change', () => {
+      const id = cb.dataset.id
+      if (cb.checked) selectedCardIds.add(id)
+      else selectedCardIds.delete(id)
+      // Mettre en surbrillance la row
+      const row = cb.closest('.exemplaire-row')
+      if (row) row.style.borderColor = cb.checked ? '#1A6B3C' : '#eee'
+      updatePanel()
+    })
+  })
+
+  // Clic sur la row entière → toggle checkbox
+  document.querySelectorAll('.exemplaire-row').forEach(row => {
+    row.addEventListener('click', e => {
+      if (e.target.closest('button') || e.target.tagName === 'INPUT') return
+      const cb = row.querySelector('.expl-check')
+      if (cb && !cb.disabled) { cb.checked = !cb.checked; cb.dispatchEvent(new Event('change')) }
+    })
+  })
+
+  // Toggle historique
+  document.querySelectorAll('.expl-hist-toggle').forEach(btn => {
+    btn.addEventListener('click', e => {
+      e.stopPropagation()
+      const hist = document.querySelector(`.expl-hist[data-hist="${btn.dataset.idx}"]`)
+      if (hist) hist.style.display = hist.style.display === 'none' ? 'flex' : 'none'
+    })
+  })
+
+  // ── Vente directe (les cartes sélectionnées) ────────────────────────────
   document.getElementById('direct-sell-btn')?.addEventListener('click', async () => {
-    const total = sellQty * directPrice
-    if (!confirm(`Vendre ${sellQty} carte${sellQty>1?'s':''} ${p.surname_encoded} pour ${total.toLocaleString('fr')} crédits ? Action irréversible.`)) return
+    const ids = [...selectedCardIds]
+    if (!ids.length) return
+    const total = ids.length * directPrice
+    if (!confirm(`Vendre ${ids.length} carte${ids.length>1?'s':''} ${p.surname_encoded} pour ${total.toLocaleString('fr')} crédits ? Action irréversible.`)) return
 
-    // Prendre les cartes non en vente, dans la limite de sellQty
-    const cardsToSell = samePlayerCards.filter(c => !c.is_for_sale).slice(0, sellQty)
-    if (!cardsToSell.length) { toast('Aucune carte disponible à vendre', 'error'); return }
-
-    const ids = cardsToSell.map(c => c.id)
     const { error } = await supabase.from('cards').delete().in('id', ids)
     if (error) { toast(error.message, 'error'); return }
 
     await supabase.from('users')
       .update({ credits: (state.profile.credits||0) + total })
       .eq('id', state.profile.id)
-
     await refreshProfile()
     const credEl = document.getElementById('nav-credits')
-    if (credEl) credEl.textContent = `💰 ${((state.profile.credits||0)).toLocaleString('fr')}`
-    toast(`+${total.toLocaleString('fr')} crédits ! ${cardsToSell.length} carte${cardsToSell.length>1?'s':''} vendue${cardsToSell.length>1?'s':''}.`, 'success')
-    closeModal()
-    navigate('collection')
+    if (credEl) credEl.textContent = `💰 ${(state.profile.credits||0).toLocaleString('fr')}`
+    toast(`+${total.toLocaleString('fr')} crédits ! ${ids.length} carte${ids.length>1?'s':''} vendue${ids.length>1?'s':''}.`, 'success')
+    closeModal(); navigate('collection')
+  })
+
+  // ── Marché (les cartes sélectionnées, même prix pour toutes) ────────────
+  document.getElementById('market-sell-btn')?.addEventListener('click', async () => {
+    const ids = [...selectedCardIds]
+    if (!ids.length) { toast('Sélectionne au moins un exemplaire', 'warning'); return }
+    const price = parseInt(document.getElementById('sell-market-price')?.value)
+    if (!price || price < 1) { toast('Prix invalide', 'error'); return }
+    const { error } = await supabase.from('cards').update({ is_for_sale: true, sale_price: price }).in('id', ids)
+    if (error) { toast(error.message, 'error'); return }
+    toast(`${ids.length} carte${ids.length>1?'s':''} mise${ids.length>1?'s':''} en vente à ${price.toLocaleString('fr')} cr. chacune !`, 'success')
+    closeModal(); navigate('collection')
   })
 
   // Marché

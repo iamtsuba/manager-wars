@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase.js'
 import { updateFriendMatchStats } from '../friends/friends.js'
+import { updateEvolutiveCards } from './evolutive-cards.js'
 import {
   GC_DEFS, getNoteForRole, calcAttack, calcDefense,
   calcMidfieldDuel, resolveDuel, aiSelectPlayers, getRewards, rollBoost as rollBoostFn,
@@ -1515,12 +1516,15 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
   // Termine le match en DB : statut + winner + scores (home=p1, away=p2)
   async function finishMatch(finalState) {
     try {
+      const winnerId = computeWinnerId(finalState)
+      const loserId  = winnerId ? (match.home_id === winnerId ? match.away_id : match.home_id) : null
       await supabase.from('matches').update({
         status: 'finished',
-        winner_id: computeWinnerId(finalState),
+        winner_id: winnerId,
         home_score: finalState.p1Score||0,
         away_score: finalState.p2Score||0
       }).eq('id', matchId)
+      if (winnerId && loserId) updateEvolutiveCards(winnerId, loserId).catch(()=>{})
     } catch(e) { console.error('[PvP] finishMatch:', e) }
   }
 

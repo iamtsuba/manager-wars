@@ -11,6 +11,21 @@ const JOB_FILTERS = ['Tous','GK','DEF','MIL','ATT']
 // Prix de vente directe
 const DIRECT_SELL_PRICE = { normal:1000, pepite:5000, papyte:5000, legende:10000 }
 
+// Note effective d'une carte : current_note pour pépite/papyte, sinon note du poste
+function getCardNote(card) {
+  const p = card.player
+  if (!p) return null
+  const rar = p.rarity
+  if ((rar === 'pepite' || rar === 'papyte') && card.current_note != null) return card.current_note
+  return Math.max(Number(p.note_g)||0, Number(p.note_d)||0, Number(p.note_m)||0, Number(p.note_a)||0)
+}
+
+// Carte avec la meilleure note parmi des copies du même joueur
+function bestCard(cards) {
+  if (!cards.length) return cards[0]
+  return cards.reduce((best, c) => (getCardNote(c) > getCardNote(best) ? c : best), cards[0])
+}
+
 // Noms pays
 const COUNTRY_NAMES = {
   MA:'MAROC', FR:'FRANCE', AR:'ARGENTINE', PT:'PORTUGAL', BR:'BRESIL',
@@ -40,8 +55,10 @@ function renderCard(card, countBadge = '') {
   const job      = p.job || 'ATT'
   const jobColor = JOB_COLORS[job]
   const rarColor = RAR_COLORS[p.rarity] || '#ccc'
-  const note1    = getNote(p, job)
-  const note2    = p.job2 ? getNote(p, p.job2) : null
+  // Pour pépite/papyte : afficher current_note (note évolutive), sinon note du poste
+  const isEvolutive = p.rarity === 'pepite' || p.rarity === 'papyte'
+  const note1    = isEvolutive && card.current_note != null ? card.current_note : getNote(p, job)
+  const note2    = (!isEvolutive && p.job2) ? getNote(p, p.job2) : null
   const job2Color = p.job2 ? JOB_COLORS[p.job2] : null
   const portrait = getPortrait(p)
   const country  = COUNTRY_NAMES[p.country_code] || p.country_code || ''
@@ -467,12 +484,14 @@ export async function renderCollection(container, ctx) {
         return
       }
 
-      // Dédupliquer
-      const seen = {}
-      const deduped = []
+      // Dédupliquer — garder la carte avec la meilleure note pour l'affichage
+      const byPlayer = {}
       list.forEach(card => {
-        if (!seen[card.player.id]) { seen[card.player.id]=true; deduped.push(card) }
+        const pid = card.player.id
+        if (!byPlayer[pid]) { byPlayer[pid] = [] }
+        byPlayer[pid].push(card)
       })
+      const deduped = Object.values(byPlayer).map(cards => bestCard(cards))
 
       renderBigAndStrip(
         deduped,
@@ -768,8 +787,8 @@ async function openCardDetail(card, allPlayerCards, countByPlayer, ctx) {
   const canMarket = p.rarity !== 'legende'
 
   const portrait = getPortrait(p)
-  const note1    = getNote(p, p.job)
-  const note2    = p.job2 ? getNote(p, p.job2) : null
+  const note1    = (p.rarity==='pepite'||p.rarity==='papyte') && card.current_note != null ? card.current_note : getNote(p, p.job)
+  const note2    = (p.rarity!=='pepite'&&p.rarity!=='papyte'&&p.job2) ? getNote(p, p.job2) : null
   const jobColor  = JOB_COLORS[p.job] || '#1A6B3C'
   const job2Color = p.job2 ? JOB_COLORS[p.job2] : null
   const rarColor  = RAR_COLORS[p.rarity] || '#ccc'
@@ -816,13 +835,15 @@ async function openCardDetail(card, allPlayerCards, countByPlayer, ctx) {
           const hist = transfersByCard[c.id] || []
           const isForSale = c.is_for_sale
           const lastClub = hist.length ? hist[hist.length-1] : null
+          const isEvol = p.rarity === 'pepite' || p.rarity === 'papyte'
+          const noteLabel = isEvol && c.current_note != null ? ` (☆${c.current_note})` : ''
           return `
             <div data-card-id="${c.id}" data-card-idx="${i}" class="exemplaire-row"
               style="border:2px solid #eee;border-radius:10px;padding:10px;cursor:pointer;transition:border-color .15s;${isForSale?'opacity:0.6':''}">
               <div style="display:flex;align-items:center;gap:10px">
                 <input type="checkbox" class="expl-check" data-id="${c.id}" ${isForSale?'disabled':''} style="width:18px;height:18px;cursor:pointer;accent-color:#1A6B3C;flex-shrink:0">
                 <div style="flex:1;min-width:0">
-                  <div style="font-size:12px;font-weight:700">Exemplaire ${i+1}${isForSale?' 🏷️ En vente':''}</div>
+                  <div style="font-size:12px;font-weight:700">Exemplaire ${i+1}${noteLabel}${isForSale?' 🏷️ En vente':''}</div>
                   ${lastClub?`<div style="font-size:11px;color:#888;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
                     ${lastClub.club_name} · ${lastClub.source==='booster'?'Booster':(lastClub.price?lastClub.price.toLocaleString('fr')+' cr.':'—')}
                   </div>`:''}

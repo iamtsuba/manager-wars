@@ -1,6 +1,5 @@
 import { supabase } from '../lib/supabase.js'
 import { showPendingPopup } from '../friends/friends.js'
-import { resumePvpMatch } from '../match/match-random.js'
 
 
 // Version de build, affichée uniquement aux admins. Construite à partir de la
@@ -163,9 +162,10 @@ async function loadOngoingMatchBanner(state, toast, navigate) {
   }).join('')
 
   banner.querySelectorAll('[data-resume]').forEach(btn => {
-    btn.addEventListener('click', () => {
+    btn.addEventListener('click', async () => {
+      const { resumePvpMatch } = await import('../match/match-random.js')
       const container = document.getElementById('page-content') || document.getElementById('app')
-      resumePvpMatch(container, { state, navigate, toast, openModal:null, closeModal:null, refreshProfile:null }, btn.dataset.resume)
+      resumePvpMatch(container, { state, navigate, toast, openModal: null, closeModal: null, refreshProfile: null }, btn.dataset.resume)
     })
   })
 

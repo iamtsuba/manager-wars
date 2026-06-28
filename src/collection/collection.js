@@ -1031,23 +1031,23 @@ async function openCardDetail(card, allPlayerCards, countByPlayer, ctx) {
     if (!ids.length) { toast('Sélectionne au moins un exemplaire', 'warning'); return }
     const price = parseInt(document.getElementById('sell-market-price')?.value)
     if (!price || price < 1) { toast('Prix invalide', 'error'); return }
+
+    // Marquer les cartes en vente
     const { error } = await supabase.from('cards').update({ is_for_sale: true, sale_price: price }).in('id', ids)
     if (error) { toast(error.message, 'error'); return }
+
+    // Créer UNE ligne market_listing par carte (pas une seule pour toutes)
+    const listings = ids.map(cid => ({
+      seller_id: state.profile.id,
+      card_id: cid,
+      price,
+      status: 'active'
+    }))
+    const { error: listErr } = await supabase.from('market_listings').insert(listings)
+    if (listErr) { console.warn('[Market] insert listings:', listErr.message) }
+
     toast(`${ids.length} carte${ids.length>1?'s':''} mise${ids.length>1?'s':''} en vente à ${price.toLocaleString('fr')} cr. chacune !`, 'success')
     closeModal(); navigate('collection')
-  })
-
-  // Marché
-  document.getElementById('market-sell-btn')?.addEventListener('click', async () => {
-    const price = parseInt(document.getElementById('sell-price').value)
-    if (!price || price < 1) { toast('Prix invalide', 'error'); return }
-
-    await supabase.from('cards').update({ is_for_sale: true, sale_price: price }).eq('id', card.id)
-    await supabase.from('market_listings').insert({ seller_id: state.profile.id, card_id: card.id, price })
-
-    toast('Carte mise en vente sur le marché !', 'success')
-    closeModal()
-    navigate('collection')
   })
 
   // Retirer du marché

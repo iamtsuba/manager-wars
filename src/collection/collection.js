@@ -930,30 +930,6 @@ async function openCardDetail(card, allPlayerCards, countByPlayer, ctx) {
       </div>
     </div>
     ${clubsHTML}
-
-    <!-- Vente directe -->
-    <div style="margin-top:16px;border-top:1px solid var(--gray-200);padding-top:14px">
-      <div style="font-size:13px;font-weight:700;margin-bottom:10px">💰 Vente directe</div>
-      <div style="background:#f9f9f9;border-radius:10px;padding:12px">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-          <div>
-            <div style="font-size:12px;color:var(--gray-600)">Prix unitaire</div>
-            <div style="font-size:18px;font-weight:900;color:var(--yellow)">${directPrice.toLocaleString('fr')} cr.</div>
-          </div>
-          <div style="display:flex;align-items:center;gap:8px">
-            <button id="qty-minus" style="width:30px;height:30px;border-radius:50%;border:1.5px solid #ddd;background:#fff;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:900">−</button>
-            <span id="qty-val" style="font-size:18px;font-weight:900;min-width:20px;text-align:center">1</span>
-            <button id="qty-plus" style="width:30px;height:30px;border-radius:50%;border:1.5px solid #ddd;background:#fff;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:900">+</button>
-          </div>
-        </div>
-        <div style="display:flex;justify-content:space-between;align-items:center">
-          <div style="font-size:12px;color:var(--gray-600)">Total : <span id="qty-total" style="font-weight:900;color:#D4A017">${directPrice.toLocaleString('fr')} cr.</span></div>
-          <button class="btn btn-yellow" id="direct-sell-btn" ${count <= 0 ? 'disabled' : ''}>
-            Vendre
-          </button>
-        </div>
-      </div>
-    </div>
 `,
     `<button class="btn btn-ghost" id="close-detail">Fermer</button>`
   )

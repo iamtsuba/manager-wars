@@ -86,7 +86,7 @@ async function loadFriendsList(state, toast, ctx = {}) {
   if (friendIds.length) {
     const { data: profiles } = await supabase
       .from('users')
-      .select('id, pseudo, club_name, last_seen_at')
+      .select('id, pseudo, club_name, last_seen_at, club_color1, club_color2')
       .in('id', friendIds)
     ;(profiles || []).forEach(p => { profilesMap[p.id] = p })
   }
@@ -133,34 +133,37 @@ async function loadFriendsList(state, toast, ctx = {}) {
 
 // ── HTML d'une carte ami ────────────────────────────────────────────────────
 function friendCardHTML(friend, friendshipId) {
-  const name = friend.club_name || friend.pseudo || '?'
-  const initials = (friend.pseudo || '?').slice(0, 2).toUpperCase()
+  const clubName = friend.club_name || friend.pseudo || '?'
+  const pseudo   = friend.pseudo || ''
+  const initials = (pseudo || clubName).slice(0, 2).toUpperCase()
 
-  // Présence : vert si vu il y a moins de 3 minutes, rouge sinon
+  // Couleurs du club (fallback vert)
+  const bg = friend.club_color2 || GREEN
+  const fg = friend.club_color1 || '#ffffff'
+
+  // Présence : vert si vu il y a moins de 3 minutes
   const lastSeen = friend.last_seen_at ? new Date(friend.last_seen_at) : null
   const isOnline = lastSeen && (Date.now() - lastSeen.getTime()) < 3 * 60 * 1000
-  const dot = `<div style="width:10px;height:10px;border-radius:50%;background:${isOnline ? '#22c55e' : '#ef4444'};border:2px solid #fff;position:absolute;bottom:1px;right:1px;flex-shrink:0"></div>`
+  const dot = `<div style="width:10px;height:10px;border-radius:50%;background:${isOnline?'#22c55e':'#ef4444'};border:2px solid #fff;position:absolute;bottom:1px;right:1px"></div>`
 
   return `
     <div style="display:flex;align-items:center;gap:12px;background:#fff;border-radius:12px;padding:12px 14px;box-shadow:0 1px 6px rgba(0,0,0,0.08)">
-      <!-- Avatar + point de présence -->
-      <div style="position:relative;width:42px;height:42px;flex-shrink:0">
-        <div style="width:42px;height:42px;border-radius:50%;background:${GREEN};display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:900;color:#fff">
+      <div style="position:relative;width:46px;height:46px;flex-shrink:0">
+        <div style="width:46px;height:46px;border-radius:50%;background:${bg};border:2.5px solid ${fg};display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:900;color:${fg}">
           ${initials}
         </div>
         ${dot}
       </div>
-      <!-- Infos -->
       <div style="flex:1;min-width:0">
-        <div style="font-size:14px;font-weight:900;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${name}</div>
-        <div style="font-size:11px;color:${isOnline ? '#22c55e' : '#999'};font-weight:600">${isOnline ? 'En ligne' : 'Hors ligne'}</div>
+        <div style="font-size:14px;font-weight:900;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${clubName}</div>
+        <div style="font-size:11px;color:#888;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">@${pseudo}</div>
+        <div style="font-size:11px;color:${isOnline?'#22c55e':'#bbb'};font-weight:600;margin-top:1px">${isOnline?'🟢 En ligne':'🔴 Hors ligne'}</div>
       </div>
-      <!-- Boutons -->
       <div style="display:flex;gap:8px;flex-shrink:0">
-        <button data-match="${friendshipId}" data-friend-id="${friend.id}" data-friend-name="${name}" title="Jouer un match"
+        <button data-match="${friendshipId}" data-friend-id="${friend.id}" data-friend-name="${clubName}" title="Jouer un match"
           style="width:38px;height:38px;border-radius:50%;border:1.5px solid #ddd;background:#fff;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center">⚽</button>
-        <button data-stats="${friend.id}" data-friend-name="${name}" title="Voir les stats"
-          style="width:38px;height:38px;border-radius:50%;border:1.5px solid ${YELLOW};background:#fff;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center">📊</button>
+        <button data-stats="${friend.id}" data-friend-name="${clubName}" title="Voir les stats"
+          style="width:38px;height:38px;border-radius:50%;border:2px solid ${YELLOW};background:#fff;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center">📊</button>
       </div>
     </div>`
 }

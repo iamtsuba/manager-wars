@@ -210,8 +210,17 @@ async function cancelListing(listingId, container, ctx) {
   const { data: listing } = await supabase.from('market_listings').select('card_id').eq('id', listingId).single()
 
   await supabase.from('market_listings').update({ status: 'cancelled' }).eq('id', listingId)
-  if (listing) {
-    await supabase.from('cards').update({ is_for_sale: false, sale_price: null }).eq('id', listing.card_id)
+
+  if (listing?.card_id) {
+    // Vérifier s'il reste d'autres listings actifs pour cette même carte
+    const { count } = await supabase.from('market_listings')
+      .select('id', { count: 'exact', head: true })
+      .eq('card_id', listing.card_id)
+      .eq('status', 'active')
+    // Mettre à jour la carte seulement s'il n'y a plus de listing actif
+    if (!count) {
+      await supabase.from('cards').update({ is_for_sale: false, sale_price: null }).eq('id', listing.card_id)
+    }
   }
   toast('Annonce retirée', 'success')
   loadMarket(container, ctx)

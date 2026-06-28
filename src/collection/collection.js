@@ -705,6 +705,8 @@ function openFormationModal(card, allFormationCards, ctx, openModal) {
     const cardToSell = sameFormationCards.find(c => !c.is_for_sale) || sameFormationCards[0]
     if (!cardToSell) { toast('Aucune carte à vendre', 'error'); return }
 
+    await supabase.from('market_listings').update({ status: 'cancelled' }).eq('card_id', cardToSell.id).eq('status', 'active')
+    await supabase.from('transfer_history').delete().eq('card_id', cardToSell.id)
     const { error } = await supabase.from('cards').delete().eq('id', cardToSell.id)
     if (error) { toast(error.message, 'error'); return }
 
@@ -789,11 +791,21 @@ async function openCardDetail(card, allPlayerCards, countByPlayer, ctx) {
     })
   }
 
-  const lineHTML = (t) => `
-    <div style="display:flex;justify-content:space-between;align-items:center;background:#f9f9f9;border-radius:8px;padding:8px 12px">
-      <div style="font-size:13px">${t.club_name} <span style="color:var(--gray-600)">(${t.manager_name})</span></div>
-      <div style="font-size:13px;font-weight:700;color:${t.source==='booster'?'var(--gray-600)':'var(--yellow)'}">${t.source==='booster' ? 'Booster' : (t.price ? t.price.toLocaleString('fr')+' crédits' : '—')}</div>
+  const lineHTML = (t) => {
+    const date = t.transferred_at ? new Date(t.transferred_at).toLocaleDateString('fr-FR', { day:'2-digit', month:'2-digit', year:'numeric' }) : ''
+    const price = t.source === 'booster' ? 'Booster' : (t.price ? t.price.toLocaleString('fr') : '—')
+    return `
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;background:#f9f9f9;border-radius:8px;padding:8px 12px;gap:8px">
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${t.club_name}</div>
+        <div style="font-size:11px;color:var(--gray-600)">(${t.manager_name})</div>
+      </div>
+      <div style="text-align:right;flex-shrink:0">
+        <div style="font-size:13px;font-weight:700;color:${t.source==='booster'?'var(--gray-600)':'var(--yellow)'}">${price}</div>
+        <div style="font-size:11px;color:var(--gray-600)">${date}</div>
+      </div>
     </div>`
+  }
 
   // Un bloc par carte possédée avec checkbox de sélection
   const clubsHTML = myCardIds.length ? `
@@ -987,6 +999,10 @@ async function openCardDetail(card, allPlayerCards, countByPlayer, ctx) {
     if (!ids.length) return
     const total = ids.length * directPrice
     if (!confirm(`Vendre ${ids.length} carte${ids.length>1?'s':''} ${p.surname_encoded} pour ${total.toLocaleString('fr')} crédits ? Action irréversible.`)) return
+
+    // Supprimer les dépendances FK avant de supprimer les cartes
+    await supabase.from('market_listings').update({ status: 'cancelled' }).in('card_id', ids).eq('status', 'active')
+    await supabase.from('transfer_history').delete().in('card_id', ids)
 
     const { error } = await supabase.from('cards').delete().in('id', ids)
     if (error) { toast(error.message, 'error'); return }

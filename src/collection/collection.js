@@ -1,6 +1,7 @@
 import { supabase } from '../lib/supabase.js'
 import { GC_DEFS } from '../match/game-logic.js'
 import { FORMATION_LINKS, FORMATION_POSITIONS } from '../match/formation-links.js'
+import { EVOLUTIVE_RULES, currentSecondaryNote, getBaseMainNote } from '../match/evolutive-cards.js'
 
 // ── Constantes ─────────────────────────────────────────────
 const RAR_COLORS  = { normal:'#ccc', pepite:'#D4A017', papyte:'#909090', legende:'#7a28b8' }
@@ -25,6 +26,11 @@ function bestCard(cards) {
   if (!cards.length) return cards[0]
   return cards.reduce((best, c) => (getCardNote(c) > getCardNote(best) ? c : best), cards[0])
 }
+
+function job2NoteKey(job) {
+  return job==='GK'?'note_g':job==='DEF'?'note_d':job==='MIL'?'note_m':'note_a'
+}
+
 
 // Noms pays
 const COUNTRY_NAMES = {
@@ -58,7 +64,7 @@ function renderCard(card, countBadge = '') {
   // Pour pépite/papyte : afficher current_note (note évolutive), sinon note du poste
   const isEvolutive = p.rarity === 'pepite' || p.rarity === 'papyte'
   const note1    = isEvolutive && card.current_note != null ? card.current_note : getNote(p, job)
-  const note2    = (!isEvolutive && p.job2) ? getNote(p, p.job2) : null
+  const note2    = p.job2 ? (isEvolutive ? currentSecondaryNote(card, job2NoteKey(p.job2)) : getNote(p, p.job2)) : null
   const job2Color = p.job2 ? JOB_COLORS[p.job2] : null
   const portrait = getPortrait(p)
   const country  = COUNTRY_NAMES[p.country_code] || p.country_code || ''
@@ -788,7 +794,8 @@ async function openCardDetail(card, allPlayerCards, countByPlayer, ctx) {
 
   const portrait = getPortrait(p)
   const note1    = (p.rarity==='pepite'||p.rarity==='papyte') && card.current_note != null ? card.current_note : getNote(p, p.job)
-  const note2    = (p.rarity!=='pepite'&&p.rarity!=='papyte'&&p.job2) ? getNote(p, p.job2) : null
+  const isEvol   = p.rarity==='pepite'||p.rarity==='papyte'
+  const note2    = p.job2 ? (isEvol ? currentSecondaryNote(card, job2NoteKey(p.job2)) : getNote(p, p.job2)) : null
   const jobColor  = JOB_COLORS[p.job] || '#1A6B3C'
   const job2Color = p.job2 ? JOB_COLORS[p.job2] : null
   const rarColor  = RAR_COLORS[p.rarity] || '#ccc'
@@ -935,6 +942,18 @@ async function openCardDetail(card, allPlayerCards, countByPlayer, ctx) {
         <div>
           <div style="font-size:11px;color:var(--gray-600);margin-bottom:2px">RARETÉ</div>
           <div style="font-weight:700;color:${rarColor}">${p.rarity.toUpperCase()}</div>
+          ${(p.rarity==='pepite'||p.rarity==='papyte') ? `
+          <div style="margin-top:6px;background:${rarColor}18;border-left:3px solid ${rarColor};border-radius:0 6px 6px 0;padding:6px 10px">
+            <div style="font-size:11px;font-weight:700;color:${rarColor};margin-bottom:2px">Carte évolutive</div>
+            <div style="font-size:11px;color:#555;line-height:1.5">
+              ${p.rarity==='pepite'
+                ? `✅ Victoire : <b>+2</b> &nbsp;|&nbsp; ❌ Défaite : <b>-1</b>`
+                : `✅ Victoire : <b>+1</b> &nbsp;|&nbsp; ❌ Défaite : <b>-2</b>`}
+              <br>Note actuelle : <b>${card.current_note ?? (p.rarity==='pepite'?p.note_min:p.note_max) ?? '—'}</b>
+              &nbsp;·&nbsp; Min : <b>${p.note_min ?? '—'}</b>
+              &nbsp;·&nbsp; Max : <b>${p.note_max ?? '—'}</b>
+            </div>
+          </div>` : ''}
         </div>
         <div>
           <div style="font-size:11px;color:var(--gray-600);margin-bottom:2px">POSTE</div>

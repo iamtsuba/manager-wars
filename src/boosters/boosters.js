@@ -598,7 +598,7 @@ function showBoosterAnimation(cards, booster, navigate, onClose = null) {
       </div>
       <div id="card-dots" style="display:flex;gap:6px;flex-wrap:wrap;justify-content:center;max-width:260px"></div>
       <div id="card-tap-hint" style="font-size:12px;color:rgba(255,255,255,0.45)">‹ glisse pour naviguer ›</div>
-      <div style="display:flex;gap:10px;width:100%;max-width:400px;margin-top:4px">
+      <div id="reveal-btns" style="display:none;flex-direction:row;gap:10px;width:100%;max-width:400px;margin-top:4px">
         <button class="btn btn-primary" id="reveal-collection" style="flex:1">Voir ma collection</button>
         <button class="btn btn-ghost" id="reveal-more" style="flex:1;color:#fff;border-color:rgba(255,255,255,0.3)">Boosters</button>
       </div>
@@ -706,6 +706,9 @@ function showBoosterAnimation(cards, booster, navigate, onClose = null) {
     const counter = document.getElementById('card-counter')
     const track   = document.getElementById('card-track')
     if (counter) counter.textContent = `Carte ${idx+1} / ${cards.length}`
+    // Boutons visibles uniquement sur la dernière carte
+    const revealBtns = document.getElementById('reveal-btns')
+    if (revealBtns) revealBtns.style.display = idx === cards.length - 1 ? 'flex' : 'none'
 
     const isLegend = card.card_type === 'player' && card.player?.rarity === 'legende'
     const firstSeen = !seen.has(idx)
@@ -899,8 +902,7 @@ function showBoosterAnimation(cards, booster, navigate, onClose = null) {
   // ── Boutons fin ───────────────────────────────────────
   if (onClose) {
     // Mode onboarding : un seul bouton "Continuer" qui enchaîne le booster suivant
-    const revealPhase = document.getElementById('reveal-phase')
-    const btnRow = revealPhase?.querySelector('div[style*="display:flex"][style*="gap:10px"]')
+    const btnRow = document.getElementById('reveal-btns')
     if (btnRow) {
       btnRow.innerHTML = `<button class="btn btn-primary" id="reveal-next" style="flex:1">Continuer →</button>`
     }

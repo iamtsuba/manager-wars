@@ -87,15 +87,15 @@
       #sidebar-overlay { display: none !important; }
     }
 
-    /* ── Mobile : sidebar cachée par défaut ── */
+    /* ── Mobile : select déroulant à la place de la sidebar ── */
     @media (max-width: 768px) {
       .admin-layout { flex-direction: column; }
-      #menu-toggle  { display: block; }
-      .admin-sidebar {
-        position: fixed; left: 0; top: 0; bottom: 0;
-        transform: translateX(-100%);
-      }
-      .admin-sidebar.open { transform: translateX(0); }
+      #menu-toggle  { display: none !important; }
+      .admin-sidebar { display: none !important; }
+      #sidebar-overlay { display: none !important; }
+      #mobile-page-select { display: block !important; }
+      .admin-page-title-desktop { display: none; }
+      .admin-topbar { gap: 8px; }
     }
   </style>
 </head>
@@ -138,6 +138,7 @@
       <a href="#" data-page="formations">     ⚽ Formations & Liens</a>
       <a href="#" data-page="boosters-config">📦 Boosters</a>
       <a href="#" data-page="gc-cards">⚡ Game Changers</a>
+      <a href="#" data-page="sell-price">💰 Prix vente directe</a>
     </nav>
     <div class="logout">
       <button class="btn btn-ghost btn-sm" id="logout-btn" style="width:100%">Déconnexion</button>
@@ -147,7 +148,20 @@
   <div class="admin-main">
     <div class="admin-topbar">
       <button id="menu-toggle" aria-label="Menu">☰</button>
-      <h1 id="page-title">Dashboard</h1>
+      <h1 id="page-title" class="admin-page-title-desktop">Dashboard</h1>
+      <select id="mobile-page-select" style="display:none;flex:1;padding:6px 8px;border:1.5px solid #ddd;border-radius:8px;font-size:13px;font-weight:700;background:#fff;color:#333;max-width:200px">
+        <option value="dashboard">📊 Dashboard</option>
+        <option value="players">🃏 Joueurs</option>
+        <option value="clubs">🏟️ Clubs</option>
+        <option value="card-builder">🎨 Card Builder</option>
+        <option value="users">👥 Managers</option>
+        <option value="market">🛒 Marché</option>
+        <option value="import-export">📊 Import/Export</option>
+        <option value="formations">⚽ Formations</option>
+        <option value="boosters-config">📦 Boosters</option>
+        <option value="gc-cards">⚡ Game Changers</option>
+        <option value="sell-price">💰 Prix vente directe</option>
+      </select>
       <div id="admin-user"></div>
     </div>
     <div class="admin-content" id="page-content"></div>

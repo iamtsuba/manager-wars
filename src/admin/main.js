@@ -56,6 +56,8 @@ async function navigate(page) {
   document.querySelectorAll('.admin-sidebar nav a').forEach(a => {
     a.classList.toggle('active', a.dataset.page === page)
   })
+  const sel = document.getElementById('mobile-page-select')
+  if (sel) sel.value = page
   const info = PAGES[page] || PAGES.dashboard
   document.getElementById('page-title').textContent = info.title
   const content = document.getElementById('page-content')
@@ -107,6 +109,11 @@ async function init() {
       e.preventDefault()
       navigate(a.dataset.page)
     })
+  })
+
+  // Select mobile
+  document.getElementById('mobile-page-select')?.addEventListener('change', e => {
+    navigate(e.target.value)
   })
 }
 

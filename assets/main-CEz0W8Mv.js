@@ -681,7 +681,7 @@ import{s as T,l as Ze,j as Ii,F as oi,h as Mt,i as Zi,k as en,b as tn}from"./for
       <div style="font-size:24px;font-weight:900;color:#fff">${x?"Victoire !":h?"Match nul":"Défaite"}</div>
       <div style="font-size:32px;font-weight:900;color:#FFD700">${A} - ${u}</div>
       <button id="pvp-home" style="padding:16px 40px;border-radius:14px;border:none;background:#1A6B3C;color:#fff;font-size:16px;font-weight:900;cursor:pointer">🏠 Retour</button>
-    </div>`,(y=document.getElementById("pvp-home"))==null||y.addEventListener("click",()=>{try{T.removeChannel(C)}catch{}Oe(e),l("home")})}B()}const yn="2026.06.28-1100";async function bi(e,{state:t,navigate:n,toast:r}){var s,d;const p=t.profile;p&&(e.innerHTML=`
+    </div>`,(y=document.getElementById("pvp-home"))==null||y.addEventListener("click",()=>{try{T.removeChannel(C)}catch{}Oe(e),l("home")})}B()}const yn="2026.06.28-1105";async function bi(e,{state:t,navigate:n,toast:r}){var s,d;const p=t.profile;p&&(e.innerHTML=`
   <div class="page">
     <div class="page-body">
 

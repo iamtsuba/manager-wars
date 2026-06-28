@@ -705,7 +705,7 @@ function openFormationModal(card, allFormationCards, ctx, openModal) {
     const cardToSell = sameFormationCards.find(c => !c.is_for_sale) || sameFormationCards[0]
     if (!cardToSell) { toast('Aucune carte à vendre', 'error'); return }
 
-    await supabase.from('market_listings').update({ status: 'cancelled' }).eq('card_id', cardToSell.id).eq('status', 'active')
+    await supabase.from('market_listings').delete().eq('card_id', cardToSell.id)
     await supabase.from('transfer_history').delete().eq('card_id', cardToSell.id)
     const { error } = await supabase.from('cards').delete().eq('id', cardToSell.id)
     if (error) { toast(error.message, 'error'); return }
@@ -1001,7 +1001,7 @@ async function openCardDetail(card, allPlayerCards, countByPlayer, ctx) {
     if (!confirm(`Vendre ${ids.length} carte${ids.length>1?'s':''} ${p.surname_encoded} pour ${total.toLocaleString('fr')} crédits ? Action irréversible.`)) return
 
     // Supprimer les dépendances FK avant de supprimer les cartes
-    await supabase.from('market_listings').update({ status: 'cancelled' }).in('card_id', ids).eq('status', 'active')
+    await supabase.from('market_listings').delete().in('card_id', ids)
     await supabase.from('transfer_history').delete().in('card_id', ids)
 
     const { error } = await supabase.from('cards').delete().in('id', ids)

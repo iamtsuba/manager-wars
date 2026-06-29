@@ -369,10 +369,12 @@ export async function renderCollection(container, ctx) {
         bigZoneEl.style.flex     = '1 1 auto'
       }
       if (isDesktop && gridEl) {
-        gridEl.style.height     = '200px'
+        gridEl.style.height     = '250px'   // 310 × 0.76 ≈ 236px + padding
         gridEl.style.flexShrink = '0'
         gridEl.style.overflowX  = 'auto'
         gridEl.style.overflowY  = 'hidden'
+        gridEl.style.alignItems = 'center'
+        gridEl.style.padding    = '8px 16px'
       }
       bigZone.innerHTML = '<div id="big-card-inner" style="display:inline-block;transform-origin:top center">' + renderBigFn(items[sel]) + '</div>'
       var bigEl = bigZone.querySelector('[data-card-id],[data-form-id],[data-gc-id]')
@@ -394,11 +396,22 @@ export async function renderCollection(container, ctx) {
         }
       })
 
+      var isDesktopGrid = window.innerWidth >= 768
+      var MINI_SCALE = isDesktopGrid ? 0.76 : 0.54
+      var MINI_W = Math.round(140 * MINI_SCALE)
+      var MINI_H = Math.round(310 * MINI_SCALE)
+
       grid.innerHTML = items.map(function(item, i) {
-        var selStyle = i === sel
-          ? 'border:2px solid rgba(255,255,255,0.9);box-shadow:0 0 8px rgba(255,255,255,0.6);border-radius:6px;'
-          : 'border:2px solid transparent;border-radius:6px;'
-        return '<div class="col-mini-item" data-idx="' + i + '" style="flex-shrink:0;cursor:pointer;' + selStyle + 'transition:border-color .15s;overflow:hidden">' + renderMiniFn(item, i === sel) + '</div>'
+        var isSel = i === sel
+        // Fond doré pour la sélection (mobile + PC), dimensions exactes pour que la bordure colle à la carte
+        var wrapStyle = 'flex-shrink:0;cursor:pointer;border-radius:6px;overflow:hidden;'
+          + 'width:' + MINI_W + 'px;height:' + MINI_H + 'px;'
+          + (isSel
+            ? 'background:rgba(212,160,23,0.35);outline:2.5px solid #D4A017;outline-offset:1px;'
+            : '')
+        return '<div class="col-mini-item" data-idx="' + i + '" style="' + wrapStyle + '">'
+          + renderMiniFn(item, isSel)
+          + '</div>'
       }).join('')
 
       grid.querySelectorAll('.col-mini-item').forEach(function(el) {
@@ -413,7 +426,7 @@ export async function renderCollection(container, ctx) {
   }
 
   function miniPlayerCard(card) {
-    var SCALE = 0.54
+    var SCALE = window.innerWidth >= 768 ? 0.76 : 0.54
     var W = Math.round(140*SCALE), H = Math.round(310*SCALE)
     var inner
     if (!card || card._fake) {

@@ -14,8 +14,26 @@ export async function renderHome(container, { state, navigate, toast }) {
   if (!p) return
 
   container.innerHTML = `
-  <div class="page">
-    <div class="page-body">
+  <style>
+    @media (min-width: 768px) {
+      .home-page-body {
+        max-width: 700px !important;
+        height: 100%;
+        display: flex !important;
+        flex-direction: column;
+        justify-content: stretch;
+      }
+      .home-page-body .play-grid {
+        flex: 1 1 auto;
+        grid-template-rows: 1fr 1fr;
+        min-height: 0;
+      }
+      .home-page-body .ranked-banner { min-height: 90px; flex-shrink: 0; }
+      .home-page-body .play-card     { min-height: unset; height: 100%; }
+    }
+  </style>
+  <div class="page" style="height:100%;overflow-y:auto">
+    <div class="page-body home-page-body">
 
       <!-- Demandes d'amis en attente (injecté dynamiquement) -->
       <div id="friend-requests-banner"></div>

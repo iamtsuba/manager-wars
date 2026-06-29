@@ -387,14 +387,18 @@ export async function renderCollection(container, ctx) {
         var cardH    = inner.offsetHeight
         var cardW    = inner.offsetWidth
         if (cardH > 0 && cardW > 0 && availH > 40) {
-          var scale = Math.min(availH / cardH, availW / cardW, 1)
+          var maxScale = isDesktop ? 2.2 : 1   // desktop : autoriser agrandissement
+          var scale = Math.min(availH / cardH, availW / cardW, maxScale)
           inner.style.transform = 'scale(' + scale.toFixed(3) + ')'
           inner.style.transformOrigin = 'top center'
         }
       })
 
       grid.innerHTML = items.map(function(item, i) {
-        return '<div class="col-mini-item" data-idx="' + i + '" style="flex-shrink:0;cursor:pointer;border-radius:8px;border:1.5px solid ' + (i === sel ? borderColor : 'transparent') + ';transition:border-color .15s;overflow:hidden">' + renderMiniFn(item, i === sel) + '</div>'
+        var selStyle = i === sel
+          ? 'border:2px solid rgba(255,255,255,0.9);box-shadow:0 0 8px rgba(255,255,255,0.6);border-radius:6px;'
+          : 'border:2px solid transparent;border-radius:6px;'
+        return '<div class="col-mini-item" data-idx="' + i + '" style="flex-shrink:0;cursor:pointer;' + selStyle + 'transition:border-color .15s;overflow:hidden">' + renderMiniFn(item, i === sel) + '</div>'
       }).join('')
 
       grid.querySelectorAll('.col-mini-item').forEach(function(el) {

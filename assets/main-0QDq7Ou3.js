@@ -252,7 +252,7 @@ import{s as $,F as oi,h as St,j as Mi,l as Qe,i as ln,k as cn,b as pn}from"./for
         border:1.5px solid #ddd;background:#fff;
         font-size:14px;font-weight:700;cursor:pointer;color:#555;
       }
-    </style>`}async function _n({player1Id:e,player2Id:t,score1:n,score2:a,gc1:c,gc2:d}){const[s,l]=[e,t].sort(),p=e!==s,i=p?a:n,r=p?n:a,f=p?d:c,m=p?c:d,x=i>r?1:0,z=r>i?1:0,o=i===r?1:0,{data:b}=await $.from("friend_match_stats").select("*").eq("player1_id",s).eq("player2_id",l).single();b?await $.from("friend_match_stats").update({wins_p1:b.wins_p1+x,wins_p2:b.wins_p2+z,draws:b.draws+o,goals_p1:b.goals_p1+i,goals_p2:b.goals_p2+r,gc_used_p1:b.gc_used_p1+f,gc_used_p2:b.gc_used_p2+m,matches_total:b.matches_total+1}).eq("player1_id",s).eq("player2_id",l):await $.from("friend_match_stats").insert({player1_id:s,player2_id:l,wins_p1:x,wins_p2:z,draws:o,goals_p1:i,goals_p2:r,gc_used_p1:f,gc_used_p2:m,matches_total:1})}const $n="2026.06.29-2342";async function hi(e,{state:t,navigate:n,toast:a}){var d,s;const c=t.profile;c&&(e.innerHTML=`
+    </style>`}async function _n({player1Id:e,player2Id:t,score1:n,score2:a,gc1:c,gc2:d}){const[s,l]=[e,t].sort(),p=e!==s,i=p?a:n,r=p?n:a,f=p?d:c,m=p?c:d,x=i>r?1:0,z=r>i?1:0,o=i===r?1:0,{data:b}=await $.from("friend_match_stats").select("*").eq("player1_id",s).eq("player2_id",l).single();b?await $.from("friend_match_stats").update({wins_p1:b.wins_p1+x,wins_p2:b.wins_p2+z,draws:b.draws+o,goals_p1:b.goals_p1+i,goals_p2:b.goals_p2+r,gc_used_p1:b.gc_used_p1+f,gc_used_p2:b.gc_used_p2+m,matches_total:b.matches_total+1}).eq("player1_id",s).eq("player2_id",l):await $.from("friend_match_stats").insert({player1_id:s,player2_id:l,wins_p1:x,wins_p2:z,draws:o,goals_p1:i,goals_p2:r,gc_used_p1:f,gc_used_p2:m,matches_total:1})}const $n="2026.06.29-2355";async function hi(e,{state:t,navigate:n,toast:a}){var d,s;const c=t.profile;c&&(e.innerHTML=`
   <style>
     @media (min-width: 768px) {
       .home-page-body {
@@ -328,11 +328,11 @@ import{s as $,F as oi,h as St,j as Mi,l as Qe,i as ln,k as cn,b as pn}from"./for
       </div>
 
             <!-- Logout -->
-      <div style="text-align:center;padding:12px 0;display:flex;flex-direction:column;gap:8px;align-items:center">
-        <button class="btn btn-ghost btn-sm" id="logout-btn" style="color:var(--gray-600)">Déconnexion</button>
+      <div style="text-align:center;padding:4px 0 8px;display:flex;flex-direction:column;gap:6px;align-items:center">
+        <button class="btn btn-ghost btn-sm" id="logout-btn" style="color:var(--gray-600);padding:4px 14px;font-size:12px">Déconnexion</button>
         ${c.is_admin?`
         <a href="/manager-wars/admin.html" class="btn btn-sm" id="admin-editor-btn"
-          style="background:var(--yellow);color:#111;font-weight:700;border:none;text-decoration:none;display:inline-block;padding:6px 16px;border-radius:8px">
+          style="background:var(--yellow);color:#111;font-weight:700;border:none;text-decoration:none;display:inline-block;padding:4px 12px;border-radius:8px;font-size:12px">
           ⚙️ Admin Editor
         </a>
         <div style="font-size:10px;color:var(--gray-400);font-family:monospace;letter-spacing:0.5px">build ${$n}</div>`:""}

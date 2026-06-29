@@ -134,37 +134,30 @@
 .play-card {
   background: var(--tile-dark-bg); border-radius: var(--radius-lg);
   position: relative; overflow: hidden;
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  display: flex; align-items: center; justify-content: center;
   cursor: pointer; transition: filter .12s, transform .08s;
-  min-height: 110px; padding: 12px 10px 38px;
+  min-height: 100px; padding: 10px;
+}
+/* Groupe badge + texte : toujours collés, centrés */
+.play-badge-group {
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  pointer-events: none;
 }
 .play-card .play-icon { height: 72px; width: auto; display: block; }
 .play-card .play-text-overlay {
   display: block; height: 26px; width: auto; max-width: 88%; object-fit: contain;
-  margin-top: 4px;
 }
 .play-card:active,
 .play-card.tapped { filter: brightness(1.2); }
 .play-card:hover { transform: scale(1.02); }
 
-/* PC : tuiles plus grandes, icônes centrées et bien proportionnées */
+/* PC : icônes proportionnelles */
 @media (min-width: 768px) {
-  .play-card {
-    padding: 16px 10px;   /* padding uniforme, plus besoin de réserver de l'espace en bas */
-  }
-  .play-card .play-icon {
-    height: clamp(90px, 52%, 160px);
-    width: auto;
-  }
-  .play-card .play-text-overlay {
-    height: 34px;
-    margin-top: 8px;
-  }
-  /* RANKED : légèrement plus grande icône */
+  .play-card { padding: 16px 10px; }
+  .play-card .play-icon { height: clamp(90px, 52%, 160px); }
+  .play-card .play-text-overlay { height: 34px; }
   .ranked-banner .play-icon { height: clamp(70px, 60%, 100px); }
   .ranked-banner .play-text-overlay { height: 32px; }
-  /* Desktop : overflow hidden pour le layout flex */
-  .home-desktop-page { overflow: hidden !important; }
 }
 
 /* ── Action cards grid (collection/marché) ── */

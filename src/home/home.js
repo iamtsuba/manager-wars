@@ -69,27 +69,22 @@ export async function renderHome(container, { state, navigate, toast }) {
 
       <!-- Ranked (bouton) -->
       <div class="ranked-banner play-card" data-action="ranked">
-        <img src="${import.meta.env.BASE_URL}icons/badge-ranked.png" alt="" class="play-icon">
-        <img src="${import.meta.env.BASE_URL}icons/badge-ranked-txt.png" alt="Ranked" class="play-text-overlay">
+        <div class="play-badge-group"><img src="${import.meta.env.BASE_URL}icons/badge-ranked.png" alt="" class="play-icon"><img src="${import.meta.env.BASE_URL}icons/badge-ranked-txt.png" alt="Ranked" class="play-text-overlay"></div>
       </div>
 
       <!-- Jeu : 4 tuiles -->
       <div class="play-grid">
         <div class="play-card" data-action="match-ai">
-          <img src="${import.meta.env.BASE_URL}icons/badge-ai.png" alt="" class="play-icon">
-          <img src="${import.meta.env.BASE_URL}icons/badge-ai-txt.png" alt="Match IA" class="play-text-overlay">
+          <div class="play-badge-group"><img src="${import.meta.env.BASE_URL}icons/badge-ai.png" alt="" class="play-icon"><img src="${import.meta.env.BASE_URL}icons/badge-ai-txt.png" alt="Match IA" class="play-text-overlay"></div>
         </div>
         <div class="play-card" data-action="match-random">
-          <img src="${import.meta.env.BASE_URL}icons/badge-random.png" alt="" class="play-icon">
-          <img src="${import.meta.env.BASE_URL}icons/badge-random-txt.png" alt="Match Random" class="play-text-overlay">
+          <div class="play-badge-group"><img src="${import.meta.env.BASE_URL}icons/badge-random.png" alt="" class="play-icon"><img src="${import.meta.env.BASE_URL}icons/badge-random-txt.png" alt="Match Random" class="play-text-overlay"></div>
         </div>
         <div class="play-card" data-action="match-friend">
-          <img src="${import.meta.env.BASE_URL}icons/badge-vs.png" alt="" class="play-icon">
-          <img src="${import.meta.env.BASE_URL}icons/badge-vs-txt.png" alt="Match Friend" class="play-text-overlay">
+          <div class="play-badge-group"><img src="${import.meta.env.BASE_URL}icons/badge-vs.png" alt="" class="play-icon"><img src="${import.meta.env.BASE_URL}icons/badge-vs-txt.png" alt="Match Friend" class="play-text-overlay"></div>
         </div>
         <div class="play-card" data-action="mini-league">
-          <img src="${import.meta.env.BASE_URL}icons/badge-league.png" alt="" class="play-icon">
-          <img src="${import.meta.env.BASE_URL}icons/badge-league-txt.png" alt="Mini League" class="play-text-overlay">
+          <div class="play-badge-group"><img src="${import.meta.env.BASE_URL}icons/badge-league.png" alt="" class="play-icon"><img src="${import.meta.env.BASE_URL}icons/badge-league-txt.png" alt="Mini League" class="play-text-overlay"></div>
         </div>
       </div>
 
@@ -134,6 +129,39 @@ export async function renderHome(container, { state, navigate, toast }) {
       toast('Bientôt disponible', 'info')
     })
   })
+
+  // Adapter la hauteur des tuiles sur mobile pour tout voir sans scroll
+  if (window.innerWidth < 768) {
+    requestAnimationFrame(() => {
+      const vh = window.visualViewport?.height || window.innerHeight
+      const topBar  = document.querySelector('.top-nav')?.offsetHeight || 56
+      const botNav  = document.querySelector('.bottom-nav')?.offsetHeight || 60
+      const hero    = container.querySelector('.hero-compact')?.offsetHeight || 52
+      const ranked  = container.querySelector('.ranked-banner')
+      const grid    = container.querySelector('.play-grid')
+      const logout  = container.querySelector('#logout-btn')?.closest('div')?.offsetHeight || 44
+      const banners = ['friend-requests-banner','match-invite-banner','ongoing-match-banner']
+        .reduce((s, id) => s + (document.getElementById(id)?.offsetHeight || 0), 0)
+      const gap     = 14 * 5  // ~5 gaps
+      const avail   = vh - topBar - botNav - hero - logout - banners - gap
+
+      // Ranked = 28% du dispo, grid = 72%
+      const rankedH = Math.max(80, Math.round(avail * 0.28))
+      const gridH   = Math.max(160, Math.round(avail * 0.72))
+      const cellH   = Math.floor((gridH - 10) / 2)  // 2 rangées, 10px gap
+
+      if (ranked) ranked.style.minHeight = ranked.style.maxHeight = rankedH + 'px'
+      container.querySelectorAll('.play-grid .play-card').forEach(c => {
+        c.style.minHeight = c.style.height = cellH + 'px'
+      })
+
+      // Adapter la taille du badge dans les tuiles
+      const iconH = Math.round(cellH * 0.55)
+      container.querySelectorAll('.play-card .play-icon').forEach(img => {
+        img.style.height = iconH + 'px'
+      })
+    })
+  }
 
   document.getElementById('logout-btn').addEventListener('click', async () => {
     await supabase.auth.signOut()

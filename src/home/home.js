@@ -30,7 +30,7 @@ export async function renderHome(container, { state, navigate, toast }) {
       /* Bannières dynamiques : taille fixe */
       #friend-requests-banner, #match-invite-banner, #ongoing-match-banner { flex-shrink: 0; }
       /* Ranked : hauteur fixe */
-      .home-page-body .ranked-banner { flex-shrink: 0; min-height: 80px; max-height: 80px; }
+      .home-page-body .ranked-banner { flex-shrink: 0; min-height: 130px; max-height: 130px; }
       /* Grille 2x2 : prend tout l'espace restant */
       .home-page-body .play-grid {
         flex: 1 1 0;

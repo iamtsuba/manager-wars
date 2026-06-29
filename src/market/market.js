@@ -10,26 +10,31 @@ function getNote(p, job) {
   return Number(job==='GK'?p.note_g:job==='DEF'?p.note_d:job==='MIL'?p.note_m:p.note_a) || 0
 }
 
-function starSVG(note, job, size=28) {
-  const color = job ? (JOB_COLORS[job] || '#aaa') : '#bbb'
-  const text  = note > 0 ? note : ''
-  const fontSize = size * 0.44
-  return `<svg width="${size}" height="${size}" viewBox="0 0 28 28" style="flex-shrink:0">
-    <polygon points="14,2 17.5,10 27,11 20.5,17 22.5,26 14,21.5 5.5,26 7.5,17 1,11 10.5,10"
-      fill="${color}" stroke="white" stroke-width="${note>0?1.2:0}"/>
-    ${text ? `<text x="14" y="17.5" text-anchor="middle" font-size="${fontSize}" font-weight="900" fill="white" font-family="Arial Black,Arial">${text}</text>` : ''}
-  </svg>`
+function rarityBar(rarity) {
+  const COLORS = { normal:'#e0e0e0', pepite:'#D4A017', papyte:'#909090', legende:'#7a28b8' }
+  const LABELS = { normal:'NORMAL', pepite:'PÉPITE', papyte:'PAPYTE', legende:'LÉGENDE' }
+  const col = COLORS[rarity] || '#e0e0e0'
+  return `<div style="width:6px;height:100%;background:${col};border-radius:4px 0 0 4px;flex-shrink:0;align-self:stretch;min-height:52px"></div>`
 }
 
-function flagImg(code, size=20) {
+function squareCell(note, job) {
+  const SZ = 32  // taille fixe pour tous les carrés
+  const color = job ? (JOB_COLORS[job] || '#bbb') : '#d0d0d0'
+  const label = note > 0 ? note : (job || '—')
+  return `<div style="width:${SZ}px;height:${SZ}px;border-radius:6px;background:${color};display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:13px;font-weight:900;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,0.4)">${label}</div>`
+}
+
+function flagImg(code) {
+  const SZ = 32
   const url = flagImgUrl(code)
-  if (!url) return ''
-  return `<img src="${url}" style="width:${size}px;height:${Math.round(size*0.67)}px;object-fit:cover;border-radius:2px;flex-shrink:0">`
+  if (!url) return `<div style="width:${SZ}px;height:${SZ}px;border-radius:6px;background:#eee;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:16px">🌍</div>`
+  return `<div style="width:${SZ}px;height:${SZ}px;border-radius:6px;overflow:hidden;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:#f0f0f0"><img src="${url}" style="width:100%;height:100%;object-fit:cover"></div>`
 }
 
-function clubLogoImg(logoUrl, size=20) {
-  if (!logoUrl) return `<span style="font-size:${size}px;flex-shrink:0">🏟️</span>`
-  return `<img src="${logoUrl}" style="width:${size}px;height:${size}px;object-fit:contain;flex-shrink:0" onerror="this.style.display='none'">`
+function clubLogoImg(logoUrl) {
+  const SZ = 32
+  if (!logoUrl) return `<div style="width:${SZ}px;height:${SZ}px;border-radius:6px;background:#f0f0f0;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:16px">🏟️</div>`
+  return `<div style="width:${SZ}px;height:${SZ}px;border-radius:6px;overflow:hidden;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:#f0f0f0"><img src="${logoUrl}" style="width:28px;height:28px;object-fit:contain" onerror="this.parentElement.innerHTML='🏟️'"></div>`
 }
 
 export async function renderMarket(container, ctx) {
@@ -132,31 +137,22 @@ async function loadMarket(container, ctx) {
   function renderBuyRow(l) {
     const p = l.card?.player
     if (!p) return ''
-    const note1    = getNote(p, p.job)
-    const note2    = p.job2 ? getNote(p, p.job2) : 0
-    const clubLogo = p.clubs?.logo_url
+    const note1     = getNote(p, p.job)
+    const note2     = p.job2 ? getNote(p, p.job2) : 0
     const canAfford = (state.profile.credits||0) >= l.price
-    const rarColor  = RARITY_COLORS[p.rarity] || '#ccc'
-    return `<div class="card-panel" style="display:flex;align-items:center;gap:8px;padding:10px 12px">
-      <!-- Étoile poste 1 -->
-      ${starSVG(note1, p.job, 30)}
-      <!-- Étoile poste 2 (grisée si pas de job2) -->
-      ${starSVG(note2, p.job2||null, 26)}
-      <!-- Drapeau pays -->
-      ${flagImg(p.country_code, 22)}
-      <!-- Logo club -->
-      ${clubLogo ? clubLogoImg(clubLogo, 22) : '<span style="width:22px;text-align:center;flex-shrink:0">🏟️</span>'}
-      <!-- Nom + vendeur -->
+    return `<div class="card-panel" style="display:flex;align-items:center;gap:8px;padding:10px 12px;overflow:hidden;padding-left:6px">
+      ${rarityBar(p.rarity)}
+      ${squareCell(note1, p.job)}
+      ${squareCell(note2, p.job2||null)}
+      ${flagImg(p.country_code)}
+      ${clubLogoImg(p.clubs?.logo_url)}
       <div style="flex:1;min-width:0">
         <div style="font-size:13px;font-weight:900;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.firstname} ${p.surname_encoded}</div>
         <div style="font-size:10px;color:#999;margin-top:1px">Vendeur : ${l.seller?.pseudo||'—'}</div>
       </div>
-      <!-- Prix + bouton -->
       <div style="text-align:right;flex-shrink:0">
         <div style="font-size:14px;font-weight:900;color:#D4A017">${l.price.toLocaleString('fr')}</div>
-        <button class="btn btn-primary btn-sm" data-buy="${l.id}" ${!canAfford?'disabled':''} style="margin-top:4px;font-size:11px;padding:4px 10px">
-          ${canAfford?'Acheter':'Trop cher'}
-        </button>
+        <button class="btn btn-primary btn-sm" data-buy="${l.id}" ${!canAfford?'disabled':''} style="margin-top:4px;font-size:11px;padding:4px 10px">${canAfford?'Acheter':'Trop cher'}</button>
       </div>
     </div>`
   }
@@ -164,18 +160,19 @@ async function loadMarket(container, ctx) {
   function renderMineRow(l) {
     const p = l.card?.player
     if (!p) return ''
-    const note1   = getNote(p, p.job)
-    const note2   = p.job2 ? getNote(p, p.job2) : 0
-    const isSold  = l.status === 'sold'
-    return `<div class="card-panel" style="display:flex;align-items:center;gap:8px;padding:10px 12px;${isSold?'opacity:0.65':''}">
-      ${starSVG(note1, p.job, 30)}
-      ${starSVG(note2, p.job2||null, 26)}
-      ${flagImg(p.country_code, 22)}
-      ${p.clubs?.logo_url ? clubLogoImg(p.clubs.logo_url, 22) : '<span style="width:22px;text-align:center;flex-shrink:0">🏟️</span>'}
+    const note1  = getNote(p, p.job)
+    const note2  = p.job2 ? getNote(p, p.job2) : 0
+    const isSold = l.status === 'sold'
+    return `<div class="card-panel" style="display:flex;align-items:center;gap:8px;padding:10px 12px;overflow:hidden;padding-left:6px;${isSold?'opacity:0.7':''}">
+      ${rarityBar(p.rarity)}
+      ${squareCell(note1, p.job)}
+      ${squareCell(note2, p.job2||null)}
+      ${flagImg(p.country_code)}
+      ${clubLogoImg(p.clubs?.logo_url)}
       <div style="flex:1;min-width:0">
         <div style="font-size:13px;font-weight:900;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.firstname} ${p.surname_encoded}</div>
         <div style="font-size:10px;color:${isSold?'#22c55e':'#999'};margin-top:1px">
-          ${isSold ? `✅ Vendu à ${l.buyer?.pseudo||'—'} · ${l.sold_at?new Date(l.sold_at).toLocaleDateString('fr'):''}` : `🟢 En vente depuis le ${new Date(l.listed_at).toLocaleDateString('fr')}`}
+          ${isSold?`✅ Vendu à ${l.buyer?.pseudo||'—'} · ${l.sold_at?new Date(l.sold_at).toLocaleDateString('fr'):''}` : `🟢 En vente depuis le ${new Date(l.listed_at).toLocaleDateString('fr')}`}
         </div>
       </div>
       <div style="text-align:right;flex-shrink:0">
@@ -193,18 +190,19 @@ async function loadMarket(container, ctx) {
     if (!content) return
     filters.style.display = activeTab === 'buy' ? 'flex' : 'none'
 
-    let list = activeTab === 'buy' ? applyFilters(others) : [...myListings].sort((a,b)=>{
-      if (a.status !== b.status) return a.status==='active'?-1:1
-      return new Date(b.listed_at)-new Date(a.listed_at)
-    })
-
-    if (!list.length) {
-      content.innerHTML = `<div style="text-align:center;color:#aaa;padding:40px">${activeTab==='buy'?'Aucune carte trouvée.':'Aucune vente.'}</div>`
-      return
+    if (activeTab === 'buy') {
+      const list = applyFilters(others)
+      content.innerHTML = list.length
+        ? list.map(renderBuyRow).join('')
+        : `<div style="text-align:center;color:#aaa;padding:40px">Aucune carte trouvée.</div>`
+    } else {
+      const active = myListings.filter(l=>l.status==='active').sort((a,b)=>new Date(b.listed_at)-new Date(a.listed_at))
+      const sold   = myListings.filter(l=>l.status==='sold').sort((a,b)=>new Date(b.sold_at||b.listed_at)-new Date(a.sold_at||a.listed_at))
+      content.innerHTML =
+        (active.length ? `<div style="font-size:11px;font-weight:700;color:#555;padding:4px 0 6px;text-transform:uppercase;letter-spacing:1px">🟢 En vente (${active.length})</div>` + active.map(renderMineRow).join('') : '') +
+        (sold.length   ? `<div style="font-size:11px;font-weight:700;color:#555;padding:12px 0 6px;text-transform:uppercase;letter-spacing:1px">✅ Ventes réussies (${sold.length})</div>` + sold.map(renderMineRow).join('') : '') +
+        (!active.length && !sold.length ? `<div style="text-align:center;color:#aaa;padding:40px">Aucune vente pour le moment.</div>` : '')
     }
-    content.innerHTML = activeTab==='buy'
-      ? list.map(renderBuyRow).join('')
-      : list.map(renderMineRow).join('')
 
     content.querySelectorAll('[data-buy]').forEach(btn =>
       btn.addEventListener('click', () => buyCard(btn.dataset.buy, others, container, ctx)))

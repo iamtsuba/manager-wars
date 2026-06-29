@@ -19,20 +19,30 @@ export async function renderHome(container, { state, navigate, toast }) {
       .home-page-body {
         max-width: 700px !important;
         height: 100%;
+        box-sizing: border-box;
         display: flex !important;
         flex-direction: column;
-        justify-content: stretch;
+        gap: 10px !important;
+        overflow: hidden;
       }
+      /* Hero : taille fixe */
+      .home-page-body .hero-compact { flex-shrink: 0; }
+      /* Bannières dynamiques : taille fixe */
+      #friend-requests-banner, #match-invite-banner, #ongoing-match-banner { flex-shrink: 0; }
+      /* Ranked : hauteur fixe */
+      .home-page-body .ranked-banner { flex-shrink: 0; min-height: 80px; max-height: 80px; }
+      /* Grille 2x2 : prend tout l'espace restant */
       .home-page-body .play-grid {
-        flex: 1 1 auto;
-        grid-template-rows: 1fr 1fr;
+        flex: 1 1 0;
         min-height: 0;
+        grid-template-rows: 1fr 1fr;
       }
-      .home-page-body .ranked-banner { min-height: 90px; flex-shrink: 0; }
-      .home-page-body .play-card     { min-height: unset; height: 100%; }
+      .home-page-body .play-card { min-height: unset; height: 100%; }
+      /* Boutons bas : taille fixe */
+      .home-page-body > div:last-child { flex-shrink: 0; }
     }
   </style>
-  <div class="page" style="height:100%;overflow-y:auto">
+  <div class="page" style="height:100%;overflow:hidden">
     <div class="page-body home-page-body">
 
       <!-- Demandes d'amis en attente (injecté dynamiquement) -->

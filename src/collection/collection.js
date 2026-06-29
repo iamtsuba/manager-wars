@@ -242,13 +242,6 @@ export async function renderCollection(container, ctx) {
   }
 
   container.innerHTML = `
-  <style>
-    /* ── Desktop uniquement : grande carte + scroll strip ── */
-    @media (min-width:768px) {
-      #col-big  { min-height:420px !important; flex:1 1 auto !important; }
-      #col-grid { height:200px !important; flex-shrink:0 !important; overflow-x:auto !important; overflow-y:hidden !important; }
-    }
-  </style>
   <div class="page" style="display:flex;flex-direction:column;height:100%;overflow:hidden">
     <!-- Onglets avec compteurs -->
     <div style="display:flex;border-bottom:2px solid var(--gray-200);background:#fff">
@@ -367,6 +360,20 @@ export async function renderCollection(container, ctx) {
     var sel = 0
 
     function repaint() {
+      // Patch desktop : agrandir la zone carte + fixer la hauteur de la strip
+      const isDesktop = window.innerWidth >= 768
+      const bigZoneEl = document.getElementById('col-big')
+      const gridEl    = document.getElementById('col-grid')
+      if (isDesktop && bigZoneEl) {
+        bigZoneEl.style.minHeight = '420px'
+        bigZoneEl.style.flex     = '1 1 auto'
+      }
+      if (isDesktop && gridEl) {
+        gridEl.style.height     = '200px'
+        gridEl.style.flexShrink = '0'
+        gridEl.style.overflowX  = 'auto'
+        gridEl.style.overflowY  = 'hidden'
+      }
       bigZone.innerHTML = '<div id="big-card-inner" style="display:inline-block;transform-origin:top center">' + renderBigFn(items[sel]) + '</div>'
       var bigEl = bigZone.querySelector('[data-card-id],[data-form-id],[data-gc-id]')
       if (bigEl) bigEl.addEventListener('click', function() { onBigClick(items[sel]) })

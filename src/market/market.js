@@ -1,141 +1,240 @@
 import { supabase } from '../lib/supabase.js'
-import { renderCardHTML } from '../components/card.js'
+import { flagImgUrl } from '../match/match-shared.js'
 
+const JOB_COLORS  = { GK:'#111111', DEF:'#bb2020', MIL:'#D4A017', ATT:'#1A6B3C' }
 const RARITY_COLORS = { normal:'#ccc', pepite:'#D4A017', papyte:'#909090', legende:'#7a28b8' }
+const BASE = import.meta.env.BASE_URL
+
+function getNote(p, job) {
+  if (!job) return 0
+  return Number(job==='GK'?p.note_g:job==='DEF'?p.note_d:job==='MIL'?p.note_m:p.note_a) || 0
+}
+
+function starSVG(note, job, size=28) {
+  const color = job ? (JOB_COLORS[job] || '#aaa') : '#bbb'
+  const text  = note > 0 ? note : ''
+  const fontSize = size * 0.44
+  return `<svg width="${size}" height="${size}" viewBox="0 0 28 28" style="flex-shrink:0">
+    <polygon points="14,2 17.5,10 27,11 20.5,17 22.5,26 14,21.5 5.5,26 7.5,17 1,11 10.5,10"
+      fill="${color}" stroke="white" stroke-width="${note>0?1.2:0}"/>
+    ${text ? `<text x="14" y="17.5" text-anchor="middle" font-size="${fontSize}" font-weight="900" fill="white" font-family="Arial Black,Arial">${text}</text>` : ''}
+  </svg>`
+}
+
+function flagImg(code, size=20) {
+  const url = flagImgUrl(code)
+  if (!url) return ''
+  return `<img src="${url}" style="width:${size}px;height:${Math.round(size*0.67)}px;object-fit:cover;border-radius:2px;flex-shrink:0">`
+}
+
+function clubLogoImg(logoUrl, size=20) {
+  if (!logoUrl) return `<span style="font-size:${size}px;flex-shrink:0">🏟️</span>`
+  return `<img src="${logoUrl}" style="width:${size}px;height:${size}px;object-fit:contain;flex-shrink:0" onerror="this.style.display='none'">`
+}
 
 export async function renderMarket(container, ctx) {
-  const { state, toast } = ctx
-  container.innerHTML = '<div class="page" style="padding:40px;text-align:center;color:#aaa">⚽ Chargement du marché...</div>'
-
+  container.innerHTML = '<div class="page" style="padding:40px;text-align:center;color:#aaa">⚽ Chargement...</div>'
   await loadMarket(container, ctx)
 }
 
 async function loadMarket(container, ctx) {
   const { state, toast } = ctx
 
-  // Annonces actives (marché d'achat global)
   const { data: activeListings } = await supabase
     .from('market_listings')
     .select(`id, price, status, listed_at, seller_id,
       seller:users!seller_id(pseudo),
-      card:cards(id, card_type,
+      card:cards(id, card_type, current_note,
         player:players(id, firstname, surname_encoded, country_code, job, job2,
-          note_g, note_d, note_m, note_a, rarity, skin, hair, hair_length, clubs(encoded_name, logo_url)))`)
+          note_g, note_d, note_m, note_a, rarity, note_min, note_max,
+          clubs(encoded_name, logo_url, logo_url)))`)
     .eq('status', 'active')
     .order('listed_at', { ascending: false })
-    .limit(60)
+    .limit(100)
 
-  // Toutes MES ventes (actives + vendues) — requête séparée pour ne pas dépendre
-  // de la limite/filtre du marché global
   const { data: myAllListings } = await supabase
     .from('market_listings')
     .select(`id, price, status, listed_at, sold_at, seller_id, buyer_id,
       buyer:users!buyer_id(pseudo),
-      card:cards(id, card_type,
+      card:cards(id, card_type, current_note,
         player:players(id, firstname, surname_encoded, country_code, job, job2,
-          note_g, note_d, note_m, note_a, rarity, skin, hair, hair_length, clubs(encoded_name, logo_url)))`)
+          note_g, note_d, note_m, note_a, rarity,
+          clubs(encoded_name, logo_url)))`)
     .eq('seller_id', state.profile.id)
     .in('status', ['active', 'sold'])
     .order('listed_at', { ascending: false })
     .limit(100)
 
-  const others = (activeListings || []).filter(l => l.seller_id !== state.profile.id)
+  const others    = (activeListings || []).filter(l => l.seller_id !== state.profile.id)
   const myListings = myAllListings || []
-  const myActiveCount = myListings.filter(l => l.status === 'active').length
 
   container.innerHTML = `
-  <div class="page">
-    <div class="page-header">
-      <h2>🛒 Marché des transferts</h2>
-      <p>${others.length} carte(s) en vente · Solde : ${(state.profile.credits||0).toLocaleString('fr')} cr.</p>
+  <div style="height:100%;overflow-y:auto;background:var(--page-bg)">
+    <!-- Header -->
+    <div style="padding:12px 16px;background:#fff;border-bottom:1px solid var(--gray-200)">
+      <div style="font-size:18px;font-weight:900">🛒 Marché des transferts</div>
+      <div style="font-size:12px;color:var(--gray-600);margin-top:2px">${others.length} carte(s) en vente · ${(state.profile.credits||0).toLocaleString('fr')} cr.</div>
     </div>
 
-    <div style="padding:10px 16px;background:#fff;border-bottom:1px solid var(--gray-200);display:flex;gap:6px;overflow-x:auto">
-      <button class="mkt-tab active" data-tab="buy" style="flex-shrink:0;padding:6px 14px;border-radius:20px;border:1.5px solid var(--green);background:var(--green);color:#fff;font-size:13px;font-weight:600;cursor:pointer">Acheter</button>
-      <button class="mkt-tab" data-tab="mine" style="flex-shrink:0;padding:6px 14px;border-radius:20px;border:1.5px solid var(--gray-200);background:#fff;color:var(--gray-600);font-size:13px;font-weight:600;cursor:pointer">Mes ventes (${myListings.length})</button>
+    <!-- Onglets -->
+    <div style="padding:8px 16px;background:#fff;border-bottom:1px solid var(--gray-200);display:flex;gap:6px">
+      <button class="mkt-tab" data-tab="buy" style="padding:6px 16px;border-radius:20px;border:1.5px solid var(--green);background:var(--green);color:#fff;font-size:13px;font-weight:700;cursor:pointer">Acheter</button>
+      <button class="mkt-tab" data-tab="mine" style="padding:6px 16px;border-radius:20px;border:1.5px solid var(--gray-200);background:#fff;color:var(--gray-600);font-size:13px;font-weight:700;cursor:pointer">Mes ventes (${myListings.length})</button>
     </div>
 
-    <div class="page-body" id="mkt-content"></div>
-  </div>
-  `
+    <!-- Filtres (onglet Acheter seulement) -->
+    <div id="mkt-filters" style="padding:10px 16px;background:#f9f9f9;border-bottom:1px solid var(--gray-200);display:flex;flex-wrap:wrap;gap:8px">
+      <input id="flt-name"    placeholder="🔍 Nom"         style="flex:1;min-width:110px;padding:6px 10px;border:1.5px solid #ddd;border-radius:8px;font-size:12px">
+      <input id="flt-club"    placeholder="🏟️ Club"        style="flex:1;min-width:90px;padding:6px 10px;border:1.5px solid #ddd;border-radius:8px;font-size:12px">
+      <input id="flt-country" placeholder="🌍 Pays"        style="flex:1;min-width:80px;padding:6px 10px;border:1.5px solid #ddd;border-radius:8px;font-size:12px">
+      <select id="flt-job" style="padding:6px 8px;border:1.5px solid #ddd;border-radius:8px;font-size:12px;background:#fff">
+        <option value="">Tous postes</option>
+        <option>GK</option><option>DEF</option><option>MIL</option><option>ATT</option>
+      </select>
+      <input id="flt-note1"   placeholder="★ Note min"    type="number" min="0" max="20" style="width:90px;padding:6px 10px;border:1.5px solid #ddd;border-radius:8px;font-size:12px">
+      <input id="flt-note2"   placeholder="☆ Note 2 min" type="number" min="0" max="20" style="width:90px;padding:6px 10px;border:1.5px solid #ddd;border-radius:8px;font-size:12px">
+    </div>
 
-  function renderTab(tab) {
-    const content = document.getElementById('mkt-content')
-    const list = tab === 'buy' ? others : myListings
+    <div id="mkt-content" style="padding:10px 16px;display:flex;flex-direction:column;gap:8px"></div>
+  </div>`
 
-    if (list.length === 0) {
-      content.innerHTML = `<div style="text-align:center;color:var(--gray-600);padding:40px">
-        ${tab === 'buy' ? 'Aucune carte en vente actuellement.' : 'Tu n\'as aucune vente pour le moment.'}
-      </div>`
-      return
-    }
+  // ── Filtre + rendu ────────────────────────────────────────
+  let activeTab = 'buy'
+  const getFilters = () => ({
+    name:     (document.getElementById('flt-name')?.value||'').toLowerCase().trim(),
+    club:     (document.getElementById('flt-club')?.value||'').toLowerCase().trim(),
+    country:  (document.getElementById('flt-country')?.value||'').toLowerCase().trim(),
+    job:      document.getElementById('flt-job')?.value||'',
+    note1:    parseInt(document.getElementById('flt-note1')?.value)||0,
+    note2:    parseInt(document.getElementById('flt-note2')?.value)||0,
+  })
 
-    // Pour "Mes ventes" : grouper actives en premier, puis vendues (plus récentes d'abord)
-    const sortedList = tab === 'mine'
-      ? [...list].sort((a,b) => {
-          if (a.status !== b.status) return a.status === 'active' ? -1 : 1
-          return new Date(b.listed_at) - new Date(a.listed_at)
-        })
-      : list
-
-    content.innerHTML = `<div style="display:flex;flex-direction:column;gap:10px">
-      ${sortedList.map(l => {
-        const p = l.card?.player
-        if (!p) return ''
-        const note = p.job === 'GK' ? p.note_g : p.job === 'DEF' ? p.note_d : p.job === 'MIL' ? p.note_m : p.note_a
-        const rarColor = RARITY_COLORS[p.rarity]
-        const canAfford = (state.profile.credits || 0) >= l.price
-        const isSold = l.status === 'sold'
-
-        return `<div class="card-panel" style="display:flex;align-items:center;gap:12px;padding:12px;${isSold?'opacity:0.65':''}">
-          <div style="width:44px;height:44px;border-radius:8px;background:${jobColor(p.job)};color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:18px;border:2px solid ${rarColor};flex-shrink:0">${note}</div>
-          <div style="flex:1;min-width:0">
-            <div style="font-weight:700;font-size:14px">${p.firstname} ${p.surname_encoded}</div>
-            <div style="font-size:11px;color:var(--gray-600)">${p.country_code} · ${p.clubs?.encoded_name || '—'} · ${p.rarity} · ${p.job}</div>
-            ${tab === 'buy'
-              ? `<div style="font-size:11px;color:var(--gray-600)">Vendeur : ${l.seller?.pseudo || '—'}</div>`
-              : isSold
-                ? `<div style="font-size:11px;color:var(--green)">✅ Vendu à ${l.buyer?.pseudo || '—'} · ${l.sold_at ? new Date(l.sold_at).toLocaleDateString('fr') : ''}</div>`
-                : `<div style="font-size:11px;color:var(--gray-600)">🟢 En vente depuis le ${new Date(l.listed_at).toLocaleDateString('fr')}</div>`}
-          </div>
-          <div style="text-align:right;flex-shrink:0">
-            <div style="font-weight:900;color:var(--yellow);font-size:15px">${l.price.toLocaleString('fr')}</div>
-            ${tab === 'buy'
-              ? `<button class="btn btn-primary btn-sm" data-buy="${l.id}" ${!canAfford ? 'disabled' : ''} style="margin-top:4px">${canAfford ? 'Acheter' : 'Trop cher'}</button>`
-              : isSold
-                ? `<span style="display:inline-block;margin-top:4px;font-size:10px;font-weight:700;color:#fff;background:var(--green);padding:3px 10px;border-radius:10px">VENDU</span>`
-                : `<button class="btn btn-danger btn-sm" data-cancel="${l.id}" style="margin-top:4px">Retirer</button>`}
-          </div>
-        </div>`
-      }).join('')}
-    </div>`
-
-    // Achat
-    content.querySelectorAll('[data-buy]').forEach(btn => {
-      btn.addEventListener('click', () => buyCard(btn.dataset.buy, list, container, ctx))
-    })
-    // Annulation
-    content.querySelectorAll('[data-cancel]').forEach(btn => {
-      btn.addEventListener('click', () => cancelListing(btn.dataset.cancel, container, ctx))
+  function applyFilters(list) {
+    const f = getFilters()
+    return list.filter(l => {
+      const p = l.card?.player
+      if (!p) return false
+      const fullName = `${p.firstname} ${p.surname_encoded}`.toLowerCase()
+      const club     = (p.clubs?.encoded_name||'').toLowerCase()
+      const country  = (p.country_code||'').toLowerCase()
+      const note1    = getNote(p, p.job)
+      const note2    = p.job2 ? getNote(p, p.job2) : 0
+      if (f.name    && !fullName.includes(f.name))  return false
+      if (f.club    && !club.includes(f.club))       return false
+      if (f.country && !country.includes(f.country)) return false
+      if (f.job     && p.job !== f.job)              return false
+      if (f.note1   && note1 < f.note1)              return false
+      if (f.note2   && note2 < f.note2)              return false
+      return true
     })
   }
 
-  renderTab('buy')
+  function renderBuyRow(l) {
+    const p = l.card?.player
+    if (!p) return ''
+    const note1    = getNote(p, p.job)
+    const note2    = p.job2 ? getNote(p, p.job2) : 0
+    const clubLogo = p.clubs?.logo_url
+    const canAfford = (state.profile.credits||0) >= l.price
+    const rarColor  = RARITY_COLORS[p.rarity] || '#ccc'
+    return `<div class="card-panel" style="display:flex;align-items:center;gap:8px;padding:10px 12px">
+      <!-- Étoile poste 1 -->
+      ${starSVG(note1, p.job, 30)}
+      <!-- Étoile poste 2 (grisée si pas de job2) -->
+      ${starSVG(note2, p.job2||null, 26)}
+      <!-- Drapeau pays -->
+      ${flagImg(p.country_code, 22)}
+      <!-- Logo club -->
+      ${clubLogo ? clubLogoImg(clubLogo, 22) : '<span style="width:22px;text-align:center;flex-shrink:0">🏟️</span>'}
+      <!-- Nom + vendeur -->
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:900;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.firstname} ${p.surname_encoded}</div>
+        <div style="font-size:10px;color:#999;margin-top:1px">Vendeur : ${l.seller?.pseudo||'—'}</div>
+      </div>
+      <!-- Prix + bouton -->
+      <div style="text-align:right;flex-shrink:0">
+        <div style="font-size:14px;font-weight:900;color:#D4A017">${l.price.toLocaleString('fr')}</div>
+        <button class="btn btn-primary btn-sm" data-buy="${l.id}" ${!canAfford?'disabled':''} style="margin-top:4px;font-size:11px;padding:4px 10px">
+          ${canAfford?'Acheter':'Trop cher'}
+        </button>
+      </div>
+    </div>`
+  }
 
+  function renderMineRow(l) {
+    const p = l.card?.player
+    if (!p) return ''
+    const note1   = getNote(p, p.job)
+    const note2   = p.job2 ? getNote(p, p.job2) : 0
+    const isSold  = l.status === 'sold'
+    return `<div class="card-panel" style="display:flex;align-items:center;gap:8px;padding:10px 12px;${isSold?'opacity:0.65':''}">
+      ${starSVG(note1, p.job, 30)}
+      ${starSVG(note2, p.job2||null, 26)}
+      ${flagImg(p.country_code, 22)}
+      ${p.clubs?.logo_url ? clubLogoImg(p.clubs.logo_url, 22) : '<span style="width:22px;text-align:center;flex-shrink:0">🏟️</span>'}
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:900;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.firstname} ${p.surname_encoded}</div>
+        <div style="font-size:10px;color:${isSold?'#22c55e':'#999'};margin-top:1px">
+          ${isSold ? `✅ Vendu à ${l.buyer?.pseudo||'—'} · ${l.sold_at?new Date(l.sold_at).toLocaleDateString('fr'):''}` : `🟢 En vente depuis le ${new Date(l.listed_at).toLocaleDateString('fr')}`}
+        </div>
+      </div>
+      <div style="text-align:right;flex-shrink:0">
+        <div style="font-size:14px;font-weight:900;color:#D4A017">${l.price.toLocaleString('fr')}</div>
+        ${isSold
+          ? `<span style="font-size:10px;font-weight:700;color:#fff;background:#22c55e;padding:3px 8px;border-radius:10px;display:inline-block;margin-top:4px">VENDU</span>`
+          : `<button class="btn btn-danger btn-sm" data-cancel="${l.id}" style="margin-top:4px;font-size:11px;padding:4px 10px">Retirer</button>`}
+      </div>
+    </div>`
+  }
+
+  function renderTab() {
+    const content  = document.getElementById('mkt-content')
+    const filters  = document.getElementById('mkt-filters')
+    if (!content) return
+    filters.style.display = activeTab === 'buy' ? 'flex' : 'none'
+
+    let list = activeTab === 'buy' ? applyFilters(others) : [...myListings].sort((a,b)=>{
+      if (a.status !== b.status) return a.status==='active'?-1:1
+      return new Date(b.listed_at)-new Date(a.listed_at)
+    })
+
+    if (!list.length) {
+      content.innerHTML = `<div style="text-align:center;color:#aaa;padding:40px">${activeTab==='buy'?'Aucune carte trouvée.':'Aucune vente.'}</div>`
+      return
+    }
+    content.innerHTML = activeTab==='buy'
+      ? list.map(renderBuyRow).join('')
+      : list.map(renderMineRow).join('')
+
+    content.querySelectorAll('[data-buy]').forEach(btn =>
+      btn.addEventListener('click', () => buyCard(btn.dataset.buy, others, container, ctx)))
+    content.querySelectorAll('[data-cancel]').forEach(btn =>
+      btn.addEventListener('click', () => cancelListing(btn.dataset.cancel, container, ctx)))
+  }
+
+  // Listeners onglets
   container.querySelectorAll('.mkt-tab').forEach(tab => {
     tab.addEventListener('click', () => {
+      activeTab = tab.dataset.tab
       container.querySelectorAll('.mkt-tab').forEach(t => {
-        const active = t === tab
-        t.style.background  = active ? 'var(--green)' : '#fff'
-        t.style.color       = active ? '#fff' : 'var(--gray-600)'
-        t.style.borderColor = active ? 'var(--green)' : 'var(--gray-200)'
+        const a = t === tab
+        t.style.background  = a ? 'var(--green)' : '#fff'
+        t.style.color       = a ? '#fff' : 'var(--gray-600)'
+        t.style.borderColor = a ? 'var(--green)' : 'var(--gray-200)'
       })
-      renderTab(tab.dataset.tab)
+      renderTab()
     })
   })
+
+  // Listeners filtres (debounce léger)
+  let _ft; ['flt-name','flt-club','flt-country','flt-job','flt-note1','flt-note2'].forEach(id => {
+    document.getElementById(id)?.addEventListener('input', () => { clearTimeout(_ft); _ft=setTimeout(renderTab, 250) })
+  })
+
+  renderTab()
 }
 
-// ── Achat de carte ────────────────────────────────────────
+// ── Achat ─────────────────────────────────────────────────
 async function buyCard(listingId, list, container, ctx) {
   const { state, toast, refreshProfile } = ctx
   const listing = list.find(l => l.id === listingId)
@@ -143,68 +242,42 @@ async function buyCard(listingId, list, container, ctx) {
 
   const price    = listing.price
   const myCredit = state.profile.credits || 0
-  const player   = listing.card?.player
-
   if (myCredit < price) { toast('Crédits insuffisants', 'error'); return }
 
-  // ── Popup de confirmation custom (remplace confirm() natif du navigateur) ──
-  const confirmed = await showBuyConfirm(player, price)
-  if (!confirmed) return
-
-  // Désactiver le bouton pendant la transaction
-  const btn = document.querySelector(`[data-buy="${listingId}"]`)
-  if (btn) { btn.disabled = true; btn.textContent = '⏳' }
-
-  try {
-    const { data: result, error: rpcErr } = await supabase
-      .rpc('buy_market_card', { p_listing_id: listingId, p_buyer_id: state.profile.id })
-
-    if (rpcErr) throw new Error(rpcErr.message)
-    if (!result?.success) throw new Error(result?.error || 'Achat impossible')
-
-    // NOTE : record_transfer est appelé par buy_market_card côté serveur.
-    // Ne pas le rappeler ici pour éviter les doublons dans l'historique.
-
-    // Mettre à jour les crédits dans le state et l'affichage immédiatement
-    state.profile.credits = myCredit - price
+  showBuyConfirm(listing, async () => {
+    const { error } = await supabase.rpc('buy_market_card', { p_listing_id: listingId, p_buyer_id: state.profile.id })
+    if (error) { toast('Erreur achat : ' + error.message, 'error'); return }
+    await refreshProfile()
     const credEl = document.getElementById('nav-credits')
-    if (credEl) credEl.textContent = `💰 ${(myCredit - price).toLocaleString('fr')}`
-
-    toast(`✅ ${player?.surname_encoded} ajouté à ta collection !`, 'success')
-    loadMarket(container, ctx)
-
-  } catch (err) {
-    toast('❌ ' + err.message, 'error')
-    if (btn) { btn.disabled = false; btn.textContent = 'Acheter' }
-  }
-}
-
-// Popup de confirmation d'achat (remplace window.confirm)
-function showBuyConfirm(player, price) {
-  return new Promise(resolve => {
-    const ov = document.createElement('div')
-    ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:9000;display:flex;align-items:center;justify-content:center;padding:20px'
-    ov.innerHTML = `
-      <div style="background:#fff;border-radius:16px;padding:24px;max-width:360px;width:100%;box-shadow:0 8px 40px rgba(0,0,0,0.25)">
-        <div style="font-size:18px;font-weight:900;margin-bottom:6px">Confirmer l'achat</div>
-        <div style="font-size:14px;color:#555;margin-bottom:16px;line-height:1.5">
-          Acheter <b>${player?.firstname || ''} ${player?.surname_encoded || ''}</b><br>
-          pour <span style="color:#c47a00;font-weight:900;font-size:16px">${price.toLocaleString('fr')} crédits</span> ?
-        </div>
-        <div style="display:flex;gap:10px">
-          <button id="buy-cancel" style="flex:1;padding:12px;border-radius:10px;border:1.5px solid #ddd;background:#fff;font-size:14px;font-weight:700;cursor:pointer;color:#555">Annuler</button>
-          <button id="buy-ok" style="flex:1;padding:12px;border-radius:10px;border:none;background:linear-gradient(135deg,#1A6B3C,#2a9d5c);color:#fff;font-size:14px;font-weight:900;cursor:pointer">Acheter ✅</button>
-        </div>
-      </div>`
-    document.body.appendChild(ov)
-    const close = (val) => { ov.remove(); resolve(val) }
-    ov.querySelector('#buy-ok').addEventListener('click', () => close(true))
-    ov.querySelector('#buy-cancel').addEventListener('click', () => close(false))
-    ov.addEventListener('click', e => { if (e.target === ov) close(false) })
+    if (credEl) credEl.textContent = `💰 ${(state.profile.credits||0).toLocaleString('fr')}`
+    toast('✅ Carte achetée !', 'success')
+    await loadMarket(container, ctx)
   })
 }
 
-// ── Annuler une annonce ───────────────────────────────────
+function showBuyConfirm(listing, onConfirm) {
+  const p = listing.card?.player
+  const name = p ? `${p.firstname} ${p.surname_encoded}` : 'cette carte'
+  const ov = document.createElement('div')
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9000;display:flex;align-items:center;justify-content:center;padding:20px'
+  ov.innerHTML = `
+    <div style="background:#fff;border-radius:16px;padding:24px;max-width:320px;width:100%;text-align:center">
+      <div style="font-size:36px;margin-bottom:8px">🛒</div>
+      <div style="font-size:16px;font-weight:900;margin-bottom:6px">Acheter ${name} ?</div>
+      <div style="font-size:14px;color:#D4A017;font-weight:700;margin-bottom:18px">${listing.price.toLocaleString('fr')} crédits</div>
+      <div style="display:flex;gap:10px">
+        <button id="buy-cancel" style="flex:1;padding:12px;border-radius:10px;border:1.5px solid #ddd;background:#fff;font-size:14px;font-weight:700;cursor:pointer;color:#555">Annuler</button>
+        <button id="buy-ok" style="flex:1;padding:12px;border-radius:10px;border:none;background:var(--green);color:#fff;font-size:14px;font-weight:900;cursor:pointer">Confirmer</button>
+      </div>
+    </div>`
+  document.body.appendChild(ov)
+  const close = (ok) => { ov.remove(); if (ok) onConfirm() }
+  ov.querySelector('#buy-cancel').addEventListener('click', () => close(false))
+  ov.querySelector('#buy-ok').addEventListener('click', () => close(true))
+  ov.addEventListener('click', e => { if (e.target===ov) close(false) })
+}
+
+// ── Retrait d'annonce ─────────────────────────────────────
 async function cancelListing(listingId, container, ctx) {
   const { toast } = ctx
   const { data: listing } = await supabase.from('market_listings').select('card_id').eq('id', listingId).single()
@@ -212,20 +285,11 @@ async function cancelListing(listingId, container, ctx) {
   await supabase.from('market_listings').update({ status: 'cancelled' }).eq('id', listingId)
 
   if (listing?.card_id) {
-    // Vérifier s'il reste d'autres listings actifs pour cette même carte
     const { count } = await supabase.from('market_listings')
       .select('id', { count: 'exact', head: true })
-      .eq('card_id', listing.card_id)
-      .eq('status', 'active')
-    // Mettre à jour la carte seulement s'il n'y a plus de listing actif
-    if (!count) {
-      await supabase.from('cards').update({ is_for_sale: false, sale_price: null }).eq('id', listing.card_id)
-    }
+      .eq('card_id', listing.card_id).eq('status', 'active')
+    if (!count) await supabase.from('cards').update({ is_for_sale: false, sale_price: null }).eq('id', listing.card_id)
   }
   toast('Annonce retirée', 'success')
   loadMarket(container, ctx)
-}
-
-function jobColor(job) {
-  return { GK:'#111', DEF:'#bb2020', MIL:'#D4A017', ATT:'#1A6B3C' }[job] || '#888'
 }

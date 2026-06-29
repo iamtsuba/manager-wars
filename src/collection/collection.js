@@ -369,7 +369,8 @@ export async function renderCollection(container, ctx) {
         bigZoneEl.style.flex     = '1 1 auto'
       }
       if (isDesktop && gridEl) {
-        gridEl.style.height     = '250px'   // 310 × 0.76 ≈ 236px + padding
+        // 310 × 0.76 + padding = environ 252px
+        gridEl.style.height     = Math.round(310 * 0.76 + 16) + 'px'
         gridEl.style.flexShrink = '0'
         gridEl.style.overflowX  = 'auto'
         gridEl.style.overflowY  = 'hidden'
@@ -397,18 +398,12 @@ export async function renderCollection(container, ctx) {
       })
 
       var isDesktopGrid = window.innerWidth >= 768
-      var MINI_SCALE = isDesktopGrid ? 0.76 : 0.54
-      var MINI_W = Math.round(140 * MINI_SCALE)
-      var MINI_H = Math.round(310 * MINI_SCALE)
 
       grid.innerHTML = items.map(function(item, i) {
         var isSel = i === sel
-        // Fond doré pour la sélection (mobile + PC), dimensions exactes pour que la bordure colle à la carte
-        var wrapStyle = 'flex-shrink:0;cursor:pointer;border-radius:6px;overflow:hidden;'
-          + 'width:' + MINI_W + 'px;height:' + MINI_H + 'px;'
-          + (isSel
-            ? 'background:rgba(212,160,23,0.35);outline:2.5px solid #D4A017;outline-offset:1px;'
-            : '')
+        // Wrapper sans dimensions fixes — la taille est définie par le contenu (zoom)
+        var wrapStyle = 'flex-shrink:0;cursor:pointer;border-radius:6px;overflow:hidden;display:inline-block;line-height:0;'
+          + (isSel ? 'outline:2.5px solid #D4A017;outline-offset:1px;background:rgba(212,160,23,0.25);' : '')
         return '<div class="col-mini-item" data-idx="' + i + '" style="' + wrapStyle + '">'
           + renderMiniFn(item, isSel)
           + '</div>'
@@ -427,7 +422,6 @@ export async function renderCollection(container, ctx) {
 
   function miniPlayerCard(card) {
     var SCALE = window.innerWidth >= 768 ? 0.76 : 0.54
-    var W = Math.round(140*SCALE), H = Math.round(310*SCALE)
     var inner
     if (!card || card._fake) {
       var p = card ? card.player : null
@@ -436,7 +430,8 @@ export async function renderCollection(container, ctx) {
     } else {
       inner = renderCard(card, '')
     }
-    return '<div style="width:' + W + 'px;height:' + H + 'px;overflow:hidden;position:relative;flex-shrink:0"><div style="transform:scale(' + SCALE + ');transform-origin:top left;position:absolute;top:0;left:0;pointer-events:none">' + inner + '</div></div>'
+    // zoom affecte le layout → wrapper s'adapte automatiquement à la vraie taille de la carte
+    return '<div style="display:inline-block;zoom:' + SCALE + ';pointer-events:none;line-height:0">' + inner + '</div>'
   }
 
   // ── SVG terrain formation ────────────────────────────────
@@ -481,8 +476,8 @@ export async function renderCollection(container, ctx) {
   }
 
   function miniFormationCard(formation, owned) {
-    var SCALE = 0.54
-    var W = Math.round(140*SCALE), H = Math.round(305*SCALE)
+    var SCALE = window.innerWidth >= 768 ? 0.76 : 0.54
+    var W = 140, H = 305
     var nameH = Math.round(H*0.22), fieldH = H - nameH
     var fs = formation.length > 7 ? 5 : 7
     var svg = formFieldSVG(formation, W, fieldH)
@@ -490,12 +485,12 @@ export async function renderCollection(container, ctx) {
     var filter = owned ? '' : 'filter:grayscale(1);opacity:0.45;'
     var nameBg = owned ? '#1A6B3C' : '#bbb'
     var nameColor = '#fff'
-    return '<div style="width:' + W + 'px;height:' + H + 'px;border-radius:6px;border:' + border + ';background:#fff;display:flex;flex-direction:column;overflow:hidden;' + filter + '">'
+    return '<div style="display:inline-block;zoom:' + SCALE + ';line-height:0;pointer-events:none"><div style="width:' + W + 'px;height:' + H + 'px;border-radius:6px;border:' + border + ';background:#fff;display:flex;flex-direction:column;overflow:hidden;' + filter + '">'
       + '<div style="height:' + nameH + 'px;background:' + nameBg + ';display:flex;align-items:center;justify-content:center;padding:0 2px;flex-shrink:0">'
       + '<span style="font-size:' + fs + 'px;font-weight:900;color:' + nameColor + ';text-align:center;overflow:hidden;white-space:nowrap;max-width:' + (W-4) + 'px">' + formation + '</span>'
       + '</div>'
       + '<div style="height:' + fieldH + 'px;overflow:hidden;flex-shrink:0">' + svg + '</div>'
-      + '</div>'
+      + '</div></div>'
   }
 
   function renderPlayerGrid(grid) {
@@ -605,9 +600,7 @@ export async function renderCollection(container, ctx) {
           <div style="padding:10px;background:rgba(0,0,0,0.05);text-align:center"><div style="font-size:11px;color:#aaa">Non possédée</div></div>
         </div>`
       },
-      ({type, gc, def, owned}) => owned
-        ? (() => { const W=Math.round(140*0.54),H=Math.round(310*0.54),imgH=Math.round(H*0.65),nameH=Math.round(H*0.18),botH=H-Math.round(H*0.65)-Math.round(H*0.18); const BG2={purple:'linear-gradient(160deg,#4a0a8a,#7a28b8)',light_blue:'linear-gradient(160deg,#006080,#00bcd4)'},bo2={purple:'#9b59b6',light_blue:'#00bcd4'}; const bg2=BG2[def?.color]||BG2.purple,bor2=bo2[def?.color]||bo2.purple,imgU=def?.image_url?`${import.meta.env.BASE_URL}icons/${def.image_url}`:null; return `<div style="width:${W}px;height:${H}px;border-radius:8px;background:${bg2};border:1px solid ${bor2};display:flex;flex-direction:column;overflow:hidden"><div style="height:${nameH}px;background:rgba(255,255,255,0.15);display:flex;align-items:center;justify-content:center"><span style="font-size:7px;font-weight:900;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:${W-6}px">${type}</span></div><div style="height:${imgH}px;display:flex;align-items:center;justify-content:center">${imgU?`<img src="${imgU}" style="max-width:${W-8}px;max-height:${imgH-4}px;object-fit:contain">`:`<span style="font-size:24px">${gc.icon}</span>`}</div><div style="flex:1;display:flex;align-items:center;justify-content:center"><span style="font-size:7px;color:rgba(255,255,255,0.7);text-align:center;padding:0 2px">${(def?.effect||gc.desc||'').slice(0,20)}</span></div></div>` })()
-        : (() => { const W=Math.round(140*0.54),H=Math.round(310*0.54); return `<div style="width:${W}px;height:${H}px;border-radius:8px;background:#eee;border:1px solid #ddd;display:flex;flex-direction:column;align-items:center;justify-content:center;filter:grayscale(1);opacity:0.45"><span style="font-size:22px">${gc.icon}</span><span style="font-size:7px;color:#aaa;margin-top:4px;text-align:center;padding:0 4px">${type}</span></div>` })(),
+      ({type, gc, def, owned}) => { const _s=window.innerWidth>=768?0.76:0.54; const BG2={purple:'linear-gradient(160deg,#4a0a8a,#7a28b8)',light_blue:'linear-gradient(160deg,#006080,#00bcd4)'},bo2={purple:'#9b59b6',light_blue:'#00bcd4'}; const bg2=BG2[def?.color]||BG2.purple,bor2=bo2[def?.color]||bo2.purple,imgU=def?.image_url?`${import.meta.env.BASE_URL}icons/${def.image_url}`:null; if(owned){ return `<div style="display:inline-block;zoom:${_s};line-height:0;pointer-events:none"><div style="width:140px;height:310px;border-radius:8px;background:${bg2};border:1px solid ${bor2};display:flex;flex-direction:column;overflow:hidden"><div style="height:56px;background:rgba(255,255,255,0.15);display:flex;align-items:center;justify-content:center"><span style="font-size:9px;font-weight:900;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:134px">${type}</span></div><div style="flex:1;display:flex;align-items:center;justify-content:center">${imgU?`<img src="${imgU}" style="max-width:130px;max-height:190px;object-fit:contain">`:`<span style="font-size:48px">${gc.icon}</span>`}</div><div style="height:54px;display:flex;align-items:center;justify-content:center;padding:0 4px"><span style="font-size:8px;color:rgba(255,255,255,0.7);text-align:center">${(def?.effect||gc.desc||'').slice(0,30)}</span></div></div></div>` } return `<div style="display:inline-block;zoom:${_s};line-height:0;pointer-events:none"><div style="width:140px;height:310px;border-radius:8px;background:#eee;border:1px solid #ddd;display:flex;flex-direction:column;align-items:center;justify-content:center;filter:grayscale(1);opacity:0.45"><span style="font-size:36px">${gc.icon}</span><span style="font-size:9px;color:#aaa;margin-top:6px;text-align:center;padding:0 6px">${type}</span></div></div>` },
       ({type, owned, def}) => { if (owned) openGCModal(type, def, openModal) },
       '#7a28b8'
     )

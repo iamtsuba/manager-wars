@@ -252,7 +252,7 @@ import{s as $,F as oi,h as St,j as Mi,l as Qe,i as ln,k as cn,b as pn}from"./for
         border:1.5px solid #ddd;background:#fff;
         font-size:14px;font-weight:700;cursor:pointer;color:#555;
       }
-    </style>`}async function _n({player1Id:e,player2Id:t,score1:n,score2:a,gc1:c,gc2:d}){const[s,l]=[e,t].sort(),p=e!==s,i=p?a:n,r=p?n:a,f=p?d:c,m=p?c:d,y=i>r?1:0,z=r>i?1:0,o=i===r?1:0,{data:b}=await $.from("friend_match_stats").select("*").eq("player1_id",s).eq("player2_id",l).single();b?await $.from("friend_match_stats").update({wins_p1:b.wins_p1+y,wins_p2:b.wins_p2+z,draws:b.draws+o,goals_p1:b.goals_p1+i,goals_p2:b.goals_p2+r,gc_used_p1:b.gc_used_p1+f,gc_used_p2:b.gc_used_p2+m,matches_total:b.matches_total+1}).eq("player1_id",s).eq("player2_id",l):await $.from("friend_match_stats").insert({player1_id:s,player2_id:l,wins_p1:y,wins_p2:z,draws:o,goals_p1:i,goals_p2:r,gc_used_p1:f,gc_used_p2:m,matches_total:1})}const $n="2026.06.29-1644";async function hi(e,{state:t,navigate:n,toast:a}){var d,s;const c=t.profile;c&&(e.innerHTML=`
+    </style>`}async function _n({player1Id:e,player2Id:t,score1:n,score2:a,gc1:c,gc2:d}){const[s,l]=[e,t].sort(),p=e!==s,i=p?a:n,r=p?n:a,f=p?d:c,m=p?c:d,y=i>r?1:0,z=r>i?1:0,o=i===r?1:0,{data:b}=await $.from("friend_match_stats").select("*").eq("player1_id",s).eq("player2_id",l).single();b?await $.from("friend_match_stats").update({wins_p1:b.wins_p1+y,wins_p2:b.wins_p2+z,draws:b.draws+o,goals_p1:b.goals_p1+i,goals_p2:b.goals_p2+r,gc_used_p1:b.gc_used_p1+f,gc_used_p2:b.gc_used_p2+m,matches_total:b.matches_total+1}).eq("player1_id",s).eq("player2_id",l):await $.from("friend_match_stats").insert({player1_id:s,player2_id:l,wins_p1:y,wins_p2:z,draws:o,goals_p1:i,goals_p2:r,gc_used_p1:f,gc_used_p2:m,matches_total:1})}const $n="2026.06.29-2331";async function hi(e,{state:t,navigate:n,toast:a}){var d,s;const c=t.profile;c&&(e.innerHTML=`
   <style>
     @media (min-width: 768px) {
       .home-page-body {
@@ -281,7 +281,7 @@ import{s as $,F as oi,h as St,j as Mi,l as Qe,i as ln,k as cn,b as pn}from"./for
       .home-page-body > div:last-child { flex-shrink: 0; }
     }
   </style>
-  <div class="page" style="height:100%;overflow:hidden">
+  <div class="page" style="height:100%;overflow-y:auto">
     <div class="page-body home-page-body">
 
       <!-- Demandes d'amis en attente (injecté dynamiquement) -->

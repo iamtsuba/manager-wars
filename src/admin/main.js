@@ -13,6 +13,7 @@ import { pageImportExport } from './pages/import-export.js'
 import { pageFormations }      from './pages/formations.js'
 import { renderBoostersConfig } from './pages/boosters-config.js'
 import { renderSellPriceConfig } from './pages/sell-price-config.js'
+import { renderJournal         } from './pages/journal.js'
 import { renderGCCards }         from './pages/gc-cards.js'
 
 // ── Toast helper ──────────────────────────────────────────
@@ -47,6 +48,7 @@ const PAGES = {
   formations:          { title: 'Formations & Liens',  fn: pageFormations },
   'boosters-config': { title: 'Boosters',              fn: renderBoostersConfig },
   'sell-price':      { title: 'Prix vente directe',    fn: renderSellPriceConfig },
+  'journal':         { title: 'Journal',               fn: renderJournal },
   'gc-cards':         { title: 'Game Changers',          fn: renderGCCards },
 }
 

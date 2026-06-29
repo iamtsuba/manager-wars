@@ -140,8 +140,8 @@ function renderAppShell() {
       </div>
       <div style="display:flex;align-items:center;gap:10px">
         <div id="nav-credits" class="credits">💰 ${(p.credits||0).toLocaleString('fr')}</div>
-        <button id="theme-toggle" class="theme-toggle-btn" title="Changer le thème">
-          <span id="theme-icon"></span>
+        <button id="journal-btn" title="Journal des mises à jour" style="background:none;border:none;cursor:pointer;padding:4px;display:flex;align-items:center;justify-content:center;font-size:22px;opacity:0.8;transition:opacity .15s" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.8">
+          📰
         </button>
       </div>
     </nav>
@@ -191,29 +191,52 @@ function renderAppShell() {
   })
   document.getElementById('nav-logo').addEventListener('click', () => navigate('home'))
   document.getElementById('nav-credits').addEventListener('click', () => navigate('boosters'))
-
-  // Toggle thème
-  document.getElementById('theme-toggle').addEventListener('click', () => {
-    const current = getTheme()
-    const next = current === 'dark' ? 'light' : 'dark'
-    setTheme(next)
-    updateThemeIcon(next)
-  })
-  updateThemeIcon(getTheme())
+  document.getElementById('journal-btn')?.addEventListener('click', () => showJournalPopup())
 }
 
-function updateThemeIcon(theme) {
-  const el = document.getElementById('theme-icon')
-  if (!el) return
-  // dark = noir actuel -> icône proposant de passer au clair (soleil)
-  // light = clair -> icône proposant de revenir au sombre (lune)
-  el.textContent = theme === 'dark' ? '☀️' : '🌙'
+// ── Journal des mises à jour ───────────────────────────────
+async function showJournalPopup() {
+  const { data: articles } = await supabase
+    .from('patch_notes')
+    .select('*')
+    .eq('is_published', true)
+    .order('published_at', { ascending: false })
+    .limit(20)
+
+  const ov = document.createElement('div')
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:9000;display:flex;align-items:center;justify-content:center;padding:16px'
+
+  const list = (articles||[]).map(a => {
+    const date = new Date(a.published_at).toLocaleDateString('fr-FR', { day:'2-digit', month:'long', year:'numeric' })
+    return `<div style="padding:14px 0;border-bottom:1px solid #f0f0f0">
+      ${a.image_url ? `<img src="${a.image_url}" style="width:100%;max-height:160px;object-fit:cover;border-radius:8px;margin-bottom:10px">` : ''}
+      <div style="font-size:12px;color:#999;margin-bottom:4px">${date}</div>
+      <div style="font-size:15px;font-weight:900;margin-bottom:6px">${a.title}</div>
+      <div style="font-size:13px;color:#444;line-height:1.6;white-space:pre-line">${a.description}</div>
+    </div>`
+  }).join('')
+
+  ov.innerHTML = `
+    <div style="background:#fff;border-radius:16px;width:100%;max-width:460px;max-height:85vh;display:flex;flex-direction:column;overflow:hidden">
+      <div style="display:flex;align-items:center;padding:16px 20px;border-bottom:1px solid #f0f0f0;flex-shrink:0">
+        <span style="font-size:22px;margin-right:10px">📰</span>
+        <div style="flex:1;font-size:17px;font-weight:900">Journal des mises à jour</div>
+        <button id="journal-close" style="background:none;border:none;font-size:22px;cursor:pointer;color:#888;padding:0 4px">✕</button>
+      </div>
+      <div style="flex:1;overflow-y:auto;padding:0 20px">
+        ${list || '<div style="padding:40px;text-align:center;color:#aaa">Aucune mise à jour pour le moment.</div>'}
+      </div>
+    </div>`
+
+  document.body.appendChild(ov)
+  ov.querySelector('#journal-close').addEventListener('click', () => ov.remove())
+  ov.addEventListener('click', e => { if (e.target === ov) ov.remove() })
 }
 
 // ── BOOTSTRAP ─────────────────────────────────────────────
 async function init() {
-  // Appliquer le thème sauvegardé avant tout rendu (évite le flash)
-  applyTheme(getTheme())
+  // Toujours mode light (le toggle dark/light a été supprimé)
+  document.documentElement.setAttribute('data-theme', 'light')
 
   document.getElementById('modal-overlay').addEventListener('click', e => {
     if (e.target === e.currentTarget) closeModal()
@@ -254,12 +277,6 @@ async function init() {
   if (!state.profile.onboarding_done && pendingBoosters.length > 0) {
     renderStarterOnboarding(document.getElementById('app'), { state, navigate: () => launchApp(), toast, refreshProfile })
     return
-  }
-
-  // Appliquer le thème sauvegardé en BDD si présent (prioritaire sur localStorage)
-  if (state.profile.theme && state.profile.theme !== getTheme()) {
-    localStorage.setItem(THEME_KEY, state.profile.theme)
-    applyTheme(state.profile.theme)
   }
 
   launchApp()

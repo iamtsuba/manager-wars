@@ -134,14 +134,14 @@
 .play-card {
   background: var(--tile-dark-bg); border-radius: var(--radius-lg);
   position: relative; overflow: hidden;
-  display: flex; align-items: center; justify-content: center;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
   cursor: pointer; transition: filter .12s, transform .08s;
-  min-height: 110px; padding: 10px 10px 36px;
+  min-height: 110px; padding: 12px 10px 38px;
 }
-.play-card .play-icon { height: 72px; width: auto; }
+.play-card .play-icon { height: 72px; width: auto; display: block; }
 .play-card .play-text-overlay {
   position: absolute; left: 50%; bottom: 8px; transform: translateX(-50%);
-  height: 26px; width: auto; max-width: 92%; object-fit: contain;
+  height: 26px; width: auto; max-width: 88%; object-fit: contain;
 }
 .play-card:active,
 .play-card.tapped { filter: brightness(1.2); }
@@ -149,10 +149,20 @@
 
 /* PC : icônes proportionnelles à la hauteur des tuiles */
 @media (min-width: 768px) {
-  .play-card .play-icon { height: clamp(72px, 40%, 130px); width: auto; }
-  .play-card .play-text-overlay { height: 32px; bottom: 12px; }
-  .ranked-banner .play-icon { height: clamp(48px, 55%, 70px); }
-  .ranked-banner .play-text-overlay { height: 28px; bottom: 8px; }
+  .play-card {
+    padding-bottom: 44px;
+  }
+  .play-card .play-icon {
+    height: clamp(80px, 45%, 140px);
+    width: auto;
+  }
+  .play-card .play-text-overlay {
+    height: 32px;
+    bottom: 10px;
+  }
+  .ranked-banner { background: var(--tile-dark-bg) !important; }
+  .ranked-banner .play-icon { height: clamp(55px, 55%, 80px); }
+  .ranked-banner .play-text-overlay { height: 30px; bottom: 10px; }
 }
 
 /* ── Action cards grid (collection/marché) ── */

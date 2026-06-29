@@ -140,8 +140,8 @@
 }
 .play-card .play-icon { height: 72px; width: auto; display: block; }
 .play-card .play-text-overlay {
-  position: absolute; left: 50%; bottom: 8px; transform: translateX(-50%);
-  height: 26px; width: auto; max-width: 88%; object-fit: contain;
+  display: block; height: 26px; width: auto; max-width: 88%; object-fit: contain;
+  margin-top: 4px;
 }
 .play-card:active,
 .play-card.tapped { filter: brightness(1.2); }
@@ -150,19 +150,21 @@
 /* PC : tuiles plus grandes, icônes centrées et bien proportionnées */
 @media (min-width: 768px) {
   .play-card {
-    padding: 16px 10px 52px;   /* espace suffisant pour le texte en bas */
+    padding: 16px 10px;   /* padding uniforme, plus besoin de réserver de l'espace en bas */
   }
   .play-card .play-icon {
-    height: clamp(90px, 52%, 160px);  /* grande icône centrée */
+    height: clamp(90px, 52%, 160px);
     width: auto;
   }
   .play-card .play-text-overlay {
     height: 34px;
-    bottom: 12px;
+    margin-top: 8px;
   }
   /* RANKED : légèrement plus grande icône */
   .ranked-banner .play-icon { height: clamp(70px, 60%, 100px); }
-  .ranked-banner .play-text-overlay { height: 32px; bottom: 10px; }
+  .ranked-banner .play-text-overlay { height: 32px; }
+  /* Desktop : overflow hidden pour le layout flex */
+  .home-desktop-page { overflow: hidden !important; }
 }
 
 /* ── Action cards grid (collection/marché) ── */

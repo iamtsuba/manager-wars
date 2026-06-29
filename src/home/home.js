@@ -42,7 +42,7 @@ export async function renderHome(container, { state, navigate, toast }) {
       .home-page-body > div:last-child { flex-shrink: 0; }
     }
   </style>
-  <div class="page" style="height:100%;overflow:hidden">
+  <div class="page" style="height:100%;overflow-y:auto">
     <div class="page-body home-page-body">
 
       <!-- Demandes d'amis en attente (injecté dynamiquement) -->

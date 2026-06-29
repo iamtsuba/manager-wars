@@ -242,6 +242,13 @@ export async function renderCollection(container, ctx) {
   }
 
   container.innerHTML = `
+  <style>
+    /* ── Desktop uniquement : grande carte + scroll strip ── */
+    @media (min-width:768px) {
+      #col-big  { min-height:420px !important; flex:1 1 auto !important; }
+      #col-grid { height:200px !important; flex-shrink:0 !important; overflow-x:auto !important; overflow-y:hidden !important; }
+    }
+  </style>
   <div class="page" style="display:flex;flex-direction:column;height:100%;overflow:hidden">
     <!-- Onglets avec compteurs -->
     <div style="display:flex;border-bottom:2px solid var(--gray-200);background:#fff">

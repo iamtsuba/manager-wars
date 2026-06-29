@@ -252,7 +252,7 @@ import{s as _,F as oi,h as zt,j as Mi,l as Ze,i as dn,k as ln,b as cn}from"./for
         border:1.5px solid #ddd;background:#fff;
         font-size:14px;font-weight:700;cursor:pointer;color:#555;
       }
-    </style>`}async function wn({player1Id:e,player2Id:t,score1:n,score2:a,gc1:p,gc2:d}){const[s,l]=[e,t].sort(),c=e!==s,i=c?a:n,r=c?n:a,u=c?d:p,x=c?p:d,g=i>r?1:0,k=r>i?1:0,o=i===r?1:0,{data:$}=await _.from("friend_match_stats").select("*").eq("player1_id",s).eq("player2_id",l).single();$?await _.from("friend_match_stats").update({wins_p1:$.wins_p1+g,wins_p2:$.wins_p2+k,draws:$.draws+o,goals_p1:$.goals_p1+i,goals_p2:$.goals_p2+r,gc_used_p1:$.gc_used_p1+u,gc_used_p2:$.gc_used_p2+x,matches_total:$.matches_total+1}).eq("player1_id",s).eq("player2_id",l):await _.from("friend_match_stats").insert({player1_id:s,player2_id:l,wins_p1:g,wins_p2:k,draws:o,goals_p1:i,goals_p2:r,gc_used_p1:u,gc_used_p2:x,matches_total:1})}const _n="2026.06.29-0021";async function bi(e,{state:t,navigate:n,toast:a}){var d,s;const p=t.profile;p&&(e.innerHTML=`
+    </style>`}async function wn({player1Id:e,player2Id:t,score1:n,score2:a,gc1:p,gc2:d}){const[s,l]=[e,t].sort(),c=e!==s,i=c?a:n,r=c?n:a,u=c?d:p,x=c?p:d,g=i>r?1:0,k=r>i?1:0,o=i===r?1:0,{data:$}=await _.from("friend_match_stats").select("*").eq("player1_id",s).eq("player2_id",l).single();$?await _.from("friend_match_stats").update({wins_p1:$.wins_p1+g,wins_p2:$.wins_p2+k,draws:$.draws+o,goals_p1:$.goals_p1+i,goals_p2:$.goals_p2+r,gc_used_p1:$.gc_used_p1+u,gc_used_p2:$.gc_used_p2+x,matches_total:$.matches_total+1}).eq("player1_id",s).eq("player2_id",l):await _.from("friend_match_stats").insert({player1_id:s,player2_id:l,wins_p1:g,wins_p2:k,draws:o,goals_p1:i,goals_p2:r,gc_used_p1:u,gc_used_p2:x,matches_total:1})}const _n="2026.06.29-1408";async function bi(e,{state:t,navigate:n,toast:a}){var d,s;const p=t.profile;p&&(e.innerHTML=`
   <div class="page">
     <div class="page-body">
 
@@ -469,6 +469,13 @@ import{s as _,F as oi,h as zt,j as Mi,l as Ze,i as dn,k as ln,b as cn}from"./for
         clubs(encoded_name, logo_url))`).eq("owner_id",n.profile.id),{data:c}=await _.from("players").select(`id, firstname, surname_encoded, country_code, club_id, job, job2,
       note_g, note_d, note_m, note_a, rarity, note_min, note_max, skin, hair, hair_length,
       clubs(encoded_name, logo_url)`).eq("is_active",!0),i=(l||[]).filter(O=>O.card_type==="player"&&O.player),r=(l||[]).filter(O=>O.card_type==="game_changer"),u=(l||[]).filter(O=>O.card_type==="formation"),{data:x}=await _.from("gc_definitions").select("name,gc_type,color,effect,image_url"),g={};(x||[]).forEach(O=>{g[O.name]=O});const k=Object.keys(oi),o=Object.keys(Ge),$={};i.forEach(O=>{const H=O.player.id;$[H]=($[H]||0)+1}),new Set(Object.keys($).map(O=>String(O)));const L=new Set(u.map(O=>O.formation)),z=new Set(r.map(O=>O.gc_type));let F="player",K="Tous",q="",j=!1;function P(){return[...i].sort((O,H)=>{const S=jt.indexOf(O.player.job),B=jt.indexOf(H.player.job);return S!==B?S-B:(O.player.surname_encoded||"").localeCompare(H.player.surname_encoded||"")})}function te(){return[...c||[]].sort((O,H)=>{const S=jt.indexOf(O.job),B=jt.indexOf(H.job);return S!==B?S-B:(O.surname_encoded||"").localeCompare(H.surname_encoded||"")})}function ce(){return P().filter(O=>{const H=O.player,S=K==="Tous"||H.job===K,B=!q||`${H.firstname} ${H.surname_encoded}`.toLowerCase().includes(q);return S&&B})}function re(){return te().filter(O=>{const H=K==="Tous"||O.job===K,S=!q||`${O.firstname} ${O.surname_encoded}`.toLowerCase().includes(q);return H&&S})}e.innerHTML=`
+  <style>
+    /* ── Desktop uniquement : grande carte + scroll strip ── */
+    @media (min-width:768px) {
+      #col-big  { min-height:420px !important; flex:1 1 auto !important; }
+      #col-grid { height:200px !important; flex-shrink:0 !important; overflow-x:auto !important; overflow-y:hidden !important; }
+    }
+  </style>
   <div class="page" style="display:flex;flex-direction:column;height:100%;overflow:hidden">
     <!-- Onglets avec compteurs -->
     <div style="display:flex;border-bottom:2px solid var(--gray-200);background:#fff">

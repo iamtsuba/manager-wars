@@ -96,6 +96,13 @@ async function loadMarket(container, ctx) {
         <option value="">Tous postes</option>
         <option>GK</option><option>DEF</option><option>MIL</option><option>ATT</option>
       </select>
+      <select id="flt-rarity" style="padding:6px 8px;border:1.5px solid #ddd;border-radius:8px;font-size:12px;background:#fff">
+        <option value="">Toutes raretés</option>
+        <option value="normal">Normal</option>
+        <option value="pepite">Pépite</option>
+        <option value="papyte">Papyte</option>
+        <option value="legende">Légende</option>
+      </select>
       <input id="flt-note1"   placeholder="★ Note min"    type="number" min="0" max="20" style="width:90px;padding:6px 10px;border:1.5px solid #ddd;border-radius:8px;font-size:12px">
       <input id="flt-note2"   placeholder="☆ Note 2 min" type="number" min="0" max="20" style="width:90px;padding:6px 10px;border:1.5px solid #ddd;border-radius:8px;font-size:12px">
     </div>
@@ -110,6 +117,7 @@ async function loadMarket(container, ctx) {
     club:     (document.getElementById('flt-club')?.value||'').toLowerCase().trim(),
     country:  (document.getElementById('flt-country')?.value||'').toLowerCase().trim(),
     job:      document.getElementById('flt-job')?.value||'',
+    rarity:   document.getElementById('flt-rarity')?.value||'',
     note1:    parseInt(document.getElementById('flt-note1')?.value)||0,
     note2:    parseInt(document.getElementById('flt-note2')?.value)||0,
   })
@@ -128,6 +136,7 @@ async function loadMarket(container, ctx) {
       if (f.club    && !club.includes(f.club))       return false
       if (f.country && !country.includes(f.country)) return false
       if (f.job     && p.job !== f.job)              return false
+      if (f.rarity  && p.rarity !== f.rarity)        return false
       if (f.note1   && note1 < f.note1)              return false
       if (f.note2   && note2 < f.note2)              return false
       return true
@@ -225,7 +234,7 @@ async function loadMarket(container, ctx) {
   })
 
   // Listeners filtres (debounce léger)
-  let _ft; ['flt-name','flt-club','flt-country','flt-job','flt-note1','flt-note2'].forEach(id => {
+  let _ft; ['flt-name','flt-club','flt-country','flt-job','flt-rarity','flt-note1','flt-note2'].forEach(id => {
     document.getElementById(id)?.addEventListener('input', () => { clearTimeout(_ft); _ft=setTimeout(renderTab, 250) })
   })
 

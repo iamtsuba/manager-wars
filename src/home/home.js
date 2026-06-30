@@ -125,6 +125,8 @@ export async function renderHome(container, { state, navigate, toast }) {
       if (action === 'match-ai') { showDifficultyPicker(navigate); return }
       if (action === 'match-random') { navigate('match', { matchMode: 'random' }); return }
       if (action === 'match-friend') { navigate('friends'); return }
+      if (action === 'mini-league')  { navigate('mini-league'); return }
+      if (action === 'ranked')       { ctx.toast('Mode Ranked — Bientôt disponible !', 'info'); return }
       // Modes pas encore développés : bientôt disponible
       toast('Bientôt disponible', 'info')
     })

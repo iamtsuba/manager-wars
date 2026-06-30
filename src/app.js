@@ -17,6 +17,7 @@ import { renderBoosters, renderStarterOnboarding }   from './boosters/boosters.j
 import { renderMatchIA }     from './match/match-ia.js'
 import { renderMatchRandom } from './match/match-random.js'
 import { renderMatchFriend } from './match/match-friend.js'
+import { renderMiniLeague  } from './mini-league/mini-league.js'
 import { renderMarket }     from './market/market.js'
 import { renderRankings }   from './rankings/rankings.js'
 import { renderMatches }    from './matches/matches.js'
@@ -121,6 +122,7 @@ async function renderPage() {
     case 'rankings':   await renderRankings(container, ctx);   break
     case 'matches':    await renderMatches(container, ctx);    break
     case 'friends':    await renderFriends(container, ctx);    break
+    case 'mini-league': await renderMiniLeague(container, ctx); break
     default:           await renderHome(container, ctx);
   }
 }

@@ -116,6 +116,7 @@ async function renderPage() {
       const mm = (state.params && state.params.matchMode) || 'vs_ai_easy'
       if (mm === 'random') await renderMatchRandom(container, ctx)
       else if (mm === 'friend') await renderMatchFriend(container, ctx, state.params?.friendId, state.params?.friendName)
+      else if (mm === 'mini-league') await renderMatchMiniLeague(container, ctx, state.params?.mlMatchId, state.params?.leagueId)
       else                 await renderMatchIA(container, ctx)
       break
     }

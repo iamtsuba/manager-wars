@@ -20,6 +20,9 @@ import {
 // ═══════════════════════════════════════════════════════════
 
 export async function renderMatchMiniLeague(container, ctx, mlMatchId, leagueId) {
+  // Préserver les params pour que renderDeckSelect → navigate('match') retrouve le bon mode
+  ctx.state.params = { ...ctx.state.params, matchMode: 'mini-league', mlMatchId, leagueId }
+
   // Étanchéité immédiate : un joueur qui entre en match ami ne doit JAMAIS rester
   // appariable en random. On nettoie : (1) les canaux Realtime de matchmaking
   // restés actifs d'une session random précédente, (2) la file de matchmaking.

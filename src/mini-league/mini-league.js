@@ -465,16 +465,10 @@ async function nextMatchday(container, ctx, leagueId) {
 // LANCER UN MATCH (intégration avec le système PvP existant)
 // ══════════════════════════════════════════════════════════════════════════════
 async function playMiniLeagueMatch(container, ctx, mlMatch, league) {
-  const { navigate, toast } = ctx
-  // Marquer le match comme "playing"
-  await supabase.from('mini_league_matches').update({ status: 'playing' }).eq('id', mlMatch.id)
-  // Naviguer vers match-random (mode mini_league) en passant les IDs du match ML
-  navigate('match', {
-    matchMode: 'random',
-    miniLeagueMatchId: mlMatch.id,
-    miniLeagueId: league.id,
-    leagueContainer: container,
-    leagueCtx: ctx
+  const { navigate } = ctx
+  navigate('match-mini-league', {
+    mlMatchId: mlMatch.id,
+    leagueId: league.id
   })
 }
 

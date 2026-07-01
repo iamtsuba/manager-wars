@@ -210,11 +210,14 @@ export async function checkAndShowTutorial(profile, navigate) {
   if (!profile || profile.tutorial_done) return
 
   // Charger les étapes depuis la DB
-  const { data: dbSteps } = await supabase
+  const { data: dbSteps, error: dbErr } = await supabase
     .from('tutorial_steps')
     .select('*')
     .eq('is_active', true)
     .order('step_order')
+
+  if (dbErr) console.warn('[Tutorial] Erreur DB (table manquante ?):', dbErr.message)
+  console.log('[Tutorial] Étapes DB:', dbSteps?.length ?? 'null', dbErr?.message ?? 'OK')
 
   const steps = (dbSteps && dbSteps.length > 0)
     ? dbSteps.map(s => ({ emoji: s.emoji, title: s.title, color: s.color, content: s.content }))

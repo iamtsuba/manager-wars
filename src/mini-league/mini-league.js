@@ -163,73 +163,81 @@ async function joinLeague(container, ctx, leagueId, type) {
   const { toast, state } = ctx
   const uid = state.profile.id
 
-  // Charger la league pour connaître la mise et vérifier les places
+  // Charger la league
   const { data: league } = await supabase.from('mini_leagues')
     .select('password,status,entry_fee,pot,max_players').eq('id', leagueId).single()
   if (!league) { toast('Mini League introuvable', 'error'); return }
   if (league.status !== 'waiting') { toast('Cette Mini League a déjà démarré', 'warning'); return }
 
-  // Vérifier le nombre de joueurs actuel
   const { count: currentCount } = await supabase.from('mini_league_members')
     .select('id', { count: 'exact', head: true }).eq('league_id', leagueId)
   if (currentCount >= league.max_players) { toast('La Mini League est complète', 'warning'); return }
 
-  // Mot de passe si privée
   if (type === 'private') {
     const pwd = prompt('Mot de passe :')
     if (pwd === null) return
     if (league.password !== pwd) { toast('Mot de passe incorrect', 'error'); return }
   }
 
-  // Vérifier les crédits du joueur
   const fee = league.entry_fee || 100
   const { data: me } = await supabase.from('users').select('credits').eq('id', uid).single()
   if ((me?.credits || 0) < fee) {
-    toast(`Crédits insuffisants. Il te faut ${fee.toLocaleString('fr')} cr. (tu as ${(me?.credits||0).toLocaleString('fr')} cr.)`, 'error')
+    toast(`Crédits insuffisants — il te faut ${fee.toLocaleString('fr')} cr. (solde : ${(me?.credits||0).toLocaleString('fr')} cr.)`, 'error')
     return
   }
 
-  // Prélever les crédits et mettre à jour le pot
-  await supabase.from('users').update({ credits: (me.credits) - fee }).eq('id', uid)
-  await supabase.from('mini_leagues').update({ pot: (league.pot || 0) + fee }).eq('id', leagueId)
+  // 1. Insérer le membre EN PREMIER (la policy pot-update exige d'être membre)
+  const { error: memberErr } = await supabase.from('mini_league_members')
+    .insert({ league_id: leagueId, user_id: uid })
+  if (memberErr) { toast('Erreur inscription : ' + memberErr.message, 'error'); return }
 
-  const { error } = await supabase.from('mini_league_members').insert({ league_id: leagueId, user_id: uid })
-  if (error) {
-    // Rollback : rembourser les crédits si l'insert échoue
-    await supabase.from('users').update({ credits: me.credits }).eq('id', uid)
-    await supabase.from('mini_leagues').update({ pot: league.pot || 0 }).eq('id', leagueId)
-    toast('Erreur : ' + error.message, 'error'); return
+  // 2. Déduire les crédits du joueur
+  const { error: credErr } = await supabase.from('users')
+    .update({ credits: me.credits - fee }).eq('id', uid)
+
+  // 3. Mettre à jour le pot
+  const { error: potErr } = await supabase.from('mini_leagues')
+    .update({ pot: (league.pot || 0) + fee }).eq('id', leagueId)
+
+  if (credErr || potErr) {
+    // Rollback partiel : on avertit mais on ne bloque pas (l'inscription est faite)
+    console.error('Erreur post-inscription:', credErr, potErr)
   }
 
-  // Mettre à jour les crédits locaux
-  if (state.profile) state.profile.credits = (me.credits) - fee
+  if (state.profile) state.profile.credits = me.credits - fee
   const credEl = document.getElementById('nav-credits')
-  if (credEl) credEl.textContent = `💰 ${((state.profile.credits)||0).toLocaleString('fr')}`
+  if (credEl) credEl.textContent = `💰 ${(state.profile.credits||0).toLocaleString('fr')}`
 
-  toast(`✅ Inscrit ! ${fee.toLocaleString('fr')} cr. déduits · Pot : ${((league.pot||0)+fee).toLocaleString('fr')} cr.`, 'success')
+  toast(`✅ Inscrit ! −${fee.toLocaleString('fr')} cr. · Pot : ${((league.pot||0)+fee).toLocaleString('fr')} cr.`, 'success')
   openLeague(container, ctx, leagueId)
 }
 
 async function leaveLeague(container, ctx, leagueId, fee) {
   const { toast, state } = ctx
   const uid = state.profile.id
-  if (!confirm(`Te désinscrire et récupérer ${fee.toLocaleString('fr')} crédits ?`)) return
+  if (!confirm(`Te désinscrire et récupérer ${fee.toLocaleString('fr')} cr. ?`)) return
 
-  // Récupérer pot actuel
   const { data: league } = await supabase.from('mini_leagues').select('pot,status').eq('id', leagueId).single()
-  if (!league || league.status !== 'waiting') { toast('Impossible de se désinscrire (league déjà lancée)', 'error'); return }
+  if (!league || league.status !== 'waiting') {
+    toast('Impossible — la league a déjà démarré', 'error'); return
+  }
 
-  // Rembourser les crédits
   const { data: me } = await supabase.from('users').select('credits').eq('id', uid).single()
-  await supabase.from('users').update({ credits: (me?.credits || 0) + fee }).eq('id', uid)
-  await supabase.from('mini_leagues').update({ pot: Math.max(0, (league.pot || 0) - fee) }).eq('id', leagueId)
+
+  // 1. Mettre à jour le pot AVANT de supprimer le membre (RLS exige d'être membre)
+  await supabase.from('mini_leagues').update({ pot: Math.max(0, (league.pot||0) - fee) }).eq('id', leagueId)
+
+  // 2. Rembourser les crédits
+  await supabase.from('users').update({ credits: (me?.credits||0) + fee }).eq('id', uid)
+
+  // 3. Supprimer le membre
   await supabase.from('mini_league_members').delete().eq('league_id', leagueId).eq('user_id', uid)
 
-  if (state.profile) state.profile.credits = (me?.credits || 0) + fee
+  if (state.profile) state.profile.credits = (me?.credits||0) + fee
   const credEl = document.getElementById('nav-credits')
   if (credEl) credEl.textContent = `💰 ${(state.profile.credits||0).toLocaleString('fr')}`
 
-  toast(`↩️ Désinscrit · ${fee.toLocaleString('fr')} cr. remboursés`, 'success')
+  toast(`↩️ Désinscrit · +${fee.toLocaleString('fr')} cr. remboursés`, 'success')
   showLeagueList(container, ctx, 'waiting')
 }
 

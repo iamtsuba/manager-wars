@@ -17,7 +17,10 @@ async function load(container) {
           <h2 style="font-size:20px;font-weight:900">🎓 Tutoriel — Étapes</h2>
           <div style="font-size:12px;color:#888;margin-top:2px">Gérez les slides du tutoriel affiché aux nouveaux joueurs</div>
         </div>
-        <button id="ts-add" class="btn btn-primary">+ Ajouter une étape</button>
+        <div style="display:flex;gap:8px">
+          <button id="ts-reset" class="btn btn-ghost btn-sm" style="color:#7a28b8" title="Réinitialiser tutorial_done pour tous les joueurs">🔄 Reset tutos</button>
+          <button id="ts-add" class="btn btn-primary">+ Ajouter</button>
+        </div>
       </div>
 
       <div id="ts-list" style="display:flex;flex-direction:column;gap:10px">
@@ -76,6 +79,12 @@ async function load(container) {
     </div>`
 
   document.getElementById('ts-add')?.addEventListener('click', () => openForm(null, steps?.length || 0))
+  document.getElementById('ts-reset')?.addEventListener('click', async () => {
+    if (!confirm('Remettre tutorial_done = false pour TOUS les joueurs ? Ils reverront le tutoriel à leur prochaine connexion.')) return
+    const { error } = await supabase.from('users').update({ tutorial_done: false }).neq('id', '00000000-0000-0000-0000-000000000000')
+    if (error) alert('Erreur : ' + error.message)
+    else alert('✅ Tutorial_done réinitialisé pour tous les joueurs.')
+  })
   document.getElementById('ts-cancel')?.addEventListener('click', closeForm)
   document.getElementById('ts-save')?.addEventListener('click', () => saveForm(container))
   document.getElementById('ts-preview-btn')?.addEventListener('click', previewStep)
@@ -185,13 +194,34 @@ function previewStep() {
   const color   = document.getElementById('ts-color-hex').value || '#1A6B3C'
   const pa = document.getElementById('ts-preview-area')
   pa.innerHTML = `
-    <div style="border:2px solid ${color};border-radius:14px;overflow:hidden;margin-bottom:8px">
-      <div style="background:${color};padding:12px 16px;display:flex;align-items:center;gap:10px">
-        <span style="font-size:28px">${emoji}</span>
-        <span style="font-size:15px;font-weight:900;color:#fff">${title}</span>
+    <div style="font-size:11px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Aperçu en situation réelle</div>
+    <div style="background:rgba(0,0,0,0.5);border-radius:14px;padding:12px;margin-bottom:8px">
+      <div style="background:#fff;border-radius:16px;overflow:hidden;max-width:380px;margin:0 auto;box-shadow:0 16px 48px rgba(0,0,0,0.4)">
+        <!-- Barre de progression -->
+        <div style="height:4px;background:#eee">
+          <div style="height:100%;width:60%;background:${color}"></div>
+        </div>
+        <!-- En-tête -->
+        <div style="padding:20px 20px 0;text-align:center">
+          <div style="font-size:48px;margin-bottom:8px;line-height:1">${emoji}</div>
+          <div style="font-size:17px;font-weight:900;color:#111;margin-bottom:4px">${title}</div>
+          <div style="font-size:11px;color:#aaa">6 / 10</div>
+        </div>
+        <!-- Contenu -->
+        <div style="padding:14px 20px 18px;font-size:13px;color:#333;line-height:1.7">${content}</div>
+        <!-- Navigation -->
+        <div style="padding:14px 20px;border-top:1px solid #f0f0f0;display:flex;gap:10px">
+          <button style="padding:10px 16px;border-radius:10px;border:1.5px solid #ddd;background:#fff;font-size:12px;font-weight:700;cursor:default;color:#555">‹ Précédent</button>
+          <div style="flex:1"></div>
+          <button style="padding:10px 18px;border-radius:10px;border:none;background:${color};color:#fff;font-size:13px;font-weight:900;cursor:default">Suivant ›</button>
+        </div>
       </div>
-      <div style="padding:14px 16px;font-size:13px;color:#333;line-height:1.7;background:#fafafa">${content}</div>
     </div>`
+
+  // Appliquer les styles listes
+  pa.querySelectorAll('ul,ol').forEach(el => { el.style.paddingLeft='20px'; el.style.margin='6px 0' })
+  pa.querySelectorAll('li').forEach(el => { el.style.marginBottom='4px' })
+  pa.querySelectorAll('p').forEach(el => { el.style.marginBottom='8px' })
 }
 
 async function saveForm(container) {

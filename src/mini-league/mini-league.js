@@ -18,10 +18,15 @@ async function showLeagueList(container, ctx, activeTab = 'waiting') {
     .from('mini_league_members').select('league_id').eq('user_id', uid)
   const myLeagueIds = (myMemberships||[]).map(m => m.league_id)
 
-  const { data: publicWaiting } = await supabase
+  const { data: publicWaiting, error: pwErr } = await supabase
     .from('mini_leagues').select('*, mini_league_members(count)')
     .eq('status','waiting').eq('is_archived',false)
     .order('created_at', { ascending: false }).limit(30)
+
+  // Fallback si colonne is_archived absente (migration v2 non exécutée)
+  const waitingLeagues = pwErr
+    ? ((await supabase.from('mini_leagues').select('*, mini_league_members(count)').eq('status','waiting').order('created_at',{ascending:false}).limit(30)).data || [])
+    : (publicWaiting || [])
 
   const myLeaguesQuery = myLeagueIds.length
     ? await supabase.from('mini_leagues').select('*, mini_league_members(count)').in('id', myLeagueIds).order('created_at', { ascending: false })
@@ -31,7 +36,7 @@ async function showLeagueList(container, ctx, activeTab = 'waiting') {
   const myWaiting  = myLeagues.filter(l => l.status==='waiting' && !l.is_archived)
   const myActive   = myLeagues.filter(l => l.status==='active'  && !l.is_archived)
   const myArchived = myLeagues.filter(l => l.is_archived || l.status==='finished')
-  const otherPublic = (publicWaiting||[]).filter(l => !myLeagueIds.includes(l.id))
+  const otherPublic = waitingLeagues.filter(l => !myLeagueIds.includes(l.id))
 
   const tabs = [
     { key:'waiting', label:'🟡 En attente', count: myWaiting.length + otherPublic.length },

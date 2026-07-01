@@ -164,6 +164,32 @@ function showCreateForm(container, ctx) {
   })
 }
 
+function askPassword() {
+  return new Promise(resolve => {
+    const ov = document.createElement('div')
+    ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:9500;display:flex;align-items:center;justify-content:center;padding:20px'
+    ov.innerHTML = `
+      <div style="background:#fff;border-radius:16px;padding:24px;width:100%;max-width:320px;box-shadow:0 8px 32px rgba(0,0,0,0.2)">
+        <div style="font-size:17px;font-weight:900;margin-bottom:6px">🔒 League privée</div>
+        <div style="font-size:13px;color:#888;margin-bottom:14px">Saisis le mot de passe pour rejoindre.</div>
+        <input id="ml-pwd-input" type="password" placeholder="Mot de passe..." autocomplete="off"
+          style="width:100%;box-sizing:border-box;padding:11px;border:1.5px solid #ddd;border-radius:8px;font-size:15px;margin-bottom:14px">
+        <div style="display:flex;gap:10px">
+          <button id="pwd-cancel" style="flex:1;padding:11px;border-radius:8px;border:1.5px solid #ddd;background:#fff;font-size:14px;font-weight:700;cursor:pointer;color:#555">Annuler</button>
+          <button id="pwd-ok" class="btn btn-primary" style="flex:1;padding:11px;font-size:14px">Confirmer</button>
+        </div>
+      </div>`
+    document.body.appendChild(ov)
+    const input = ov.querySelector('#ml-pwd-input')
+    const close = val => { ov.remove(); resolve(val) }
+    setTimeout(() => input?.focus(), 80)
+    ov.querySelector('#pwd-cancel').addEventListener('click', () => close(null))
+    ov.querySelector('#pwd-ok').addEventListener('click', () => close(input.value.trim()))
+    input.addEventListener('keydown', e => { if (e.key === 'Enter') close(input.value.trim()) })
+    ov.addEventListener('click', e => { if (e.target === ov) close(null) })
+  })
+}
+
 async function joinLeague(container, ctx, leagueId, type) {
   const { toast, state } = ctx
   const uid = state.profile.id
@@ -179,7 +205,7 @@ async function joinLeague(container, ctx, leagueId, type) {
   if (currentCount >= league.max_players) { toast('La Mini League est complète', 'warning'); return }
 
   if (type === 'private') {
-    const pwd = prompt('Mot de passe :')
+    const pwd = await askPassword()
     if (pwd === null) return
     if (league.password !== pwd) { toast('Mot de passe incorrect', 'error'); return }
   }

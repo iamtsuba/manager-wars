@@ -163,12 +163,14 @@ async function joinLeague(container, ctx, leagueId, type) {
 
 async function deleteLeague(container, ctx, leagueId, name, tab) {
   const {toast}=ctx
-  if(!confirm(`Supprimer définitivement "${name}" ?`)) return
+  if(!confirm(`Supprimer définitivement "${name}" et tous ses matchs/membres ? Action irréversible.`)) return
+  // Supprimer dans l'ordre FK (au cas où CASCADE ne suffit pas côté RLS)
   await supabase.from('mini_league_matches').delete().eq('league_id',leagueId)
   await supabase.from('mini_league_members').delete().eq('league_id',leagueId)
   const {error}=await supabase.from('mini_leagues').delete().eq('id',leagueId)
-  if(error){toast('Erreur : '+error.message,'error');return}
-  toast('Supprimée','success'); showLeagueList(container,ctx,tab)
+  if(error){toast('Erreur suppression ('+error.message+')','error');return}
+  toast('Mini League supprimée avec succès','success')
+  showLeagueList(container,ctx,tab)
 }
 
 async function archiveLeague(container, ctx, leagueId) {

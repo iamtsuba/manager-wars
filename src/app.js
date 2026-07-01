@@ -19,6 +19,7 @@ import { renderMatchRandom } from './match/match-random.js'
 import { renderMatchFriend } from './match/match-friend.js'
 import { renderMiniLeague  } from './mini-league/mini-league.js'
 import { renderMatchMiniLeague } from './match/match-minileague.js'
+import { checkAndShowTutorial } from './tutorial/tutorial.js'
 import { renderMarket }     from './market/market.js'
 import { renderRankings }   from './rankings/rankings.js'
 import { renderMatches }    from './matches/matches.js'
@@ -289,6 +290,8 @@ async function init() {
   }
 
   launchApp()
+  // Tutoriel première connexion (après rendu de la home)
+  setTimeout(() => checkAndShowTutorial(state.profile, navigate), 800)
 
   supabase.auth.onAuthStateChange(async (event, session) => {
     if (event === 'SIGNED_OUT') {

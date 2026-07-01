@@ -132,7 +132,7 @@ const STEPS = [
   },
 ]
 
-export function showTutorial(profile, onComplete) {
+export function showTutorial(profile, steps, onComplete) {
   let step = 0
 
   const ov = document.createElement('div')
@@ -208,5 +208,17 @@ export function showTutorial(profile, onComplete) {
 
 export async function checkAndShowTutorial(profile, navigate) {
   if (!profile || profile.tutorial_done) return
-  showTutorial(profile, () => navigate('boosters'))
+
+  // Charger les étapes depuis la DB
+  const { data: dbSteps } = await supabase
+    .from('tutorial_steps')
+    .select('*')
+    .eq('is_active', true)
+    .order('step_order')
+
+  const steps = (dbSteps && dbSteps.length > 0)
+    ? dbSteps.map(s => ({ emoji: s.emoji, title: s.title, color: s.color, content: s.content }))
+    : STEPS  // fallback sur les étapes locales
+
+  showTutorial(profile, steps, () => navigate('boosters'))
 }

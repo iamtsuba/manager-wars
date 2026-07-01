@@ -276,6 +276,9 @@ async function openLeague(container, ctx, leagueId) {
   const allTodayDone = todayMatches.length>0 && todayMatches.every(m=>m.status==='finished'||m.status==='bye')
   const isLastDay = league.current_day>=league.total_days
 
+  // Trouver mon membership avec prize
+  const myMembership = (members||[]).find(m=>m.user_id===uid)
+
   container.innerHTML = `
   <div style="height:100%;overflow-y:auto;background:var(--page-bg)">
     <div style="padding:12px 16px;background:#fff;border-bottom:1px solid #eee;display:flex;align-items:center;gap:10px">
@@ -376,6 +379,14 @@ async function openLeague(container, ctx, leagueId) {
       if(m) ctx.navigate('match-mini-league',{mlMatchId:m.id,leagueId})
     })
   })
+
+  // Popup prize : league terminée + joueur dans le top 3
+  if(league.status==='finished' && myMembership) {
+    const myPos=standings.findIndex(s=>s.userId===uid)
+    if(myPos>=0 && myPos<3 && myMembership.prize_amount>0) {
+      setTimeout(()=>showPrizePopup(container,ctx,league,myMembership,myPos), 400)
+    }
+  }
 }
 
 function matchRowHTML(m, members, uid, isMember, readonly=false) {
@@ -429,19 +440,64 @@ async function finishLeague(container, ctx, leagueId, pot, standingsIn, memberLi
     standings=computeStandings(memberList,ml||[])
   }
   const prizes=[Math.floor(pot*.7),Math.floor(pot*.2),Math.floor(pot*.1)]
-  const {data:users}=await supabase.from('users').select('id,credits').in('id',memberList.map(u=>u.id))
+
+  // Stocker le prize_amount sur chaque membre du podium (pas encore versé)
   await Promise.all(standings.slice(0,3).map((s,i)=>{
     if(!prizes[i]) return Promise.resolve()
-    const u=(users||[]).find(x=>x.id===s.userId); if(!u) return Promise.resolve()
-    return supabase.from('users').update({credits:(u.credits||0)+prizes[i]}).eq('id',s.userId)
+    return supabase.from('mini_league_members')
+      .update({ prize_amount: prizes[i], prize_claimed: false })
+      .eq('league_id', leagueId).eq('user_id', s.userId)
   }))
-  await supabase.from('mini_leagues').update({status:'finished'}).eq('id',leagueId)
-  const myPos=standings.findIndex(s=>s.userId===state.profile.id)
-  if(myPos>=0&&myPos<3&&prizes[myPos]){
-    state.profile.credits=(state.profile.credits||0)+prizes[myPos]
-    toast(`🏆 Terminée ! Tu remportes ${prizes[myPos].toLocaleString('fr')} cr. !`,'success')
-  } else toast('🏆 Mini League terminée !','success')
-  openLeague(container,ctx,leagueId)
+
+  // Marquer terminée — PAS d'archivage automatique
+  await supabase.from('mini_leagues').update({ status:'finished' }).eq('id', leagueId)
+  toast('🏆 Mini League terminée ! Les gagnants peuvent récupérer leurs crédits.','success')
+  openLeague(container, ctx, leagueId)
+}
+
+// Popup de réclamation des crédits pour le top 3
+async function showPrizePopup(container, ctx, league, myMembership, myPos) {
+  const {state, toast} = ctx
+  const prizes=[Math.floor((league.pot||0)*.7),Math.floor((league.pot||0)*.2),Math.floor((league.pot||0)*.1)]
+  const medal = ['🥇','🥈','🥉'][myPos]
+  const prize = myMembership.prize_amount || prizes[myPos] || 0
+  const already = myMembership.prize_claimed
+
+  const ov = document.createElement('div')
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:9000;display:flex;align-items:center;justify-content:center;padding:20px'
+  ov.innerHTML=`
+    <div style="background:linear-gradient(160deg,#1a0a2e,#3b1a6e);border-radius:20px;padding:32px 24px;max-width:320px;width:100%;text-align:center;color:#fff;box-shadow:0 8px 40px rgba(0,0,0,0.6)">
+      <div style="font-size:64px;margin-bottom:8px">${medal}</div>
+      <div style="font-size:22px;font-weight:900;margin-bottom:4px">${myPos===0?'Champion !':myPos===1?'Vice-champion !':'3ème place !'}</div>
+      <div style="font-size:14px;color:rgba(255,255,255,0.7);margin-bottom:20px">${league.name}</div>
+      <div style="background:rgba(212,160,23,0.2);border:2px solid ${YELLOW};border-radius:14px;padding:16px;margin-bottom:24px">
+        <div style="font-size:12px;color:rgba(255,255,255,0.6);margin-bottom:4px">${already?'Déjà récupéré':'Tes gains'}</div>
+        <div style="font-size:32px;font-weight:900;color:${YELLOW}">${prize.toLocaleString('fr')} cr.</div>
+        <div style="font-size:11px;color:rgba(255,255,255,0.5);margin-top:2px">${myPos===0?'70%':myPos===1?'20%':'10%'} du pot de ${(league.pot||0).toLocaleString('fr')} cr.</div>
+      </div>
+      ${already
+        ? `<div style="font-size:13px;color:#86efac;margin-bottom:16px">✅ Crédits déjà récupérés</div>`
+        : `<button id="claim-prize-btn" style="width:100%;padding:14px;border-radius:12px;border:none;background:${YELLOW};color:#111;font-size:16px;font-weight:900;cursor:pointer;margin-bottom:12px">💰 Récupérer ${prize.toLocaleString('fr')} cr.</button>`
+      }
+      <button id="prize-close" style="background:rgba(255,255,255,0.1);border:none;color:rgba(255,255,255,0.7);padding:10px 24px;border-radius:10px;font-size:14px;cursor:pointer">Fermer</button>
+    </div>`
+
+  document.body.appendChild(ov)
+  ov.querySelector('#prize-close')?.addEventListener('click',()=>ov.remove())
+  ov.addEventListener('click',e=>{if(e.target===ov)ov.remove()})
+
+  ov.querySelector('#claim-prize-btn')?.addEventListener('click', async()=>{
+    const {data:me}=await supabase.from('users').select('credits').eq('id',state.profile.id).single()
+    await supabase.from('users').update({credits:(me?.credits||0)+prize}).eq('id',state.profile.id)
+    await supabase.from('mini_league_members')
+      .update({prize_claimed:true}).eq('league_id',league.id).eq('user_id',state.profile.id)
+    if(state.profile) state.profile.credits=(me?.credits||0)+prize
+    const credEl=document.getElementById('nav-credits')
+    if(credEl) credEl.textContent=`💰 ${state.profile.credits.toLocaleString('fr')}`
+    toast(`💰 +${prize.toLocaleString('fr')} cr. ajoutés à ton solde !`,'success')
+    ov.remove()
+    openLeague(container,ctx,league.id)
+  })
 }
 
 function generateSchedule(teamIds, mode) {

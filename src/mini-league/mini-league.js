@@ -142,24 +142,97 @@ function showCreateForm(container, ctx) {
     if(type==='private'&&!pwd){toast('Mot de passe requis','error');return}
     const {data:league,error}=await supabase.from('mini_leagues').insert({name,creator_id:ctx.state.profile.id,type,password:pwd,mode,max_players:maxP,entry_fee:fee}).select().single()
     if(error){toast('Erreur : '+error.message,'error');return}
+    // Vérifier les crédits du créateur
+    const {data:me}=await supabase.from('users').select('credits').eq('id',ctx.state.profile.id).single()
+    if((me?.credits||0)<fee){
+      await supabase.from('mini_leagues').delete().eq('id',league.id)
+      toast(`Crédits insuffisants pour la mise (${fee.toLocaleString('fr')} cr.)`, 'error'); return
+    }
+    // Prélever la mise du créateur + initialiser le pot
+    await supabase.from('users').update({credits:(me.credits)-fee}).eq('id',ctx.state.profile.id)
+    await supabase.from('mini_leagues').update({pot:fee}).eq('id',league.id)
     await supabase.from('mini_league_members').insert({league_id:league.id,user_id:ctx.state.profile.id})
-    ov.remove(); toast('Mini League créée !','success'); openLeague(container,ctx,league.id)
+    if(ctx.state.profile) ctx.state.profile.credits=(me.credits)-fee
+    const credEl=document.getElementById('nav-credits')
+    if(credEl) credEl.textContent=`💰 ${(ctx.state.profile.credits||0).toLocaleString('fr')}`
+    ov.remove(); toast(`Mini League créée ! ${fee.toLocaleString('fr')} cr. déduits.`,'success'); openLeague(container,ctx,league.id)
   })
 }
 
 async function joinLeague(container, ctx, leagueId, type) {
-  const {toast}=ctx
-  if(type==='private'){
-    const pwd=prompt('Mot de passe :'); if(pwd===null) return
-    const {data:l}=await supabase.from('mini_leagues').select('password,status').eq('id',leagueId).single()
-    if(!l){toast('Introuvable','error');return}
-    if(l.status!=='waiting'){toast('Déjà démarrée','warning');return}
-    if(l.password!==pwd){toast('Mot de passe incorrect','error');return}
+  const { toast, state } = ctx
+  const uid = state.profile.id
+
+  // Charger la league pour connaître la mise et vérifier les places
+  const { data: league } = await supabase.from('mini_leagues')
+    .select('password,status,entry_fee,pot,max_players').eq('id', leagueId).single()
+  if (!league) { toast('Mini League introuvable', 'error'); return }
+  if (league.status !== 'waiting') { toast('Cette Mini League a déjà démarré', 'warning'); return }
+
+  // Vérifier le nombre de joueurs actuel
+  const { count: currentCount } = await supabase.from('mini_league_members')
+    .select('id', { count: 'exact', head: true }).eq('league_id', leagueId)
+  if (currentCount >= league.max_players) { toast('La Mini League est complète', 'warning'); return }
+
+  // Mot de passe si privée
+  if (type === 'private') {
+    const pwd = prompt('Mot de passe :')
+    if (pwd === null) return
+    if (league.password !== pwd) { toast('Mot de passe incorrect', 'error'); return }
   }
-  const {error}=await supabase.from('mini_league_members').insert({league_id:leagueId,user_id:ctx.state.profile.id})
-  if(error){toast('Erreur : '+error.message,'error');return}
-  toast('Tu as rejoint la Mini League !','success'); openLeague(container,ctx,leagueId)
+
+  // Vérifier les crédits du joueur
+  const fee = league.entry_fee || 100
+  const { data: me } = await supabase.from('users').select('credits').eq('id', uid).single()
+  if ((me?.credits || 0) < fee) {
+    toast(`Crédits insuffisants. Il te faut ${fee.toLocaleString('fr')} cr. (tu as ${(me?.credits||0).toLocaleString('fr')} cr.)`, 'error')
+    return
+  }
+
+  // Prélever les crédits et mettre à jour le pot
+  await supabase.from('users').update({ credits: (me.credits) - fee }).eq('id', uid)
+  await supabase.from('mini_leagues').update({ pot: (league.pot || 0) + fee }).eq('id', leagueId)
+
+  const { error } = await supabase.from('mini_league_members').insert({ league_id: leagueId, user_id: uid })
+  if (error) {
+    // Rollback : rembourser les crédits si l'insert échoue
+    await supabase.from('users').update({ credits: me.credits }).eq('id', uid)
+    await supabase.from('mini_leagues').update({ pot: league.pot || 0 }).eq('id', leagueId)
+    toast('Erreur : ' + error.message, 'error'); return
+  }
+
+  // Mettre à jour les crédits locaux
+  if (state.profile) state.profile.credits = (me.credits) - fee
+  const credEl = document.getElementById('nav-credits')
+  if (credEl) credEl.textContent = `💰 ${((state.profile.credits)||0).toLocaleString('fr')}`
+
+  toast(`✅ Inscrit ! ${fee.toLocaleString('fr')} cr. déduits · Pot : ${((league.pot||0)+fee).toLocaleString('fr')} cr.`, 'success')
+  openLeague(container, ctx, leagueId)
 }
+
+async function leaveLeague(container, ctx, leagueId, fee) {
+  const { toast, state } = ctx
+  const uid = state.profile.id
+  if (!confirm(`Te désinscrire et récupérer ${fee.toLocaleString('fr')} crédits ?`)) return
+
+  // Récupérer pot actuel
+  const { data: league } = await supabase.from('mini_leagues').select('pot,status').eq('id', leagueId).single()
+  if (!league || league.status !== 'waiting') { toast('Impossible de se désinscrire (league déjà lancée)', 'error'); return }
+
+  // Rembourser les crédits
+  const { data: me } = await supabase.from('users').select('credits').eq('id', uid).single()
+  await supabase.from('users').update({ credits: (me?.credits || 0) + fee }).eq('id', uid)
+  await supabase.from('mini_leagues').update({ pot: Math.max(0, (league.pot || 0) - fee) }).eq('id', leagueId)
+  await supabase.from('mini_league_members').delete().eq('league_id', leagueId).eq('user_id', uid)
+
+  if (state.profile) state.profile.credits = (me?.credits || 0) + fee
+  const credEl = document.getElementById('nav-credits')
+  if (credEl) credEl.textContent = `💰 ${(state.profile.credits||0).toLocaleString('fr')}`
+
+  toast(`↩️ Désinscrit · ${fee.toLocaleString('fr')} cr. remboursés`, 'success')
+  showLeagueList(container, ctx, 'waiting')
+}
+
 
 async function deleteLeague(container, ctx, leagueId, name, tab) {
   const {toast}=ctx
@@ -225,7 +298,9 @@ async function openLeague(container, ctx, leagueId) {
         ${isCreator&&memberList.length>=2?`<button id="ml-start-btn" class="btn btn-primary" style="width:100%;margin-top:14px;padding:12px">🚀 Lancer (prélève ${fee} cr. × ${memberList.length})</button>`:''}
         ${isCreator?`<button id="ml-delete-btn" class="btn btn-ghost btn-sm" style="color:#cc2222;width:100%;margin-top:8px">🗑️ Supprimer</button>`:''}
         ${!isMember?`<button id="ml-join-now" class="btn btn-primary" style="width:100%;margin-top:14px">Rejoindre (mise : ${fee} cr.)</button>`:''}
-        ${isMember&&!isCreator?'<div style="text-align:center;font-size:12px;color:#aaa;margin-top:10px">En attente du créateur...</div>':''}
+        ${isMember&&!isCreator?`
+          <button id="ml-leave-btn" class="btn btn-ghost btn-sm" style="color:#cc2222;width:100%;margin-top:10px">↩️ Se désinscrire et récupérer ${fee.toLocaleString('fr')} cr.</button>
+        `:''}
       </div>`:''}
 
       ${league.status==='active'?`
@@ -283,6 +358,7 @@ async function openLeague(container, ctx, leagueId) {
   document.getElementById('ml-next-day')?.addEventListener('click', ()=>nextMatchday(container,ctx,leagueId))
   document.getElementById('ml-finish-btn')?.addEventListener('click', ()=>finishLeague(container,ctx,leagueId,pot,standings,memberList))
   document.getElementById('ml-join-now')?.addEventListener('click', ()=>joinLeague(container,ctx,leagueId,league.type))
+  document.getElementById('ml-leave-btn')?.addEventListener('click', ()=>leaveLeague(container,ctx,leagueId,fee))
   document.getElementById('ml-delete-btn')?.addEventListener('click', ()=>deleteLeague(container,ctx,leagueId,league.name,'waiting'))
   document.getElementById('ml-delete-now')?.addEventListener('click', ()=>deleteLeague(container,ctx,leagueId,league.name,backTab))
   document.getElementById('ml-archive-btn')?.addEventListener('click', ()=>archiveLeague(container,ctx,leagueId))
@@ -311,19 +387,20 @@ function matchRowHTML(m, members, uid, isMember, readonly=false) {
 }
 
 async function startLeague(container, ctx, league, members) {
-  const {toast,state}=ctx; const fee=league.entry_fee||100; const pot=fee*members.length
-  const {data:users}=await supabase.from('users').select('id,credits,pseudo').in('id',members.map(m=>m.id))
-  const broke=(users||[]).filter(u=>(u.credits||0)<fee)
-  if(broke.length){toast(`Crédits insuffisants : ${broke.map(u=>u.pseudo).join(', ')} (besoin : ${fee} cr.)`,'error');return}
-  await Promise.all((users||[]).map(u=>supabase.from('users').update({credits:(u.credits||0)-fee}).eq('id',u.id)))
+  const {toast,state}=ctx
+  // Les crédits ont déjà été prélevés à l'inscription — le pot est déjà constitué
   const schedule=generateSchedule(members.map(m=>m.id),league.mode)
   const rows=[]
-  schedule.forEach((day,di)=>day.forEach(match=>rows.push({league_id:league.id,matchday:di+1,home_id:match.home||match.bye,away_id:match.away||null,is_bye:!!match.bye,status:match.bye?'bye':'pending'})))
+  schedule.forEach((day,di)=>day.forEach(match=>rows.push({
+    league_id:league.id, matchday:di+1,
+    home_id:match.home||match.bye, away_id:match.away||null,
+    is_bye:!!match.bye, status:match.bye?'bye':'pending'
+  })))
   const {error}=await supabase.from('mini_league_matches').insert(rows)
   if(error){toast('Erreur calendrier : '+error.message,'error');return}
-  await supabase.from('mini_leagues').update({status:'active',current_day:1,total_days:schedule.length,pot}).eq('id',league.id)
-  if(state.profile) state.profile.credits=(state.profile.credits||0)-fee
-  toast(`🚀 Lancée ! Pot : ${pot.toLocaleString('fr')} cr.`,'success'); openLeague(container,ctx,league.id)
+  await supabase.from('mini_leagues').update({status:'active',current_day:1,total_days:schedule.length}).eq('id',league.id)
+  toast(`🚀 Lancée ! Pot : ${(league.pot||0).toLocaleString('fr')} cr.`,'success')
+  openLeague(container,ctx,league.id)
 }
 
 async function nextMatchday(container, ctx, leagueId) {

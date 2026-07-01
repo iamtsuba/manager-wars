@@ -206,7 +206,8 @@ async function loadOngoingMatchBanner(state, toast, navigate) {
   banner.innerHTML = matches.map(m => {
     const oppId = m.home_id === uid ? m.away_id : m.home_id
     const oppName = names[oppId] || 'Adversaire'
-    const modeLabel = m.mode === 'friend' ? 'Match ami' : 'Match'
+    const isMiniLeague = m.mode === 'mini_league'
+    const modeLabel = isMiniLeague ? '🏆 Mini League' : m.mode === 'friend' ? 'Match ami' : 'Match'
     return `
       <div style="display:flex;align-items:center;gap:10px;background:linear-gradient(135deg,#0a3d1e,#1A6B3C);color:#fff;border-radius:12px;padding:12px 16px;margin-bottom:10px;box-shadow:0 3px 12px rgba(26,107,60,0.4)">
         <div style="background:rgba(255,255,255,0.2);border-radius:50%;width:36px;height:36px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">⚽</div>
@@ -214,16 +215,27 @@ async function loadOngoingMatchBanner(state, toast, navigate) {
           <div style="font-size:13px;font-weight:900">${modeLabel} en cours</div>
           <div style="font-size:11px;opacity:0.8;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">vs ${oppName}</div>
         </div>
-        <button data-resume="${m.id}" title="Reprendre" style="width:38px;height:38px;border-radius:50%;border:none;background:#22c55e;color:#fff;font-size:18px;cursor:pointer;flex-shrink:0">⚽</button>
+        <button data-resume="${m.id}" data-mini="${isMiniLeague?'1':''}" title="Reprendre" style="width:38px;height:38px;border-radius:50%;border:none;background:#22c55e;color:#fff;font-size:18px;cursor:pointer;flex-shrink:0">⚽</button>
         <button data-abandon="${m.id}" data-opp="${oppId}" title="Abandonner" style="width:38px;height:38px;border-radius:50%;border:none;background:#cc2222;color:#fff;font-size:18px;cursor:pointer;flex-shrink:0">✕</button>
       </div>`
   }).join('')
 
   banner.querySelectorAll('[data-resume]').forEach(btn => {
     btn.addEventListener('click', async () => {
-      const { resumePvpMatch } = await import('../match/match-random.js')
       const container = document.getElementById('page-content') || document.getElementById('app')
-      resumePvpMatch(container, { state, navigate, toast, openModal: null, closeModal: null, refreshProfile: null }, btn.dataset.resume)
+      if (btn.dataset.mini === '1') {
+        // Match mini-league : retrouver le mlMatch via match_id
+        const { data: mlM } = await supabase
+          .from('mini_league_matches')
+          .select('id, league_id')
+          .eq('match_id', btn.dataset.resume)
+          .single()
+        if (mlM) navigate('match-mini-league', { mlMatchId: mlM.id, leagueId: mlM.league_id })
+        else navigate('mini-league')
+      } else {
+        const { resumePvpMatch } = await import('../match/match-random.js')
+        resumePvpMatch(container, { state, navigate, toast, openModal: null, closeModal: null, refreshProfile: null }, btn.dataset.resume)
+      }
     })
   })
 

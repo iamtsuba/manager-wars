@@ -266,6 +266,7 @@ async function openLeague(container, ctx, leagueId) {
           </button>` : ''}
         ${!isMember ? `<button id="ml-join-now" class="btn btn-primary" style="width:100%;margin-top:14px">Rejoindre</button>` : ''}
         ${isMember && !isCreator ? '<div style="text-align:center;font-size:12px;color:#aaa;margin-top:10px">En attente du créateur pour lancer la partie...</div>' : ''}
+        ${isCreator ? `<button id="ml-delete-btn" class="btn btn-ghost btn-sm" style="color:#cc2222;width:100%;margin-top:8px">🗑️ Supprimer la Mini League</button>` : ''}
       </div>` : ''}
 
       <!-- JOURNÉE EN COURS -->
@@ -337,6 +338,16 @@ async function openLeague(container, ctx, leagueId) {
   document.getElementById('ml-start-btn')?.addEventListener('click', () => startLeague(container, ctx, league, memberList))
   document.getElementById('ml-next-day')?.addEventListener('click', () => nextMatchday(container, ctx, leagueId))
   document.getElementById('ml-join-now')?.addEventListener('click', () => joinLeague(container, ctx, leagueId, league.type))
+  document.getElementById('ml-delete-btn')?.addEventListener('click', async () => {
+    if (!confirm(`Supprimer définitivement la Mini League "${league.name}" ? Cette action est irréversible.`)) return
+    // Supprimer dans l'ordre (FK) : matchs → membres → league
+    await supabase.from('mini_league_matches').delete().eq('league_id', leagueId)
+    await supabase.from('mini_league_members').delete().eq('league_id', leagueId)
+    const { error } = await supabase.from('mini_leagues').delete().eq('id', leagueId)
+    if (error) { toast('Erreur suppression : ' + error.message, 'error'); return }
+    toast('Mini League supprimée', 'success')
+    showLeagueList(container, ctx)
+  })
 
   // Boutons "Jouer" sur les matchs en cours
   container.querySelectorAll('[data-play-match]').forEach(btn => {

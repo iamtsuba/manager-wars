@@ -329,6 +329,8 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
           if (_pvpEnded) return; _pvpEnded = true
           if (_localTimerInt) { clearInterval(_localTimerInt); _localTimerInt = null }
           if (row.game_state) gameState = row.game_state
+          // Si renderPvpResult est déjà à l'écran (pousseur), ne pas afficher showPvpEndScreen par-dessus
+          if (gameState.phase === 'finished' && !row.forfeit && document.getElementById('pvp-home')) return
           showPvpEndScreen(row); return
         }
         if (row.game_state) {
@@ -1590,6 +1592,12 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
   }
 
   function renderPvpResult() {
+    if (_pvpEnded) {
+      // Déjà marqué terminé par le Realtime — éviter double affichage
+      // Mais si showPvpEndScreen n'est pas encore là, afficher quand même
+      if (document.getElementById('pvp-end-overlay')) return
+    }
+    _pvpEnded = true
     const myScore=gameState[myRole+'Score'],oppScore=gameState[oppRole+'Score']
     const won=myScore>oppScore,draw=myScore===oppScore
     _hideBottomNav(container)
@@ -1598,7 +1606,7 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
       <div style="font-size:64px">${won?'🏆':draw?'🤝':'😤'}</div>
       <div style="font-size:24px;font-weight:900;color:#fff">${won?'Victoire !':draw?'Match nul':'Défaite'}</div>
       <div style="font-size:32px;font-weight:900;color:#FFD700">${myScore} - ${oppScore}</div>
-      <button id="pvp-home" style="padding:16px 40px;border-radius:14px;border:none;background:#1A6B3C;color:#fff;font-size:16px;font-weight:900;cursor:pointer">🏠 Retour</button>
+      <button id="pvp-home" style="padding:16px 40px;border-radius:14px;border:none;background:#1A6B3C;color:#fff;font-size:16px;font-weight:900;cursor:pointer">🏆 Retour à la Mini League</button>
     </div>`
     document.getElementById('pvp-home')?.addEventListener('click',()=>{try{supabase.removeChannel(channel)}catch{};_showBottomNav(container);navigate('mini-league', _leagueId ? { openLeagueId: _leagueId } : {})})
   }

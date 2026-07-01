@@ -20,7 +20,7 @@ async function showLeagueList(container, ctx, activeTab = 'waiting') {
 
   const { data: publicWaiting } = await supabase
     .from('mini_leagues').select('*, mini_league_members(count)')
-    .eq('type','public').eq('status','waiting').eq('is_archived',false)
+    .eq('status','waiting').eq('is_archived',false)
     .order('created_at', { ascending: false }).limit(30)
 
   const myLeaguesQuery = myLeagueIds.length

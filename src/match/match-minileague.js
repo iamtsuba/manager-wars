@@ -413,8 +413,9 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
       const tRole = target==='home' ? myRole : oppRole
       const team = gs[tRole+'Team']
       const lbl = target==='home'?'allié':'adverse'
+      // Pour DEBUFF: montrer aussi les joueurs déjà utilisés (le debuff s'applique même aux exclus)
       const pool = Object.entries(team).filter(([r])=>!roles.length||roles.includes(r))
-        .flatMap(([r,ps])=>ps.filter(p=>!p.used).map(p=>({...p,_line:r})))
+        .flatMap(([r,ps])=>ps.map(p=>({...p,_line:r})))
       if (!pool.length) { gs.log.push({text:`🎯 Aucun joueur ${lbl}`,type:'info'}); cb(gs); return }
       pvpOpenPlayerPicker(pool, count, `Choisir ${count} joueur(s) ${lbl}(s) (-${value})`, (chosen) => {
         chosen.forEach(p => { const t=(team[p._line]||[]).find(x=>x.cardId===p.cardId); if(t){t.boost=(t.boost||0)-value; gs.log.push({text:`🎯 -${value} sur ${t.name}`,type:'info'})} })
@@ -429,7 +430,13 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
         .flatMap(([r,ps])=>ps.filter(p=>!p.used).map(p=>({...p,_line:r})))
       if (!pool.length) { gs.log.push({text:`❌ Aucun joueur ${lbl}`,type:'info'}); cb(gs); return }
       pvpOpenPlayerPicker(pool, count, `Choisir ${count} joueur(s) ${lbl}(s) à exclure`, (chosen) => {
-        chosen.forEach(p => { const t=(team[p._line]||[]).find(x=>x.cardId===p.cardId); if(t){t.used=true; gs.log.push({text:`❌ ${t.name} exclu !`,type:'info'})} })
+        const usedKey = 'usedCardIds_' + tRole
+        const usedSet = new Set(gs[usedKey] || [])
+        chosen.forEach(p => {
+          const t=(team[p._line]||[]).find(x=>x.cardId===p.cardId)
+          if(t){ t.used=true; usedSet.add(p.cardId); gs.log.push({text:`❌ ${t.name} exclu !`,type:'info'}) }
+        })
+        gs[usedKey] = [...usedSet]
         gs[tRole+'Team'] = team; cb(gs)
       })
     },

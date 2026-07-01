@@ -267,6 +267,7 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
 
   let _pvpEnded = false
   let _statsRecorded = false  // évite le double comptage des stats ami
+  let _evolutionDone = false  // chaque joueur évolue ses propres cartes une seule fois
   let _localTimerInt = null  // Timer LOCAL (pas dans gameState, sinon le JSON round-trip l'écrase)
   let _vvBound = false       // idem pour le listener visualViewport
   const _goalAnimShownFor = new Set()  // rounds dont l'animation BUT a déjà été montrée localement
@@ -276,6 +277,18 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
     try { supabase.removeChannel(channel) } catch {}
     const myScore  = gameState[myRole+'Score']||0
     const oppScore = gameState[oppRole+'Score']||0
+
+    // Évolution des cartes pépite/papyte : chaque joueur met à jour SES PROPRES cartes
+    if (!_evolutionDone) {
+      _evolutionDone = true
+      const winnerId = row.winner_id || (myScore > oppScore ? state.profile.id : oppScore > myScore ? 'opp' : null)
+      const outcome  = winnerId === state.profile.id ? 'win' : winnerId ? 'loss' : null
+      if (outcome) {
+        import('./evolutive-cards.js')
+          .then(mod => mod.applyOwnEvolution(state.profile.id, outcome))
+          .catch(()=>{})
+      }
+    }
 
     // Mettre à jour les stats entre amis.
     // Pour éviter le double comptage sans dépendre de amIHome :
@@ -418,8 +431,9 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
       const tRole = target==='home' ? myRole : oppRole
       const team = gs[tRole+'Team']
       const lbl = target==='home'?'allié':'adverse'
+      // Pour DEBUFF: montrer aussi les joueurs déjà utilisés (le debuff s'applique même aux exclus)
       const pool = Object.entries(team).filter(([r])=>!roles.length||roles.includes(r))
-        .flatMap(([r,ps])=>ps.filter(p=>!p.used).map(p=>({...p,_line:r})))
+        .flatMap(([r,ps])=>ps.map(p=>({...p,_line:r})))
       if (!pool.length) { gs.log.push({text:`🎯 Aucun joueur ${lbl}`,type:'info'}); cb(gs); return }
       pvpOpenPlayerPicker(pool, count, `Choisir ${count} joueur(s) ${lbl}(s) (-${value})`, (chosen) => {
         chosen.forEach(p => { const t=(team[p._line]||[]).find(x=>x.cardId===p.cardId); if(t){t.boost=(t.boost||0)-value; gs.log.push({text:`🎯 -${value} sur ${t.name}`,type:'info'})} })
@@ -434,7 +448,13 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
         .flatMap(([r,ps])=>ps.filter(p=>!p.used).map(p=>({...p,_line:r})))
       if (!pool.length) { gs.log.push({text:`❌ Aucun joueur ${lbl}`,type:'info'}); cb(gs); return }
       pvpOpenPlayerPicker(pool, count, `Choisir ${count} joueur(s) ${lbl}(s) à exclure`, (chosen) => {
-        chosen.forEach(p => { const t=(team[p._line]||[]).find(x=>x.cardId===p.cardId); if(t){t.used=true; gs.log.push({text:`❌ ${t.name} exclu !`,type:'info'})} })
+        const usedKey = 'usedCardIds_' + tRole
+        const usedSet = new Set(gs[usedKey] || [])
+        chosen.forEach(p => {
+          const t=(team[p._line]||[]).find(x=>x.cardId===p.cardId)
+          if(t){ t.used=true; usedSet.add(p.cardId); gs.log.push({text:`❌ ${t.name} exclu !`,type:'info'}) }
+        })
+        gs[usedKey] = [...usedSet]
         gs[tRole+'Team'] = team; cb(gs)
       })
     },
@@ -1317,20 +1337,51 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
   }
 
   function pvpShowHistory() {
-    const log=gameState.log||[]
-    const overlay=document.createElement('div')
-    overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.92);z-index:800;display:flex;flex-direction:column'
-    overlay.innerHTML=`
+    const log = gameState.log || []
+    const overlay = document.createElement('div')
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.92);z-index:800;display:flex;flex-direction:column'
+
+    const entryHTML = (e) => {
+      if (e.type === 'duel') {
+        const isGoal  = e.isGoal
+        const isMine  = (e.homeScored && myRole==='p1') || (!e.homeScored && isGoal && myRole==='p2')
+        const accent  = e.homeScored ? '#FFD700' : isGoal ? '#ff6b6b' : 'rgba(255,255,255,0.3)'
+        const side    = isGoal ? (isMine ? '⚽ BUT !' : '⚽ BUT adversaire !') : (e.homePlayers?.length ? '⚔️ Attaque' : '🛡️ Défense')
+        return `<div style="padding:8px;border-radius:8px;background:${isGoal?'rgba(212,160,23,0.12)':'rgba(255,255,255,0.04)'};border-left:3px solid ${accent};margin-bottom:4px">
+          <div style="font-size:9px;color:${accent};letter-spacing:1px;margin-bottom:5px;font-weight:700;text-transform:uppercase">${side}</div>
+          ${e.homePlayers?.length ? `<div style="margin-bottom:3px">${renderCardRow(e.homePlayers,'rgba(255,255,255,0.7)',e.homeTotal)}</div>` : ''}
+          ${e.aiPlayers?.length ? `<div style="opacity:0.7">${renderCardRow(e.aiPlayers,'#ff6b6b',e.aiTotal)}</div>` : ''}
+        </div>`
+      }
+      if (e.type === 'sub') {
+        return `<div style="padding:8px;border-radius:8px;background:rgba(135,206,235,0.08);border-left:3px solid #87CEEB;margin-bottom:4px">
+          <div style="font-size:9px;color:#87CEEB;letter-spacing:1px;margin-bottom:5px;font-weight:700">🔄 REMPLACEMENT</div>
+          <div style="display:flex;align-items:center;gap:8px">
+            ${e.outPlayer ? renderMiniCardHTML({...e.outPlayer, used:true, _line:e.outPlayer.job, rarity:'normal'}, 38, 50) : ''}
+            <span style="color:rgba(255,255,255,0.4);font-size:18px">→</span>
+            ${e.inPlayer ? renderMiniCardHTML({...e.inPlayer, _line:e.inPlayer.job, rarity:'normal'}, 38, 50) : ''}
+          </div>
+        </div>`
+      }
+      // info / pending / other
+      const col = e.type==='goal'?'#FFD700':e.type==='stop'?'#00ff88':'rgba(255,255,255,0.4)'
+      return `<div style="padding:8px 10px;border-radius:8px;background:rgba(255,255,255,0.04);border-left:3px solid ${col}">
+        <div style="font-size:12px;color:#fff">${e.text||''}</div>
+      </div>`
+    }
+
+    overlay.innerHTML = `
       <div style="display:flex;align-items:center;padding:14px 16px;border-bottom:1px solid rgba(255,255,255,0.1);flex-shrink:0">
-        <div style="flex:1;font-size:14px;font-weight:700;color:#fff">📋 Historique</div>
+        <div style="flex:1;font-size:14px;font-weight:700;color:#fff">📋 Historique du match</div>
         <button id="pvp-hist-close" style="background:none;border:none;color:rgba(255,255,255,0.6);font-size:20px;cursor:pointer">✕</button>
       </div>
       <div style="flex:1;overflow-y:auto;padding:12px 16px;display:flex;flex-direction:column;gap:6px">
-        ${log.length===0?'<div style="text-align:center;padding:40px;color:rgba(255,255,255,0.3)">Aucune action</div>'
-          :[...log].reverse().map(e=>`<div style="padding:8px 10px;border-radius:8px;background:rgba(255,255,255,0.04);border-left:3px solid ${e.type==='goal'?'#FFD700':e.type==='stop'?'#00ff88':'rgba(255,255,255,0.5)'}"><div style="font-size:12px;color:#fff">${e.text||''}</div></div>`).join('')}
+        ${log.length === 0
+          ? `<div style="text-align:center;padding:40px;color:rgba(255,255,255,0.3)">Aucune action</div>`
+          : [...log].reverse().map(entryHTML).join('')}
       </div>`
     document.body.appendChild(overlay)
-    overlay.querySelector('#pvp-hist-close')?.addEventListener('click',()=>overlay.remove())
+    overlay.querySelector('#pvp-hist-close')?.addEventListener('click', () => overlay.remove())
   }
 
   // Passer son tour d'attaque (aucun attaquant valide) → l'adversaire reprend l'attaque.

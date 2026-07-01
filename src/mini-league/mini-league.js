@@ -9,7 +9,14 @@ const YELLOW = '#D4A017'
 // ══════════════════════════════════════════════════════════════════════════════
 export async function renderMiniLeague(container, ctx) {
   container.innerHTML = '<div style="padding:40px;text-align:center;color:#aaa">⚽ Chargement...</div>'
-  await showLeagueList(container, ctx)
+  // Si on revient d'un match ML, ouvrir directement la league concernée
+  const openId = ctx.state.params?.openLeagueId
+  if (openId) {
+    ctx.state.params.openLeagueId = null // consommer le param
+    await openLeague(container, ctx, openId)
+  } else {
+    await showLeagueList(container, ctx)
+  }
 }
 
 // ══════════════════════════════════════════════════════════════════════════════

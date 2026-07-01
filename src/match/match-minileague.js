@@ -168,6 +168,8 @@ async function showMiniLeagueLobby(container, ctx, deckId, formation, starters, 
 
 async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDefs = []) {
   const { state, navigate, toast } = ctx
+  // Capturer le leagueId pour la redirection fin de match
+  const _leagueId = state.params?.leagueId || null
   const myRole  = amIHome ? 'p1' : 'p2'
   const oppRole = amIHome ? 'p2' : 'p1'
   const myGCIds  = (myGC||[]).map(g => g.id)
@@ -310,9 +312,13 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
       <div style="font-size:26px;font-weight:900;color:${_titleCol}">${_titleTxt}</div>
       <div style="font-size:18px">${gameState[myRole+'Name']} ${myScore} – ${oppScore} ${gameState[oppRole+'Name']}</div>
       ${row.forfeit?`<div style="font-size:13px;color:rgba(255,255,255,0.5)">${iWon?"L'adversaire a quitté":'Perdu par forfait'}</div>`:''}
-      <button id="pvp-end-home" style="margin-top:10px;padding:14px 32px;border-radius:12px;border:none;background:#1A6B3C;color:#fff;font-size:16px;font-weight:900;cursor:pointer">Retour à l'accueil</button>`
+      <button id="pvp-end-home" style="margin-top:10px;padding:14px 32px;border-radius:12px;border:none;background:#1A6B3C;color:#fff;font-size:16px;font-weight:900;cursor:pointer">🏆 Retour à la Mini League</button>`
     document.body.appendChild(overlay2)
-    overlay2.querySelector('#pvp-end-home')?.addEventListener('click', () => { overlay2.remove(); _showBottomNav(container); navigate('mini-league') })
+    overlay2.querySelector('#pvp-end-home')?.addEventListener('click', () => {
+      overlay2.remove(); _showBottomNav(container)
+      if (_leagueId) navigate('mini-league', { openLeagueId: _leagueId })
+      else navigate('mini-league')
+    })
   }
 
   const channel = supabase.channel('pvp-match-' + matchId)
@@ -1594,7 +1600,7 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
       <div style="font-size:32px;font-weight:900;color:#FFD700">${myScore} - ${oppScore}</div>
       <button id="pvp-home" style="padding:16px 40px;border-radius:14px;border:none;background:#1A6B3C;color:#fff;font-size:16px;font-weight:900;cursor:pointer">🏠 Retour</button>
     </div>`
-    document.getElementById('pvp-home')?.addEventListener('click',()=>{try{supabase.removeChannel(channel)}catch{};_showBottomNav(container);navigate('mini-league')})
+    document.getElementById('pvp-home')?.addEventListener('click',()=>{try{supabase.removeChannel(channel)}catch{};_showBottomNav(container);navigate('mini-league', _leagueId ? { openLeagueId: _leagueId } : {})})
   }
 
   renderPvpScreen()

@@ -140,9 +140,9 @@ export function showTutorial(profile, steps, onComplete) {
   ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:9900;display:flex;align-items:center;justify-content:center;padding:16px'
 
   const render = () => {
-    const s = STEPS[step]
-    const isLast = step === STEPS.length - 1
-    const pct = Math.round(((step + 1) / STEPS.length) * 100)
+    const s = steps[step]
+    const isLast = step === steps.length - 1
+    const pct = Math.round(((step + 1) / steps.length) * 100)
 
     ov.innerHTML = `
       <div style="background:#fff;border-radius:20px;width:100%;max-width:420px;max-height:90vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 16px 64px rgba(0,0,0,0.4)">
@@ -154,7 +154,7 @@ export function showTutorial(profile, steps, onComplete) {
         <div style="padding:24px 24px 0;text-align:center">
           <div style="font-size:56px;margin-bottom:10px;line-height:1">${s.emoji}</div>
           <div style="font-size:18px;font-weight:900;color:#111;margin-bottom:4px">${s.title}</div>
-          <div style="font-size:11px;color:#aaa">${step + 1} / ${STEPS.length}</div>
+          <div style="font-size:11px;color:#aaa">${step + 1} / ${steps.length}</div>
         </div>
         <!-- Image optionnelle -->
         ${s.image_url ? `<div style="padding:0 24px 8px;text-align:center"><img src="${BASE}icons/${s.image_url}" style="max-height:160px;max-width:100%;border-radius:12px;object-fit:contain"></div>` : ''}

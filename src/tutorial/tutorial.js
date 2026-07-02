@@ -208,22 +208,29 @@ export function showTutorial(profile, steps, onComplete) {
   render()
 }
 
-export async function checkAndShowTutorial(profile, navigate) {
+export async function checkAndShowTutorial(profile, navigate, toast) {
   if (!profile || profile.tutorial_done) return
 
-  // Charger les étapes depuis la DB
-  const { data: dbSteps, error: dbErr } = await supabase
+  // Charger les étapes depuis la DB (toutes, actives ou non, pour le diagnostic)
+  const { data: allSteps, error: dbErr } = await supabase
     .from('tutorial_steps')
     .select('*')
-    .eq('is_active', true)
     .order('step_order')
 
-  if (dbErr) console.warn('[Tutorial] Erreur DB (table manquante ?):', dbErr.message)
-  console.log('[Tutorial] Étapes DB:', dbSteps?.length ?? 'null', dbErr?.message ?? 'OK')
+  const dbSteps = allSteps?.filter(s => s.is_active !== false) || []
 
-  const steps = (dbSteps && dbSteps.length > 0)
+  // Diagnostic visible
+  if (dbErr) {
+    console.warn('[Tutorial] Erreur DB:', dbErr.message)
+    toast && toast(`[Tutorial] Erreur DB: ${dbErr.message}`, 'error', 6000)
+  } else {
+    console.log(`[Tutorial] ${dbSteps.length}/${allSteps?.length||0} étapes DB actives`)
+    toast && toast(`[Tutorial] ${dbSteps.length} étapes DB trouvées (${allSteps?.length||0} total)`, 'info', 4000)
+  }
+
+  const steps = dbSteps.length > 0
     ? dbSteps.map(s => ({ emoji: s.emoji, title: s.title, color: s.color, content: s.content, image_url: s.image_url || null }))
-    : STEPS  // fallback sur les étapes locales
+    : STEPS
 
   showTutorial(profile, steps, () => navigate('boosters'))
 }

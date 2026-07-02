@@ -291,7 +291,7 @@ async function init() {
 
   launchApp()
   // Tutoriel première connexion (après rendu de la home)
-  setTimeout(() => checkAndShowTutorial(state.profile, navigate), 800)
+  setTimeout(() => checkAndShowTutorial(state.profile, navigate, toast), 800)
 
   supabase.auth.onAuthStateChange(async (event, session) => {
     if (event === 'SIGNED_OUT') {

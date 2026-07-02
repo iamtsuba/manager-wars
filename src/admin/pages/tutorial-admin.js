@@ -59,10 +59,32 @@ async function load(container) {
           <input id="ts-order" type="number" min="0" value="0" style="width:100%;box-sizing:border-box;padding:9px;border:1.5px solid #ddd;border-radius:8px;font-size:14px">
         </div>
         <div style="margin-bottom:16px">
-          <label style="font-size:11px;font-weight:700;color:#555;display:block;margin-bottom:4px">CONTENU HTML *</label>
-          <textarea id="ts-content" rows="7" placeholder="&lt;p&gt;Texte de l'étape…&lt;/p&gt;"
-            style="width:100%;box-sizing:border-box;padding:9px;border:1.5px solid #ddd;border-radius:8px;font-size:13px;font-family:monospace;resize:vertical"></textarea>
-          <div style="font-size:11px;color:#aaa;margin-top:4px">HTML supporté : &lt;p&gt; &lt;ul&gt; &lt;ol&gt; &lt;li&gt; &lt;strong&gt; &lt;em&gt; &lt;span&gt;</div>
+          <label style="font-size:11px;font-weight:700;color:#555;display:block;margin-bottom:6px">CONTENU *</label>
+          <!-- Toolbar -->
+          <div id="ts-toolbar" style="display:flex;flex-wrap:wrap;gap:4px;padding:6px 8px;background:#f5f5f5;border:1.5px solid #ddd;border-bottom:none;border-radius:8px 8px 0 0">
+            ${[
+              ['B','bold','<strong>Gras</strong>'],
+              ['I','italic','<em>Italique</em>'],
+              ['U','underline','Souligné'],
+              ['¶','insertParagraph','Paragraphe'],
+              ['•','insertUnorderedList','Liste à puces'],
+              ['1.','insertOrderedList','Liste numérotée'],
+              ['H2','formatBlock:h2','Titre H2'],
+              ['H3','formatBlock:h3','Titre H3'],
+              ['—','insertHorizontalRule','Séparateur'],
+            ].map(([lbl,cmd,tip]) => `<button type="button" data-cmd="${cmd}" title="${tip}" style="padding:4px 8px;border:1px solid #ddd;border-radius:4px;background:#fff;font-size:12px;font-weight:700;cursor:pointer;line-height:1;min-width:28px">${lbl}</button>`).join('')}
+            <button type="button" id="ts-insert-color" title="Couleur texte" style="padding:4px 8px;border:1px solid #ddd;border-radius:4px;background:#fff;font-size:12px;cursor:pointer">🎨</button>
+            <button type="button" id="ts-clear-format" title="Effacer la mise en forme" style="padding:4px 8px;border:1px solid #ddd;border-radius:4px;background:#fff;font-size:12px;cursor:pointer">✕ Format</button>
+          </div>
+          <!-- Zone éditable -->
+          <div id="ts-editor" contenteditable="true" spellcheck="true" style="
+            min-height:140px;max-height:320px;overflow-y:auto;
+            padding:12px;border:1.5px solid #ddd;border-radius:0 0 8px 8px;
+            font-size:14px;line-height:1.7;color:#333;outline:none;background:#fff;
+          "></div>
+          <!-- Textarea caché pour compatibilité avec saveForm -->
+          <textarea id="ts-content" style="display:none"></textarea>
+          <div style="font-size:11px;color:#aaa;margin-top:4px">Utilise la barre d'outils ou écris directement dans l'éditeur.</div>
         </div>
         <div style="margin-bottom:16px">
           <label style="font-size:11px;font-weight:700;color:#555;display:block;margin-bottom:4px">IMAGE (optionnel — fichiers tuto_* du dossier icons)</label>
@@ -101,7 +123,46 @@ async function load(container) {
   document.getElementById('ts-save')?.addEventListener('click', () => saveForm(container))
   document.getElementById('ts-preview-btn')?.addEventListener('click', previewStep)
 
-  // Image picker
+  // ── Rich text editor ───────────────────────────────────────
+  const editor = document.getElementById('ts-editor')
+  const syncContent = () => { const ta = document.getElementById('ts-content'); if (ta && editor) ta.value = editor.innerHTML }
+
+  editor?.addEventListener('input', syncContent)
+  editor?.addEventListener('blur',  syncContent)
+
+  // Focus éditeur au clic sur toolbar (avant execCommand)
+  const focusEditor = () => { if (document.activeElement !== editor) editor?.focus() }
+
+  document.getElementById('ts-toolbar')?.querySelectorAll('[data-cmd]').forEach(btn => {
+    btn.addEventListener('mousedown', e => {
+      e.preventDefault() // ne pas perdre le focus éditeur
+      focusEditor()
+      const cmd = btn.dataset.cmd
+      if (cmd.startsWith('formatBlock:')) {
+        document.execCommand('formatBlock', false, cmd.split(':')[1])
+      } else {
+        document.execCommand(cmd, false, null)
+      }
+      syncContent()
+    })
+  })
+
+  document.getElementById('ts-insert-color')?.addEventListener('mousedown', e => {
+    e.preventDefault(); focusEditor()
+    const color = prompt('Couleur hex (ex: #D4A017 pour or, #1A6B3C pour vert, #cc2222 pour rouge) :')
+    if (color) { document.execCommand('foreColor', false, color); syncContent() }
+  })
+
+  document.getElementById('ts-clear-format')?.addEventListener('mousedown', e => {
+    e.preventDefault(); focusEditor()
+    document.execCommand('removeFormat', false, null); syncContent()
+  })
+
+  // Style éditeur focus
+  editor?.addEventListener('focus', () => { if (editor) editor.style.borderColor = '#1A6B3C' })
+  editor?.addEventListener('blur',  () => { if (editor) editor.style.borderColor = '#ddd' })
+
+  // ── Image picker ───────────────────────────────────────────
   const imgInput = document.getElementById('ts-image')
   const imgPreview = document.getElementById('ts-img-preview')
   const imgPreviewEl = document.getElementById('ts-img-preview-el')
@@ -242,6 +303,9 @@ function openForm(s, defaultOrder = 0) {
   document.getElementById('ts-emoji').value  = s?.emoji || '⚽'
   document.getElementById('ts-title').value  = s?.title || ''
   document.getElementById('ts-content').value = s?.content || ''
+  // Remplir l'éditeur visuel
+  const ed = document.getElementById('ts-editor')
+  if (ed) ed.innerHTML = s?.content || '<p>Texte de l\'étape…</p>'
   document.getElementById('ts-order').value  = s?.step_order ?? defaultOrder
   document.getElementById('ts-active').checked = s ? s.is_active : true
   const col = s?.color || '#1A6B3C'
@@ -271,7 +335,8 @@ function closeForm() {
 function previewStep() {
   const emoji    = document.getElementById('ts-emoji').value || '⚽'
   const title    = document.getElementById('ts-title').value || 'Titre'
-  const content  = document.getElementById('ts-content').value || ''
+  const edPrev  = document.getElementById('ts-editor')
+  const content  = edPrev ? edPrev.innerHTML : (document.getElementById('ts-content').value || '')
   const color    = document.getElementById('ts-color-hex').value || '#1A6B3C'
   const imageFile = document.getElementById('ts-image')?.value?.trim()
   const base = typeof import.meta !== 'undefined' ? import.meta.env.BASE_URL : '/'
@@ -307,7 +372,8 @@ async function saveForm(container) {
   const id      = document.getElementById('ts-id').value
   const emoji   = document.getElementById('ts-emoji').value.trim() || '⚽'
   const title   = document.getElementById('ts-title').value.trim()
-  const content = document.getElementById('ts-content').value.trim()
+  const editorEl = document.getElementById('ts-editor')
+  const content  = (editorEl ? editorEl.innerHTML : document.getElementById('ts-content').value).trim()
   const color   = document.getElementById('ts-color-hex').value.trim() || '#1A6B3C'
   const order   = parseInt(document.getElementById('ts-order').value) || 0
   const active  = document.getElementById('ts-active').checked

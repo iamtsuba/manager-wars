@@ -64,6 +64,18 @@ async function load(container) {
             style="width:100%;box-sizing:border-box;padding:9px;border:1.5px solid #ddd;border-radius:8px;font-size:13px;font-family:monospace;resize:vertical"></textarea>
           <div style="font-size:11px;color:#aaa;margin-top:4px">HTML supporté : &lt;p&gt; &lt;ul&gt; &lt;ol&gt; &lt;li&gt; &lt;strong&gt; &lt;em&gt; &lt;span&gt;</div>
         </div>
+        <div style="margin-bottom:16px">
+          <label style="font-size:11px;font-weight:700;color:#555;display:block;margin-bottom:4px">IMAGE (optionnel — fichiers tuto_* du dossier icons)</label>
+          <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px">
+            <input id="ts-image" placeholder="tuto_deck.png" style="flex:1;padding:9px;border:1.5px solid #ddd;border-radius:8px;font-size:13px">
+            <button id="ts-img-pick" class="btn btn-ghost btn-sm">📂 Choisir</button>
+            <button id="ts-img-clear" class="btn btn-ghost btn-sm" style="color:#cc2222">✕</button>
+          </div>
+          <div id="ts-img-preview" style="display:none;text-align:center;margin-bottom:6px">
+            <img id="ts-img-preview-el" style="max-height:120px;max-width:100%;border-radius:8px;border:1px solid #eee;object-fit:contain">
+          </div>
+          <div id="ts-img-picker-grid" style="display:none;margin-top:8px;background:#f9f9f9;border-radius:8px;padding:10px;border:1px solid #eee;max-height:200px;overflow-y:auto"></div>
+        </div>
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px">
           <input type="checkbox" id="ts-active" checked style="width:16px;height:16px">
           <label for="ts-active" style="font-size:13px;font-weight:600">Visible (activée)</label>
@@ -88,6 +100,63 @@ async function load(container) {
   document.getElementById('ts-cancel')?.addEventListener('click', closeForm)
   document.getElementById('ts-save')?.addEventListener('click', () => saveForm(container))
   document.getElementById('ts-preview-btn')?.addEventListener('click', previewStep)
+
+  // Image picker
+  const imgInput = document.getElementById('ts-image')
+  const imgPreview = document.getElementById('ts-img-preview')
+  const imgPreviewEl = document.getElementById('ts-img-preview-el')
+  const imgGrid = document.getElementById('ts-img-picker-grid')
+
+  const updateImgPreview = () => {
+    const val = imgInput?.value?.trim()
+    if (val) {
+      const base = typeof import.meta !== 'undefined' ? import.meta.env.BASE_URL : '/'
+      imgPreviewEl.src = `${base}icons/${val}`
+      imgPreview.style.display = 'block'
+    } else {
+      imgPreview.style.display = 'none'
+    }
+  }
+  imgInput?.addEventListener('input', updateImgPreview)
+
+  document.getElementById('ts-img-clear')?.addEventListener('click', () => {
+    if (imgInput) imgInput.value = ''
+    imgPreview.style.display = 'none'
+    imgGrid.style.display = 'none'
+  })
+
+  document.getElementById('ts-img-pick')?.addEventListener('click', async () => {
+    if (imgGrid.style.display !== 'none') { imgGrid.style.display = 'none'; return }
+    imgGrid.innerHTML = '<div style="color:#aaa;font-size:12px">Chargement…</div>'
+    imgGrid.style.display = 'block'
+    try {
+      // Lister les fichiers du repo GitHub dans /icons/ commençant par tuto_
+      const res = await fetch('https://api.github.com/repos/iamtsuba/manager-wars/contents/public/icons')
+      const files = await res.json()
+      const tutoFiles = Array.isArray(files) ? files.filter(f => f.name.startsWith('tuto_')) : []
+      if (!tutoFiles.length) {
+        imgGrid.innerHTML = '<div style="color:#aaa;font-size:12px">Aucun fichier tuto_* trouvé dans /icons/.<br>Uploade des images nommées tuto_xxx.png dans public/icons/</div>'
+        return
+      }
+      const base = typeof import.meta !== 'undefined' ? import.meta.env.BASE_URL : '/'
+      imgGrid.innerHTML = '<div style="display:flex;flex-wrap:wrap;gap:8px">' +
+        tutoFiles.map(f => `
+          <div data-pick="${f.name}" style="cursor:pointer;border:2px solid transparent;border-radius:8px;padding:4px;text-align:center;transition:border-color .15s" onmouseover="this.style.borderColor='#1A6B3C'" onmouseout="this.style.borderColor='transparent'">
+            <img src="${base}icons/${f.name}" style="width:70px;height:56px;object-fit:contain;display:block;border-radius:4px">
+            <div style="font-size:9px;color:#888;margin-top:3px;max-width:70px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${f.name.replace('tuto_','').replace(/\.[^.]+$/,'')}</div>
+          </div>`).join('') +
+        '</div>'
+      imgGrid.querySelectorAll('[data-pick]').forEach(el => {
+        el.addEventListener('click', () => {
+          if (imgInput) imgInput.value = el.dataset.pick
+          updateImgPreview()
+          imgGrid.style.display = 'none'
+        })
+      })
+    } catch(e) {
+      imgGrid.innerHTML = '<div style="color:#cc2222;font-size:12px">Erreur chargement : ' + e.message + '</div>'
+    }
+  })
 
   // Sync color picker ↔ hex input
   document.getElementById('ts-color')?.addEventListener('input', e => {
@@ -178,6 +247,18 @@ function openForm(s, defaultOrder = 0) {
   const col = s?.color || '#1A6B3C'
   document.getElementById('ts-color').value     = col
   document.getElementById('ts-color-hex').value = col
+  // Image
+  const imgVal = s?.image_url || ''
+  const imgInput2 = document.getElementById('ts-image')
+  if (imgInput2) imgInput2.value = imgVal
+  const imgPrev = document.getElementById('ts-img-preview')
+  const imgPrevEl = document.getElementById('ts-img-preview-el')
+  if (imgVal && imgPrev && imgPrevEl) {
+    const base = typeof import.meta !== 'undefined' ? import.meta.env.BASE_URL : '/'
+    imgPrevEl.src = `${base}icons/${imgVal}`
+    imgPrev.style.display = 'block'
+  } else if (imgPrev) imgPrev.style.display = 'none'
+  document.getElementById('ts-img-picker-grid').style.display = 'none'
   document.getElementById('ts-preview-area').innerHTML = ''
   document.getElementById('ts-form').scrollIntoView({ behavior: 'smooth' })
 }
@@ -188,28 +269,28 @@ function closeForm() {
 }
 
 function previewStep() {
-  const emoji   = document.getElementById('ts-emoji').value || '⚽'
-  const title   = document.getElementById('ts-title').value || 'Titre'
-  const content = document.getElementById('ts-content').value || ''
-  const color   = document.getElementById('ts-color-hex').value || '#1A6B3C'
+  const emoji    = document.getElementById('ts-emoji').value || '⚽'
+  const title    = document.getElementById('ts-title').value || 'Titre'
+  const content  = document.getElementById('ts-content').value || ''
+  const color    = document.getElementById('ts-color-hex').value || '#1A6B3C'
+  const imageFile = document.getElementById('ts-image')?.value?.trim()
+  const base = typeof import.meta !== 'undefined' ? import.meta.env.BASE_URL : '/'
+  const imgHTML = imageFile
+    ? `<div style="padding:0 20px 12px;text-align:center"><img src="${base}icons/${imageFile}" style="max-height:140px;max-width:100%;border-radius:10px;object-fit:contain"></div>`
+    : ''
   const pa = document.getElementById('ts-preview-area')
   pa.innerHTML = `
     <div style="font-size:11px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Aperçu en situation réelle</div>
     <div style="background:rgba(0,0,0,0.5);border-radius:14px;padding:12px;margin-bottom:8px">
       <div style="background:#fff;border-radius:16px;overflow:hidden;max-width:380px;margin:0 auto;box-shadow:0 16px 48px rgba(0,0,0,0.4)">
-        <!-- Barre de progression -->
-        <div style="height:4px;background:#eee">
-          <div style="height:100%;width:60%;background:${color}"></div>
-        </div>
-        <!-- En-tête -->
+        <div style="height:4px;background:#eee"><div style="height:100%;width:60%;background:${color}"></div></div>
         <div style="padding:20px 20px 0;text-align:center">
           <div style="font-size:48px;margin-bottom:8px;line-height:1">${emoji}</div>
           <div style="font-size:17px;font-weight:900;color:#111;margin-bottom:4px">${title}</div>
           <div style="font-size:11px;color:#aaa">6 / 10</div>
         </div>
-        <!-- Contenu -->
-        <div style="padding:14px 20px 18px;font-size:13px;color:#333;line-height:1.7">${content}</div>
-        <!-- Navigation -->
+        ${imgHTML}
+        <div style="padding:${imageFile?'4':'14'}px 20px 18px;font-size:13px;color:#333;line-height:1.7">${content}</div>
         <div style="padding:14px 20px;border-top:1px solid #f0f0f0;display:flex;gap:10px">
           <button style="padding:10px 16px;border-radius:10px;border:1.5px solid #ddd;background:#fff;font-size:12px;font-weight:700;cursor:default;color:#555">‹ Précédent</button>
           <div style="flex:1"></div>
@@ -217,8 +298,6 @@ function previewStep() {
         </div>
       </div>
     </div>`
-
-  // Appliquer les styles listes
   pa.querySelectorAll('ul,ol').forEach(el => { el.style.paddingLeft='20px'; el.style.margin='6px 0' })
   pa.querySelectorAll('li').forEach(el => { el.style.marginBottom='4px' })
   pa.querySelectorAll('p').forEach(el => { el.style.marginBottom='8px' })
@@ -235,7 +314,8 @@ async function saveForm(container) {
 
   if (!title || !content) { alert('Titre et contenu sont obligatoires.'); return }
 
-  const payload = { emoji, title, content, color, step_order: order, is_active: active }
+  const payload = { emoji, title, content, color, step_order: order, is_active: active,
+    image_url: document.getElementById('ts-image')?.value?.trim() || null }
   let error
   if (id) {
     ({ error } = await supabase.from('tutorial_steps').update(payload).eq('id', id))

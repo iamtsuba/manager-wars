@@ -156,8 +156,10 @@ export function showTutorial(profile, steps, onComplete) {
           <div style="font-size:18px;font-weight:900;color:#111;margin-bottom:4px">${s.title}</div>
           <div style="font-size:11px;color:#aaa">${step + 1} / ${STEPS.length}</div>
         </div>
+        <!-- Image optionnelle -->
+        ${s.image_url ? `<div style="padding:0 24px 8px;text-align:center"><img src="${BASE}icons/${s.image_url}" style="max-height:160px;max-width:100%;border-radius:12px;object-fit:contain"></div>` : ''}
         <!-- Contenu -->
-        <div style="padding:16px 24px 20px;flex:1;overflow-y:auto;font-size:14px;color:#333;line-height:1.7">
+        <div style="padding:${s.image_url?'8':'16'}px 24px 20px;flex:1;overflow-y:auto;font-size:14px;color:#333;line-height:1.7">
           ${s.content}
         </div>
         <!-- Navigation -->
@@ -220,7 +222,7 @@ export async function checkAndShowTutorial(profile, navigate) {
   console.log('[Tutorial] Étapes DB:', dbSteps?.length ?? 'null', dbErr?.message ?? 'OK')
 
   const steps = (dbSteps && dbSteps.length > 0)
-    ? dbSteps.map(s => ({ emoji: s.emoji, title: s.title, color: s.color, content: s.content }))
+    ? dbSteps.map(s => ({ emoji: s.emoji, title: s.title, color: s.color, content: s.content, image_url: s.image_url || null }))
     : STEPS  // fallback sur les étapes locales
 
   showTutorial(profile, steps, () => navigate('boosters'))

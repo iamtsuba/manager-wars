@@ -211,21 +211,24 @@ export function showTutorial(profile, steps, onComplete) {
 export async function checkAndShowTutorial(profile, navigate, toast) {
   if (!profile || profile.tutorial_done) return
 
-  // Charger les étapes depuis la DB (toutes, actives ou non, pour le diagnostic)
-  const { data: allSteps, error: dbErr } = await supabase
-    .from('tutorial_steps')
-    .select('*')
-    .order('step_order')
+  let dbSteps = []
 
-  const dbSteps = allSteps?.filter(s => s.is_active !== false) || []
-
-  // Diagnostic visible
-  if (dbErr) {
-    console.warn('[Tutorial] Erreur DB:', dbErr.message)
-    toast && toast(`[Tutorial] Erreur DB: ${dbErr.message}`, 'error', 6000)
+  // Essai 1 : via RPC (SECURITY DEFINER, bypass RLS)
+  const { data: rpcData, error: rpcErr } = await supabase.rpc('get_tutorial_steps')
+  if (!rpcErr && rpcData?.length > 0) {
+    dbSteps = rpcData
+    console.log(`[Tutorial] RPC OK → ${dbSteps.length} étapes`)
   } else {
-    console.log(`[Tutorial] ${dbSteps.length}/${allSteps?.length||0} étapes DB actives`)
-    toast && toast(`[Tutorial] ${dbSteps.length} étapes DB trouvées (${allSteps?.length||0} total)`, 'info', 4000)
+    // Essai 2 : lecture directe (dépend des policies RLS)
+    const { data: directData, error: directErr } = await supabase
+      .from('tutorial_steps').select('*').eq('is_active', true).order('step_order')
+    if (!directErr && directData?.length > 0) {
+      dbSteps = directData
+      console.log(`[Tutorial] Direct OK → ${dbSteps.length} étapes`)
+    } else {
+      console.warn(`[Tutorial] Aucune étape DB (RPC: ${rpcErr?.message}, Direct: ${directErr?.message})`)
+      toast && toast(`[Tutorial] DB vide ou inaccessible — tuto local utilisé`, 'warning', 5000)
+    }
   }
 
   const steps = dbSteps.length > 0

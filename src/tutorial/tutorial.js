@@ -1,5 +1,7 @@
 import { supabase } from '../lib/supabase.js'
 
+const BASE = import.meta.env.BASE_URL
+
 const STEPS = [
   {
     emoji: '⚽',

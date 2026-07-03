@@ -1,11 +1,12 @@
 import { supabase } from '../../lib/supabase.js'
 
 const CARD_TYPES = [
-  { value:'player',       label:'Joueur' },
-  { value:'formation',    label:'Formation' },
+  { value:'player',             label:'Joueur' },
+  { value:'formation',          label:'Formation' },
   { value:'game_changer',       label:'Game Changer' },
   { value:'ultra_game_changer', label:'Ultra Game Changer' },
   { value:'game_helper',        label:'Game Helper' },
+  { value:'stadium',            label:'🏟️ Stade' },
 ]
 const RARITIES = [
   { value:'',        label:'Toutes' },

@@ -307,7 +307,7 @@ export async function renderDeckSelect(container, ctx, matchMode) {
   container.innerHTML = '<div style="padding:40px;text-align:center;color:#aaa">⚽ Chargement...</div>'
 
   const { data: decks } = await supabase
-    .from('decks').select('id,name,is_active,formation')
+    .from('decks').select('id,name,is_active,formation,stadium_card_id')
     .eq('owner_id', state.profile.id).order('created_at', { ascending:false })
 
   if (!decks || decks.length === 0) {
@@ -713,7 +713,7 @@ export async function loadMatchSetup(container, ctx, matchMode, onReady) {
   let deckMeta, deckCards, deckErr1, deckErr2
   try {
     const results = await Promise.all([
-      supabase.from('decks').select('formation,name').eq('id', deckId).single(),
+      supabase.from('decks').select('formation,name,stadium_card_id').eq('id', deckId).single(),
       supabase.from('deck_cards')
         .select(`position, is_starter, slot_order,
           card:cards(id, card_type, formation,
@@ -764,9 +764,9 @@ export async function loadMatchSetup(container, ctx, matchMode, onReady) {
 
   // Charger la def du stade du deck sélectionné
   let stadiumDef = null
-  if (deck?.stadium_card_id) {
+  if (deckMeta?.stadium_card_id) {
     const { data: stadCard } = await supabase
-      .from('cards').select('stadium_id').eq('id', deck.stadium_card_id).single()
+      .from('cards').select('stadium_id').eq('id', deckMeta.stadium_card_id).single()
     if (stadCard?.stadium_id) {
       const { data: sDef } = await supabase
         .from('stadium_definitions')

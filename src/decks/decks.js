@@ -54,7 +54,9 @@ function renderMiniCardHTML(p, w=44, h=58) {
   const role     = p?.job || 'MIL'
   const jobColor = JOB_COLORS[role] || '#555'
   const rarityBorder = { normal:'#aaa', pepite:'#D4A017', pépite:'#D4A017', papyte:'#222', legende:'#7a28b8', légende:'#7a28b8' }[p?.rarity] || '#aaa'
-  const note = Number(role==='GK'?p?.note_g:role==='DEF'?p?.note_d:role==='MIL'?p?.note_m:p?.note_a)||0
+  const evo57 = p?.evolution_bonus || 0
+  const noteBase57 = Number(role==='GK'?p?.note_g:role==='DEF'?p?.note_d:role==='MIL'?p?.note_m:p?.note_a)||0
+  const note = noteBase57 + (role===p?.job||role===p?.job2 ? evo57 : 0)
   const nameH = Math.round(h*0.19), botH = Math.round(h*0.25), portH = h-nameH-botH
   if (!p) return `<div style="width:${w}px;height:${h}px;border:2px dashed rgba(255,255,255,0.3);border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:20px;color:rgba(255,255,255,0.3)">+</div>`
   return `<div style="width:${w}px;height:${h}px;border-radius:5px;border:2px solid ${rarityBorder};background:${jobColor};position:relative;overflow:hidden;flex-shrink:0">
@@ -374,7 +376,8 @@ function renderDeckField(container, builder, positions, ctx) {
       const portrait = getPortrait(p)
       const logoUrl  = getClubLogo(p)
       const flag     = flagImgUrl(p.country_code)
-      const note0    = Number(role==='GK'?p.note_g:role==='DEF'?p.note_d:role==='MIL'?p.note_m:p.note_a)||0
+      const evoSlot = (p.card?.evolution_bonus || p.evolution_bonus || 0)
+      const note0    = (Number(role==='GK'?p.note_g:role==='DEF'?p.note_d:role==='MIL'?p.note_m:p.note_a)||0) + (role===p.job||role===p.job2?evoSlot:0)
       // Bonus stade : +10 si même club ou même pays
       const hasBonus = stadDef && (
         (stadDef.club_id && String(p.club_id) === String(stadDef.club_id)) ||
@@ -451,9 +454,10 @@ function openPlayerSelector(position, builder, container, ctx) {
   })
 
   eligible.sort((a, b) => {
-    const fn = r => r==='GK'?p.note_g : r==='DEF'?p.note_d : r==='MIL'?p.note_m : p.note_a
-    const nA = role==='GK'?a.player.note_g : role==='DEF'?a.player.note_d : role==='MIL'?a.player.note_m : a.player.note_a
-    const nB = role==='GK'?b.player.note_g : role==='DEF'?b.player.note_d : role==='MIL'?b.player.note_m : b.player.note_a
+    const evoFn = card?.evolution_bonus||0; const fn = r => (r==='GK'?p.note_g : r==='DEF'?p.note_d : r==='MIL'?p.note_m : p.note_a) + (r===p.job||r===p.job2?evoFn:0)
+    const evoA = a.evolution_bonus||0, evoB = b.evolution_bonus||0
+    const nA = (role==='GK'?a.player.note_g : role==='DEF'?a.player.note_d : role==='MIL'?a.player.note_m : a.player.note_a) + (role===a.player.job||role===a.player.job2?evoA:0)
+    const nB = (role==='GK'?b.player.note_g : role==='DEF'?b.player.note_d : role==='MIL'?b.player.note_m : b.player.note_a) + (role===b.player.job||role===b.player.job2?evoB:0)
     return nB - nA
   })
 
@@ -466,7 +470,8 @@ function openPlayerSelector(position, builder, container, ctx) {
         </button>` : ''}
       ${eligible.length > 0 ? eligible.map(c => {
         const p = c.player
-        const note = role==='GK'?p.note_g : role==='DEF'?p.note_d : role==='MIL'?p.note_m : p.note_a
+        const evoPick = card.evolution_bonus||0
+        const note = (role==='GK'?p.note_g : role==='DEF'?p.note_d : role==='MIL'?p.note_m : p.note_a) + (role===p.job||role===p.job2?evoPick:0)
         const portrait = getPortrait(p)
         const rarColor = {normal:'#ccc',pepite:'#D4A017',papyte:'#909090',legende:'#7a28b8'}[p.rarity]
         return `<div class="player-option" data-card-id="${c.id}"
@@ -543,7 +548,7 @@ function openSubSelector(builder, container, ctx) {
       ${available.length > 0 ? available.map(c => {
         const p = c.player
         const portrait = getPortrait(p)
-        const mainNote = p.job==='GK'?p.note_g : p.job==='DEF'?p.note_d : p.job==='MIL'?p.note_m : p.note_a
+        const mainNote = (p.job==='GK'?p.note_g : p.job==='DEF'?p.note_d : p.job==='MIL'?p.note_m : p.note_a) + (card.evolution_bonus||0)
         return `<div class="player-option" data-card-id="${c.id}"
           style="display:flex;align-items:center;gap:10px;padding:8px;border:1.5px solid var(--gray-200);border-radius:10px;cursor:pointer">
           <div style="width:40px;height:40px;border-radius:8px;overflow:hidden;flex-shrink:0;background:#dde;border:2px solid ${JOB_COLORS[p.job]}">

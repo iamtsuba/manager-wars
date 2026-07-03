@@ -891,7 +891,13 @@ async function openCardDetail(card, allPlayerCards, countByPlayer, ctx) {
   const count           = samePlayerCards.length
 
   // Prix de vente directe depuis sell_price_configs (note = max des notes du joueur)
-  const playerMaxNote = Math.max(Number(p.note_g)||0, Number(p.note_d)||0, Number(p.note_m)||0, Number(p.note_a)||0)
+  const evoCard = card.evolution_bonus || 0
+  const playerMaxNote = Math.max(
+    (Number(p.note_g)||0) + (p.job==='GK'||p.job2==='GK'?evoCard:0),
+    (Number(p.note_d)||0) + (p.job==='DEF'||p.job2==='DEF'?evoCard:0),
+    (Number(p.note_m)||0) + (p.job==='MIL'||p.job2==='MIL'?evoCard:0),
+    (Number(p.note_a)||0) + (p.job==='ATT'||p.job2==='ATT'?evoCard:0)
+  )
   const rarity = p.rarity || 'normal'
   const { data: priceConfigs } = await supabase
     .from('sell_price_configs').select('*')
@@ -906,9 +912,9 @@ async function openCardDetail(card, allPlayerCards, countByPlayer, ctx) {
   const canMarket = p.rarity !== 'legende'
 
   const portrait = getPortrait(p)
-  const note1    = (p.rarity==='pepite'||p.rarity==='papyte') && card.current_note != null ? card.current_note : getNote(p, p.job)
+  const note1    = ((p.rarity==='pepite'||p.rarity==='papyte') && card.current_note != null ? card.current_note : getNote(p, p.job)) + evoCard
   const isEvol   = p.rarity==='pepite'||p.rarity==='papyte'
-  const note2    = p.job2 ? (isEvol ? currentSecondaryNote(card, job2NoteKey(p.job2)) : getNote(p, p.job2)) : null
+  const note2    = p.job2 ? ((isEvol ? currentSecondaryNote(card, job2NoteKey(p.job2)) : getNote(p, p.job2)) + (getNote(p,p.job2)>0?evoCard:0)) : null
   const jobColor  = JOB_COLORS[p.job] || '#1A6B3C'
   const job2Color = p.job2 ? JOB_COLORS[p.job2] : null
   const rarColor  = RAR_COLORS[p.rarity] || '#ccc'

@@ -5,9 +5,10 @@ const JOB_COLORS  = { GK:'#111111', DEF:'#bb2020', MIL:'#D4A017', ATT:'#1A6B3C' 
 const RARITY_COLORS = { normal:'#ccc', pepite:'#D4A017', papyte:'#909090', legende:'#7a28b8' }
 const BASE = import.meta.env.BASE_URL
 
-function getNote(p, job) {
+function getNote(p, job, evo=0) {
   if (!job) return 0
-  return Number(job==='GK'?p.note_g:job==='DEF'?p.note_d:job==='MIL'?p.note_m:p.note_a) || 0
+  const base = Number(job==='GK'?p.note_g:job==='DEF'?p.note_d:job==='MIL'?p.note_m:p.note_a) || 0
+  return base + (job===p.job||job===p.job2 ? evo : 0)
 }
 
 function rarityBar(rarity) {
@@ -49,7 +50,7 @@ async function loadMarket(container, ctx) {
     .from('market_listings')
     .select(`id, price, status, listed_at, seller_id,
       seller:users!seller_id(pseudo),
-      card:cards(id, card_type, current_note,
+      card:cards(id, card_type, current_note, evolution_bonus,
         player:players(id, firstname, surname_encoded, country_code, job, job2,
           note_g, note_d, note_m, note_a, rarity, note_min, note_max,
           clubs(encoded_name, logo_url, logo_url)))`)
@@ -61,7 +62,7 @@ async function loadMarket(container, ctx) {
     .from('market_listings')
     .select(`id, price, status, listed_at, sold_at, seller_id, buyer_id,
       buyer:users!buyer_id(pseudo),
-      card:cards(id, card_type, current_note,
+      card:cards(id, card_type, current_note, evolution_bonus,
         player:players(id, firstname, surname_encoded, country_code, job, job2,
           note_g, note_d, note_m, note_a, rarity,
           clubs(encoded_name, logo_url)))`)
@@ -146,8 +147,9 @@ async function loadMarket(container, ctx) {
   function renderBuyRow(l) {
     const p = l.card?.player
     if (!p) return ''
-    const note1     = getNote(p, p.job)
-    const note2     = p.job2 ? getNote(p, p.job2) : 0
+    const evo     = l.card?.evolution_bonus || 0
+    const note1     = getNote(p, p.job, evo)
+    const note2     = p.job2 ? getNote(p, p.job2, evo) : 0
     const canAfford = (state.profile.credits||0) >= l.price
     return `<div class="card-panel" style="display:flex;align-items:center;gap:8px;padding:10px 12px;overflow:hidden;padding-left:6px">
       ${rarityBar(p.rarity)}
@@ -169,8 +171,9 @@ async function loadMarket(container, ctx) {
   function renderMineRow(l) {
     const p = l.card?.player
     if (!p) return ''
-    const note1  = getNote(p, p.job)
-    const note2  = p.job2 ? getNote(p, p.job2) : 0
+    const evo  = l.card?.evolution_bonus || 0
+    const note1  = getNote(p, p.job, evo)
+    const note2  = p.job2 ? getNote(p, p.job2, evo) : 0
     const isSold = l.status === 'sold'
     return `<div class="card-panel" style="display:flex;align-items:center;gap:8px;padding:10px 12px;overflow:hidden;padding-left:6px;${isSold?'opacity:0.7':''}">
       ${rarityBar(p.rarity)}

@@ -68,8 +68,11 @@ export function renderCardHTML(player, opts = {}) {
   const border   = RARITY_BORDERS[rarity]
   const job1     = player.job || 'ATT'
   const job2     = player.job2
-  const note1    = player.current_note ?? (job1 === 'ATT' ? player.note_a : job1 === 'MIL' ? player.note_m : job1 === 'DEF' ? player.note_d : player.note_g)
-  const note2    = job2 ? (job2 === 'ATT' ? player.note_a : job2 === 'MIL' ? player.note_m : job2 === 'DEF' ? player.note_d : player.note_g) : null
+  const evo      = player.evolution_bonus || opts.evolution_bonus || 0
+  const note1Raw = player.current_note ?? (job1 === 'ATT' ? player.note_a : job1 === 'MIL' ? player.note_m : job1 === 'DEF' ? player.note_d : player.note_g)
+  const note1    = (note1Raw || 0) + evo
+  const note2Raw = job2 ? (job2 === 'ATT' ? player.note_a : job2 === 'MIL' ? player.note_m : job2 === 'DEF' ? player.note_d : player.note_g) : null
+  const note2    = note2Raw != null ? (note2Raw > 0 ? note2Raw + evo : note2Raw) : null
   const c1       = JOB_COLORS[job1]
   const c2       = job2 ? JOB_COLORS[job2] : null
   const country  = player.country_code || ''
@@ -126,10 +129,10 @@ export function renderCardHTML(player, opts = {}) {
         ${rarity === 'normal' ? clubHTML : rarityBadge}
       </div>
       ${showNotes ? `<div style="background:#e8e0cc;padding:4px 8px;display:grid;grid-template-columns:1fr 1fr;gap:2px;font-size:9px">
-        <div style="color:#555">GK <b style="color:#111">${player.note_g}</b></div>
-        <div style="color:#555">DEF <b style="color:#111">${player.note_d}</b></div>
-        <div style="color:#555">MIL <b style="color:#111">${player.note_m}</b></div>
-        <div style="color:#555">ATT <b style="color:#111">${player.note_a}</b></div>
+        <div style="color:#555">GK <b style="color:#111">${(Number(player.note_g)||0)+(job1==='GK'||job2==='GK'?evo:0)}</b></div>
+        <div style="color:#555">DEF <b style="color:#111">${(Number(player.note_d)||0)+(job1==='DEF'||job2==='DEF'?evo:0)}</b></div>
+        <div style="color:#555">MIL <b style="color:#111">${(Number(player.note_m)||0)+(job1==='MIL'||job2==='MIL'?evo:0)}</b></div>
+        <div style="color:#555">ATT <b style="color:#111">${(Number(player.note_a)||0)+(job1==='ATT'||job2==='ATT'?evo:0)}</b></div>
       </div>` : ''}
     </div>
   </div>`

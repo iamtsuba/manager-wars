@@ -63,8 +63,10 @@ function renderCard(card, countBadge = '') {
   const rarColor = RAR_COLORS[p.rarity] || '#ccc'
   // Pour pépite/papyte : afficher current_note (note évolutive), sinon note du poste
   const isEvolutive = p.rarity === 'pepite' || p.rarity === 'papyte'
-  const note1    = isEvolutive && card.current_note != null ? card.current_note : getNote(p, job)
-  const note2    = p.job2 ? (isEvolutive ? currentSecondaryNote(card, job2NoteKey(p.job2)) : getNote(p, p.job2)) : null
+  const evoBonus = card.evolution_bonus || 0
+  const note1    = (isEvolutive && card.current_note != null ? card.current_note : getNote(p, job)) + evoBonus
+  const rawNote2 = p.job2 ? (isEvolutive ? currentSecondaryNote(card, job2NoteKey(p.job2)) : getNote(p, p.job2)) : null
+  const note2    = rawNote2 != null ? (rawNote2 > 0 ? rawNote2 + evoBonus : rawNote2) : null
   const job2Color = p.job2 ? JOB_COLORS[p.job2] : null
   const portrait = getPortrait(p)
   const country  = COUNTRY_NAMES[p.country_code] || p.country_code || ''
@@ -1086,7 +1088,8 @@ async function openCardDetail(card, allPlayerCards, countByPlayer, ctx) {
           <div style="display:flex;align-items:center;gap:6px">
             ${[['GK',p.note_g],['DEF',p.note_d],['MIL',p.note_m],['ATT',p.note_a]].map(([j,n]) => {
               const col = JOB_COLORS[j]
-              const val = Number(n)||0
+              const isJobNote = j === p.job || j === p.job2
+              const val = (Number(n)||0) + (isJobNote && evo > 0 ? evo : 0)
               return `<div style="display:flex;flex-direction:column;align-items:center;gap:2px">
                 <svg width="38" height="37" viewBox="0 0 38 37" style="display:block">
                   <polygon points="19,2 24,13 36,13 26,21 30,33 19,26 8,33 12,21 2,13 14,13" fill="${col}" stroke="white" stroke-width="1.5"/>

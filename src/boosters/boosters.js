@@ -130,6 +130,36 @@ export async function renderBoosters(container, { state, navigate, toast }) {
   // Fallback si aucun booster en DB
   if (!ACTIVE_BOOSTERS.length) ACTIVE_BOOSTERS = BOOSTERS.map(b => ({ ...b, rates:[], isPub: b.id==='players_pub' }))
 
+  // Boosters sans doublons : vérifier si le pool est encore disponible
+  const ownedForCheck = await supabase.from('cards')
+    .select('player_id, card_type, formation, stadium_id, gc_type')
+    .eq('owner_id', state.profile.id).then(r => r.data || [])
+  const ownedStadsSet = new Set(ownedForCheck.filter(c=>c.card_type==='stadium').map(c=>c.stadium_id))
+  const ownedFormsSet = new Set(ownedForCheck.filter(c=>c.card_type==='formation').map(c=>c.formation))
+  const ownedGCSet    = new Set(ownedForCheck.filter(c=>c.card_type==='game_changer').map(c=>c.gc_type))
+
+  const poolEmpty = {}
+  for (const b of ACTIVE_BOOSTERS) {
+    if (b.allow_duplicates !== false || !b.rates?.length) continue
+    const types = [...new Set((b.rates||[]).map(r=>r.card_type))]
+    let hasAvail = false
+    for (const t of types) {
+      if (t === 'stadium') {
+        const { data: stads } = await supabase.from('stadium_definitions').select('id')
+        if ((stads||[]).some(s => !ownedStadsSet.has(s.id))) { hasAvail = true; break }
+      } else if (t === 'game_changer') {
+        const { data: gcs } = await supabase.from('gc_definitions').select('name').eq('is_active', true)
+        if ((gcs||[]).some(g => !ownedGCSet.has(g.name))) { hasAvail = true; break }
+      } else if (t === 'formation') {
+        const { FORMATION_LINKS } = await import('../match/formation-links.js')
+        if (Object.keys(FORMATION_LINKS).some(f => !ownedFormsSet.has(f))) { hasAvail = true; break }
+      } else {
+        hasAvail = true; break  // joueurs/autres : trop grand pour vérifier exhaustivement
+      }
+    }
+    if (!hasAvail) poolEmpty[b.id] = true
+  }
+
   container.innerHTML = `
   <div class="page">
     <div class="page-header">
@@ -140,7 +170,9 @@ export async function renderBoosters(container, { state, navigate, toast }) {
       <div class="booster-grid">
         ${ACTIVE_BOOSTERS.map(b => {
           const canAfford = b.cost === 0 || credits >= b.cost
-          return `<div class="booster-card ${!canAfford ? 'disabled' : ''}" data-booster="${b.id}" style="position:relative">
+          const isPoolEmpty = poolEmpty[b.id] === true
+          const isDisabled = !canAfford || isPoolEmpty
+          return `<div class="booster-card ${isDisabled ? 'disabled' : ''}" data-booster="${b.id}" style="position:relative">
             <button class="booster-info-btn" data-booster-id="${b.id}"
               style="position:absolute;top:6px;right:6px;width:20px;height:20px;border-radius:50%;
               background:rgba(0,0,0,0.15);border:none;cursor:pointer;font-size:11px;font-weight:700;
@@ -151,6 +183,7 @@ export async function renderBoosters(container, { state, navigate, toast }) {
             <div class="desc">${b.sub}</div>
             <div class="cost">${b.costLabel}</div>
             ${!canAfford ? `<div style="font-size:10px;color:#c0392b;margin-top:4px">Crédits insuffisants</div>` : ''}
+            ${isPoolEmpty ? `<div style="font-size:10px;color:#c0392b;margin-top:4px">🚫 Toutes les cartes déjà obtenues</div>` : ''}
           </div>`
         }).join('')}
       </div>
@@ -350,14 +383,15 @@ async function openMixedBooster(profile, booster) {
       if (!filtered.length) continue
       // Sans doublons : exclure les joueurs déjà possédés
       let pickPool = filtered.filter(p => !drawnThisBooster.has(p.id))
-      if (!allowDup) pickPool = pickPool.filter(p => !ownedPlayerIds.has(p.id))
-      if (!pickPool.length) pickPool = filtered.filter(p => !drawnThisBooster.has(p.id))
-      if (!pickPool.length) pickPool = filtered
+      if (!allowDup) {
+        pickPool = pickPool.filter(p => !ownedPlayerIds.has(p.id))
+        if (!pickPool.length) continue  // tous déjà possédés → skip
+      } else {
+        if (!pickPool.length) pickPool = filtered
+      }
       const player = pickPool[Math.floor(Math.random()*pickPool.length)]
       drawnThisBooster.add(player.id)
-      // Doublon = joueur déjà possédé AVANT ce booster
       const isDup = ownedPlayerIds.has(player.id)
-      if (!allowDup && isDup) continue  // skip si anti-doublon activé
       const { data: card } = await supabase.from('cards')
         .insert({ owner_id:profile.id, player_id:player.id, card_type:'player' }).select().single()
       if (card) {
@@ -374,17 +408,17 @@ async function openMixedBooster(profile, booster) {
       const gcPool = dbGC2?.length ? dbGC2 : [{name:'Ressusciter'},{name:'Double attaque'},{name:'Bouclier'},{name:'Vol de note'},{name:'Gel'}]
       // Sans doublons : exclure les GC déjà possédés
       const gcFiltered = !allowDup ? gcPool.filter(g => !ownedGCTypes.has(g.name)) : gcPool
-      const gcPick = (gcFiltered.length ? gcFiltered : gcPool)[Math.floor(Math.random()*(gcFiltered.length||gcPool.length))]
+      if (!allowDup && !gcFiltered.length) continue  // tous GC possédés → skip
+      const gcPick = gcFiltered[Math.floor(Math.random()*gcFiltered.length)]
       const gc_type = gcPick.name
-      if (!allowDup && ownedGCTypes.has(gc_type)) continue
       const { data: card } = await supabase.from('cards')
         .insert({ owner_id:profile.id, card_type:'game_changer', gc_type }).select().single()
       if (card) results.push(card)
     } else if (rate.card_type === 'formation') {
       const formations = ALL_FORMATIONS()
       const formPool = !allowDup ? formations.filter(f => !ownedFormations.has(f)) : formations
-      const formation = (formPool.length ? formPool : formations)[Math.floor(Math.random()*(formPool.length||formations.length))]
-      if (!allowDup && ownedFormations.has(formation)) continue
+      if (!allowDup && !formPool.length) continue  // toutes formations possédées → skip
+      const formation = formPool[Math.floor(Math.random()*formPool.length)]
       const isDupF = ownedFormations.has(formation)
       const { data: cards } = await supabase.from('cards')
         .insert({ owner_id:profile.id, card_type:'formation', formation }).select()
@@ -394,8 +428,8 @@ async function openMixedBooster(profile, booster) {
       if (stErr) { console.error('[Booster] stadium_definitions:', stErr.message); continue }
       if (!stads?.length) { console.warn('[Booster] Aucun stade en DB'); continue }
       const stadPool = !allowDup ? stads.filter(s => !ownedStadiumIds.has(s.id)) : stads
-      const stadDef = (stadPool.length ? stadPool : stads)[Math.floor(Math.random()*(stadPool.length||stads.length))]
-      if (!allowDup && ownedStadiumIds.has(stadDef.id)) continue
+      if (!allowDup && !stadPool.length) continue  // tous stades possédés → skip
+      const stadDef = stadPool[Math.floor(Math.random()*stadPool.length)]
       const { data: card, error: cErr } = await supabase.from('cards')
         .insert({ owner_id:profile.id, card_type:'stadium', stadium_id:stadDef.id })
         .select('id,card_type,stadium_id').single()

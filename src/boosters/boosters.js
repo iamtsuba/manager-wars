@@ -111,6 +111,7 @@ function dbToUI(b) {
     type:      primaryType,
     isPub:     b.price_type === 'pub',
     rates:     b.rates || [],
+    allow_duplicates: b.allow_duplicates !== false,  // false = anti-doublon
     _raw:      b,
   }
 }

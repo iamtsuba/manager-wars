@@ -153,20 +153,24 @@ async function openDeckBuilder(deckId, container, ctx) {
 
   const { data: cards } = await supabase
     .from('cards')
-    .select(`id, card_type, formation,
+    .select(`id, card_type, formation, stadium_id,
       player:players(id, firstname, surname_encoded, country_code, club_id, job, job2,
         note_g, note_d, note_m, note_a, rarity, skin, hair, hair_length,
-        clubs(encoded_name, logo_url))`)
+        clubs(encoded_name, logo_url)),
+      stadium_def:stadium_definitions(id, name, club_id, country_code, image_url,
+        club:clubs(encoded_name, logo_url))`)
     .eq('owner_id', state.profile.id)
 
   const playerCards    = (cards||[]).filter(c => c.card_type === 'player' && c.player)
   const formationCards = (cards||[]).filter(c => c.card_type === 'formation')
   const stadiumCards   = (cards||[]).filter(c => c.card_type === 'stadium')
 
-  // Charger les defs de stade pour les cartes possédées
+  // Construire stadDefMap depuis les cartes déjà jointes
   const stadIds = [...new Set(stadiumCards.map(c=>c.stadium_id).filter(Boolean))]
   let stadDefMap = {}
-  if (stadIds.length) {
+  stadiumCards.forEach(c => { if (c.stadium_def && c.stadium_id) stadDefMap[c.stadium_id] = c.stadium_def })
+  // Compléter si des defs manquent
+  if (stadIds.length && Object.keys(stadDefMap).length < stadIds.length) {
     const { data: stadDefs } = await supabase
       .from('stadium_definitions')
       .select('id,name,club_id,country_code,image_url,club:clubs(encoded_name,logo_url)')
@@ -318,6 +322,10 @@ function renderDeckField(container, builder, positions, ctx) {
   const field = container.querySelector('#deck-field')
   if (!field) return
 
+  // Calculer le stade sélectionné pour le bonus +10
+  const selectedStadCard = builder.stadiumCards?.find(c => c.id === builder.stadiumCardId)
+  const stadDef = selectedStadCard ? (builder.stadDefMap?.[selectedStadCard.stadium_id] || null) : null
+
   const FPOS   = FORMATION_POSITIONS[builder.formation] || {}
   const FLINKS = getActiveLinks(builder.formation) || []
 
@@ -366,7 +374,13 @@ function renderDeckField(container, builder, positions, ctx) {
       const portrait = getPortrait(p)
       const logoUrl  = getClubLogo(p)
       const flag     = flagImgUrl(p.country_code)
-      const note     = Number(role==='GK'?p.note_g:role==='DEF'?p.note_d:role==='MIL'?p.note_m:p.note_a)||0
+      const note0    = Number(role==='GK'?p.note_g:role==='DEF'?p.note_d:role==='MIL'?p.note_m:p.note_a)||0
+      // Bonus stade : +10 si même club ou même pays
+      const hasBonus = stadDef && (
+        (stadDef.club_id && String(p.club_id) === String(stadDef.club_id)) ||
+        (stadDef.country_code && p.country_code === stadDef.country_code)
+      )
+      const note = hasBonus ? note0 + 10 : note0
       const portH    = CH - NAMEH - BOTHH
 
       svg += `<defs><clipPath id="dcp-${pos}"><rect x="${x0}" y="${(c.y-CH/2+NAMEH).toFixed(1)}" width="${CW}" height="${portH}"/></clipPath></defs>`
@@ -379,7 +393,11 @@ function renderDeckField(container, builder, positions, ctx) {
       if (flag) svg += `<image href="${flag}" x="${(c.x-21).toFixed(1)}" y="${(c.y+CH/2-BOTHH+3).toFixed(1)}" width="13" height="10" preserveAspectRatio="xMidYMid slice"/>`
       svg += `<text x="${c.x.toFixed(1)}" y="${(c.y+CH/2-BOTHH/2).toFixed(1)}" text-anchor="middle" dominant-baseline="central" font-size="12" font-weight="900" fill="#111" font-family="Arial Black">${note}</text>`
       if (logoUrl) svg += `<image href="${logoUrl}" x="${(c.x+CW/2-14).toFixed(1)}" y="${(c.y+CH/2-BOTHH+2).toFixed(1)}" width="12" height="12" preserveAspectRatio="xMidYMid meet"/>`
-      svg += `<rect x="${x0}" y="${y0}" width="${CW}" height="${CH}" rx="5" fill="none" stroke="${rarityBorder}" stroke-width="2"/>`
+      svg += `<rect x="${x0}" y="${y0}" width="${CW}" height="${CH}" rx="5" fill="none" stroke="${hasBonus ? '#E87722' : rarityBorder}" stroke-width="${hasBonus ? '2.5' : '2'}"/>`
+      if (hasBonus) {
+        svg += `<rect x="${(c.x+CW/2-13).toFixed(1)}" y="${y0}" width="13" height="9" rx="3" fill="#E87722"/>`
+        svg += `<text x="${(c.x+CW/2-6.5).toFixed(1)}" y="${(c.y-CH/2+4.5).toFixed(1)}" text-anchor="middle" dominant-baseline="central" font-size="5.5" font-weight="900" fill="#fff" font-family="Arial">+10</text>`
+      }
     } else {
       // Slot vide
       svg += `<rect x="${x0}" y="${y0}" width="${CW}" height="${CH}" rx="5" fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.35)" stroke-width="2" stroke-dasharray="5,3"/>`

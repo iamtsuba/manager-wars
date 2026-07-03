@@ -1200,10 +1200,14 @@ async function openCardDetail(card, allPlayerCards, countByPlayer, ctx) {
     })
     if (!confirmed) return
 
-    // 1. Supprimer les dépendances FK des copies sacrifiées
+    // 1. Supprimer toutes les dépendances FK des copies sacrifiées
     if (idsToDelete.length) {
+      // Nettoyer dans l'ordre : market_listings → deck_cards → transfer_history → cards
       await supabase.from('market_listings').delete().in('card_id', idsToDelete)
+      await supabase.from('deck_cards').delete().in('card_id', idsToDelete)
       await supabase.from('transfer_history').delete().in('card_id', idsToDelete)
+      // Aussi retirer le stadium_card_id si un deck pointe sur une carte sacrifiée
+      await supabase.from('decks').update({ stadium_card_id: null }).in('stadium_card_id', idsToDelete)
       const { error: delErr } = await supabase.from('cards').delete().in('id', idsToDelete)
       if (delErr) { toast('Erreur suppression : ' + delErr.message, 'error'); return }
     }

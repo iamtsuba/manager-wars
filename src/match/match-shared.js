@@ -338,7 +338,7 @@ export async function renderDeckSelect(container, ctx, matchMode) {
   const { data: allDeckCards } = await supabase
     .from('deck_cards')
     .select(`deck_id, position, is_starter, slot_order,
-      card:cards(id,card_type,formation,stadium_id,
+      card:cards(id,card_type,formation,stadium_id,evolution_bonus,
         player:players(id,firstname,surname_encoded,country_code,club_id,job,job2,
           note_g,note_d,note_m,note_a,rarity,skin,hair,hair_length,
           clubs(encoded_name,logo_url)))`)
@@ -735,7 +735,7 @@ export async function loadMatchSetup(container, ctx, matchMode, onReady) {
       supabase.from('decks').select('formation,name,stadium_card_id').eq('id', deckId).single(),
       supabase.from('deck_cards')
         .select(`position, is_starter, slot_order,
-          card:cards(id, card_type, formation,
+          card:cards(id, card_type, formation, evolution_bonus,
             player:players(id,firstname,surname_encoded,country_code,club_id,job,job2,
               note_g,note_d,note_m,note_a,rarity,skin,hair,hair_length,
               clubs(encoded_name,logo_url)))`)

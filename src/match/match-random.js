@@ -128,17 +128,24 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
       supabase.from('users').select('id,pseudo,club_name').eq('id', match.home_id).single(),
       supabase.from('users').select('id,pseudo,club_name').eq('id', match.away_id).single(),
     ])
-    const toPlayer = (r) => ({
-      cardId: r.card_id, position: r.position, id: r.id,
-      firstname: r.firstname, name: r.surname_encoded,
-      country_code: r.country_code, club_id: r.club_id,
-      job: r.job, job2: r.job2,
-      note_g: Number(r.note_g)||0, note_d: Number(r.note_d)||0,
-      note_m: Number(r.note_m)||0, note_a: Number(r.note_a)||0,
-      rarity: r.rarity, skin: r.skin, hair: r.hair, hair_length: r.hair_length,
-      clubName: r.club_encoded_name||null, clubLogo: r.club_logo_url||null,
-      boost: 0, used: false, _line: null, _col: null,
-    })
+    const toPlayer = (r) => {
+      const evo = Number(r.evolution_bonus)||0
+      return {
+        cardId: r.card_id, position: r.position, id: r.id,
+        firstname: r.firstname, name: r.surname_encoded,
+        country_code: r.country_code, club_id: r.club_id,
+        job: r.job, job2: r.job2,
+        // Appliquer evolution_bonus sur les notes des postes principal et secondaire
+        note_g: (Number(r.note_g)||0) + (r.job==='GK'||(r.job2==='GK'&&Number(r.note_g)>0)?evo:0),
+        note_d: (Number(r.note_d)||0) + (r.job==='DEF'||(r.job2==='DEF'&&Number(r.note_d)>0)?evo:0),
+        note_m: (Number(r.note_m)||0) + (r.job==='MIL'||(r.job2==='MIL'&&Number(r.note_m)>0)?evo:0),
+        note_a: (Number(r.note_a)||0) + (r.job==='ATT'||(r.job2==='ATT'&&Number(r.note_a)>0)?evo:0),
+        evolution_bonus: evo,
+        rarity: r.rarity, skin: r.skin, hair: r.hair, hair_length: r.hair_length,
+        clubName: r.club_encoded_name||null, clubLogo: r.club_logo_url||null,
+        boost: 0, used: false, _line: null, _col: null,
+      }
+    }
     const p1Starters = (p1D?.starters||[]).map(r=>toPlayer(r))
     const p2Starters = (p2D?.starters||[]).map(r=>toPlayer(r))
     const p1F = p1D?.formation||'4-4-2', p2F = p2D?.formation||'4-4-2'

@@ -212,22 +212,35 @@ async function openBooster(booster, { state, toast, navigate, container }) {
   const ownedFormations = new Set((existingCards||[]).filter(c => c.card_type === 'formation').map(c => c.formation))
 
   let newCards = []
-  if (booster.rates?.length) {
-    // Booster configuré dans l'admin → tirage piloté par les taux de drop
-    // (rareté, note_min/max, type) tels que définis. C'est la source de vérité.
-    newCards = await openMixedBooster(state.profile, booster)
-  } else {
-    // Boosters legacy / fallback sans taux configurés
-    const type = booster.type || 'player'
-    if (type === 'player') {
-      newCards = await openPlayersBooster(state.profile, booster.cardCount, booster.cost)
-    } else if (type === 'game_changer') {
-      newCards = await openGCBooster(state.profile, booster.cardCount, booster.cost)
-    } else if (type === 'formation') {
-      newCards = await openFormationBooster(state.profile, booster.cost)
-    } else {
+  let _boosterError = null
+  try {
+    if (booster.rates?.length) {
       newCards = await openMixedBooster(state.profile, booster)
+    } else {
+      const type = booster.type || 'player'
+      if (type === 'player') newCards = await openPlayersBooster(state.profile, booster.cardCount, booster.cost)
+      else if (type === 'game_changer') newCards = await openGCBooster(state.profile, booster.cardCount, booster.cost)
+      else if (type === 'formation') newCards = await openFormationBooster(state.profile, booster.cost)
+      else newCards = await openMixedBooster(state.profile, booster)
     }
+  } catch(e) {
+    _boosterError = e.message || String(e)
+    console.error('[Booster] Erreur:', e)
+  }
+
+  if (!newCards?.length) {
+    const ov = document.createElement('div')
+    ov.style.cssText = 'position:fixed;inset:0;background:#0a1628;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:3000;gap:16px;color:#fff;padding:24px;text-align:center'
+    ov.innerHTML = `
+      <div style="font-size:48px">😕</div>
+      <div style="font-size:20px;font-weight:900">Aucune carte obtenue</div>
+      <div style="font-size:12px;color:rgba(255,255,255,0.6);max-width:320px;word-break:break-all;background:rgba(255,255,255,0.05);padding:10px;border-radius:8px;margin-top:6px">
+        ${_boosterError || 'Vérifie la console (F12) pour plus de détails'}
+      </div>
+      <button style="margin-top:10px;padding:12px 28px;border-radius:10px;border:none;background:#1A6B3C;color:#fff;font-size:15px;font-weight:700;cursor:pointer" id="anim-close-err">Fermer</button>`
+    document.body.appendChild(ov)
+    ov.querySelector('#anim-close-err')?.addEventListener('click', () => ov.remove())
+    return
   }
 
   // Marquer les doublons (déjà possédés avant ce tirage)

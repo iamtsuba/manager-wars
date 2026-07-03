@@ -341,12 +341,22 @@ async function openMixedBooster(profile, booster) {
   }
   const allowDup = booster.allow_duplicates !== false  // true par défaut
   // Joueurs déjà possédés (pour réduire les doublons quand le pool le permet)
-  const { data: ownedCards } = await supabase.from('cards')
+  // Query robuste : essayer avec stadium_id, fallback sans si colonne absente
+  let ownedCards = []
+  const { data: oc1, error: ocErr } = await supabase.from('cards')
     .select('player_id, card_type, formation, stadium_id, gc_type').eq('owner_id', profile.id)
-  const ownedPlayerIds  = new Set((ownedCards||[]).filter(c=>c.card_type==='player').map(c => c.player_id))
-  const ownedFormations = new Set((ownedCards||[]).filter(c=>c.card_type==='formation').map(c => c.formation))
-  const ownedGCTypes    = new Set((ownedCards||[]).filter(c=>c.card_type==='game_changer').map(c => c.gc_type))
-  const ownedStadiumIds = new Set((ownedCards||[]).filter(c=>c.card_type==='stadium').map(c => c.stadium_id))
+  if (ocErr) {
+    // Fallback sans stadium_id (colonne peut-être pas encore créée)
+    const { data: oc2 } = await supabase.from('cards')
+      .select('player_id, card_type, formation, gc_type').eq('owner_id', profile.id)
+    ownedCards = oc2 || []
+  } else {
+    ownedCards = oc1 || []
+  }
+  const ownedPlayerIds  = new Set(ownedCards.filter(c=>c.card_type==='player').map(c => c.player_id))
+  const ownedFormations = new Set(ownedCards.filter(c=>c.card_type==='formation').map(c => c.formation))
+  const ownedGCTypes    = new Set(ownedCards.filter(c=>c.card_type==='game_changer').map(c => c.gc_type))
+  const ownedStadiumIds = new Set(ownedCards.filter(c=>c.card_type==='stadium').map(c => c.stadium_id).filter(Boolean))
   const drawnThisBooster = new Set()  // joueurs déjà tirés dans CE booster
   const results = []
   for (let i = 0; i < (booster.cardCount||5); i++) {

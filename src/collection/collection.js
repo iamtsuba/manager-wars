@@ -1008,7 +1008,9 @@ async function openCardDetail(card, allPlayerCards, countByPlayer, ctx) {
                 : `Note actuelle : ${mainNoteEvo}${p.job2&&job2NoteBase>0?` / ${job2NoteEvo}`:''}` }
             </div>
           </div>
-          <button id="evolve-btn" class="btn btn-primary" style="background:#1A6B3C;border-color:#1A6B3C;padding:8px 16px;font-weight:900">
+          <button id="evolve-btn" class="btn btn-primary"
+            style="background:${count <= 1 ? '#ccc' : '#1A6B3C'};border-color:${count <= 1 ? '#ccc' : '#1A6B3C'};padding:8px 16px;font-weight:900;cursor:${count <= 1 ? 'not-allowed' : 'pointer'}"
+            ${count <= 1 ? 'disabled title="Un seul exemplaire — impossible de fusionner"' : ''}>
             ⬆️ Évoluer
           </button>
         </div>
@@ -1167,10 +1169,30 @@ async function openCardDetail(card, allPlayerCards, countByPlayer, ctx) {
 
   // ── Vente directe (les cartes sélectionnées) ────────────────────────────
   document.getElementById('evolve-btn')?.addEventListener('click', async () => {
+    if (count <= 1) return  // bouton grisé, double protection
+
     const ids = [...selectedCardIds]
     if (!ids.length) return
 
-    // Les IDs à sacrifier = sélectionnés SAUF la carte principale (card.id)
+    // Bloquer si l'exemplaire principal (card.id = Exemplaire 1) est sélectionné
+    if (selectedCardIds.has(card.id)) {
+      const ov = document.createElement('div')
+      ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px'
+      ov.innerHTML = `
+        <div style="background:#fff;border-radius:16px;padding:24px;max-width:300px;width:100%;text-align:center">
+          <div style="font-size:40px;margin-bottom:10px">⚠️</div>
+          <div style="font-size:15px;font-weight:900;color:#cc2222;margin-bottom:10px">Action impossible</div>
+          <div style="font-size:13px;color:#555;line-height:1.5;margin-bottom:18px">
+            Impossible de faire évoluer l'exemplaire 1 qui est l'exemplaire principal de la carte.<br><br>
+            Sélectionne uniquement les copies à sacrifier (Exemplaire 2, 3…).
+          </div>
+          <button id="err-close" class="btn btn-primary" style="width:100%">Compris</button>
+        </div>`
+      document.body.appendChild(ov)
+      ov.querySelector('#err-close').addEventListener('click', () => ov.remove())
+      ov.addEventListener('click', e => { if (e.target === ov) ov.remove() })
+      return
+    }
     const idsToDelete = ids.filter(id => id !== card.id)
     const bonusGained = idsToDelete.length || 1  // si seul card.id sélectionné → +1 sans supprimer
 

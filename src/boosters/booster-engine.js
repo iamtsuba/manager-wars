@@ -118,15 +118,16 @@ async function resolveCard(rate, ownerId) {
       .single()
     return card
   } else if (card_type === 'stadium') {
-    // Tirer un stade au hasard parmi les définitions
-    const { data: stads } = await supabase.from('stadium_definitions').select('id')
-    if (!stads?.length) return null
+    const { data: stads, error: stadsErr } = await supabase.from('stadium_definitions').select('id')
+    if (stadsErr) { console.error('[Booster] stadium_definitions:', stadsErr.message); return null }
+    if (!stads?.length) { console.warn('[Booster] Aucun stade défini en DB'); return null }
     const stadDef = stads[Math.floor(Math.random()*stads.length)]
-    const { data: card } = await supabase
+    const { data: card, error: cardErr } = await supabase
       .from('cards')
       .insert({ owner_id:ownerId, card_type:'stadium', stadium_id:stadDef.id, rarity:rarity||'normal' })
       .select('id,card_type,stadium_id,rarity')
       .single()
+    if (cardErr) console.error('[Booster] insert card stadium:', cardErr.message, cardErr.details)
     return card
   }
   return null

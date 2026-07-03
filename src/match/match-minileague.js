@@ -202,7 +202,8 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
     const p2Starters = (p2D?.starters||[]).map(r=>toPlayer(r))
     const p1F = p1D?.formation||'4-4-2', p2F = p2D?.formation||'4-4-2'
     return {
-      p1Team: buildTeam(p1Starters, p1F), p2Team: buildTeam(p2Starters, p2F),
+      p1Team: stadiumDef ? applyStadiumBonus(buildTeam(p1Starters, p1F), stadiumDef) : buildTeam(p1Starters, p1F),
+      p2Team: buildTeam(p2Starters, p2F),
       p1Subs: (p1D?.subs||[]).map(r=>toPlayer(r)), p2Subs: (p2D?.subs||[]).map(r=>toPlayer(r)),
       p1Formation: p1F, p2Formation: p2F,
       p1Name: p1P?.club_name||p1P?.pseudo||'Joueur 1',

@@ -97,7 +97,12 @@ export function applyStadiumBonus(team, stadiumDef) {
       const matchClub    = club_id     && String(p.club_id)     === String(club_id)
       const matchCountry = country_code && String(p.country_code) === String(country_code)
       if (matchClub || matchCountry) {
-        p.boost = (p.boost || 0) + 10
+        // +10 sur TOUTES les notes → s'applique dans toutes les phases sans exception
+        p.note_g = (Number(p.note_g) || 0) + 10
+        p.note_d = (Number(p.note_d) || 0) + 10
+        p.note_m = (Number(p.note_m) || 0) + 10
+        p.note_a = (Number(p.note_a) || 0) + 10
+        p.boost  = (p.boost || 0) + 10  // conservé pour le badge visuel
         p.stadiumBonus = true
       }
     })

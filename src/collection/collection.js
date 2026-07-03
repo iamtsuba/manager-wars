@@ -1171,7 +1171,34 @@ async function openCardDetail(card, allPlayerCards, countByPlayer, ctx) {
       toast('Sélectionne des copies à sacrifier', 'warning'); return
     }
 
-    if (!confirm(`Sacrifier ${idsToDelete.length} exemplaire${idsToDelete.length>1?'s':''} pour donner +${idsToDelete.length} à ${p.firstname} ${p.surname_encoded} ?`)) return
+    // Popup de confirmation de sacrifice
+    const confirmed = await new Promise(resolve => {
+      const ov = document.createElement('div')
+      ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px'
+      ov.innerHTML = `
+        <div style="background:#fff;border-radius:16px;padding:24px;max-width:320px;width:100%;text-align:center;box-shadow:0 16px 48px rgba(0,0,0,0.3)">
+          <div style="font-size:48px;margin-bottom:10px">⬆️</div>
+          <div style="font-size:17px;font-weight:900;margin-bottom:6px">Évolution par fusion</div>
+          <div style="font-size:13px;color:#555;margin-bottom:6px">
+            <strong>${p.firstname} ${p.surname_encoded}</strong>
+          </div>
+          <div style="background:#f0fdf4;border-radius:10px;padding:12px;margin-bottom:16px;font-size:13px;color:#333">
+            🗑️ <strong>${idsToDelete.length}</strong> copie${idsToDelete.length>1?'s':''} sacrifiée${idsToDelete.length>1?'s':''}<br>
+            📈 Note : <strong>${note1+(card.evolution_bonus||0)}</strong> → <strong style="color:#1A6B3C">${note1+(card.evolution_bonus||0)+idsToDelete.length}</strong>
+            ${note2&&note2>0 ? `<br>📈 Note 2 : <strong>${note2+(card.evolution_bonus||0)}</strong> → <strong style="color:#1A6B3C">${note2+(card.evolution_bonus||0)+idsToDelete.length}</strong>` : ''}
+          </div>
+          <div style="font-size:11px;color:#aaa;margin-bottom:18px">⚠️ Les copies sacrifiées sont définitivement supprimées</div>
+          <div style="display:flex;gap:10px">
+            <button id="sac-cancel" style="flex:1;padding:12px;border-radius:10px;border:1.5px solid #ddd;background:#fff;font-size:14px;font-weight:700;cursor:pointer;color:#555">Annuler</button>
+            <button id="sac-ok" style="flex:1;padding:12px;border-radius:10px;border:none;background:#1A6B3C;color:#fff;font-size:14px;font-weight:900;cursor:pointer">⬆️ Confirmer</button>
+          </div>
+        </div>`
+      document.body.appendChild(ov)
+      ov.querySelector('#sac-cancel').addEventListener('click', () => { ov.remove(); resolve(false) })
+      ov.querySelector('#sac-ok').addEventListener('click', () => { ov.remove(); resolve(true) })
+      ov.addEventListener('click', e => { if (e.target === ov) { ov.remove(); resolve(false) } })
+    })
+    if (!confirmed) return
 
     // 1. Supprimer les dépendances FK des copies sacrifiées
     if (idsToDelete.length) {

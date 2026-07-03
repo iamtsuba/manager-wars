@@ -1161,11 +1161,10 @@ async function openCardDetail(card, allPlayerCards, countByPlayer, ctx) {
     const ids = [...selectedCardIds]
     if (!ids.length) return
 
-    // Récupérer les cartes sélectionnées avec leur evolution_bonus actuel
-    const toEvolve = playerCards.filter(c => ids.includes(c.id))
+    // Utiliser samePlayerCards (scope local de openCardDetail)
+    const toEvolve = samePlayerCards.filter(c => ids.includes(c.id))
     if (!toEvolve.length) return
 
-    // Évoluer chaque carte (+1 individuellement)
     const errors = []
     await Promise.all(toEvolve.map(async c => {
       const newEvo = (c.evolution_bonus || 0) + 1
@@ -1176,8 +1175,6 @@ async function openCardDetail(card, allPlayerCards, countByPlayer, ctx) {
     }))
 
     if (errors.length) { toast('Erreur : ' + errors[0], 'error'); return }
-
-    const mainNote = note1  // note principale de la carte affichée
     toast(`⬆️ ${ids.length} carte${ids.length>1?'s':''} évoluée${ids.length>1?'s':''} ! (+1 par carte)`, 'success', 3000)
     closeModal()
     navigate('collection')

@@ -367,6 +367,16 @@ async function openMixedBooster(profile, booster) {
       const { data: cards } = await supabase.from('cards')
         .insert({ owner_id:profile.id, card_type:'formation', formation }).select()
       if (cards?.[0]) results.push({ ...cards[0], isDuplicate: isDupF })
+    } else if (rate.card_type === 'stadium') {
+      const { data: stads, error: stErr } = await supabase.from('stadium_definitions').select('id,name,club_id,country_code,image_url,club:clubs(encoded_name,logo_url)')
+      if (stErr) { console.error('[Booster] stadium_definitions:', stErr.message); continue }
+      if (!stads?.length) { console.warn('[Booster] Aucun stade en DB'); continue }
+      const stadDef = stads[Math.floor(Math.random()*stads.length)]
+      const { data: card, error: cErr } = await supabase.from('cards')
+        .insert({ owner_id:profile.id, card_type:'stadium', stadium_id:stadDef.id, rarity:rate.rarity||'normal' })
+        .select('id,card_type,stadium_id,rarity').single()
+      if (cErr) { console.error('[Booster] insert stadium card:', cErr.message); continue }
+      if (card) results.push({ ...card, _stadiumDef: stadDef })
     }
   }
   return results
@@ -962,6 +972,28 @@ function buildCardFace(card) {
       <div style="font-size:40px">🏟️</div>
       <div style="font-size:8px;background:rgba(255,255,255,0.2);color:#fff;padding:2px 8px;border-radius:10px;letter-spacing:.5px">FORMATION</div>
       <div style="font-weight:900;font-size:22px;color:#fff">${card.formation}</div>
+    </div>`
+  }
+
+  if (card.card_type === 'stadium') {
+    const def = card._stadiumDef
+    const name  = def?.name  || 'Stade'
+    const label = def?.club?.encoded_name || def?.country_code || '—'
+    const imgUrl = def?.image_url
+      ? `${import.meta.env.BASE_URL}icons/${def.image_url}`
+      : (def?.club?.logo_url || (def?.country_code ? `https://flagcdn.com/64x48/${def.country_code.toLowerCase()}.png` : null))
+    return `<div style="width:160px;height:230px;background:linear-gradient(160deg,#E87722,#c45a00);border-radius:14px;border:3px solid #c45a00;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 0 24px rgba(232,119,34,0.6)">
+      <div style="padding:8px 10px;background:rgba(0,0,0,0.25);text-align:center;flex-shrink:0">
+        <div style="font-size:7px;font-weight:700;color:rgba(255,255,255,0.65);letter-spacing:1px">🏟️ STADE</div>
+        <div style="font-size:${name.length>16?9:11}px;font-weight:900;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:2px">${name}</div>
+      </div>
+      <div style="flex:1;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.08)">
+        ${imgUrl ? `<img src="${imgUrl}" style="max-width:100px;max-height:100px;object-fit:contain;border-radius:6px">` : '<span style="font-size:52px">🏟️</span>'}
+      </div>
+      <div style="padding:8px 10px;background:rgba(0,0,0,0.3);text-align:center;flex-shrink:0">
+        <div style="font-size:11px;color:rgba(255,255,255,0.85);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${label}</div>
+        <div style="font-size:12px;font-weight:900;color:#FFD700;margin-top:2px">+10 ⭐ joueurs alliés</div>
+      </div>
     </div>`
   }
   return '<div style="width:140px;height:200px;background:#333;border-radius:12px"></div>'

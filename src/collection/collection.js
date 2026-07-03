@@ -1194,7 +1194,8 @@ async function openCardDetail(card, allPlayerCards, countByPlayer, ctx) {
       return
     }
     const idsToDelete = ids.filter(id => id !== card.id)
-    const bonusGained = idsToDelete.length || 1  // si seul card.id sélectionné → +1 sans supprimer
+    const bonusPerCopy = p.rarity === 'legende' ? 2 : 1  // légende +2, autres +1
+    const bonusGained = (idsToDelete.length || 1) * bonusPerCopy
 
     if (!idsToDelete.length && ids.length === 1 && ids[0] === card.id) {
       // Cas : seul exemplaire sélectionné = la carte principale → +1 sans suppression
@@ -1215,8 +1216,9 @@ async function openCardDetail(card, allPlayerCards, countByPlayer, ctx) {
           </div>
           <div style="background:#f0fdf4;border-radius:10px;padding:12px;margin-bottom:16px;font-size:13px;color:#333">
             🗑️ <strong>${idsToDelete.length}</strong> copie${idsToDelete.length>1?'s':''} sacrifiée${idsToDelete.length>1?'s':''}<br>
-            📈 Note : <strong>${note1+(card.evolution_bonus||0)}</strong> → <strong style="color:#1A6B3C">${note1+(card.evolution_bonus||0)+idsToDelete.length}</strong>
-            ${note2&&note2>0 ? `<br>📈 Note 2 : <strong>${note2+(card.evolution_bonus||0)}</strong> → <strong style="color:#1A6B3C">${note2+(card.evolution_bonus||0)+idsToDelete.length}</strong>` : ''}
+            📈 Note : <strong>${note1+(card.evolution_bonus||0)}</strong> → <strong style="color:#1A6B3C">${note1+(card.evolution_bonus||0)+idsToDelete.length*bonusPerCopy}</strong>
+            ${note2&&note2>0 ? `<br>📈 Note 2 : <strong>${note2+(card.evolution_bonus||0)}</strong> → <strong style="color:#1A6B3C">${note2+(card.evolution_bonus||0)+idsToDelete.length*bonusPerCopy}</strong>` : ''}
+            ${p.rarity==='legende'?`<br><span style="color:#7a28b8;font-size:11px;font-weight:700">✨ Légende : +${bonusPerCopy} par copie sacrifiée</span>`:''}
           </div>
           <div style="font-size:11px;color:#aaa;margin-bottom:18px">⚠️ Les copies sacrifiées sont définitivement supprimées</div>
           <div style="display:flex;gap:10px">
@@ -1244,7 +1246,7 @@ async function openCardDetail(card, allPlayerCards, countByPlayer, ctx) {
     }
 
     // 2. Ajouter le bonus à la carte principale
-    const newEvo = (card.evolution_bonus || 0) + idsToDelete.length
+    const newEvo = (card.evolution_bonus || 0) + idsToDelete.length * bonusPerCopy
     const { error: evoErr } = await supabase.from('cards')
       .update({ evolution_bonus: newEvo })
       .eq('id', card.id)

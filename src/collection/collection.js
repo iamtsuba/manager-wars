@@ -1120,8 +1120,9 @@ async function openCardDetail(card, allPlayerCards, countByPlayer, ctx) {
     if (!panel) return
     panel.style.display = n > 0 ? 'block' : 'none'
     document.getElementById('sell-selected-count').textContent = n
-    document.getElementById('sell-direct-total').textContent =
-      (n * directPrice).toLocaleString('fr') + ' cr.'
+    // Mettre à jour le texte du bouton Évoluer avec le nombre de cartes
+    const evolveBtn = document.getElementById('evolve-btn')
+    if (evolveBtn) evolveBtn.textContent = `⬆️ Évoluer ${n > 1 ? '(+'+n+')' : ''}`
   }
 
   // Checkboxes
@@ -1157,25 +1158,27 @@ async function openCardDetail(card, allPlayerCards, countByPlayer, ctx) {
 
   // ── Vente directe (les cartes sélectionnées) ────────────────────────────
   document.getElementById('evolve-btn')?.addEventListener('click', async () => {
-    const cardToEvolve = selectedCardIds.size === 1
-      ? playerCards.find(c => selectedCardIds.has(c.id))
-      : card
-    if (!cardToEvolve) return
-    const currentEvo = cardToEvolve.evolution_bonus || 0
-    const p2 = cardToEvolve.player
-    const mainNote = (p2.rarity==='pepite'||p2.rarity==='papyte') && cardToEvolve.current_note != null
-      ? cardToEvolve.current_note : getNote(p2, p2.job)
-    const j2Base = p2.job2 ? getNote(p2, p2.job2) : 0
-    const newEvo = currentEvo + 1
-    const newMain = mainNote + newEvo - currentEvo
-    const { error } = await supabase.from('cards')
-      .update({ evolution_bonus: newEvo })
-      .eq('id', cardToEvolve.id)
-    if (error) { toast('Erreur évolution : '+error.message, 'error'); return }
-    const lines = [`⬆️ ${p2.firstname} ${p2.surname_encoded} évolué !`,
-      `Note principale : ${mainNote} → ${mainNote+1}`]
-    if (j2Base > 0) lines.push(`Note secondaire : ${j2Base+currentEvo} → ${j2Base+newEvo}`)
-    toast(lines.join(' · '), 'success', 4000)
+    const ids = [...selectedCardIds]
+    if (!ids.length) return
+
+    // Récupérer les cartes sélectionnées avec leur evolution_bonus actuel
+    const toEvolve = playerCards.filter(c => ids.includes(c.id))
+    if (!toEvolve.length) return
+
+    // Évoluer chaque carte (+1 individuellement)
+    const errors = []
+    await Promise.all(toEvolve.map(async c => {
+      const newEvo = (c.evolution_bonus || 0) + 1
+      const { error } = await supabase.from('cards')
+        .update({ evolution_bonus: newEvo })
+        .eq('id', c.id)
+      if (error) errors.push(error.message)
+    }))
+
+    if (errors.length) { toast('Erreur : ' + errors[0], 'error'); return }
+
+    const mainNote = note1  // note principale de la carte affichée
+    toast(`⬆️ ${ids.length} carte${ids.length>1?'s':''} évoluée${ids.length>1?'s':''} ! (+1 par carte)`, 'success', 3000)
     closeModal()
     navigate('collection')
   })

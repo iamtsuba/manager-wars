@@ -386,10 +386,10 @@ async function openMixedBooster(profile, booster) {
       if (!stads?.length) { console.warn('[Booster] Aucun stade en DB'); continue }
       const stadDef = stads[Math.floor(Math.random()*stads.length)]
       const { data: card, error: cErr } = await supabase.from('cards')
-        .insert({ owner_id:profile.id, card_type:'stadium', stadium_id:stadDef.id, rarity:rate.rarity||'normal' })
-        .select('id,card_type,stadium_id,rarity').single()
+        .insert({ owner_id:profile.id, card_type:'stadium', stadium_id:stadDef.id })
+        .select('id,card_type,stadium_id').single()
       if (cErr) { console.error('[Booster] insert stadium card:', cErr.message); continue }
-      if (card) results.push({ ...card, _stadiumDef: stadDef })
+      if (card) results.push({ ...card, rarity:'normal', _stadiumDef: stadDef })
     }
   }
   return results

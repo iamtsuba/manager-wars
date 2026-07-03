@@ -124,11 +124,11 @@ async function resolveCard(rate, ownerId) {
     const stadDef = stads[Math.floor(Math.random()*stads.length)]
     const { data: card, error: cardErr } = await supabase
       .from('cards')
-      .insert({ owner_id:ownerId, card_type:'stadium', stadium_id:stadDef.id, rarity:rarity||'normal' })
-      .select('id,card_type,stadium_id,rarity')
+      .insert({ owner_id:ownerId, card_type:'stadium', stadium_id:stadDef.id })
+      .select('id,card_type,stadium_id')
       .single()
     if (cardErr) console.error('[Booster] insert card stadium:', cardErr.message, cardErr.details)
-    return card
+    return card ? { ...card, rarity:'normal' } : null
   }
   return null
 }

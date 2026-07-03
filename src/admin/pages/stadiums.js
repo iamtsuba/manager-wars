@@ -151,7 +151,7 @@ function updatePreview() {
   } else if (clubLogoOpt) {
     imgHTML = `<img src="${clubLogoOpt}" style="width:64px;height:64px;object-fit:contain;display:block;margin:0 auto" onerror="this.style.display='none'">`
   } else if (country) {
-    const flagUrl = `https://flagcdn.com/64x48/${country.toLowerCase()}.png`
+    const flagUrl = `https://flagcdn.com/w80/${country.toLowerCase()}.png`
     imgHTML = `<img src="${flagUrl}" style="width:80px;height:60px;object-fit:contain;display:block;margin:0 auto;border-radius:4px">`
   } else {
     imgHTML = `<div style="font-size:36px;text-align:center">🏟️</div>`

@@ -646,7 +646,7 @@ export async function renderCollection(container, ctx) {
         const label = def?.club?.encoded_name || def?.country_code || '—'
         const imgUrl = def?.image_url
         ? `\${BASE2}icons/\${def.image_url}`
-        : (def?.club?.logo_url || (def?.country_code ? `https://flagcdn.com/64x48/\${def.country_code.toLowerCase()}.png` : null))
+        : (def?.club?.logo_url || (def?.country_code ? `https://flagcdn.com/w80/\${def.country_code.toLowerCase()}.png` : null))
         const imgHTML = imgUrl
           ? `<img src="${imgUrl}" style="width:90px;height:90px;object-fit:contain">`
           : `<div style="font-size:56px">🏟️</div>`
@@ -669,19 +669,21 @@ export async function renderCollection(container, ctx) {
         const name  = def?.name || '?'
         const label = def?.club?.encoded_name || def?.country_code || '—'
         const imgUrl = def?.image_url
-        ? `\${BASE2}icons/\${def.image_url}`
-        : (def?.club?.logo_url || (def?.country_code ? `https://flagcdn.com/64x48/\${def.country_code.toLowerCase()}.png` : null))
-        const imgHTML = imgUrl ? `<img src="${imgUrl}" style="width:60px;height:60px;object-fit:contain">` : '<span style="font-size:32px">🏟️</span>'
+        ? `${BASE2}icons/${def.image_url}`
+        : (def?.club?.logo_url || (def?.country_code ? `https://flagcdn.com/w80/${def.country_code.toLowerCase()}.png` : null))
+        const imgHTML = imgUrl
+          ? `<img src="${imgUrl}" style="width:64px;height:64px;object-fit:contain;border-radius:4px" onerror="this.style.display='none'">`
+          : '<span style="font-size:32px">🏟️</span>'
         return `<div style="display:inline-block;zoom:${_s};line-height:0;pointer-events:none">
           <div style="width:140px;height:310px;border-radius:8px;background:linear-gradient(160deg,${ORANGE},#c45a00);border:1px solid #c45a00;display:flex;flex-direction:column;overflow:hidden">
-            <div style="height:56px;background:rgba(0,0,0,0.25);display:flex;align-items:center;justify-content:center;flex-direction:column;padding:4px">
-              <div style="font-size:7px;font-weight:700;color:rgba(255,255,255,0.6)">🏟️ STADE</div>
-              <div style="font-size:12px;font-weight:900;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:130px">${name}</div>
+            <div style="height:48px;background:rgba(0,0,0,0.25);display:flex;align-items:center;justify-content:center;flex-direction:column;padding:4px 6px">
+              <div style="font-size:7px;font-weight:700;color:rgba(255,255,255,0.6);letter-spacing:1px">🏟️ STADE</div>
+              <div style="font-size:12px;font-weight:900;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:130px;margin-top:2px">${name}</div>
             </div>
             <div style="flex:1;display:flex;align-items:center;justify-content:center">${imgHTML}</div>
-            <div style="height:54px;display:flex;align-items:center;justify-content:center;flex-direction:column;background:rgba(0,0,0,0.3);padding:4px">
-              <div style="font-size:10px;color:rgba(255,255,255,0.8)">${label}</div>
-              <div style="font-size:12px;font-weight:900;color:#FFD700">+10 ⭐</div>
+            <div style="height:60px;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(0,0,0,0.3);padding:4px;gap:4px">
+              <div style="font-size:11px;font-weight:700;color:rgba(255,255,255,0.9);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:126px;text-align:center">${label}</div>
+              <div style="font-size:13px;font-weight:900;color:#FFD700">+10 ⭐</div>
             </div>
           </div>
         </div>`

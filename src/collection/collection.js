@@ -640,7 +640,9 @@ export async function renderCollection(container, ctx) {
       ({ def, count }) => {
         const name  = def?.name || '?'
         const label = def?.club?.encoded_name || def?.country_code || '—'
-        const imgUrl = def?.image_url ? `${BASE2}icons/${def.image_url}` : (def?.club?.logo_url || null)
+        const imgUrl = def?.image_url
+        ? `\${BASE2}icons/\${def.image_url}`
+        : (def?.club?.logo_url || (def?.country_code ? `https://flagcdn.com/64x48/\${def.country_code.toLowerCase()}.png` : null))
         const imgHTML = imgUrl
           ? `<img src="${imgUrl}" style="width:90px;height:90px;object-fit:contain">`
           : `<div style="font-size:56px">🏟️</div>`
@@ -662,7 +664,9 @@ export async function renderCollection(container, ctx) {
         const _s = window.innerWidth>=768 ? 0.76 : 0.54
         const name  = def?.name || '?'
         const label = def?.club?.encoded_name || def?.country_code || '—'
-        const imgUrl = def?.image_url ? `${BASE2}icons/${def.image_url}` : (def?.club?.logo_url || null)
+        const imgUrl = def?.image_url
+        ? `\${BASE2}icons/\${def.image_url}`
+        : (def?.club?.logo_url || (def?.country_code ? `https://flagcdn.com/64x48/\${def.country_code.toLowerCase()}.png` : null))
         const imgHTML = imgUrl ? `<img src="${imgUrl}" style="width:60px;height:60px;object-fit:contain">` : '<span style="font-size:32px">🏟️</span>'
         return `<div style="display:inline-block;zoom:${_s};line-height:0;pointer-events:none">
           <div style="width:140px;height:310px;border-radius:8px;background:linear-gradient(160deg,${ORANGE},#c45a00);border:1px solid #c45a00;display:flex;flex-direction:column;overflow:hidden">

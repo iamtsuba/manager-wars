@@ -3,6 +3,18 @@ import { supabase } from '../../lib/supabase.js'
 const BASE = import.meta.env.BASE_URL
 const ORANGE = '#E87722'
 
+const COUNTRIES = [
+  ['MA','Maroc'],['FR','France'],['AR','Argentine'],['PT','Portugal'],['BR','Brésil'],
+  ['ES','Espagne'],['DE','Allemagne'],['GB','Angleterre'],['IT','Italie'],
+  ['CM','Cameroun'],['SN','Sénégal'],['NG','Nigéria'],['DK','Danemark'],
+  ['NL','Pays-Bas'],['BE','Belgique'],['CI',"Côte d'Ivoire"],['AL','Albanie'],
+  ['HR','Croatie'],['RS','Serbie'],['TR','Turquie'],['MW','Malawi'],
+  ['GH','Ghana'],['ZA','Afrique du Sud'],['EG','Égypte'],['US','États-Unis'],
+  ['MX','Mexique'],['CO','Colombie'],['UY','Uruguay'],['CL','Chili'],
+  ['JP','Japon'],['KR','Corée du Sud'],['CN','Chine'],['AU','Australie'],
+  ['SW','Suisse'],['SE','Suède'],['NO','Norvège'],['PL','Pologne'],
+]
+
 export async function renderStadiums(container) {
   await load(container)
 }
@@ -39,12 +51,15 @@ async function load(container) {
               <label style="font-size:11px;font-weight:700;color:#555;display:block;margin-bottom:4px">CLUB AFFILIÉ (optionnel)</label>
               <select id="st-club" style="width:100%;box-sizing:border-box;padding:9px;border:1.5px solid #ddd;border-radius:8px;font-size:13px;background:#fff">
                 <option value="">-- Aucun club (bonus pays) --</option>
-                ${(clubs||[]).map(c => `<option value="${c.id}">${c.encoded_name}</option>`).join('')}
+                ${(clubs||[]).map(c => `<option value="${c.id}" data-logo="${c.logo_url||''}">${c.encoded_name}</option>`).join('')}
               </select>
             </div>
             <div>
-              <label style="font-size:11px;font-weight:700;color:#555;display:block;margin-bottom:4px">CODE PAYS (si pas de club)</label>
-              <input id="st-country" placeholder="Ex: FR, ES, BR…" maxlength="3" style="width:100%;box-sizing:border-box;padding:9px;border:1.5px solid #ddd;border-radius:8px;font-size:14px;text-transform:uppercase">
+              <label style="font-size:11px;font-weight:700;color:#555;display:block;margin-bottom:4px">PAYS (si pas de club)</label>
+              <select id="st-country" style="width:100%;box-sizing:border-box;padding:9px;border:1.5px solid #ddd;border-radius:8px;font-size:13px;background:#fff">
+                <option value="">— Aucun pays —</option>
+                ${COUNTRIES.map(([code,name])=>`<option value="${code}">${name} (${code})</option>`).join('')}
+              </select>
             </div>
             <div>
               <label style="font-size:11px;font-weight:700;color:#555;display:block;margin-bottom:4px">IMAGE (icône du stade)</label>
@@ -113,7 +128,7 @@ function openForm(s, clubs) {
   document.getElementById('st-id').value = s?.id || ''
   document.getElementById('st-name').value = s?.name || ''
   document.getElementById('st-club').value = s?.club_id || ''
-  document.getElementById('st-country').value = s?.country_code || ''
+  const ctyEl = document.getElementById('st-country'); if(ctyEl) ctyEl.value = s?.country_code || ''
   document.getElementById('st-image').value = s?.image_url || ''
   document.getElementById('st-preview-card').innerHTML = ''
   updatePreview(s?.club?.logo_url, s?.club?.encoded_name)
@@ -125,13 +140,24 @@ function updatePreview() {
   const imgFile = document.getElementById('st-image')?.value?.trim()
   const country = document.getElementById('st-country')?.value?.trim()
   const clubSel = document.getElementById('st-club')
-  const clubName = clubSel?.options[clubSel.selectedIndex]?.text || ''
+  const clubIdx = clubSel?.selectedIndex || 0
+  const clubName = clubSel && clubIdx > 0 ? clubSel.options[clubIdx].text : ''
+  const clubLogoOpt = clubSel?.options[clubIdx]?.getAttribute?.('data-logo') || ''
 
-  const imgHTML = imgFile
-    ? `<img src="${BASE}icons/${imgFile}" style="width:64px;height:64px;object-fit:contain;display:block;margin:0 auto">`
-    : `<div style="font-size:36px;text-align:center">🏟️</div>`
-  const label = clubName !== '-- Aucun club (bonus pays) --' ? clubName : (country || '—')
+  // Image centrale : priorité image manuelle → logo club → drapeau pays
+  let imgHTML
+  if (imgFile) {
+    imgHTML = `<img src="${BASE}icons/${imgFile}" style="width:64px;height:64px;object-fit:contain;display:block;margin:0 auto">`
+  } else if (clubLogoOpt) {
+    imgHTML = `<img src="${clubLogoOpt}" style="width:64px;height:64px;object-fit:contain;display:block;margin:0 auto" onerror="this.style.display='none'">`
+  } else if (country) {
+    const flagUrl = `https://flagcdn.com/64x48/${country.toLowerCase()}.png`
+    imgHTML = `<img src="${flagUrl}" style="width:80px;height:60px;object-fit:contain;display:block;margin:0 auto;border-radius:4px">`
+  } else {
+    imgHTML = `<div style="font-size:36px;text-align:center">🏟️</div>`
+  }
 
+  const label = clubName || (country ? country : '—')
   document.getElementById('st-preview-card').innerHTML = renderStadiumCardHTML(name, imgHTML, label, true)
 }
 

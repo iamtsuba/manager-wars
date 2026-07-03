@@ -63,6 +63,8 @@ export function getPortrait(p) {
 
 export function playerFromCard(card, position) {
   const p = card.player
+  const evo = card.evolution_bonus || 0
+  const j2base = p.job2 ? (Number(p[`note_${p.job2.toLowerCase()}`])||0) : 0
   return {
     cardId: card.id,
     position: position || null,
@@ -72,10 +74,12 @@ export function playerFromCard(card, position) {
     country_code: p.country_code,
     club_id: p.club_id,
     job: p.job, job2: p.job2,
-    note_g: Number(p.note_g)||0,
-    note_d: Number(p.note_d)||0,
-    note_m: Number(p.note_m)||0,
-    note_a: Number(p.note_a)||0,
+    // Appliquer evolution_bonus sur toutes les notes
+    note_g: (Number(p.note_g)||0) + (p.job==='GK' ? evo : 0) + (p.job2==='GK' && j2base>0 ? evo : 0),
+    note_d: (Number(p.note_d)||0) + (p.job==='DEF' ? evo : 0) + (p.job2==='DEF' && j2base>0 ? evo : 0),
+    note_m: (Number(p.note_m)||0) + (p.job==='MIL' ? evo : 0) + (p.job2==='MIL' && j2base>0 ? evo : 0),
+    note_a: (Number(p.note_a)||0) + (p.job==='ATT' ? evo : 0) + (p.job2==='ATT' && j2base>0 ? evo : 0),
+    evolution_bonus: evo,
     rarity: p.rarity,
     skin: p.skin, hair: p.hair, hair_length: p.hair_length,
     clubName: p.clubs?.encoded_name || null,

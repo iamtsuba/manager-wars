@@ -162,7 +162,7 @@ export async function renderCollection(container, ctx) {
 
   const { data: cards } = await supabase
     .from('cards')
-    .select(`id, card_type, current_note, gc_type, formation, is_for_sale, sale_price, stadium_id,
+    .select(`id, card_type, current_note, gc_type, formation, is_for_sale, sale_price, stadium_id, evolution_bonus,
       player:players(id, firstname, surname_encoded, country_code, club_id, job, job2,
         note_g, note_d, note_m, note_a, rarity, note_min, note_max, skin, hair, hair_length, sell_price,
         clubs(encoded_name, logo_url)),
@@ -912,6 +912,13 @@ async function openCardDetail(card, allPlayerCards, countByPlayer, ctx) {
   const rarColor  = RAR_COLORS[p.rarity] || '#ccc'
   const country   = COUNTRY_NAMES[p.country_code] || p.country_code || ''
 
+  // Notes avec bonus d'évolution
+  const evo = card.evolution_bonus || 0
+  const mainNoteBase = note1
+  const mainNoteEvo  = mainNoteBase + evo
+  const job2NoteBase = note2 || 0
+  const job2NoteEvo  = job2NoteBase > 0 ? job2NoteBase + evo : 0
+
   // Historique des transferts PAR CARTE (chaque carte est unique).
   // On récupère l'historique de chacune des cartes possédées de ce joueur.
   const myCardIds = samePlayerCards.map(c => c.id)
@@ -983,14 +990,18 @@ async function openCardDetail(card, allPlayerCards, countByPlayer, ctx) {
           <span id="sell-selected-count">0</span> exemplaire(s) sélectionné(s)
         </div>
 
-        <!-- Vente directe -->
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <!-- Évolution du joueur -->
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;background:#f0fdf4;border-radius:10px;padding:10px 14px">
           <div>
-            <div style="font-size:11px;color:#555">Vente directe</div>
-            <div id="sell-direct-total" style="font-size:16px;font-weight:900;color:#D4A017">${directPrice.toLocaleString('fr')} cr.</div>
+            <div style="font-size:12px;font-weight:700;color:#1A6B3C">Évolution</div>
+            <div style="font-size:11px;color:#555;margin-top:2px">
+              ${(card.evolution_bonus||0) > 0
+                ? `+${card.evolution_bonus} appliqué${(card.evolution_bonus)>1?'s':''} · Note : ${mainNoteEvo}${p.job2&&job2NoteBase>0?` / ${job2NoteEvo}`:''}`
+                : `Note actuelle : ${mainNoteEvo}${p.job2&&job2NoteBase>0?` / ${job2NoteEvo}`:''}` }
+            </div>
           </div>
-          <button id="direct-sell-btn" class="btn btn-yellow" style="padding:8px 16px">
-            Vendre
+          <button id="evolve-btn" class="btn btn-primary" style="background:#1A6B3C;border-color:#1A6B3C;padding:8px 16px;font-weight:900">
+            ⬆️ Évoluer
           </button>
         </div>
 
@@ -1145,27 +1156,28 @@ async function openCardDetail(card, allPlayerCards, countByPlayer, ctx) {
   })
 
   // ── Vente directe (les cartes sélectionnées) ────────────────────────────
-  document.getElementById('direct-sell-btn')?.addEventListener('click', async () => {
-    const ids = [...selectedCardIds]
-    if (!ids.length) return
-    const total = ids.length * directPrice
-    if (!confirm(`Vendre ${ids.length} carte${ids.length>1?'s':''} ${p.surname_encoded} pour ${total.toLocaleString('fr')} crédits ? Action irréversible.`)) return
-
-    // Supprimer les dépendances FK avant de supprimer les cartes
-    await supabase.from('market_listings').delete().in('card_id', ids)
-    await supabase.from('transfer_history').delete().in('card_id', ids)
-
-    const { error } = await supabase.from('cards').delete().in('id', ids)
-    if (error) { toast(error.message, 'error'); return }
-
-    await supabase.from('users')
-      .update({ credits: (state.profile.credits||0) + total })
-      .eq('id', state.profile.id)
-    await refreshProfile()
-    const credEl = document.getElementById('nav-credits')
-    if (credEl) credEl.textContent = `💰 ${(state.profile.credits||0).toLocaleString('fr')}`
-    toast(`+${total.toLocaleString('fr')} crédits ! ${ids.length} carte${ids.length>1?'s':''} vendue${ids.length>1?'s':''}.`, 'success')
-    closeModal(); navigate('collection')
+  document.getElementById('evolve-btn')?.addEventListener('click', async () => {
+    const cardToEvolve = selectedCardIds.size === 1
+      ? playerCards.find(c => selectedCardIds.has(c.id))
+      : card
+    if (!cardToEvolve) return
+    const currentEvo = cardToEvolve.evolution_bonus || 0
+    const p2 = cardToEvolve.player
+    const mainNote = (p2.rarity==='pepite'||p2.rarity==='papyte') && cardToEvolve.current_note != null
+      ? cardToEvolve.current_note : getNote(p2, p2.job)
+    const j2Base = p2.job2 ? getNote(p2, p2.job2) : 0
+    const newEvo = currentEvo + 1
+    const newMain = mainNote + newEvo - currentEvo
+    const { error } = await supabase.from('cards')
+      .update({ evolution_bonus: newEvo })
+      .eq('id', cardToEvolve.id)
+    if (error) { toast('Erreur évolution : '+error.message, 'error'); return }
+    const lines = [`⬆️ ${p2.firstname} ${p2.surname_encoded} évolué !`,
+      `Note principale : ${mainNote} → ${mainNote+1}`]
+    if (j2Base > 0) lines.push(`Note secondaire : ${j2Base+currentEvo} → ${j2Base+newEvo}`)
+    toast(lines.join(' · '), 'success', 4000)
+    closeModal()
+    navigate('collection')
   })
 
   // ── Marché (les cartes sélectionnées, même prix pour toutes) ────────────

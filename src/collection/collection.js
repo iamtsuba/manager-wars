@@ -162,10 +162,12 @@ export async function renderCollection(container, ctx) {
 
   const { data: cards } = await supabase
     .from('cards')
-    .select(`id, card_type, current_note, gc_type, formation, is_for_sale, sale_price,
+    .select(`id, card_type, current_note, gc_type, formation, is_for_sale, sale_price, stadium_id,
       player:players(id, firstname, surname_encoded, country_code, club_id, job, job2,
         note_g, note_d, note_m, note_a, rarity, note_min, note_max, skin, hair, hair_length, sell_price,
-        clubs(encoded_name, logo_url))`)
+        clubs(encoded_name, logo_url)),
+      stadium_def:stadium_definitions(id, name, club_id, country_code, image_url,
+        club:clubs(encoded_name, logo_url))`)
     .eq('owner_id', state.profile.id)
 
   // Tous les joueurs actifs (pour le mode "Voir tout")
@@ -191,6 +193,8 @@ export async function renderCollection(container, ctx) {
     .from('stadium_definitions').select('id,name,club_id,country_code,image_url, club:clubs(encoded_name,logo_url)')
   const stadDefMap = {}
   ;(stadiumDefs||[]).forEach(d => { stadDefMap[d.id] = d })
+  // Aussi enrichir depuis les cartes jointes directement
+  stadiumCards.forEach(c => { if (c.stadium_def) stadDefMap[c.stadium_id] = c.stadium_def })
 
   const ALL_FORMATIONS = Object.keys(FORMATION_LINKS)
   const ALL_GC_TYPES   = Object.keys(GC_DEFS)

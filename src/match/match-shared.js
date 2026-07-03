@@ -307,7 +307,10 @@ export async function renderDeckSelect(container, ctx, matchMode) {
   container.innerHTML = '<div style="padding:40px;text-align:center;color:#aaa">⚽ Chargement...</div>'
 
   const { data: decks } = await supabase
-    .from('decks').select('id,name,is_active,formation,stadium_card_id')
+    .from('decks').select(`id,name,is_active,formation,stadium_card_id,
+      stadium_card:cards!stadium_card_id(id,stadium_id,
+        stadium_def:stadium_definitions(id,name,club_id,country_code,image_url,
+          club:clubs(encoded_name,logo_url)))`)
     .eq('owner_id', state.profile.id).order('created_at', { ascending:false })
 
   if (!decks || decks.length === 0) {
@@ -355,15 +358,8 @@ export async function renderDeckSelect(container, ctx, matchMode) {
     let team = starters.length >= 11 ? buildTeam(starters, formation) : null
 
     // Carte Stade : bonus +10 aux joueurs du même club/pays
-    let stadiumDef = null
-    if (deck.stadium_card_id && team) {
-      const stadCard = cards.find(dc => dc.card?.id === deck.stadium_card_id)
-      if (stadCard?.card?.stadium_id) {
-        // On a besoin de la def — chargée dans allDeckCards si on a joint
-        stadiumDef = stadCard.card._stadiumDef || null
-      }
-      if (stadiumDef) { team = applyStadiumBonus(team, stadiumDef) }
-    }
+    let stadiumDef = deck.stadium_card?.stadium_def || null
+    if (stadiumDef && team) team = applyStadiumBonus(team, stadiumDef)
 
     const complete = starters.length >= 11
 

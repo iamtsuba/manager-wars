@@ -5,7 +5,7 @@ import {
 } from './game-logic.js'
 import { FORMATION_LINKS, FORMATION_POSITIONS, linkColor, getActiveLinks } from './formation-links.js'
 import {
-  showMsg, getPortrait, playerFromCard, getColsForLine, buildTeam, rollBoost, applyStadiumBonus,
+  showMsg, getPortrait, playerFromCard, getColsForLine, buildTeam, rollBoost, applyStadiumBonus, applyStadiumBonusToSubs,
   _hideBottomNav, _showBottomNav, renderDeckSelect, showGCSelection,
   getClubLogo, renderMiniCardHTML, renderCardRow, flagImgUrl, countryFlag,
   buildTeamSVG, renderTeam, renderMiniPlayer, loadMatchSetup, FORMATIONS, JOB_COLORS,
@@ -29,7 +29,10 @@ export async function renderMatchIA(container, ctx) {
   await loadMatchSetup(container, ctx, matchMode, async ({ deckId, formation, starters, subsRaw, gcCardsEnriched, gcDefs, stadiumDef }) => {
     try {
       let homeTeam = buildTeam(starters, formation)
-      if (stadiumDef) homeTeam = applyStadiumBonus(homeTeam, stadiumDef)
+      if (stadiumDef) {
+        homeTeam = applyStadiumBonus(homeTeam, stadiumDef)
+        applyStadiumBonusToSubs(subsRaw, stadiumDef)
+      }
       const aiTeam   = await generateAITeam(formation, difficulty)
 
       const launchMatch = async (selectedGC) => {

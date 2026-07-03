@@ -97,17 +97,24 @@ export function applyStadiumBonus(team, stadiumDef) {
       const matchClub    = club_id     && String(p.club_id)     === String(club_id)
       const matchCountry = country_code && String(p.country_code) === String(country_code)
       if (matchClub || matchCountry) {
-        // +10 sur TOUTES les notes → s'applique dans toutes les phases sans exception
-        p.note_g = (Number(p.note_g) || 0) + 10
-        p.note_d = (Number(p.note_d) || 0) + 10
-        p.note_m = (Number(p.note_m) || 0) + 10
-        p.note_a = (Number(p.note_a) || 0) + 10
-        p.boost  = (p.boost || 0) + 10  // conservé pour le badge visuel
-        p.stadiumBonus = true
+        p.stadiumBonus = true   // flag uniquement — la note est ajoutée conditionnellement par phase
       }
     })
   })
   return team
+}
+
+// Applique le flag stadiumBonus sur un tableau de remplaçants
+export function applyStadiumBonusToSubs(subs, stadiumDef) {
+  if (!stadiumDef || !subs?.length) return subs
+  const { club_id, country_code } = stadiumDef
+  subs.forEach(p => {
+    if (!p) return
+    const matchClub    = club_id     && String(p.club_id)     === String(club_id)
+    const matchCountry = country_code && String(p.country_code) === String(country_code)
+    if (matchClub || matchCountry) p.stadiumBonus = true
+  })
+  return subs
 }
 
 export function getColsForLine(n) {
@@ -596,6 +603,12 @@ export function buildTeamSVG(team, formation, phase, selectedIds, W=310, H=310, 
     else if (phase==='defense') note = role==='GK'?Number(p.note_g)||0 : role==='MIL'?Number(p.note_m)||0 : Number(p.note_d)||0
     else                        note = Number(role==='GK'?p.note_g:role==='DEF'?p.note_d:role==='MIL'?p.note_m:p.note_a)||0
     note = note + (p.boost||0)
+    // Bonus stade conditionnel selon phase et rôle
+    if (p.stadiumBonus) {
+      if (phase === 'attack'  && (role === 'ATT' || role === 'MIL')) note += 10
+      else if (phase === 'defense' && (role === 'GK' || role === 'DEF' || role === 'MIL')) note += 10
+      else if (!phase) note += 10  // deck select preview : toujours afficher avec +10
+    }
 
     const rx0 = (c.x - CW/2).toFixed(1)
     const ry0 = (c.y - CH/2).toFixed(1)
@@ -644,8 +657,9 @@ export function buildTeamSVG(team, formation, phase, selectedIds, W=310, H=310, 
       const flagU = flagImgUrl(p.country_code)
       if (flagU) svg += `<image href="${flagU}" xlink:href="${flagU}" x="${(c.x - 20).toFixed(1)}" y="${(c.y + CH/2 - BOTHH + 3).toFixed(1)}" width="13" height="10" preserveAspectRatio="xMidYMid slice"/>`
       else svg += `<text x="${(c.x - 13).toFixed(1)}" y="${(c.y + CH/2 - BOTHH/2).toFixed(1)}" text-anchor="middle" dominant-baseline="central" font-size="10">${countryFlag(p.country_code)}</text>`
-      // Note (centre)
-      svg += `<text x="${c.x.toFixed(1)}" y="${(c.y + CH/2 - BOTHH/2).toFixed(1)}" text-anchor="middle" dominant-baseline="central" font-size="12" font-weight="900" fill="#111" font-family="Arial Black">${note}</text>`
+      // Note (centre) — orange si stadiumBonus
+      const noteColor = p.stadiumBonus ? '#E87722' : '#111'
+      svg += `<text x="${c.x.toFixed(1)}" y="${(c.y + CH/2 - BOTHH/2).toFixed(1)}" text-anchor="middle" dominant-baseline="central" font-size="12" font-weight="900" fill="${noteColor}" font-family="Arial Black">${note}</text>`
       // Club (droite, 3 lettres)
       const logoUrl = getClubLogo(p)
       if (logoUrl) {
@@ -654,9 +668,9 @@ export function buildTeamSVG(team, formation, phase, selectedIds, W=310, H=310, 
         svg += `<text x="${(c.x + 14).toFixed(1)}" y="${(c.y + CH/2 - BOTHH/2).toFixed(1)}" text-anchor="middle" dominant-baseline="central" font-size="5.5" font-weight="700" fill="#333">${(p.clubName||'').slice(0,3).toUpperCase()}</text>`
       }
       // Boost badge
-      if (p.boost) {
-        svg += `<rect x="${(c.x+CW/2-12).toFixed(1)}" y="${(c.y-CH/2).toFixed(1)}" width="14" height="10" rx="3" fill="#87CEEB"/>`
-        svg += `<text x="${(c.x+CW/2-5).toFixed(1)}" y="${(c.y-CH/2+6).toFixed(1)}" text-anchor="middle" font-size="7" fill="#000" font-weight="900">+${p.boost}</text>`
+      // Bordure orange si stadiumBonus (à la place du badge +10)
+      if (p.stadiumBonus) {
+        svg += `<rect x="${(c.x-CW/2).toFixed(1)}" y="${(c.y-CH/2).toFixed(1)}" width="${CW}" height="${CH}" rx="5" fill="none" stroke="#E87722" stroke-width="2" opacity="0.8"/>`
       }
     }
 

@@ -85,7 +85,8 @@ export function calcLinks(selected) {
 export function calcAttack(selected, modifiers = {}) {
   const base  = selected.reduce((s, p) => {
     const r = p._line || p.job
-    return s + (Number(r==='MIL'?p.note_m : p.note_a)||0) + (p.boost||0)
+    const stadBonus = p.stadiumBonus && (r === 'MIL' || r === 'ATT') ? 10 : 0
+    return s + (Number(r==='MIL'?p.note_m : p.note_a)||0) + (p.boost||0) + stadBonus
   }, 0)
   const links = calcLinks(selected)
   let total = base + links
@@ -103,7 +104,8 @@ export function calcDefense(selected, modifiers = {}) {
     if (r === 'GK') note = Number(p.note_g)||0
     else if (r === 'MIL') note = Number(p.note_m)||0
     else note = Number(p.note_d)||0
-    return s + note + (p.boost||0)
+    const stadBonus = p.stadiumBonus && (r === 'GK' || r === 'DEF' || r === 'MIL') ? 10 : 0
+    return s + note + (p.boost||0) + stadBonus
   }, 0)
   const links = calcLinks(selected)
   let total = base + links

@@ -134,6 +134,13 @@ export async function renderBoostersConfig(container) {
           <input type="checkbox" id="f-active" ${sel.is_active?'checked':''} style="width:18px;height:18px;cursor:pointer">
           <label for="f-active" style="font-size:13px;cursor:pointer;font-weight:600">Booster actif (visible dans la boutique)</label>
         </div>
+        <div style="display:flex;align-items:center;gap:10px;margin-top:10px">
+          <input type="checkbox" id="f-allow-dup" ${sel.allow_duplicates!==false?'checked':''} style="width:18px;height:18px;cursor:pointer">
+          <label for="f-allow-dup" style="font-size:13px;cursor:pointer;font-weight:600">
+            Possibilité de doublons
+            <span style="font-size:11px;color:#888;font-weight:400;display:block">Si décoché : impossible d'obtenir un joueur/carte déjà possédé(e)</span>
+          </label>
+        </div>
       </div>
 
       <!-- Taux de drop -->
@@ -350,8 +357,9 @@ export async function renderBoostersConfig(container) {
         price_type:    q('#f-price-type')?.value,
         price_credits: Number(q('#f-price-credits')?.value)    || 0,
         card_count:    Number(q('#f-card-count')?.value)       || 5,
-        is_active:     q('#f-active')?.checked                 ?? sel.is_active,
-        sort_order:    Number(q('#f-sort')?.value)             || 0,
+        is_active:        q('#f-active')?.checked                 ?? sel.is_active,
+        allow_duplicates: q('#f-allow-dup')?.checked              ?? true,
+        sort_order:       Number(q('#f-sort')?.value)             || 0,
       }
 
       const { error: e1 } = await supabase.from('booster_configs').update(updates).eq('id', selectedId)

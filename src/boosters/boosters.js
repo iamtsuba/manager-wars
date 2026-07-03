@@ -305,11 +305,14 @@ async function openMixedBooster(profile, booster) {
       .update({ credits: profile.credits - booster.cost }).eq('id', profile.id)
     if (error) throw error
   }
+  const allowDup = booster.allow_duplicates !== false  // true par défaut
   // Joueurs déjà possédés (pour réduire les doublons quand le pool le permet)
   const { data: ownedCards } = await supabase.from('cards')
-    .select('player_id, card_type, formation').eq('owner_id', profile.id)
-  const ownedPlayerIds = new Set((ownedCards||[]).filter(c=>c.card_type==='player').map(c => c.player_id))
+    .select('player_id, card_type, formation, stadium_id, gc_type').eq('owner_id', profile.id)
+  const ownedPlayerIds  = new Set((ownedCards||[]).filter(c=>c.card_type==='player').map(c => c.player_id))
   const ownedFormations = new Set((ownedCards||[]).filter(c=>c.card_type==='formation').map(c => c.formation))
+  const ownedGCTypes    = new Set((ownedCards||[]).filter(c=>c.card_type==='game_changer').map(c => c.gc_type))
+  const ownedStadiumIds = new Set((ownedCards||[]).filter(c=>c.card_type==='stadium').map(c => c.stadium_id))
   const drawnThisBooster = new Set()  // joueurs déjà tirés dans CE booster
   const results = []
   for (let i = 0; i < (booster.cardCount||5); i++) {
@@ -345,14 +348,16 @@ async function openMixedBooster(profile, booster) {
         }
       }
       if (!filtered.length) continue
-      // On autorise les doublons (TCG classique). On évite seulement de tirer
-      // deux fois le MÊME joueur dans un même booster, si le pool le permet.
+      // Sans doublons : exclure les joueurs déjà possédés
       let pickPool = filtered.filter(p => !drawnThisBooster.has(p.id))
+      if (!allowDup) pickPool = pickPool.filter(p => !ownedPlayerIds.has(p.id))
+      if (!pickPool.length) pickPool = filtered.filter(p => !drawnThisBooster.has(p.id))
       if (!pickPool.length) pickPool = filtered
       const player = pickPool[Math.floor(Math.random()*pickPool.length)]
       drawnThisBooster.add(player.id)
       // Doublon = joueur déjà possédé AVANT ce booster
       const isDup = ownedPlayerIds.has(player.id)
+      if (!allowDup && isDup) continue  // skip si anti-doublon activé
       const { data: card } = await supabase.from('cards')
         .insert({ owner_id:profile.id, player_id:player.id, card_type:'player' }).select().single()
       if (card) {
@@ -365,17 +370,21 @@ async function openMixedBooster(profile, booster) {
         }).then(()=>{}).catch(()=>{})
       }
     } else if (rate.card_type === 'game_changer') {
-      // GC depuis DB (actifs) ou fallback hardcodé
       const { data: dbGC2 } = await supabase.from('gc_definitions').select('id,name').eq('is_active',true).eq('gc_type','game_changer')
       const gcPool = dbGC2?.length ? dbGC2 : [{name:'Ressusciter'},{name:'Double attaque'},{name:'Bouclier'},{name:'Vol de note'},{name:'Gel'}]
-      const gcPick = gcPool[Math.floor(Math.random()*gcPool.length)]
+      // Sans doublons : exclure les GC déjà possédés
+      const gcFiltered = !allowDup ? gcPool.filter(g => !ownedGCTypes.has(g.name)) : gcPool
+      const gcPick = (gcFiltered.length ? gcFiltered : gcPool)[Math.floor(Math.random()*(gcFiltered.length||gcPool.length))]
       const gc_type = gcPick.name
+      if (!allowDup && ownedGCTypes.has(gc_type)) continue
       const { data: card } = await supabase.from('cards')
         .insert({ owner_id:profile.id, card_type:'game_changer', gc_type }).select().single()
       if (card) results.push(card)
     } else if (rate.card_type === 'formation') {
       const formations = ALL_FORMATIONS()
-      const formation = formations[Math.floor(Math.random()*formations.length)]
+      const formPool = !allowDup ? formations.filter(f => !ownedFormations.has(f)) : formations
+      const formation = (formPool.length ? formPool : formations)[Math.floor(Math.random()*(formPool.length||formations.length))]
+      if (!allowDup && ownedFormations.has(formation)) continue
       const isDupF = ownedFormations.has(formation)
       const { data: cards } = await supabase.from('cards')
         .insert({ owner_id:profile.id, card_type:'formation', formation }).select()
@@ -384,7 +393,9 @@ async function openMixedBooster(profile, booster) {
       const { data: stads, error: stErr } = await supabase.from('stadium_definitions').select('id,name,club_id,country_code,image_url,club:clubs(encoded_name,logo_url)')
       if (stErr) { console.error('[Booster] stadium_definitions:', stErr.message); continue }
       if (!stads?.length) { console.warn('[Booster] Aucun stade en DB'); continue }
-      const stadDef = stads[Math.floor(Math.random()*stads.length)]
+      const stadPool = !allowDup ? stads.filter(s => !ownedStadiumIds.has(s.id)) : stads
+      const stadDef = (stadPool.length ? stadPool : stads)[Math.floor(Math.random()*(stadPool.length||stads.length))]
+      if (!allowDup && ownedStadiumIds.has(stadDef.id)) continue
       const { data: card, error: cErr } = await supabase.from('cards')
         .insert({ owner_id:profile.id, card_type:'stadium', stadium_id:stadDef.id })
         .select('id,card_type,stadium_id').single()

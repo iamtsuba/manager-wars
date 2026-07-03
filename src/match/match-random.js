@@ -6,7 +6,7 @@ import {
 } from './game-logic.js'
 import { FORMATION_LINKS, FORMATION_POSITIONS, linkColor, getActiveLinks } from './formation-links.js'
 import {
-  showMsg, getPortrait, playerFromCard, getColsForLine, buildTeam, rollBoost,
+  showMsg, getPortrait, playerFromCard, getColsForLine, buildTeam, rollBoost, applyStadiumBonus,
   _hideBottomNav, _showBottomNav, renderDeckSelect, showGCSelection,
   getClubLogo, renderMiniCardHTML, renderCardRow, flagImgUrl, countryFlag,
   buildTeamSVG, renderTeam, renderMiniPlayer, loadMatchSetup, FORMATIONS, JOB_COLORS,
@@ -37,14 +37,14 @@ export async function renderMatchRandom(container, ctx) {
       await supabase.rpc('cancel_matchmaking', { p_user_id: uid }).catch(()=>{})
     }
   } catch {}
-  await loadMatchSetup(container, ctx, 'random', ({ deckId, formation, starters, subsRaw, gcCardsEnriched, gcDefs }) => {
-    const start = (selectedGC) => showMatchmakingSearch(container, ctx, deckId, formation, starters, subsRaw, selectedGC, gcDefs || [])
+  await loadMatchSetup(container, ctx, 'random', ({ deckId, formation, starters, subsRaw, gcCardsEnriched, gcDefs, stadiumDef }) => {
+    const start = (selectedGC) => showMatchmakingSearch(container, ctx, deckId, formation, starters, subsRaw, selectedGC, gcDefs || [], stadiumDef)
     if (!gcCardsEnriched.length) { start([]); return }
     showGCSelection(container, gcCardsEnriched, start)
   })
 }
 
-async function showMatchmakingSearch(container, ctx, deckId, formation, starters, subsRaw, myGC = [], gcDefs = []) {
+async function showMatchmakingSearch(container, ctx, deckId, formation, starters, subsRaw, myGC = [], gcDefs = [], stadiumDef = null) {
   const { state, navigate, toast } = ctx
   let cancelled = false, channel = null
 
@@ -142,8 +142,12 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
     const p1Starters = (p1D?.starters||[]).map(r=>toPlayer(r))
     const p2Starters = (p2D?.starters||[]).map(r=>toPlayer(r))
     const p1F = p1D?.formation||'4-4-2', p2F = p2D?.formation||'4-4-2'
+    let p1Team = buildTeam(p1Starters, p1F)
+    let p2Team = buildTeam(p2Starters, p2F)
+    // Bonus stade : appliqué uniquement à l'équipe home (p1 = amIHome)
+    if (stadiumDef && amIHome) p1Team = applyStadiumBonus(p1Team, stadiumDef)
     return {
-      p1Team: buildTeam(p1Starters, p1F), p2Team: buildTeam(p2Starters, p2F),
+      p1Team, p2Team,
       p1Subs: (p1D?.subs||[]).map(r=>toPlayer(r)), p2Subs: (p2D?.subs||[]).map(r=>toPlayer(r)),
       p1Formation: p1F, p2Formation: p2F,
       p1Name: p1P?.club_name||p1P?.pseudo||'Joueur 1',

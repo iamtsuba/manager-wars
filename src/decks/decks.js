@@ -161,6 +161,18 @@ async function openDeckBuilder(deckId, container, ctx) {
 
   const playerCards    = (cards||[]).filter(c => c.card_type === 'player' && c.player)
   const formationCards = (cards||[]).filter(c => c.card_type === 'formation')
+  const stadiumCards   = (cards||[]).filter(c => c.card_type === 'stadium')
+
+  // Charger les defs de stade pour les cartes possédées
+  const stadIds = [...new Set(stadiumCards.map(c=>c.stadium_id).filter(Boolean))]
+  let stadDefMap = {}
+  if (stadIds.length) {
+    const { data: stadDefs } = await supabase
+      .from('stadium_definitions')
+      .select('id,name,club_id,country_code,image_url,club:clubs(encoded_name,logo_url)')
+      .in('id', stadIds)
+    ;(stadDefs||[]).forEach(d => { stadDefMap[d.id] = d })
+  }
 
   // Formations disponibles dans la collection
   const availableFormations = formationCards.map(c => c.formation).filter(Boolean)
@@ -178,9 +190,10 @@ async function openDeckBuilder(deckId, container, ctx) {
     deckId, name: deck.name,
     formation: defaultFormation,
     formationCardId: deck.formation_card_id,
+    stadiumCardId: deck.stadium_card_id || null,
     slots: {},    // position → cardId (titulaires)
     subs: [],     // [ cardId, cardId, ... ] max 5
-    playerCards, formationCards, availableFormations,
+    playerCards, formationCards, stadiumCards, stadDefMap, availableFormations,
   }
 
   ;(deckSlots||[]).forEach(dc => {
@@ -224,6 +237,21 @@ function renderBuilder(container, builder, ctx) {
       </select>
     </div>
 
+    <!-- Carte Stade -->
+    <div style="padding:8px 16px;background:#fff;border-bottom:1px solid var(--gray-200);display:flex;align-items:center;gap:10px">
+      <span style="font-size:18px">🏟️</span>
+      <div style="flex:1;font-size:12px;font-weight:700;color:#555">Carte Stade <span style="font-size:10px;color:#aaa;font-weight:400">(+10 aux joueurs du même club/pays)</span></div>
+      ${builder.stadiumCards.length > 0 ? `
+        <select id="stadium-select" style="padding:6px;border-radius:6px;border:1.5px solid #E87722;font-size:12px;max-width:180px;background:#fff">
+          <option value="">Aucun stade</option>
+          ${builder.stadiumCards.map(c => {
+            const def = builder.stadDefMap[c.stadium_id]
+            const lbl = def ? def.name + (def.club?.encoded_name ? ` (${def.club.encoded_name})` : def.country_code ? ` (${def.country_code})` : '') : c.id.slice(0,8)
+            return `<option value="${c.id}" ${builder.stadiumCardId===c.id?'selected':''}>${lbl}</option>`
+          }).join('')}
+        </select>` : `<span style="font-size:11px;color:#aaa">Aucune carte Stade possédée</span>`}
+    </div>
+
     <!-- Terrain -->
     <div style="background:linear-gradient(180deg,#1a6b3c,#0a3d1e);padding:0;position:relative">
       <div id="deck-field"></div>
@@ -265,6 +293,9 @@ function renderBuilder(container, builder, ctx) {
     newPositions.forEach(p => { if (builder.slots[p]) clean[p] = builder.slots[p] })
     builder.slots = clean
     renderBuilder(container, builder, ctx)
+  })
+  document.getElementById('stadium-select')?.addEventListener('change', e => {
+    builder.stadiumCardId = e.target.value || null
   })
 
   document.getElementById('save-deck').addEventListener('click', () => saveDeck(builder, ctx))
@@ -532,7 +563,8 @@ async function saveDeck(builder, ctx) {
 
   await supabase.from('decks').update({
     formation: builder.formation,
-    formation_card_id: formationCardId || null
+    formation_card_id: formationCardId || null,
+    stadium_card_id: builder.stadiumCardId || null
   }).eq('id', builder.deckId)
 
   await supabase.from('deck_cards').delete().eq('deck_id', builder.deckId)

@@ -86,6 +86,25 @@ export function playerFromCard(card, position) {
   }
 }
 
+
+// Applique le bonus stade (+10) aux joueurs d'une équipe qui correspondent au club ou pays du stade
+export function applyStadiumBonus(team, stadiumDef) {
+  if (!stadiumDef || !team) return team
+  const { club_id, country_code } = stadiumDef
+  Object.values(team).forEach(players => {
+    if (!Array.isArray(players)) return
+    players.forEach(p => {
+      const matchClub    = club_id     && String(p.club_id)     === String(club_id)
+      const matchCountry = country_code && String(p.country_code) === String(country_code)
+      if (matchClub || matchCountry) {
+        p.boost = (p.boost || 0) + 10
+        p.stadiumBonus = true
+      }
+    })
+  })
+  return team
+}
+
 export function getColsForLine(n) {
   if (n===1) return [1]
   if (n===2) return [0,2]
@@ -300,12 +319,30 @@ export async function renderDeckSelect(container, ctx, matchMode) {
   const { data: allDeckCards } = await supabase
     .from('deck_cards')
     .select(`deck_id, position, is_starter, slot_order,
-      card:cards(id,card_type,formation,
+      card:cards(id,card_type,formation,stadium_id,
         player:players(id,firstname,surname_encoded,country_code,club_id,job,job2,
           note_g,note_d,note_m,note_a,rarity,skin,hair,hair_length,
           clubs(encoded_name,logo_url)))`)
     .in('deck_id', deckIds)
     .order('slot_order')
+
+  // Charger les defs stade pour les cartes stadium présentes
+  const stadiumIds = [...new Set((allDeckCards||[])
+    .filter(dc=>dc.card?.card_type==='stadium' && dc.card?.stadium_id)
+    .map(dc=>dc.card.stadium_id))]
+  const stadiumDefMap = {}
+  if (stadiumIds.length) {
+    const { data: sdefs } = await supabase
+      .from('stadium_definitions')
+      .select('id,name,club_id,country_code,image_url,club:clubs(encoded_name,logo_url)')
+      .in('id', stadiumIds)
+    ;(sdefs||[]).forEach(d => { stadiumDefMap[d.id] = d })
+    // Attacher la def à chaque card stadium
+    ;(allDeckCards||[]).forEach(dc => {
+      if (dc.card?.card_type==='stadium' && dc.card?.stadium_id)
+        dc.card._stadiumDef = stadiumDefMap[dc.card.stadium_id] || null
+    })
+  }
 
   let currentIdx = 0
 
@@ -315,7 +352,19 @@ export async function renderDeckSelect(container, ctx, matchMode) {
     const starters = cards.filter(dc => dc.is_starter && dc.card?.player).map(dc => playerFromCard(dc.card, dc.position))
     const formationCard = cards.find(dc => dc.card?.card_type === 'formation')
     const formation = deck.formation || formationCard?.card?.formation || '4-4-2'
-    const team = starters.length >= 11 ? buildTeam(starters, formation) : null
+    let team = starters.length >= 11 ? buildTeam(starters, formation) : null
+
+    // Carte Stade : bonus +10 aux joueurs du même club/pays
+    let stadiumDef = null
+    if (deck.stadium_card_id && team) {
+      const stadCard = cards.find(dc => dc.card?.id === deck.stadium_card_id)
+      if (stadCard?.card?.stadium_id) {
+        // On a besoin de la def — chargée dans allDeckCards si on a joint
+        stadiumDef = stadCard.card._stadiumDef || null
+      }
+      if (stadiumDef) { team = applyStadiumBonus(team, stadiumDef) }
+    }
+
     const complete = starters.length >= 11
 
     _hideBottomNav(container)
@@ -339,6 +388,14 @@ export async function renderDeckSelect(container, ctx, matchMode) {
         </div>
         <button id="next-deck" style="width:46px;height:46px;border-radius:50%;background:rgba(255,255,255,${currentIdx===decks.length-1?'0.05':'0.15'});border:2px solid rgba(255,255,255,${currentIdx===decks.length-1?'0.1':'0.3'});color:${currentIdx===decks.length-1?'rgba(255,255,255,0.2)':'#fff'};font-size:20px;cursor:${currentIdx===decks.length-1?'default':'pointer'};flex-shrink:0">▶</button>
       </div>
+
+      <!-- Bandeau stade si présent -->
+      ${stadiumDef ? `
+      <div style="display:flex;align-items:center;gap:8px;padding:6px 14px;background:linear-gradient(90deg,rgba(232,119,34,0.3),rgba(196,90,0,0.2));border-top:1px solid rgba(232,119,34,0.4);flex-shrink:0">
+        <span style="font-size:16px">🏟️</span>
+        <div style="flex:1;font-size:12px;font-weight:700;color:rgba(255,255,255,0.9)">${stadiumDef.name}</div>
+        <div style="font-size:11px;font-weight:900;color:#FFD700">+10 aux joueurs ${stadiumDef.club?.encoded_name || stadiumDef.country_code || ''}</div>
+      </div>` : ''}
 
       <!-- Terrain preview : SVG occupe toute la zone disponible (carré max) -->
       <div id="deck-swipe-zone" style="flex:1;min-height:0;overflow:hidden;position:relative;touch-action:pan-y;display:flex;align-items:center;justify-content:center;padding:4px">
@@ -705,5 +762,19 @@ export async function loadMatchSetup(container, ctx, matchMode, onReady) {
     _gcDef: gcDefs?.find(d => d.name === card.gc_type || d.id === card.gc_definition_id) || null,
   }))
 
-  onReady({ deckId, formation, starters, subsRaw, gcCardsEnriched, gcDefs: gcDefs || [] })
+  // Charger la def du stade du deck sélectionné
+  let stadiumDef = null
+  if (deck?.stadium_card_id) {
+    const { data: stadCard } = await supabase
+      .from('cards').select('stadium_id').eq('id', deck.stadium_card_id).single()
+    if (stadCard?.stadium_id) {
+      const { data: sDef } = await supabase
+        .from('stadium_definitions')
+        .select('id,name,club_id,country_code,image_url,club:clubs(encoded_name,logo_url)')
+        .eq('id', stadCard.stadium_id).single()
+      stadiumDef = sDef || null
+    }
+  }
+
+  onReady({ deckId, formation, starters, subsRaw, gcCardsEnriched, gcDefs: gcDefs || [], stadiumDef })
 }

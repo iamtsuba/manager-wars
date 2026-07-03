@@ -176,15 +176,21 @@ export async function renderCollection(container, ctx) {
       clubs(encoded_name, logo_url)`)
     .eq('is_active', true)
 
-  const playerCards = (cards||[]).filter(c => c.card_type === 'player' && c.player)
-  const gcCards     = (cards||[]).filter(c => c.card_type === 'game_changer')
-  const formCards   = (cards||[]).filter(c => c.card_type === 'formation')
+  const playerCards  = (cards||[]).filter(c => c.card_type === 'player' && c.player)
+  const gcCards      = (cards||[]).filter(c => c.card_type === 'game_changer')
+  const formCards    = (cards||[]).filter(c => c.card_type === 'formation')
+  const stadiumCards = (cards||[]).filter(c => c.card_type === 'stadium')
 
   // Définitions GC depuis la DB (image, couleur, effet)
   const { data: gcDefinitions } = await supabase
     .from('gc_definitions').select('name,gc_type,color,effect,image_url')
   const gcDefMap = {}
   ;(gcDefinitions||[]).forEach(d => { gcDefMap[d.name] = d })
+
+  const { data: stadiumDefs } = await supabase
+    .from('stadium_definitions').select('id,name,club_id,country_code,image_url, club:clubs(encoded_name,logo_url)')
+  const stadDefMap = {}
+  ;(stadiumDefs||[]).forEach(d => { stadDefMap[d.id] = d })
 
   const ALL_FORMATIONS = Object.keys(FORMATION_LINKS)
   const ALL_GC_TYPES   = Object.keys(GC_DEFS)
@@ -200,7 +206,7 @@ export async function renderCollection(container, ctx) {
   const ownedFormations = new Set(formCards.map(c => c.formation))
   const ownedGcTypes    = new Set(gcCards.map(c => c.gc_type))
 
-  let activeTab    = 'player'   // 'player' | 'formation' | 'gc'
+  let activeTab    = 'player'   // 'player' | 'formation' | 'gc' | 'stadium'
   let activeFilter = 'Tous'
   let searchQ      = ''
   let showAll      = false
@@ -262,6 +268,12 @@ export async function renderCollection(container, ctx) {
         color:${activeTab==='gc'?'var(--green)':'var(--gray-600)'}">
         <div style="font-size:13px;font-weight:700">Game Changer</div>
         <div style="font-size:11px;font-weight:400;opacity:0.7">(${gcCards.length})</div>
+      </button>
+      <button class="col-tab-btn" data-tab="stadium" style="flex:1;padding:10px 4px;border:none;background:none;cursor:pointer;
+        border-bottom:3px solid ${activeTab==='stadium'?'#E87722':'transparent'};
+        color:${activeTab==='stadium'?'#E87722':'var(--gray-600)'}">
+        <div style="font-size:13px;font-weight:700">Stades</div>
+        <div style="font-size:11px;font-weight:400;opacity:0.7">(${stadiumCards.length})</div>
       </button>
     </div>
 
@@ -346,6 +358,8 @@ export async function renderCollection(container, ctx) {
       renderPlayerGrid(grid)
     } else if (activeTab === 'formation') {
       renderFormationGrid(grid)
+    } else if (activeTab === 'stadium') {
+      renderStadiumGrid(grid)
     } else {
       renderGCGrid(grid)
     }
@@ -603,6 +617,69 @@ export async function renderCollection(container, ctx) {
       ({type, gc, def, owned}) => { const _s=window.innerWidth>=768?0.76:0.54; const BG2={purple:'linear-gradient(160deg,#4a0a8a,#7a28b8)',light_blue:'linear-gradient(160deg,#006080,#00bcd4)'},bo2={purple:'#9b59b6',light_blue:'#00bcd4'}; const bg2=BG2[def?.color]||BG2.purple,bor2=bo2[def?.color]||bo2.purple,imgU=def?.image_url?`${import.meta.env.BASE_URL}icons/${def.image_url}`:null; if(owned){ return `<div style="display:inline-block;zoom:${_s};line-height:0;pointer-events:none"><div style="width:140px;height:310px;border-radius:8px;background:${bg2};border:1px solid ${bor2};display:flex;flex-direction:column;overflow:hidden"><div style="height:56px;background:rgba(255,255,255,0.15);display:flex;align-items:center;justify-content:center"><span style="font-size:13px;font-weight:900;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:130px">${type}</span></div><div style="flex:1;display:flex;align-items:center;justify-content:center">${imgU?`<img src="${imgU}" style="max-width:130px;max-height:190px;object-fit:contain">`:`<span style="font-size:48px">${gc.icon}</span>`}</div><div style="height:54px;display:flex;align-items:center;justify-content:center;padding:0 4px"><span style="font-size:10px;color:rgba(255,255,255,0.7);text-align:center">${(def?.effect||gc.desc||'').slice(0,30)}</span></div></div></div>` } return `<div style="display:inline-block;zoom:${_s};line-height:0;pointer-events:none"><div style="width:140px;height:310px;border-radius:8px;background:#eee;border:1px solid #ddd;display:flex;flex-direction:column;align-items:center;justify-content:center;filter:grayscale(1);opacity:0.45"><span style="font-size:36px">${gc.icon}</span><span style="font-size:12px;color:#aaa;margin-top:6px;text-align:center;padding:0 6px">${type}</span></div></div>` },
       ({type, owned, def}) => { if (owned) openGCModal(type, def, openModal) },
       '#7a28b8'
+    )
+  }
+
+  function renderStadiumGrid(grid) {
+    const ORANGE = '#E87722'
+    const BASE2 = import.meta.env.BASE_URL
+    if (!stadiumCards.length) {
+      grid.innerHTML = '<div style="width:100%;text-align:center;padding:40px;color:var(--gray-600)">Aucune carte Stade.<br><small>Ouvre un booster Stade !</small></div>'
+      return
+    }
+    // Grouper par stadium_id
+    const grouped = {}
+    stadiumCards.forEach(c => { const sid=c.stadium_id||'?'; (grouped[sid]=grouped[sid]||[]).push(c) })
+
+    const items = Object.entries(grouped).map(([sid, cards]) => ({
+      sid, def: stadDefMap[sid]||null, count: cards.length, card: cards[0]
+    }))
+
+    renderBigAndStrip(
+      items,
+      ({ def, count }) => {
+        const name  = def?.name || '?'
+        const label = def?.club?.encoded_name || def?.country_code || '—'
+        const imgUrl = def?.image_url ? `${BASE2}icons/${def.image_url}` : (def?.club?.logo_url || null)
+        const imgHTML = imgUrl
+          ? `<img src="${imgUrl}" style="width:90px;height:90px;object-fit:contain">`
+          : `<div style="font-size:56px">🏟️</div>`
+        const badge = count>1 ? `<div style="position:absolute;top:8px;right:8px;background:#333;color:#fff;border-radius:10px;font-size:10px;font-weight:700;padding:2px 8px;z-index:3">×${count}</div>` : ''
+        return `<div style="position:relative;width:140px;border-radius:12px;border:3px solid #c45a00;background:linear-gradient(160deg,${ORANGE},#c45a00);display:flex;flex-direction:column;overflow:hidden;box-shadow:0 0 24px ${ORANGE}66">
+          ${badge}
+          <div style="padding:8px 10px;background:rgba(0,0,0,0.25);text-align:center">
+            <div style="font-size:8px;font-weight:900;color:rgba(255,255,255,0.65);letter-spacing:1px">🏟️ STADE</div>
+            <div style="font-size:12px;font-weight:900;color:#fff;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${name}</div>
+          </div>
+          <div style="height:140px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.08)">${imgHTML}</div>
+          <div style="padding:8px 12px;background:rgba(0,0,0,0.3);text-align:center">
+            <div style="font-size:11px;color:rgba(255,255,255,0.85);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${label}</div>
+            <div style="font-size:13px;font-weight:900;color:#FFD700;margin-top:2px">+10 ⭐ joueurs alliés</div>
+          </div>
+        </div>`
+      },
+      ({ def, count }) => {
+        const _s = window.innerWidth>=768 ? 0.76 : 0.54
+        const name  = def?.name || '?'
+        const label = def?.club?.encoded_name || def?.country_code || '—'
+        const imgUrl = def?.image_url ? `${BASE2}icons/${def.image_url}` : (def?.club?.logo_url || null)
+        const imgHTML = imgUrl ? `<img src="${imgUrl}" style="width:60px;height:60px;object-fit:contain">` : '<span style="font-size:32px">🏟️</span>'
+        return `<div style="display:inline-block;zoom:${_s};line-height:0;pointer-events:none">
+          <div style="width:140px;height:310px;border-radius:8px;background:linear-gradient(160deg,${ORANGE},#c45a00);border:1px solid #c45a00;display:flex;flex-direction:column;overflow:hidden">
+            <div style="height:56px;background:rgba(0,0,0,0.25);display:flex;align-items:center;justify-content:center;flex-direction:column;padding:4px">
+              <div style="font-size:7px;font-weight:700;color:rgba(255,255,255,0.6)">🏟️ STADE</div>
+              <div style="font-size:12px;font-weight:900;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:130px">${name}</div>
+            </div>
+            <div style="flex:1;display:flex;align-items:center;justify-content:center">${imgHTML}</div>
+            <div style="height:54px;display:flex;align-items:center;justify-content:center;flex-direction:column;background:rgba(0,0,0,0.3);padding:4px">
+              <div style="font-size:10px;color:rgba(255,255,255,0.8)">${label}</div>
+              <div style="font-size:12px;font-weight:900;color:#FFD700">+10 ⭐</div>
+            </div>
+          </div>
+        </div>`
+      },
+      null,
+      ORANGE
     )
   }
 

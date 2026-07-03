@@ -117,6 +117,17 @@ async function resolveCard(rate, ownerId) {
       .select('id,card_type,rarity')
       .single()
     return card
+  } else if (card_type === 'stadium') {
+    // Tirer un stade au hasard parmi les définitions
+    const { data: stads } = await supabase.from('stadium_definitions').select('id')
+    if (!stads?.length) return null
+    const stadDef = stads[Math.floor(Math.random()*stads.length)]
+    const { data: card } = await supabase
+      .from('cards')
+      .insert({ owner_id:ownerId, card_type:'stadium', stadium_id:stadDef.id, rarity:rarity||'normal' })
+      .select('id,card_type,stadium_id,rarity')
+      .single()
+    return card
   }
   return null
 }

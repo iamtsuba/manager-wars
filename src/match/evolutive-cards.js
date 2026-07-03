@@ -73,3 +73,11 @@ async function applyEvolution(userId, outcome) {
     return supabase.from('cards').update({ current_note: newMain }).eq('id', card.id)
   }))
 }
+
+/**
+ * Applique l'évolution des cartes pépite/papyte d'UN SEUL utilisateur.
+ * Appelé côté chaque joueur pour ses propres cartes (contourne la RLS).
+ */
+export async function applyOwnEvolution(userId, outcome) {
+  return applyEvolution(userId, outcome)
+}

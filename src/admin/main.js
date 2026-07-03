@@ -15,6 +15,7 @@ import { renderBoostersConfig } from './pages/boosters-config.js'
 import { renderSellPriceConfig } from './pages/sell-price-config.js'
 import { renderJournal         } from './pages/journal.js'
 import { renderTutorialAdmin   } from './pages/tutorial-admin.js'
+import { renderStadiums        } from './pages/stadiums.js'
 import { renderGCCards }         from './pages/gc-cards.js'
 
 // ── Toast helper ──────────────────────────────────────────
@@ -51,6 +52,7 @@ const PAGES = {
   'sell-price':      { title: 'Prix vente directe',    fn: renderSellPriceConfig },
   'journal':         { title: 'Journal',               fn: renderJournal },
   'tutorial':        { title: 'Tutoriel',              fn: renderTutorialAdmin },
+  'stadiums':        { title: 'Stades',                fn: renderStadiums },
   'gc-cards':         { title: 'Game Changers',          fn: renderGCCards },
 }
 

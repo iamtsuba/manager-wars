@@ -7,7 +7,7 @@ import {
 } from './game-logic.js'
 import { FORMATION_LINKS, FORMATION_POSITIONS, linkColor, getActiveLinks } from './formation-links.js'
 import {
-  showMsg, getPortrait, playerFromCard, getColsForLine, buildTeam, rollBoost,
+  showMsg, getPortrait, playerFromCard, getColsForLine, buildTeam, rollBoost, applyStadiumBonus,
   _hideBottomNav, _showBottomNav, renderDeckSelect, showGCSelection,
   getClubLogo, renderMiniCardHTML, renderCardRow, flagImgUrl, countryFlag,
   buildTeamSVG, renderTeam, renderMiniPlayer, loadMatchSetup, FORMATIONS, JOB_COLORS,
@@ -44,7 +44,7 @@ export async function renderMatchMiniLeague(container, ctx, mlMatchId, leagueId)
       await supabase.from('matchmaking_queue').delete().eq('user_id', uid).then(()=>{}, ()=>{})
     }
   } catch {}
-  await loadMatchSetup(container, ctx, 'random', ({ deckId, formation, starters, subsRaw, gcCardsEnriched, gcDefs }) => {
+  await loadMatchSetup(container, ctx, 'random', ({ deckId, formation, starters, subsRaw, gcCardsEnriched, gcDefs, stadiumDef }) => {
     const start = (selectedGC) => showMiniLeagueLobby(container, ctx, deckId, formation, starters, subsRaw, selectedGC, gcDefs || [], mlMatchId, leagueId)
     if (!gcCardsEnriched.length) { start([]); return }
     showGCSelection(container, gcCardsEnriched, start)

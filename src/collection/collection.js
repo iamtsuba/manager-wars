@@ -598,7 +598,7 @@ export async function renderCollection(container, ctx) {
         const bg   = BG[def?.color]  ||BG.purple
         const bord = BORD[def?.color]||BORD.purple
         const effect = def?.effect||gc.desc||''
-        const imgUrl = def?.image_url ? `${import.meta.env.BASE_URL}icons/${def.image_url}` : null
+        const imgUrl = def?.image_url ? `${import.meta.env.BASE_URL}icons/${def.image_url}` : (def?.club?.logo_url || (def?.country_code ? `https://flagcdn.com/w80/${def.country_code.toLowerCase()}.png` : null))
         if (owned && card) return `<div data-gc-id="${card.id}" data-gc-type="${type}" style="position:relative;width:140px;border-radius:12px;border:3px solid ${bord};background:${bg};display:flex;flex-direction:column;overflow:hidden;box-shadow:0 0 24px ${bord}66;cursor:pointer">
           ${badge}
           <div style="padding:10px 12px;background:rgba(255,255,255,0.14);text-align:center">
@@ -645,10 +645,10 @@ export async function renderCollection(container, ctx) {
         const name  = def?.name || '?'
         const label = def?.club?.encoded_name || def?.country_code || '—'
         const imgUrl = def?.image_url
-        ? `\${BASE2}icons/\${def.image_url}`
-        : (def?.club?.logo_url || (def?.country_code ? `https://flagcdn.com/w80/\${def.country_code.toLowerCase()}.png` : null))
+        ? `${BASE2}icons/${def.image_url}`
+        : (def?.club?.logo_url || (def?.country_code ? `https://flagcdn.com/w80/${def.country_code.toLowerCase()}.png` : null))
         const imgHTML = imgUrl
-          ? `<img src="${imgUrl}" style="width:90px;height:90px;object-fit:contain">`
+          ? `<img src="${imgUrl}" style="width:90px;height:90px;object-fit:contain;border-radius:4px" onerror="this.style.display='none'">`
           : `<div style="font-size:56px">🏟️</div>`
         const badge = count>1 ? `<div style="position:absolute;top:8px;right:8px;background:#333;color:#fff;border-radius:10px;font-size:10px;font-weight:700;padding:2px 8px;z-index:3">×${count}</div>` : ''
         return `<div style="position:relative;width:140px;border-radius:12px;border:3px solid #c45a00;background:linear-gradient(160deg,${ORANGE},#c45a00);display:flex;flex-direction:column;overflow:hidden;box-shadow:0 0 24px ${ORANGE}66">

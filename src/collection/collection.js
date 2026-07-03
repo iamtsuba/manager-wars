@@ -1161,21 +1161,35 @@ async function openCardDetail(card, allPlayerCards, countByPlayer, ctx) {
     const ids = [...selectedCardIds]
     if (!ids.length) return
 
-    // Utiliser samePlayerCards (scope local de openCardDetail)
-    const toEvolve = samePlayerCards.filter(c => ids.includes(c.id))
-    if (!toEvolve.length) return
+    // Les IDs à sacrifier = sélectionnés SAUF la carte principale (card.id)
+    const idsToDelete = ids.filter(id => id !== card.id)
+    const bonusGained = idsToDelete.length || 1  // si seul card.id sélectionné → +1 sans supprimer
 
-    const errors = []
-    await Promise.all(toEvolve.map(async c => {
-      const newEvo = (c.evolution_bonus || 0) + 1
-      const { error } = await supabase.from('cards')
-        .update({ evolution_bonus: newEvo })
-        .eq('id', c.id)
-      if (error) errors.push(error.message)
-    }))
+    if (!idsToDelete.length && ids.length === 1 && ids[0] === card.id) {
+      // Cas : seul exemplaire sélectionné = la carte principale → +1 sans suppression
+    } else if (!idsToDelete.length) {
+      toast('Sélectionne des copies à sacrifier', 'warning'); return
+    }
 
-    if (errors.length) { toast('Erreur : ' + errors[0], 'error'); return }
-    toast(`⬆️ ${ids.length} carte${ids.length>1?'s':''} évoluée${ids.length>1?'s':''} ! (+1 par carte)`, 'success', 3000)
+    if (!confirm(`Sacrifier ${idsToDelete.length} exemplaire${idsToDelete.length>1?'s':''} pour donner +${idsToDelete.length} à ${p.firstname} ${p.surname_encoded} ?`)) return
+
+    // 1. Supprimer les dépendances FK des copies sacrifiées
+    if (idsToDelete.length) {
+      await supabase.from('market_listings').delete().in('card_id', idsToDelete)
+      await supabase.from('transfer_history').delete().in('card_id', idsToDelete)
+      const { error: delErr } = await supabase.from('cards').delete().in('id', idsToDelete)
+      if (delErr) { toast('Erreur suppression : ' + delErr.message, 'error'); return }
+    }
+
+    // 2. Ajouter le bonus à la carte principale
+    const newEvo = (card.evolution_bonus || 0) + idsToDelete.length
+    const { error: evoErr } = await supabase.from('cards')
+      .update({ evolution_bonus: newEvo })
+      .eq('id', card.id)
+    if (evoErr) { toast('Erreur évolution : ' + evoErr.message, 'error'); return }
+
+    const mainNoteAfter = note1 + newEvo
+    toast(`⬆️ ${p.firstname} ${p.surname_encoded} : note ${note1+card.evolution_bonus||note1} → ${mainNoteAfter}${idsToDelete.length?` · ${idsToDelete.length} copie${idsToDelete.length>1?'s':''} sacrifiée${idsToDelete.length>1?'s':''}`:''} !`, 'success', 4000)
     closeModal()
     navigate('collection')
   })

@@ -1170,19 +1170,15 @@ function showHardcodedOdds() {
 }
 
 // ── Monetag Vignette Banner ───────────────────────────────
-// Zone ID : 11240210 — chargé en lazy uniquement au clic sur le booster pub
+// Zone ID : 11240210 — script chargé dans index.html
+// La vignette s'affiche automatiquement — on attend 3s puis on résout
 
 function showAd() {
   return new Promise(resolve => {
-    // Injecter le script Monetag s'il n'est pas encore chargé
-    if (!document.querySelector('script[data-zone="11240210"]')) {
-      const s = document.createElement('script')
-      s.dataset.zone = '11240210'
-      s.src = 'https://n6wxm.com/vignette.min.js'
-      document.body.appendChild(s)
+    if (typeof window.__monetag !== 'undefined') {
+      try { window.__monetag.show() } catch(e) {}
     }
-    // Attendre 4s (temps de chargement + affichage pub) puis résoudre
-    setTimeout(() => resolve(true), 4000)
+    setTimeout(() => resolve(true), 3000)
   })
 }
 

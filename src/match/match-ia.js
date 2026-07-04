@@ -463,6 +463,11 @@ function renderGame(container, game, ctx) {
   const isDefense = game.phase === 'defense'
   const isFinished = game.phase === 'finished'
 
+  // Joueur bloqué : phase attack, aucun MIL/ATT dispo, plus de remplacements possibles
+  const availSubsNowRender = (game.homeSubs||[]).filter(s => !(game.usedSubIds||[]).includes(s.cardId))
+  const canSubNowRender = availSubsNowRender.length > 0 && game.subsUsed < game.maxSubs
+  const isBlocked = isAttack && homeMilAtt.length === 0 && !canSubNowRender
+
   // GC disponibles
   const activeGCs = game.gcCards.filter(gc => !game.usedGc.includes(gc.id))
   const boostAvail = game.boostCard && !game.boostUsed
@@ -580,6 +585,8 @@ function renderGame(container, game, ctx) {
         ? `<button id="btn-results" style="${btnStyle};background:linear-gradient(135deg,#D4A017,#FFD700);border:none;color:#000">🏁 Résultats</button>`
         : isAITurn
         ? `<div style="${btnStyle};background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);color:rgba(255,255,255,0.4)">⏳ Tour IA</div>`
+        : isBlocked
+        ? `<button id="btn-pass" style="${btnStyle};background:linear-gradient(135deg,#555,#888);border:none;color:#fff">⏭️ PASSER (plus d'attaquants)</button>`
         : isAttack
         ? `<button id="btn-action" style="${btnStyle};background:linear-gradient(135deg,#c47a00,#FFD700);border:none;color:#fff;box-shadow:0 0 18px rgba(255,215,0,0.4)" ${game.selected.length===0?'disabled':''}> ⚔️ ATTAQUEZ <span id="match-timer" style="font-weight:900"></span></button>`
         : isDefense
@@ -812,6 +819,12 @@ function renderGame(container, game, ctx) {
   })
 
   document.getElementById('btn-results')?.addEventListener('click', () => finishMatch(container, game, ctx))
+  document.getElementById('btn-pass')?.addEventListener('click', () => {
+    game.log.push({ text: '⏭️ Vous passez votre tour (plus d'attaquants)', type:'info' })
+    game.phase = 'ai-attack'
+    renderGame(container, game, ctx)
+    setTimeout(() => aiTurn(container, game, ctx), 800)
+  })
 
   container.querySelectorAll('.match-slot-hit').forEach(el => {
     el.addEventListener('click', () => toggleSelect(el, game, container, ctx))

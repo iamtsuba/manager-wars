@@ -131,8 +131,9 @@ async function loadMarket(container, ctx) {
       const fullName = `${p.firstname} ${p.surname_encoded}`.toLowerCase()
       const club     = (p.clubs?.encoded_name||'').toLowerCase()
       const country  = (p.country_code||'').toLowerCase()
-      const note1    = getNote(p, p.job)
-      const note2    = p.job2 ? getNote(p, p.job2) : 0
+      const evo      = l.card?.evolution_bonus || 0
+      const note1    = getNote(p, p.job, evo)
+      const note2    = p.job2 ? getNote(p, p.job2, evo) : 0
       if (f.name    && !fullName.includes(f.name))  return false
       if (f.club    && !club.includes(f.club))       return false
       if (f.country && !country.includes(f.country)) return false

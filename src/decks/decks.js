@@ -153,19 +153,26 @@ async function openDeckBuilder(deckId, container, ctx) {
 
   const { data: deck } = await supabase.from('decks').select('*').eq('id', deckId).single()
 
+  // Query séparée pour éviter qu'une erreur stade casse toutes les cartes
   const { data: cards } = await supabase
     .from('cards')
     .select(`id, card_type, formation, stadium_id, evolution_bonus,
       player:players(id, firstname, surname_encoded, country_code, club_id, job, job2,
         note_g, note_d, note_m, note_a, rarity, skin, hair, hair_length,
-        clubs(encoded_name, logo_url)),
+        clubs(encoded_name, logo_url))`)
+    .eq('owner_id', state.profile.id)
+
+  const { data: stadiumCards2 } = await supabase
+    .from('cards')
+    .select(`id, card_type, stadium_id,
       stadium_def:stadium_definitions(id, name, club_id, country_code, image_url,
         club:clubs(encoded_name, logo_url))`)
     .eq('owner_id', state.profile.id)
+    .eq('card_type', 'stadium')
 
   const playerCards    = (cards||[]).filter(c => c.card_type === 'player' && c.player)
   const formationCards = (cards||[]).filter(c => c.card_type === 'formation')
-  const stadiumCards   = (cards||[]).filter(c => c.card_type === 'stadium')
+  const stadiumCards   = (stadiumCards2||[]).filter(c => c.card_type === 'stadium')
 
   // Construire stadDefMap depuis les cartes déjà jointes
   const stadIds = [...new Set(stadiumCards.map(c=>c.stadium_id).filter(Boolean))]

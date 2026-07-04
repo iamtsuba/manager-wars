@@ -141,6 +141,31 @@ export async function renderBoostersConfig(container) {
             <span style="font-size:11px;color:#888;font-weight:400;display:block">Si décoché : impossible d'obtenir un joueur/carte déjà possédé(e)</span>
           </label>
         </div>
+
+        <!-- Quota & période -->
+        <div style="border-top:1px solid #eee;padding-top:14px;margin-top:14px">
+          <div style="font-size:12px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">Quota & période de disponibilité</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+            <div>
+              <label style="font-size:11px;color:#666;display:block;margin-bottom:4px">Max par manager (vide = illimité)</label>
+              <input id="f-max-per-user" type="number" min="1" value="${sel.max_per_user||''}" placeholder="ex: 1"
+                style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;font-size:13px;box-sizing:border-box">
+            </div>
+            <div>
+              <label style="font-size:11px;color:#666;display:block;margin-bottom:4px">Disponible à partir du</label>
+              <input id="f-available-from" type="date" value="${sel.available_from||''}"
+                style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;font-size:13px;box-sizing:border-box">
+            </div>
+            <div>
+              <label style="font-size:11px;color:#666;display:block;margin-bottom:4px">Disponible jusqu'au</label>
+              <input id="f-available-until" type="date" value="${sel.available_until||''}"
+                style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;font-size:13px;box-sizing:border-box">
+            </div>
+          </div>
+          <div style="font-size:11px;color:#aaa;margin-top:6px">
+            💡 Si max = 1 : le booster disparaît dès que le manager l'a ouvert. Laissez vide pour aucune limite.
+          </div>
+        </div>
       </div>
 
       <!-- Taux de drop -->
@@ -360,6 +385,9 @@ export async function renderBoostersConfig(container) {
         is_active:        q('#f-active')?.checked                 ?? sel.is_active,
         allow_duplicates: q('#f-allow-dup')?.checked              ?? true,
         sort_order:       Number(q('#f-sort')?.value)             || 0,
+        max_per_user:     q('#f-max-per-user')?.value ? Number(q('#f-max-per-user').value) : null,
+        available_from:   q('#f-available-from')?.value || null,
+        available_until:  q('#f-available-until')?.value || null,
       }
 
       const { error: e1 } = await supabase.from('booster_configs').update(updates).eq('id', selectedId)

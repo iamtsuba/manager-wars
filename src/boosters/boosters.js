@@ -1,6 +1,6 @@
 import { supabase } from '../lib/supabase.js'
 import { FORMATION_POSITIONS } from '../match/formation-links.js'
-import { loadActiveBoosters, drawCard, rollDropRate } from './booster-engine.js'
+import { loadActiveBoosters, drawCard, rollDropRate, recordBoosterClaim } from './booster-engine.js'
 
 // Toutes les formations disponibles (depuis formation-links.js)
 const ALL_FORMATIONS = () => Object.keys(FORMATION_POSITIONS)
@@ -112,6 +112,7 @@ function dbToUI(b) {
     isPub:     b.price_type === 'pub',
     rates:     b.rates || [],
     allow_duplicates: b.allow_duplicates !== false,  // false = anti-doublon
+    _boosterId: b.id,  // pour recordBoosterClaim
     _raw:      b,
   }
 }
@@ -123,7 +124,7 @@ export async function renderBoosters(container, { state, navigate, toast }) {
   // Charger les boosters actifs depuis la DB
   let ACTIVE_BOOSTERS = []
   try {
-    const dbBoosters = await loadActiveBoosters()
+    const dbBoosters = await loadActiveBoosters(state.user?.id)
     ACTIVE_BOOSTERS = dbBoosters.map(dbToUI)
   } catch(e) {
     console.warn('Erreur chargement boosters DB, fallback hardcodé', e)
@@ -255,6 +256,11 @@ async function openBooster(booster, { state, toast, navigate, container }) {
   } catch(e) {
     _boosterError = e.message || String(e)
     console.error('[Booster] Erreur:', e)
+  }
+
+  // Enregistrer le claim si booster à quota
+  if (newCards?.length && booster._boosterId) {
+    await recordBoosterClaim(state.user.id, booster._boosterId)
   }
 
   if (!newCards?.length) {

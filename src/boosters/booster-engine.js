@@ -8,7 +8,9 @@
 import { supabase } from '../lib/supabase.js'
 
 // ── Charger tous les boosters actifs avec leurs taux ──────
-export async function loadActiveBoosters() {
+export async function loadActiveBoosters(userId = null) {
+  const today = new Date().toISOString().slice(0, 10)
+
   const { data: configs } = await supabase
     .from('booster_configs')
     .select('*')
@@ -17,16 +19,61 @@ export async function loadActiveBoosters() {
 
   if (!configs?.length) return []
 
+  // Filtrer par période de disponibilité
+  const dateFiltered = configs.filter(cfg => {
+    if (cfg.available_from  && today < cfg.available_from)  return false
+    if (cfg.available_until && today > cfg.available_until) return false
+    return true
+  })
+
+  if (!dateFiltered.length) return []
+
+  // Filtrer par quota utilisateur
+  let quotaFiltered = dateFiltered
+  if (userId) {
+    const quotaBoosters = dateFiltered.filter(cfg => cfg.max_per_user != null)
+    if (quotaBoosters.length) {
+      const { data: claims } = await supabase
+        .from('booster_claims')
+        .select('booster_id')
+        .eq('user_id', userId)
+        .in('booster_id', quotaBoosters.map(c => c.id))
+
+      const claimCounts = {}
+      ;(claims||[]).forEach(c => {
+        claimCounts[c.booster_id] = (claimCounts[c.booster_id]||0) + 1
+      })
+
+      quotaFiltered = dateFiltered.filter(cfg => {
+        if (cfg.max_per_user == null) return true
+        return (claimCounts[cfg.id]||0) < cfg.max_per_user
+      })
+    }
+  }
+
+  if (!quotaFiltered.length) return []
+
   const { data: rates } = await supabase
     .from('booster_drop_rates')
     .select('*')
-    .in('booster_id', configs.map(c=>c.id))
+    .in('booster_id', quotaFiltered.map(c=>c.id))
     .order('sort_order')
 
-  return configs.map(cfg => ({
+  return quotaFiltered.map(cfg => ({
     ...cfg,
     rates: (rates||[]).filter(r => r.booster_id === cfg.id)
   }))
+}
+
+// Enregistrer un claim après ouverture d'un booster à quota
+export async function recordBoosterClaim(userId, boosterId) {
+  const { data: cfg } = await supabase
+    .from('booster_configs')
+    .select('max_per_user')
+    .eq('id', boosterId)
+    .single()
+  if (!cfg?.max_per_user) return  // pas de quota → rien à enregistrer
+  await supabase.from('booster_claims').insert({ user_id: userId, booster_id: boosterId })
 }
 
 // ── Tirer UN type/rareté/note_min/note_max selon les % ────

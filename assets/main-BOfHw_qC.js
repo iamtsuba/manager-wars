@@ -339,7 +339,7 @@ import{s as E,F as hi,h as Pt,j as Yi,l as at,i as Ao,k as zo,b as So}from"./for
         border:1.5px solid #ddd;background:#fff;
         font-size:14px;font-weight:700;cursor:pointer;color:#555;
       }
-    </style>`}async function Xi({player1Id:e,player2Id:t,score1:i,score2:s,gc1:l,gc2:d}){const[a,c]=[e,t].sort(),g=e!==a,o=g?s:i,r=g?i:s,m=g?d:l,b=g?l:d,u=o>r?1:0,k=r>o?1:0,n=o===r?1:0,{data:p}=await E.from("friend_match_stats").select("*").eq("player1_id",a).eq("player2_id",c).single();p?await E.from("friend_match_stats").update({wins_p1:p.wins_p1+u,wins_p2:p.wins_p2+k,draws:p.draws+n,goals_p1:p.goals_p1+o,goals_p2:p.goals_p2+r,gc_used_p1:p.gc_used_p1+m,gc_used_p2:p.gc_used_p2+b,matches_total:p.matches_total+1}).eq("player1_id",a).eq("player2_id",c):await E.from("friend_match_stats").insert({player1_id:a,player2_id:c,wins_p1:u,wins_p2:k,draws:n,goals_p1:o,goals_p2:r,gc_used_p1:m,gc_used_p2:b,matches_total:1})}const Po="2026.07.05-0008";async function ji(e,{state:t,navigate:i,toast:s}){var d,a;const l=t.profile;l&&(e.innerHTML=`
+    </style>`}async function Xi({player1Id:e,player2Id:t,score1:i,score2:s,gc1:l,gc2:d}){const[a,c]=[e,t].sort(),g=e!==a,o=g?s:i,r=g?i:s,m=g?d:l,b=g?l:d,u=o>r?1:0,k=r>o?1:0,n=o===r?1:0,{data:p}=await E.from("friend_match_stats").select("*").eq("player1_id",a).eq("player2_id",c).single();p?await E.from("friend_match_stats").update({wins_p1:p.wins_p1+u,wins_p2:p.wins_p2+k,draws:p.draws+n,goals_p1:p.goals_p1+o,goals_p2:p.goals_p2+r,gc_used_p1:p.gc_used_p1+m,gc_used_p2:p.gc_used_p2+b,matches_total:p.matches_total+1}).eq("player1_id",a).eq("player2_id",c):await E.from("friend_match_stats").insert({player1_id:a,player2_id:c,wins_p1:u,wins_p2:k,draws:n,goals_p1:o,goals_p2:r,gc_used_p1:m,gc_used_p2:b,matches_total:1})}const Po="2026.07.05-0012";async function ji(e,{state:t,navigate:i,toast:s}){var d,a;const l=t.profile;l&&(e.innerHTML=`
   <style>
     @media (min-width: 768px) {
       .home-page-body {
@@ -973,7 +973,7 @@ import{s as E,F as hi,h as Pt,j as Yi,l as at,i as Ao,k as zo,b as So}from"./for
     <div style="padding:10px 12px;background:rgba(0,0,0,0.25);border-top:1px solid rgba(255,255,255,0.1)">
       <div style="font-size:11px;font-weight:700;margin-bottom:8px;color:rgba(255,255,255,0.6);letter-spacing:1px;text-transform:uppercase">Remplaçants (${t.subs.length}/5)</div>
       <div style="display:flex;gap:8px;align-items:flex-end;overflow-x:auto;padding-bottom:4px" id="subs-list">
-        ${g.map(u=>{const k=u.player;return`<div style="position:relative;flex-shrink:0">
+        ${g.map(u=>{const k={...u.player,_evolution_bonus:u.evolution_bonus||0};return`<div style="position:relative;flex-shrink:0">
             ${Qo(k,44,58)}
             <button data-remove-sub="${u.id}"
               style="position:absolute;top:-6px;right:-6px;width:18px;height:18px;background:#c0392b;border:none;border-radius:50%;color:#fff;font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;padding:0">✕</button>

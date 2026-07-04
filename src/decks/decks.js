@@ -309,6 +309,7 @@ function renderBuilder(container, builder, ctx) {
   })
   document.getElementById('stadium-select')?.addEventListener('change', e => {
     builder.stadiumCardId = e.target.value || null
+    renderBuilder(container, builder, ctx)
   })
 
   document.getElementById('save-deck').addEventListener('click', () => saveDeck(builder, ctx))

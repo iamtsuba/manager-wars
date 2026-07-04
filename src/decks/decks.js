@@ -461,7 +461,6 @@ function openPlayerSelector(position, builder, container, ctx) {
   })
 
   eligible.sort((a, b) => {
-    const evoFn = card?.evolution_bonus||0; const fn = r => (r==='GK'?p.note_g : r==='DEF'?p.note_d : r==='MIL'?p.note_m : p.note_a) + (r===p.job||r===p.job2?evoFn:0)
     const evoA = a.evolution_bonus||0, evoB = b.evolution_bonus||0
     const nA = (role==='GK'?a.player.note_g : role==='DEF'?a.player.note_d : role==='MIL'?a.player.note_m : a.player.note_a) + (role===a.player.job||role===a.player.job2?evoA:0)
     const nB = (role==='GK'?b.player.note_g : role==='DEF'?b.player.note_d : role==='MIL'?b.player.note_m : b.player.note_a) + (role===b.player.job||role===b.player.job2?evoB:0)
@@ -477,7 +476,7 @@ function openPlayerSelector(position, builder, container, ctx) {
         </button>` : ''}
       ${eligible.length > 0 ? eligible.map(c => {
         const p = c.player
-        const evoPick = card.evolution_bonus||0
+        const evoPick = c.evolution_bonus||0
         const note = (role==='GK'?p.note_g : role==='DEF'?p.note_d : role==='MIL'?p.note_m : p.note_a) + (role===p.job||role===p.job2?evoPick:0)
         const portrait = getPortrait(p)
         const rarColor = {normal:'#ccc',pepite:'#D4A017',papyte:'#909090',legende:'#7a28b8'}[p.rarity]

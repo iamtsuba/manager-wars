@@ -54,7 +54,7 @@ function renderMiniCardHTML(p, w=44, h=58) {
   const role     = p?.job || 'MIL'
   const jobColor = JOB_COLORS[role] || '#555'
   const rarityBorder = { normal:'#aaa', pepite:'#D4A017', pépite:'#D4A017', papyte:'#222', legende:'#7a28b8', légende:'#7a28b8' }[p?.rarity] || '#aaa'
-  const evo57 = p?.evolution_bonus || 0
+  const evo57 = p?._evolution_bonus ?? p?.evolution_bonus ?? 0
   const noteBase57 = Number(role==='GK'?p?.note_g:role==='DEF'?p?.note_d:role==='MIL'?p?.note_m:p?.note_a)||0
   const note = noteBase57 + (role===p?.job||role===p?.job2 ? evo57 : 0)
   const nameH = Math.round(h*0.19), botH = Math.round(h*0.25), portH = h-nameH-botH
@@ -280,10 +280,10 @@ function renderBuilder(container, builder, ctx) {
       <div style="display:flex;gap:8px;align-items:flex-end;overflow-x:auto;padding-bottom:4px" id="subs-list">
         ${subPlayers.map(card => {
           const p = { ...card.player, _evolution_bonus: card.evolution_bonus || 0 }
-          return `<div style="position:relative;flex-shrink:0">
+          return `<div style="position:relative;flex-shrink:0;overflow:visible">
             ${renderMiniCardHTML(p, 44, 58, _stadDef)}
             <button data-remove-sub="${card.id}"
-              style="position:absolute;top:-6px;right:-6px;width:18px;height:18px;background:#c0392b;border:none;border-radius:50%;color:#fff;font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;padding:0">✕</button>
+              style="position:absolute;top:-6px;right:-6px;width:18px;height:18px;background:#c0392b;border:none;border-radius:50%;color:#fff;font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;padding:0;z-index:10">✕</button>
           </div>`
         }).join('')}
         ${builder.subs.length < 5 ? `<div id="add-sub-btn" style="width:44px;height:58px;border:2px dashed rgba(255,255,255,0.3);border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:22px;color:rgba(255,255,255,0.4);cursor:pointer;flex-shrink:0">+</div>` : ''}

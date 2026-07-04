@@ -173,6 +173,7 @@ export async function renderBoosters(container, { state, navigate, toast }) {
         ${ACTIVE_BOOSTERS.map(b => {
           const canAfford = b.cost === 0 || credits >= b.cost
           const isPoolEmpty = poolEmpty[b.id] === true
+          const isDisabled = !canAfford || isPoolEmpty
           return `<div class="booster-card ${isDisabled ? 'disabled' : ''}" data-booster="${b.id}" style="position:relative">
             <button class="booster-info-btn" data-booster-id="${b.id}"
               style="position:absolute;top:6px;right:6px;width:20px;height:20px;border-radius:50%;

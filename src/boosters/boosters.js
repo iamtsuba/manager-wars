@@ -161,7 +161,6 @@ export async function renderBoosters(container, { state, navigate, toast }) {
     if (!hasAvail) poolEmpty[b.id] = true
   }
 
-  const adQuota = getAdQuota()
 
   container.innerHTML = `
   <div class="page">
@@ -174,22 +173,18 @@ export async function renderBoosters(container, { state, navigate, toast }) {
         ${ACTIVE_BOOSTERS.map(b => {
           const canAfford = b.cost === 0 || credits >= b.cost
           const isPoolEmpty = poolEmpty[b.id] === true
-          const adExhausted = b.isPub && adQuota.remaining <= 0
-          const isDisabled = !canAfford || isPoolEmpty || adExhausted
           return `<div class="booster-card ${isDisabled ? 'disabled' : ''}" data-booster="${b.id}" style="position:relative">
             <button class="booster-info-btn" data-booster-id="${b.id}"
               style="position:absolute;top:6px;right:6px;width:20px;height:20px;border-radius:50%;
               background:rgba(0,0,0,0.15);border:none;cursor:pointer;font-size:11px;font-weight:700;
               color:var(--gray-600);display:flex;align-items:center;justify-content:center;z-index:2"
               onclick="event.stopPropagation()">ℹ</button>
-            ${b.isPub ? `<div style="position:absolute;top:6px;left:6px;background:${adQuota.remaining>0?'#1A6B3C':'#888'};color:#fff;font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;z-index:2">${adQuota.remaining}/${AD_DAILY_LIMIT}</div>` : ''}
             <div class="icon"><img src="${b.img}" alt="${b.name}" style="height:64px;width:auto;display:block;margin:0 auto" onerror="this.src='${import.meta.env.BASE_URL}icons/booster-players.png'"></div>
             <div class="name">${b.name}</div>
             <div class="desc">${b.sub}</div>
             <div class="cost">${b.costLabel}</div>
             ${!canAfford ? `<div style="font-size:10px;color:#c0392b;margin-top:4px">Crédits insuffisants</div>` : ''}
             ${isPoolEmpty ? `<div style="font-size:10px;color:#c0392b;margin-top:4px">🚫 Toutes les cartes déjà obtenues</div>` : ''}
-            ${adExhausted ? `<div style="font-size:10px;color:#c0392b;margin-top:4px">Quota atteint — reviens demain</div>` : ''}
           </div>`
         }).join('')}
       </div>
@@ -232,19 +227,7 @@ async function openBooster(booster, { state, toast, navigate, container }) {
   }
 
   if (booster.isPub) {
-    const quota = getAdQuota()
-    if (quota.remaining <= 0) {
-      toast(`Quota atteint — revenez demain (${AD_DAILY_LIMIT} pubs/jour max)`, 'error')
-      return
-    }
-    try {
-      await showAd()
-      consumeAd()
-    } catch(err) {
-      // Utilisateur a fermé la pub → annuler l'ouverture du booster
-      toast(err.message || 'Regardez la pub entièrement pour ouvrir le booster', 'error')
-      return
-    }
+    await showAd()
   }
 
   // Snapshot de la collection AVANT tirage (pour détecter les doublons)
@@ -1186,115 +1169,19 @@ function showHardcodedOdds() {
   document.getElementById('odds-close').addEventListener('click', () => overlay.remove())
 }
 
-// ── Quota pub journalier ──────────────────────────────────
-const AD_DAILY_LIMIT = 3
-
-function getAdQuota() {
-  const today = new Date().toISOString().slice(0, 10)  // 'YYYY-MM-DD'
-  try {
-    const raw = localStorage.getItem('mw_ads_quota')
-    const data = raw ? JSON.parse(raw) : null
-    if (data?.date === today) return { watched: data.watched || 0, remaining: AD_DAILY_LIMIT - (data.watched || 0) }
-  } catch(e) {}
-  return { watched: 0, remaining: AD_DAILY_LIMIT }
-}
-
-function consumeAd() {
-  const today = new Date().toISOString().slice(0, 10)
-  try {
-    const q = getAdQuota()
-    localStorage.setItem('mw_ads_quota', JSON.stringify({ date: today, watched: q.watched + 1 }))
-  } catch(e) {}
-}
-
-// ── Système de publicité rewarded ────────────────────────
-// Pour activer une vraie régie pub, modifiez AD_PROVIDER :
-//   'simulation' → compte à rebours (dev/beta)
-//   'propellerads' → PropellerAds Rewarded (https://propellerads.com)
-//   'adsense'     → Google AdSense Rewarded (https://adsense.google.com)
-
-const AD_PROVIDER = 'simulation'  // ← changer ici quand prêt
-const AD_ZONE_ID  = 'VOTRE_ZONE_ID'  // PropellerAds zone ID ou AdSense slot
+// ── Monetag Vignette Banner ───────────────────────────────
+// Zone ID : 11240210 — script chargé dans index.html
+// La vignette s'affiche automatiquement — on attend 3s puis on résout
 
 function showAd() {
-  switch (AD_PROVIDER) {
-    case 'propellerads': return showPropellerAd()
-    case 'adsense':      return showAdSenseRewarded()
-    default:             return showAdSimulation()
-  }
-}
-
-// ── Simulation (dev) ──────────────────────────────────────
-function showAdSimulation() {
   return new Promise(resolve => {
-    const el = document.createElement('div')
-    el.style.cssText = 'position:fixed;inset:0;background:#111;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:4000;color:#fff;gap:14px'
-    let s = 5
-    el.innerHTML = `
-      <div style="font-size:52px">📺</div>
-      <div style="font-size:17px;font-weight:700;color:rgba(255,255,255,0.8)">Publicité</div>
-      <div style="font-size:42px;font-weight:900" id="ad-cd">5</div>
-      <div style="font-size:12px;color:rgba(255,255,255,0.4)">Regardez pour ouvrir le booster</div>
-      <button id="ad-skip" disabled style="margin-top:8px;padding:10px 24px;border-radius:20px;border:none;background:rgba(255,255,255,0.15);color:rgba(255,255,255,0.4);font-size:13px;cursor:default">
-        Passer (5)
-      </button>`
-    document.body.appendChild(el)
-    const t = setInterval(() => {
-      s--
-      const cd  = document.getElementById('ad-cd')
-      const btn = document.getElementById('ad-skip')
-      if (cd)  cd.textContent = s
-      if (btn) btn.textContent = s > 0 ? `Passer (${s})` : '✓ Continuer'
-      if (s <= 0) {
-        clearInterval(t)
-        if (btn) { btn.disabled = false; btn.style.cssText = btn.style.cssText.replace('rgba(255,255,255,0.15)','#1A6B3C').replace('rgba(255,255,255,0.4)','#fff').replace('default','pointer') }
-        btn?.addEventListener('click', () => { el.remove(); resolve(true) }, { once: true })
-      }
-    }, 1000)
+    if (typeof window.__monetag !== 'undefined') {
+      try { window.__monetag.show() } catch(e) {}
+    }
+    setTimeout(() => resolve(true), 3000)
   })
 }
 
-// ── PropellerAds Rewarded ─────────────────────────────────
-// 1. Créer un compte sur propellerads.com
-// 2. Créer une zone "Rewarded Interstitial"
-// 3. Remplacer AD_ZONE_ID par votre ID de zone
-// 4. Ajouter dans index.html : <script src="https://s5s5.pw/show_${AD_ZONE_ID}.js"></script>
-function showPropellerAd() {
-  return new Promise((resolve, reject) => {
-    if (typeof window.propeller === 'undefined') {
-      console.warn('[Ad] PropellerAds non chargé → simulation')
-      return resolve(showAdSimulation())
-    }
-    window.propeller.push({
-      zone_id: AD_ZONE_ID,
-      onComplete: () => resolve(true),
-      onSkip:     () => reject(new Error('Publicité ignorée')),
-      onError:    () => reject(new Error('Erreur publicité')),
-    })
-  })
-}
-
-// ── Google AdSense Rewarded ───────────────────────────────
-// 1. Activer les annonces rewarded dans AdSense
-// 2. Ajouter dans index.html : <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-VOTRE_ID" crossorigin="anonymous"></script>
-// 3. Remplacer AD_ZONE_ID par votre slot ID
-function showAdSenseRewarded() {
-  return new Promise((resolve, reject) => {
-    if (typeof window.adsbygoogle === 'undefined') {
-      console.warn('[Ad] AdSense non chargé → simulation')
-      return resolve(showAdSimulation())
-    }
-    try {
-      ;(window.adsbygoogle = window.adsbygoogle || []).push({
-        google_ad_client: 'ca-pub-VOTRE_PUBLISHER_ID',
-        google_ad_slot:   AD_ZONE_ID,
-        google_ad_format: 'rewarded',
-        on_reward: () => resolve(true),
-        on_dismiss: () => reject(new Error('Publicité fermée')),
-      })
-    } catch(e) { reject(e) }
-  })
-}
 
 function shuffle(arr) {
   for (let i = arr.length-1; i > 0; i--) {

@@ -14,7 +14,7 @@ function buildTimeString() {
 }
 
 export default defineConfig({
-  base: '/manager-wars/',
+  base: '/',
   define: {
     __BUILD_TIME__: JSON.stringify(buildTimeString()),
   },

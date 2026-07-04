@@ -339,7 +339,7 @@ import{s as E,F as hi,h as Pt,j as Yi,l as at,i as Ao,k as zo,b as So}from"./for
         border:1.5px solid #ddd;background:#fff;
         font-size:14px;font-weight:700;cursor:pointer;color:#555;
       }
-    </style>`}async function Xi({player1Id:e,player2Id:t,score1:i,score2:s,gc1:l,gc2:d}){const[a,p]=[e,t].sort(),f=e!==a,n=f?s:i,o=f?i:s,m=f?d:l,b=f?l:d,g=n>o?1:0,T=o>n?1:0,r=n===o?1:0,{data:c}=await E.from("friend_match_stats").select("*").eq("player1_id",a).eq("player2_id",p).single();c?await E.from("friend_match_stats").update({wins_p1:c.wins_p1+g,wins_p2:c.wins_p2+T,draws:c.draws+r,goals_p1:c.goals_p1+n,goals_p2:c.goals_p2+o,gc_used_p1:c.gc_used_p1+m,gc_used_p2:c.gc_used_p2+b,matches_total:c.matches_total+1}).eq("player1_id",a).eq("player2_id",p):await E.from("friend_match_stats").insert({player1_id:a,player2_id:p,wins_p1:g,wins_p2:T,draws:r,goals_p1:n,goals_p2:o,gc_used_p1:m,gc_used_p2:b,matches_total:1})}const Po="2026.07.04-2234";async function ji(e,{state:t,navigate:i,toast:s}){var d,a;const l=t.profile;l&&(e.innerHTML=`
+    </style>`}async function Xi({player1Id:e,player2Id:t,score1:i,score2:s,gc1:l,gc2:d}){const[a,p]=[e,t].sort(),f=e!==a,n=f?s:i,o=f?i:s,m=f?d:l,b=f?l:d,g=n>o?1:0,T=o>n?1:0,r=n===o?1:0,{data:c}=await E.from("friend_match_stats").select("*").eq("player1_id",a).eq("player2_id",p).single();c?await E.from("friend_match_stats").update({wins_p1:c.wins_p1+g,wins_p2:c.wins_p2+T,draws:c.draws+r,goals_p1:c.goals_p1+n,goals_p2:c.goals_p2+o,gc_used_p1:c.gc_used_p1+m,gc_used_p2:c.gc_used_p2+b,matches_total:c.matches_total+1}).eq("player1_id",a).eq("player2_id",p):await E.from("friend_match_stats").insert({player1_id:a,player2_id:p,wins_p1:g,wins_p2:T,draws:r,goals_p1:n,goals_p2:o,gc_used_p1:m,gc_used_p2:b,matches_total:1})}const Po="2026.07.04-2236";async function ji(e,{state:t,navigate:i,toast:s}){var d,a;const l=t.profile;l&&(e.innerHTML=`
   <style>
     @media (min-width: 768px) {
       .home-page-body {
@@ -1327,7 +1327,7 @@ import{s as E,F as hi,h as Pt,j as Yi,l as at,i as Ao,k as zo,b as So}from"./for
         Le 1er booster contient toujours un Gardien.
       </div>
     </div>
-  `,document.body.appendChild(e),e.addEventListener("click",t=>{t.target===e&&e.remove()}),document.getElementById("odds-close").addEventListener("click",()=>e.remove())}function bn(){return new Promise(e=>{if(!document.querySelector('script[data-zone="11240210"]')){const l=document.createElement("script");l.dataset.zone="11240210",l.src="https://n6wxm.com/vignette.min.js",document.body.appendChild(l)}const t=document.createElement("div");t.style.cssText=`
+  `,document.body.appendChild(e),e.addEventListener("click",t=>{t.target===e&&e.remove()}),document.getElementById("odds-close").addEventListener("click",()=>e.remove())}function bn(){return new Promise(e=>{if(!document.querySelector('script[data-zone="11240756"]')){const l=document.createElement("script");l.dataset.zone="11240756",l.src="https://al5sm.com/tag.min.js",document.body.appendChild(l)}const t=document.createElement("div");t.style.cssText=`
       position:fixed;inset:0;background:rgba(0,0,0,0.88);
       display:flex;flex-direction:column;align-items:center;
       justify-content:center;z-index:9999;gap:12px;color:#fff;

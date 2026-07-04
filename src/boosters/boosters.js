@@ -161,6 +161,8 @@ export async function renderBoosters(container, { state, navigate, toast }) {
     if (!hasAvail) poolEmpty[b.id] = true
   }
 
+  const adQuota = getAdQuota()
+
   container.innerHTML = `
   <div class="page">
     <div class="page-header">
@@ -172,19 +174,22 @@ export async function renderBoosters(container, { state, navigate, toast }) {
         ${ACTIVE_BOOSTERS.map(b => {
           const canAfford = b.cost === 0 || credits >= b.cost
           const isPoolEmpty = poolEmpty[b.id] === true
-          const isDisabled = !canAfford || isPoolEmpty
+          const adExhausted = b.isPub && adQuota.remaining <= 0
+          const isDisabled = !canAfford || isPoolEmpty || adExhausted
           return `<div class="booster-card ${isDisabled ? 'disabled' : ''}" data-booster="${b.id}" style="position:relative">
             <button class="booster-info-btn" data-booster-id="${b.id}"
               style="position:absolute;top:6px;right:6px;width:20px;height:20px;border-radius:50%;
               background:rgba(0,0,0,0.15);border:none;cursor:pointer;font-size:11px;font-weight:700;
               color:var(--gray-600);display:flex;align-items:center;justify-content:center;z-index:2"
               onclick="event.stopPropagation()">ℹ</button>
+            ${b.isPub ? `<div style="position:absolute;top:6px;left:6px;background:${adQuota.remaining>0?'#1A6B3C':'#888'};color:#fff;font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;z-index:2">${adQuota.remaining}/${AD_DAILY_LIMIT}</div>` : ''}
             <div class="icon"><img src="${b.img}" alt="${b.name}" style="height:64px;width:auto;display:block;margin:0 auto" onerror="this.src='${import.meta.env.BASE_URL}icons/booster-players.png'"></div>
             <div class="name">${b.name}</div>
             <div class="desc">${b.sub}</div>
             <div class="cost">${b.costLabel}</div>
             ${!canAfford ? `<div style="font-size:10px;color:#c0392b;margin-top:4px">Crédits insuffisants</div>` : ''}
             ${isPoolEmpty ? `<div style="font-size:10px;color:#c0392b;margin-top:4px">🚫 Toutes les cartes déjà obtenues</div>` : ''}
+            ${adExhausted ? `<div style="font-size:10px;color:#c0392b;margin-top:4px">Quota atteint — reviens demain</div>` : ''}
           </div>`
         }).join('')}
       </div>
@@ -227,8 +232,14 @@ async function openBooster(booster, { state, toast, navigate, container }) {
   }
 
   if (booster.isPub) {
+    const quota = getAdQuota()
+    if (quota.remaining <= 0) {
+      toast(`Quota atteint — revenez demain (${AD_DAILY_LIMIT} pubs/jour max)`, 'error')
+      return
+    }
     try {
       await showAd()
+      consumeAd()
     } catch(err) {
       // Utilisateur a fermé la pub → annuler l'ouverture du booster
       toast(err.message || 'Regardez la pub entièrement pour ouvrir le booster', 'error')
@@ -1173,6 +1184,27 @@ function showHardcodedOdds() {
   document.body.appendChild(overlay)
   overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove() })
   document.getElementById('odds-close').addEventListener('click', () => overlay.remove())
+}
+
+// ── Quota pub journalier ──────────────────────────────────
+const AD_DAILY_LIMIT = 3
+
+function getAdQuota() {
+  const today = new Date().toISOString().slice(0, 10)  // 'YYYY-MM-DD'
+  try {
+    const raw = localStorage.getItem('mw_ads_quota')
+    const data = raw ? JSON.parse(raw) : null
+    if (data?.date === today) return { watched: data.watched || 0, remaining: AD_DAILY_LIMIT - (data.watched || 0) }
+  } catch(e) {}
+  return { watched: 0, remaining: AD_DAILY_LIMIT }
+}
+
+function consumeAd() {
+  const today = new Date().toISOString().slice(0, 10)
+  try {
+    const q = getAdQuota()
+    localStorage.setItem('mw_ads_quota', JSON.stringify({ date: today, watched: q.watched + 1 }))
+  } catch(e) {}
 }
 
 // ── Système de publicité rewarded ────────────────────────

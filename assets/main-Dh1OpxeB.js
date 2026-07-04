@@ -339,7 +339,7 @@ import{s as E,F as hi,h as Pt,j as Yi,l as at,i as Ao,k as zo,b as So}from"./for
         border:1.5px solid #ddd;background:#fff;
         font-size:14px;font-weight:700;cursor:pointer;color:#555;
       }
-    </style>`}async function Xi({player1Id:e,player2Id:t,score1:i,score2:s,gc1:l,gc2:d}){const[a,p]=[e,t].sort(),f=e!==a,n=f?s:i,o=f?i:s,m=f?d:l,b=f?l:d,g=n>o?1:0,T=o>n?1:0,r=n===o?1:0,{data:c}=await E.from("friend_match_stats").select("*").eq("player1_id",a).eq("player2_id",p).single();c?await E.from("friend_match_stats").update({wins_p1:c.wins_p1+g,wins_p2:c.wins_p2+T,draws:c.draws+r,goals_p1:c.goals_p1+n,goals_p2:c.goals_p2+o,gc_used_p1:c.gc_used_p1+m,gc_used_p2:c.gc_used_p2+b,matches_total:c.matches_total+1}).eq("player1_id",a).eq("player2_id",p):await E.from("friend_match_stats").insert({player1_id:a,player2_id:p,wins_p1:g,wins_p2:T,draws:r,goals_p1:n,goals_p2:o,gc_used_p1:m,gc_used_p2:b,matches_total:1})}const Po="2026.07.04-2202";async function ji(e,{state:t,navigate:i,toast:s}){var d,a;const l=t.profile;l&&(e.innerHTML=`
+    </style>`}async function Xi({player1Id:e,player2Id:t,score1:i,score2:s,gc1:l,gc2:d}){const[a,p]=[e,t].sort(),f=e!==a,n=f?s:i,o=f?i:s,m=f?d:l,b=f?l:d,g=n>o?1:0,T=o>n?1:0,r=n===o?1:0,{data:c}=await E.from("friend_match_stats").select("*").eq("player1_id",a).eq("player2_id",p).single();c?await E.from("friend_match_stats").update({wins_p1:c.wins_p1+g,wins_p2:c.wins_p2+T,draws:c.draws+r,goals_p1:c.goals_p1+n,goals_p2:c.goals_p2+o,gc_used_p1:c.gc_used_p1+m,gc_used_p2:c.gc_used_p2+b,matches_total:c.matches_total+1}).eq("player1_id",a).eq("player2_id",p):await E.from("friend_match_stats").insert({player1_id:a,player2_id:p,wins_p1:g,wins_p2:T,draws:r,goals_p1:n,goals_p2:o,gc_used_p1:m,gc_used_p2:b,matches_total:1})}const Po="2026.07.04-2218";async function ji(e,{state:t,navigate:i,toast:s}){var d,a;const l=t.profile;l&&(e.innerHTML=`
   <style>
     @media (min-width: 768px) {
       .home-page-body {
@@ -1327,20 +1327,7 @@ import{s as E,F as hi,h as Pt,j as Yi,l as at,i as Ao,k as zo,b as So}from"./for
         Le 1er booster contient toujours un Gardien.
       </div>
     </div>
-  `,document.body.appendChild(e),e.addEventListener("click",t=>{t.target===e&&e.remove()}),document.getElementById("odds-close").addEventListener("click",()=>e.remove())}function bn(){return new Promise(e=>{if(!document.querySelector('script[data-zone="11240624"]')){const d=document.createElement("script");d.dataset.zone="11240624",d.src="https://al5sm.com/tag.min.js",document.body.appendChild(d)}const t=15,i=document.createElement("div");i.style.cssText=`
-      position:fixed;inset:0;background:rgba(0,0,0,0.92);
-      display:flex;flex-direction:column;align-items:center;
-      justify-content:center;z-index:9999;gap:16px;color:#fff;
-    `,i.innerHTML=`
-      <div style="font-size:13px;color:rgba(255,255,255,0.5);letter-spacing:1px;text-transform:uppercase">Publicité</div>
-      <div style="font-size:72px;font-weight:900;line-height:1" id="mw-ad-cd">${t}</div>
-      <div style="font-size:14px;color:rgba(255,255,255,0.6)">Patientez pour ouvrir votre booster</div>
-      <button id="mw-ad-btn" disabled style="
-        margin-top:12px;padding:14px 36px;border-radius:24px;border:none;
-        background:#1A6B3C;color:#fff;font-size:16px;font-weight:700;
-        opacity:0.3;cursor:default;transition:opacity 0.3s
-      ">⏳ Encore <span id="mw-ad-s">${t}</span>s</button>
-    `,document.body.appendChild(i);let s=t;const l=setInterval(()=>{s--;const d=document.getElementById("mw-ad-cd"),a=document.getElementById("mw-ad-btn"),p=document.getElementById("mw-ad-s");d&&(d.textContent=s),p&&(p.textContent=s),s<=0&&(clearInterval(l),a&&(a.disabled=!1,a.style.opacity="1",a.style.cursor="pointer",a.innerHTML="✅ Ouvrir mon booster",a.onclick=()=>{i.remove(),e(!0)}))},1e3)})}async function hn(e,{state:t,navigate:i,toast:s,refreshProfile:l}){var b,g;const{data:d}=await E.from("users").select("*").eq("id",t.user.id).single();d&&(t.profile=d);let a=Array.isArray((b=t.profile)==null?void 0:b.pending_boosters)?[...t.profile.pending_boosters]:[];if(!a.length){await E.from("users").update({onboarding_done:!0}).eq("id",t.user.id),i("home");return}let p=null;try{const r=(await co()).find(c=>(c.name||"").toLowerCase().includes("new player"));r&&(p=uo(r))}catch(T){console.warn('[Onboarding] Config "Booster (new player)" introuvable, fallback taux par défaut',T)}const f=a.length;let n=0;e.innerHTML=`
+  `,document.body.appendChild(e),e.addEventListener("click",t=>{t.target===e&&e.remove()}),document.getElementById("odds-close").addEventListener("click",()=>e.remove())}function bn(){return new Promise(e=>{if(!document.querySelector('script[data-zone="11240210"]')){const t=document.createElement("script");t.dataset.zone="11240210",t.src="https://n6wxm.com/vignette.min.js",document.body.appendChild(t)}e(!0)})}async function hn(e,{state:t,navigate:i,toast:s,refreshProfile:l}){var b,g;const{data:d}=await E.from("users").select("*").eq("id",t.user.id).single();d&&(t.profile=d);let a=Array.isArray((b=t.profile)==null?void 0:b.pending_boosters)?[...t.profile.pending_boosters]:[];if(!a.length){await E.from("users").update({onboarding_done:!0}).eq("id",t.user.id),i("home");return}let p=null;try{const r=(await co()).find(c=>(c.name||"").toLowerCase().includes("new player"));r&&(p=uo(r))}catch(T){console.warn('[Onboarding] Config "Booster (new player)" introuvable, fallback taux par défaut',T)}const f=a.length;let n=0;e.innerHTML=`
   <div class="page" style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(160deg,#0a3d1e,#063015);padding:24px">
     <div style="max-width:420px;text-align:center;color:#fff">
       <div style="font-size:56px;margin-bottom:10px">🎁</div>

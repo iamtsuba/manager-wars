@@ -1170,58 +1170,18 @@ function showHardcodedOdds() {
   document.getElementById('odds-close').addEventListener('click', () => overlay.remove())
 }
 
-// ── Monetag Onclick (Popunder) + overlay compteur ────────
-// Zone ID : 11240624
+// ── Monetag Vignette Banner ───────────────────────────────
+// Zone ID : 11240210 — déclenché au clic sur le booster pub
 
 function showAd() {
   return new Promise(resolve => {
-    // 1. Déclencher Monetag en arrière-plan
-    if (!document.querySelector('script[data-zone="11240624"]')) {
+    if (!document.querySelector('script[data-zone="11240210"]')) {
       const s = document.createElement('script')
-      s.dataset.zone = '11240624'
-      s.src = 'https://al5sm.com/tag.min.js'
+      s.dataset.zone = '11240210'
+      s.src = 'https://n6wxm.com/vignette.min.js'
       document.body.appendChild(s)
     }
-
-    // 2. Overlay plein écran avec compte à rebours (15s)
-    const DURATION = 15
-    const overlay = document.createElement('div')
-    overlay.style.cssText = `
-      position:fixed;inset:0;background:rgba(0,0,0,0.92);
-      display:flex;flex-direction:column;align-items:center;
-      justify-content:center;z-index:9999;gap:16px;color:#fff;
-    `
-    overlay.innerHTML = `
-      <div style="font-size:13px;color:rgba(255,255,255,0.5);letter-spacing:1px;text-transform:uppercase">Publicité</div>
-      <div style="font-size:72px;font-weight:900;line-height:1" id="mw-ad-cd">${DURATION}</div>
-      <div style="font-size:14px;color:rgba(255,255,255,0.6)">Patientez pour ouvrir votre booster</div>
-      <button id="mw-ad-btn" disabled style="
-        margin-top:12px;padding:14px 36px;border-radius:24px;border:none;
-        background:#1A6B3C;color:#fff;font-size:16px;font-weight:700;
-        opacity:0.3;cursor:default;transition:opacity 0.3s
-      ">⏳ Encore <span id="mw-ad-s">${DURATION}</span>s</button>
-    `
-    document.body.appendChild(overlay)
-
-    let remaining = DURATION
-    const interval = setInterval(() => {
-      remaining--
-      const cd  = document.getElementById('mw-ad-cd')
-      const btn = document.getElementById('mw-ad-btn')
-      const s   = document.getElementById('mw-ad-s')
-      if (cd) cd.textContent = remaining
-      if (s)  s.textContent  = remaining
-      if (remaining <= 0) {
-        clearInterval(interval)
-        if (btn) {
-          btn.disabled = false
-          btn.style.opacity = '1'
-          btn.style.cursor  = 'pointer'
-          btn.innerHTML = '✅ Ouvrir mon booster'
-          btn.onclick = () => { overlay.remove(); resolve(true) }
-        }
-      }
-    }, 1000)
+    resolve(true)
   })
 }
 

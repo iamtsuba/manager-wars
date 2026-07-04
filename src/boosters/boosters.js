@@ -1170,18 +1170,44 @@ function showHardcodedOdds() {
   document.getElementById('odds-close').addEventListener('click', () => overlay.remove())
 }
 
-// ── Monetag Vignette Banner ───────────────────────────────
-// Zone ID : 11240210 — déclenché au clic sur le booster pub
+// ── Monetag Vignette Banner + overlay 5s ────────────────
+// Zone ID : 11240210 — injecté une seule fois au 1er clic booster pub
 
 function showAd() {
   return new Promise(resolve => {
+    // Injecter la vignette Monetag une seule fois
     if (!document.querySelector('script[data-zone="11240210"]')) {
       const s = document.createElement('script')
       s.dataset.zone = '11240210'
       s.src = 'https://n6wxm.com/vignette.min.js'
       document.body.appendChild(s)
     }
-    resolve(true)
+
+    // Overlay 5s pendant que la vignette s'affiche
+    const overlay = document.createElement('div')
+    overlay.style.cssText = `
+      position:fixed;inset:0;background:rgba(0,0,0,0.88);
+      display:flex;flex-direction:column;align-items:center;
+      justify-content:center;z-index:9999;gap:12px;color:#fff;
+    `
+    overlay.innerHTML = `
+      <div style="font-size:11px;color:rgba(255,255,255,0.4);letter-spacing:2px;text-transform:uppercase">Publicité</div>
+      <div style="font-size:64px;font-weight:900;line-height:1" id="mw-ad-cd">5</div>
+      <div style="font-size:13px;color:rgba(255,255,255,0.5)">Votre booster arrive dans un instant…</div>
+    `
+    document.body.appendChild(overlay)
+
+    let remaining = 5
+    const interval = setInterval(() => {
+      remaining--
+      const cd = document.getElementById('mw-ad-cd')
+      if (cd) cd.textContent = remaining
+      if (remaining <= 0) {
+        clearInterval(interval)
+        overlay.remove()
+        resolve(true)
+      }
+    }, 1000)
   })
 }
 

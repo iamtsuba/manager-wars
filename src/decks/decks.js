@@ -228,6 +228,10 @@ function renderBuilder(container, builder, ctx) {
     ? builder.availableFormations
     : Object.keys(FORMATIONS) // fallback si aucune carte formation
 
+  // Stade sélectionné pour bonus +10
+  const _selStadCard = builder.stadiumCards?.find(c => c.id === builder.stadiumCardId)
+  const _stadDef = _selStadCard ? (builder.stadDefMap?.[_selStadCard.stadium_id] || null) : null
+
   // Calcul des remplaçants avec données joueurs
   const subPlayers = builder.subs.map(id => builder.playerCards.find(c => c.id === id)).filter(Boolean)
   const allUsed    = [...Object.values(builder.slots), ...builder.subs]
@@ -277,7 +281,7 @@ function renderBuilder(container, builder, ctx) {
         ${subPlayers.map(card => {
           const p = card.player
           return `<div style="position:relative;flex-shrink:0">
-            ${renderMiniCardHTML(p, 44, 58)}
+            ${renderMiniCardHTML(p, 44, 58, _stadDef)}
             <button data-remove-sub="${card.id}"
               style="position:absolute;top:-6px;right:-6px;width:18px;height:18px;background:#c0392b;border:none;border-radius:50%;color:#fff;font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;padding:0">✕</button>
           </div>`
@@ -406,13 +410,9 @@ function renderDeckField(container, builder, positions, ctx) {
       const by0 = (c.y+CH/2-BOTHH).toFixed(1)
       svg += `<rect x="${x0}" y="${by0}" width="${CW}" height="${BOTHH}" fill="rgba(255,255,255,0.93)"/>`
       if (flag) svg += `<image href="${flag}" x="${(c.x-21).toFixed(1)}" y="${(c.y+CH/2-BOTHH+3).toFixed(1)}" width="13" height="10" preserveAspectRatio="xMidYMid slice"/>`
-      svg += `<text x="${c.x.toFixed(1)}" y="${(c.y+CH/2-BOTHH/2).toFixed(1)}" text-anchor="middle" dominant-baseline="central" font-size="12" font-weight="900" fill="#111" font-family="Arial Black">${note}</text>`
+      svg += `<text x="${c.x.toFixed(1)}" y="${(c.y+CH/2-BOTHH/2).toFixed(1)}" text-anchor="middle" dominant-baseline="central" font-size="12" font-weight="900" fill="${hasBonus ? '#E87722' : '#111'}" font-family="Arial Black">${note}</text>`
       if (logoUrl) svg += `<image href="${logoUrl}" x="${(c.x+CW/2-14).toFixed(1)}" y="${(c.y+CH/2-BOTHH+2).toFixed(1)}" width="12" height="12" preserveAspectRatio="xMidYMid meet"/>`
-      svg += `<rect x="${x0}" y="${y0}" width="${CW}" height="${CH}" rx="5" fill="none" stroke="${hasBonus ? '#E87722' : rarityBorder}" stroke-width="${hasBonus ? '2.5' : '2'}"/>`
-      if (hasBonus) {
-        svg += `<rect x="${(c.x+CW/2-13).toFixed(1)}" y="${y0}" width="13" height="9" rx="3" fill="#E87722"/>`
-        svg += `<text x="${(c.x+CW/2-6.5).toFixed(1)}" y="${(c.y-CH/2+4.5).toFixed(1)}" text-anchor="middle" dominant-baseline="central" font-size="5.5" font-weight="900" fill="#fff" font-family="Arial">+10</text>`
-      }
+      svg += `<rect x="${x0}" y="${y0}" width="${CW}" height="${CH}" rx="5" fill="none" stroke="${rarityBorder}" stroke-width="2"/>`
     } else {
       // Slot vide
       svg += `<rect x="${x0}" y="${y0}" width="${CW}" height="${CH}" rx="5" fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.35)" stroke-width="2" stroke-dasharray="5,3"/>`

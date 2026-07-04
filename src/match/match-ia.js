@@ -820,7 +820,7 @@ function renderGame(container, game, ctx) {
 
   document.getElementById('btn-results')?.addEventListener('click', () => finishMatch(container, game, ctx))
   document.getElementById('btn-pass')?.addEventListener('click', () => {
-    game.log.push({ text: '⏭️ Vous passez votre tour (plus d'attaquants)', type:'info' })
+    game.log.push({ text: "⏭️ Vous passez votre tour (plus d'attaquants)", type:'info' })
     game.phase = 'ai-attack'
     renderGame(container, game, ctx)
     setTimeout(() => aiTurn(container, game, ctx), 800)

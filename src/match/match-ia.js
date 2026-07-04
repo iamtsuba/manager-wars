@@ -1015,7 +1015,6 @@ function aiTurn(container, game, ctx) {
 }
 
 function aiDefend(container, game, ctx) {
-  aiMaySub(game)
   const allAi = [...(game.aiTeam.GK||[]),...(game.aiTeam.DEF||[]),...(game.aiTeam.MIL||[])]
   const selected = aiSelectPlayers(allAi, 'defense', game.difficulty)
 

@@ -535,7 +535,9 @@ function openSubSelector(builder, container, ctx) {
   const { openModal, closeModal } = ctx
   // Exclure par player_id (unicité stricte)
   const usedPlayerIds = new Set()
-  Object.values(builder.slots).filter(Boolean).forEach(cardId => {
+  Object.keys(builder.slots).forEach(pos => {
+    const cardId = builder.slots[pos]
+    if (!cardId) return
     const c = builder.playerCards.find(c => c.id === cardId)
     if (c?.player?.id) usedPlayerIds.add(c.player.id)
   })

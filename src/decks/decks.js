@@ -535,12 +535,12 @@ function openSubSelector(builder, container, ctx) {
   const { openModal, closeModal } = ctx
   // Exclure par player_id (unicité stricte)
   const usedPlayerIds = new Set()
-  Object.values(builder.slots).filter(Boolean).forEach(id => {
-    const c = builder.playerCards.find(c => c.id === id)
+  Object.values(builder.slots).filter(Boolean).forEach(cardId => {
+    const c = builder.playerCards.find(c => c.id === cardId)
     if (c?.player?.id) usedPlayerIds.add(c.player.id)
   })
-  builder.subs.forEach(id => {
-    const c = builder.playerCards.find(c => c.id === id)
+  builder.subs.forEach(cardId => {
+    const c = builder.playerCards.find(c => c.id === cardId)
     if (c?.player?.id) usedPlayerIds.add(c.player.id)
   })
 
@@ -558,7 +558,7 @@ function openSubSelector(builder, container, ctx) {
       ${available.length > 0 ? available.map(c => {
         const p = c.player
         const portrait = getPortrait(p)
-        const mainNote = (p.job==='GK'?p.note_g : p.job==='DEF'?p.note_d : p.job==='MIL'?p.note_m : p.note_a) + (card.evolution_bonus||0)
+        const mainNote = (p.job==='GK'?p.note_g : p.job==='DEF'?p.note_d : p.job==='MIL'?p.note_m : p.note_a) + (c.evolution_bonus||0)
         return `<div class="player-option" data-card-id="${c.id}"
           style="display:flex;align-items:center;gap:10px;padding:8px;border:1.5px solid var(--gray-200);border-radius:10px;cursor:pointer">
           <div style="width:40px;height:40px;border-radius:8px;overflow:hidden;flex-shrink:0;background:#dde;border:2px solid ${JOB_COLORS[p.job]}">

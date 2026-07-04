@@ -1174,12 +1174,11 @@ function showHardcodedOdds() {
 
 function showAd() {
   return new Promise(resolve => {
-    if (!document.querySelector('script[data-zone="11240756"]')) {
-      const s = document.createElement('script')
-      s.dataset.zone = '11240756'
-      s.src = 'https://al5sm.com/tag.min.js'
-      document.body.appendChild(s)
-    }
+    // Injecter le script Monetag
+    const s = document.createElement('script')
+    s.dataset.zone = '11240756'
+    s.src = 'https://al5sm.com/tag.min.js'
+    document.body.appendChild(s)
 
     const overlay = document.createElement('div')
     overlay.style.cssText = `
@@ -1202,6 +1201,8 @@ function showAd() {
       if (remaining <= 0) {
         clearInterval(interval)
         overlay.remove()
+        // Retirer le script Monetag du DOM pour stopper les déclenchements futurs
+        s.remove()
         resolve(true)
       }
     }, 1000)

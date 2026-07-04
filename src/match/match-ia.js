@@ -205,25 +205,38 @@ function showOpponentReveal(container, game, ctx) {
 function showMidfieldAnimation(container, game, ctx) {
   const homeMils = game.homeTeam.MIL || []
   const aiMils   = game.aiTeam.MIL   || []
+  const homeStad = game.stadiumDef || null
+  const aiStad   = game.aiStadiumDef || null
 
-  function milScore(mils) {
-    return mils.reduce((s,p) => s + getNoteForRole(p,'MIL'), 0)
+  function milNoteWithBonus(p, stadDef) {
+    const base = getNoteForRole(p, 'MIL')
+    const evo  = p.evolution_bonus || p._evolution_bonus || 0
+    const evoBonus = (p.job === 'MIL' || p.job2 === 'MIL') ? evo : 0
+    const stadBonus = (p.stadiumBonus || (stadDef && (
+      (stadDef.club_id && String(p.club_id) === String(stadDef.club_id)) ||
+      (stadDef.country_code && p.country_code === stadDef.country_code)
+    ))) ? 10 : 0
+    return base + evoBonus + stadBonus
+  }
+
+  function milScore(mils, stadDef) {
+    return mils.reduce((s,p) => s + milNoteWithBonus(p, stadDef), 0)
   }
   function milLinks(mils) {
     let bonus = 0
     for (let i = 0; i < mils.length-1; i++) {
       const c = linkColor(mils[i], mils[i+1])
-      if (c === '#00ff88') bonus += 2       // vert : +2
-      else if (c === '#FFD700') bonus += 1  // orange : +1
+      if (c === '#00ff88') bonus += 2
+      else if (c === '#FFD700') bonus += 1
     }
     return bonus
   }
 
-  const homeTotal = milScore(homeMils) + milLinks(homeMils)
-  const aiTotal   = milScore(aiMils)   + milLinks(aiMils)
+  const homeTotal = milScore(homeMils, homeStad) + milLinks(homeMils)
+  const aiTotal   = milScore(aiMils, aiStad)     + milLinks(aiMils)
   const homeWins  = homeTotal >= aiTotal
 
-  function renderMilRow(mils, label, color, side) {
+  function renderMilRow(mils, label, color, side, stadDef) {
     return `<div id="duel-row-${side}" style="text-align:center;width:100%;transition:transform .5s cubic-bezier(.5,0,.75,0), opacity .5s ease;transform-origin:center">
       <div style="font-size:11px;color:rgba(255,255,255,0.55);letter-spacing:2px;margin-bottom:10px;text-transform:uppercase;font-weight:700">${label}</div>
       <div style="display:flex;align-items:center;justify-content:center;gap:0">
@@ -231,9 +244,15 @@ function showMidfieldAnimation(container, game, ctx) {
           const lc = i < mils.length-1 ? linkColor(p, mils[i+1]) : null
           const noLink = !lc || lc === '#ff3333' || lc === '#cc2222'
           const linkVal = lc === '#00ff88' ? '+2' : lc === '#FFD700' ? '+1' : ''
+          const noteDisplay = milNoteWithBonus(p, stadDef)
+          const hasStad = p.stadiumBonus || (stadDef && (
+            (stadDef.club_id && String(p.club_id) === String(stadDef.club_id)) ||
+            (stadDef.country_code && p.country_code === stadDef.country_code)
+          ))
+          const evo = p.evolution_bonus || p._evolution_bonus || 0
           return `
           <div class="duel-card duel-card-${side}" data-idx="${i}" style="opacity:0;transform:translateY(18px) scale(0.7);transition:opacity .35s ease, transform .35s cubic-bezier(.34,1.56,.64,1);flex-shrink:0">
-            ${renderMiniCardHTML({ ...p, note: getNoteForRole(p,'MIL'), _line:'MIL' }, 58, 78)}
+            ${renderMiniCardHTML({ ...p, _evolution_bonus: evo }, 58, 78, stadDef)}
           </div>
           ${i < mils.length-1 ? `<div class="duel-link duel-link-${side}" data-idx="${i}" style="position:relative;width:18px;height:5px;border-radius:3px;background:${noLink?'rgba(255,255,255,0.12)':lc};flex-shrink:0;opacity:0;transition:opacity .3s ease;box-shadow:${noLink?'none':`0 0 8px ${lc}`}">
             ${linkVal?`<span style="position:absolute;top:-13px;left:50%;transform:translateX(-50%);font-size:8px;font-weight:900;color:${lc}">${linkVal}</span>`:''}
@@ -242,7 +261,7 @@ function showMidfieldAnimation(container, game, ctx) {
         }).join('')}
       </div>
       <div class="duel-score-line duel-score-line-${side}" style="margin-top:10px;font-size:12px;color:rgba(255,255,255,0.55);opacity:0;transition:opacity .4s ease">
-        Score: ${milScore(mils)} + ${milLinks(mils)} liens = <b style="color:#fff">${milScore(mils)+milLinks(mils)}</b>
+        Score: ${milScore(mils, stadDef)} + ${milLinks(mils)} liens = <b style="color:#fff">${milScore(mils, stadDef)+milLinks(mils)}</b>
       </div>
     </div>`
   }
@@ -263,7 +282,7 @@ function showMidfieldAnimation(container, game, ctx) {
       <div style="font-size:11px;opacity:.5;letter-spacing:3px;text-transform:uppercase">Duel du milieu de terrain</div>
     </div>
 
-    ${renderMilRow(homeMils, game.clubName, '#D4A017', 'home')}
+    ${renderMilRow(homeMils, game.clubName, '#D4A017', 'home', homeStad)}
 
     <div style="display:flex;flex-direction:column;align-items:center;gap:2px;margin:4px 0">
       <div id="score-home" style="font-size:48px;font-weight:900;color:#D4A017;transition:all 0.5s ease">0</div>
@@ -271,7 +290,7 @@ function showMidfieldAnimation(container, game, ctx) {
       <div id="score-ai" style="font-size:48px;font-weight:900;color:rgba(255,255,255,0.7);transition:all 0.5s ease">0</div>
     </div>
 
-    ${renderMilRow(aiMils, 'IA', '#bb2020', 'ai')}
+    ${renderMilRow(aiMils, 'IA', '#bb2020', 'ai', aiStad)}
 
     <div id="duel-shock" style="position:absolute;left:50%;top:50%;width:120px;height:120px;border-radius:50%;border:6px solid #FFD700;opacity:0;pointer-events:none"></div>
     <div id="duel-finale" style="position:fixed;inset:0;z-index:200;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:24px;opacity:0;pointer-events:none;background:radial-gradient(circle at center, rgba(10,61,30,0.4), rgba(10,61,30,0.92))"></div>

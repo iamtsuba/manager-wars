@@ -1170,16 +1170,10 @@ function showHardcodedOdds() {
   document.getElementById('odds-close').addEventListener('click', () => overlay.remove())
 }
 
-// ── Monetag Onclick zone 11240756 + overlay 5s ───────────
+// ── Overlay pub 5s ───────────────────────────────────────
 
 function showAd() {
   return new Promise(resolve => {
-    // Injecter le script Monetag
-    const s = document.createElement('script')
-    s.dataset.zone = '11240756'
-    s.src = 'https://al5sm.com/tag.min.js'
-    document.body.appendChild(s)
-
     const overlay = document.createElement('div')
     overlay.style.cssText = `
       position:fixed;inset:0;background:rgba(0,0,0,0.88);
@@ -1201,8 +1195,6 @@ function showAd() {
       if (remaining <= 0) {
         clearInterval(interval)
         overlay.remove()
-        // Retirer le script Monetag du DOM pour stopper les déclenchements futurs
-        s.remove()
         resolve(true)
       }
     }, 1000)

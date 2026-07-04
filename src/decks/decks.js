@@ -338,12 +338,16 @@ function renderDeckField(container, builder, positions, ctx) {
   const FPOS   = FORMATION_POSITIONS[builder.formation] || {}
   const FLINKS = getActiveLinks(builder.formation) || []
 
-  // Slots par position
+  // Slots par position — on attache evolution_bonus au player pour y accéder dans le rendu
   const slots = {}
   for (const pos of positions) {
     const cardId = builder.slots[pos]
     const card   = cardId ? builder.playerCards.find(c => c.id === cardId) : null
-    slots[pos]   = card ? card.player : null
+    if (card?.player) {
+      slots[pos] = { ...card.player, _evolution_bonus: card.evolution_bonus || 0 }
+    } else {
+      slots[pos] = null
+    }
   }
 
   const W=300, H=300, CW=48, CH=64, NAMEH=13, BOTHH=16, PAD=38
@@ -383,7 +387,7 @@ function renderDeckField(container, builder, positions, ctx) {
       const portrait = getPortrait(p)
       const logoUrl  = getClubLogo(p)
       const flag     = flagImgUrl(p.country_code)
-      const evoSlot = (p.card?.evolution_bonus || p.evolution_bonus || 0)
+      const evoSlot = (p._evolution_bonus || 0)
       const note0    = (Number(role==='GK'?p.note_g:role==='DEF'?p.note_d:role==='MIL'?p.note_m:p.note_a)||0) + (role===p.job||role===p.job2?evoSlot:0)
       // Bonus stade : +10 si même club ou même pays
       const hasBonus = stadDef && (

@@ -33,7 +33,8 @@ export async function renderMatchIA(container, ctx) {
         homeTeam = applyStadiumBonus(homeTeam, stadiumDef)
         applyStadiumBonusToSubs(subsRaw, stadiumDef)
       }
-      const aiTeam   = await generateAITeam(formation, difficulty)
+      const aiResult = await generateAITeam(formation, difficulty)
+      const aiTeam   = aiResult.lines || aiResult  // compatibilité fallback fake
 
       const launchMatch = async (selectedGC) => {
         try {
@@ -48,12 +49,24 @@ export async function renderMatchIA(container, ctx) {
             return
           }
 
+          // Appliquer stade IA si disponible
+          const aiStadiumDef = aiResult.stadiumDef || null
+          if (aiStadiumDef && aiTeam) {
+            applyStadiumBonus(aiTeam, aiStadiumDef)
+            applyStadiumBonusToSubs(aiResult.subs || [], aiStadiumDef)
+          }
           const game = {
             gcDefs:   gcDefs || [],
             matchId:  match?.id, mode, difficulty, formation,
             homeTeam, aiTeam,
             homeSubs: subsRaw,
             subsUsed: 0, maxSubs: Math.min(subsRaw.length, 3),
+            aiSubs: aiResult.subs || [],
+            aiSubsUsed: 0, aiMaxSubs: Math.min((aiResult.subs||[]).length, 3),
+            aiUsedSubIds: [],
+            aiGcCards: aiResult.gcCards || [],
+            aiUsedGc: [],
+            aiStadiumDef,
             homeScore:0, aiScore:0,
             gcCards:  selectedGC,
             usedGc:   [],
@@ -83,38 +96,68 @@ async function generateAITeam(formation, difficulty) {
   const { data: players } = await supabase
     .from('players')
     .select('id,firstname,surname_encoded,country_code,club_id,job,job2,note_g,note_d,note_m,note_a,rarity,skin,hair,hair_length,clubs(encoded_name,logo_url)')
-    .eq('is_active', true).limit(60)
+    .eq('is_active', true).limit(80)
 
-  if (!players || players.length < 11) return generateFakeAITeam(formation)
+  if (!players || players.length < 11) return { lines: generateFakeAITeam(formation), subs: [], gcCards: [], stadiumDef: null }
 
   const struct = FORMATIONS[formation] || FORMATIONS['4-4-2']
   const lines  = { GK:[], DEF:[], MIL:[], ATT:[] }
-  const pool   = [...players]
+  const used   = new Set()
+
+  function makePlayer(p, role, i) {
+    used.add(p.id)
+    return {
+      cardId:'ai-'+p.id+'-'+i, id:p.id,
+      firstname:p.firstname, name:p.surname_encoded,
+      country_code:p.country_code, club_id:p.club_id,
+      job:p.job, job2:p.job2,
+      note_g:Number(p.note_g)||0, note_d:Number(p.note_d)||0,
+      note_m:Number(p.note_m)||0, note_a:Number(p.note_a)||0,
+      rarity:p.rarity, skin:p.skin, hair:p.hair, hair_length:p.hair_length,
+      clubName:p.clubs?.encoded_name||null, clubLogo:p.clubs?.logo_url||null,
+      boost:0, used:false, _line:role,
+    }
+  }
 
   for (const role of ['GK','DEF','MIL','ATT']) {
-    const candidates = pool.filter(p => p.job === role)
-    const others     = pool.filter(p => p.job !== role)
+    const candidates = players.filter(p => p.job === role && !used.has(p.id))
+    const others     = players.filter(p => p.job !== role && !used.has(p.id))
     const sorted     = [...candidates, ...others]
     const linePlayers = []
     for (let i = 0; i < struct[role]; i++) {
-      const p = sorted[i] || pool[i]
-      if (p) linePlayers.push({
-        cardId:'ai-'+p.id+'-'+i, id:p.id,
-        firstname:p.firstname, name:p.surname_encoded,
-        country_code:p.country_code, club_id:p.club_id,
-        job:p.job, job2:p.job2,
-        note_g:Number(p.note_g)||0, note_d:Number(p.note_d)||0,
-        note_m:Number(p.note_m)||0, note_a:Number(p.note_a)||0,
-        rarity:p.rarity, skin:p.skin, hair:p.hair, hair_length:p.hair_length,
-        clubName:p.clubs?.encoded_name||null, clubLogo:p.clubs?.logo_url||null,
-        boost:0, used:false, _line:role,
-      })
+      const p = sorted[i]
+      if (p) linePlayers.push(makePlayer(p, role, i))
     }
     const cols = getColsForLine(linePlayers.length)
     linePlayers.forEach((p,i) => { p._col = cols[i] })
     lines[role] = linePlayers
   }
-  return lines
+
+  // Remplaçants IA (5 joueurs non encore utilisés)
+  const subPool = players.filter(p => !used.has(p.id))
+  const subs = subPool.slice(0, 5).map((p, i) => makePlayer(p, p.job, 100+i))
+
+  // GC aléatoires IA (3 parmi les types disponibles)
+  const GC_TYPES = Object.keys(GC_DEFS)
+  const shuffled = GC_TYPES.sort(() => Math.random() - 0.5)
+  const gcCards = shuffled.slice(0, 3).map((type, i) => ({
+    id: 'ai-gc-'+i, gc_type: type,
+    name: GC_DEFS[type]?.name || type,
+    icon: GC_DEFS[type]?.icon || '⚡',
+  }))
+
+  // Stade IA : choisir un club présent dans l'équipe IA, donner +10 à ses joueurs
+  const allAiPlayers = Object.values(lines).flat()
+  const clubCounts = {}
+  allAiPlayers.forEach(p => { if (p.club_id) clubCounts[p.club_id] = (clubCounts[p.club_id]||0)+1 })
+  const topClubId = Object.entries(clubCounts).sort((a,b)=>b[1]-a[1])[0]?.[0]
+  let stadiumDef = null
+  if (topClubId) {
+    const { data: club } = await supabase.from('clubs').select('id,encoded_name,logo_url,country_code').eq('id', topClubId).single()
+    if (club) stadiumDef = { club_id: club.id, country_code: null, name: club.encoded_name + ' Stadium', club: { encoded_name: club.encoded_name, logo_url: club.logo_url } }
+  }
+
+  return { lines, subs, gcCards, stadiumDef }
 }
 
 function generateFakeAITeam(formation) {
@@ -149,6 +192,7 @@ function showOpponentReveal(container, game, ctx) {
   <div class="match-screen" style="display:flex;flex-direction:column;align-items:center;justify-content:flex-start;height:100%;overflow:hidden;gap:12px;padding:12px 16px;background:#0a3d1e;overflow-y:auto">
     <div style="font-size:11px;color:rgba(255,255,255,0.5);letter-spacing:3px;text-transform:uppercase;margin-top:8px">Équipe adverse</div>
     <div style="font-size:20px;font-weight:900;color:#ff6b6b">IA (${game.difficulty.toUpperCase()})</div>
+    ${game.aiStadiumDef ? `<div style="font-size:11px;color:#FFD700;margin-top:2px">🏟️ ${game.aiStadiumDef.name} · +10 aux joueurs ${game.aiStadiumDef.club?.encoded_name||''}</div>` : ''}
     <div style="width:min(90vw,420px)">${buildTeamSVG(game.aiTeam, game.formation, null, [], 300, 300)}</div>
     <div style="font-size:15px;color:rgba(255,255,255,0.7)">
       <span class="loading-dots">Chargement</span>
@@ -882,8 +926,60 @@ function confirmDefense(container, game, ctx) {
   nextTurn(container, game, ctx, 'home-attack')
 }
 
+// ── IA : décision remplacement + GC ──────────────────────
+function aiMaySub(game) {
+  if (game.aiSubsUsed >= game.aiMaxSubs) return
+  const usedPlayers = Object.values(game.aiTeam).flat().filter(p => p.used)
+  if (!usedPlayers.length) return
+  const availSubs = (game.aiSubs || []).filter(s => !game.aiUsedSubIds.includes(s.cardId))
+  if (!availSubs.length) return
+  // Remplacer un joueur utilisé par un remplaçant de même poste si possible
+  const out = usedPlayers[Math.floor(Math.random() * usedPlayers.length)]
+  const sameLine = availSubs.find(s => s.job === out.job) || availSubs[0]
+  const inPlayer = { ...sameLine, used: false, _line: out._line, _col: out._col }
+  // Remplacer dans la team
+  const line = game.aiTeam[out._line]
+  const idx = line.findIndex(p => p.cardId === out.cardId)
+  if (idx !== -1) line[idx] = inPlayer
+  game.aiUsedSubIds.push(sameLine.cardId)
+  game.aiSubsUsed++
+  game.log.push({ text: `🔄 IA : ${sameLine.firstname} ${sameLine.name} remplace ${out.firstname} ${out.name}`, type:'info' })
+}
+
+function aiMayPlayGC(game) {
+  if (!game.aiGcCards?.length) return
+  const available = game.aiGcCards.filter(gc => !game.aiUsedGc.includes(gc.id))
+  if (!available.length) return
+  // 30% de chance de jouer un GC par tour
+  if (Math.random() > 0.30) return
+  const gc = available[Math.floor(Math.random() * available.length)]
+  game.aiUsedGc.push(gc.id)
+  // Appliquer l'effet GC côté IA
+  const def = GC_DEFS[gc.gc_type] || {}
+  switch(gc.gc_type) {
+    case 'Boost+2': {
+      const targets = Object.values(game.aiTeam).flat().filter(p => !p.used)
+      if (targets.length) { const t = targets[Math.floor(Math.random()*targets.length)]; t.boost = (t.boost||0)+2 }
+      break
+    }
+    case 'Boost+3': {
+      const targets = Object.values(game.aiTeam).flat().filter(p => !p.used)
+      if (targets.length) { const t = targets[Math.floor(Math.random()*targets.length)]; t.boost = (t.boost||0)+3 }
+      break
+    }
+    case 'Remplacement+': game.aiMaxSubs = (game.aiMaxSubs||3)+1; break
+    case 'Bouclier':      game.modifiers.ai.shield = true; break
+    case 'Nul+1':         game.modifiers.ai.drawBonus = (game.modifiers.ai.drawBonus||0)+1; break
+    default: break
+  }
+  game.log.push({ text: `⚡ IA joue ${gc.icon||'⚡'} ${gc.name}`, type:'gc' })
+}
+
 function aiTurn(container, game, ctx) {
   updateLastPlayer(game, ctx, null)
+  // IA tente un remplacement ou un GC avant d'attaquer
+  aiMaySub(game)
+  aiMayPlayGC(game)
   const allAi = [...(game.aiTeam.MIL||[]),...(game.aiTeam.ATT||[])]
   const selected = aiSelectPlayers(allAi, 'attack', game.difficulty)
   if (!selected.length) { checkEnd(container, game, ctx); return }
@@ -919,6 +1015,7 @@ function aiTurn(container, game, ctx) {
 }
 
 function aiDefend(container, game, ctx) {
+  aiMaySub(game)
   const allAi = [...(game.aiTeam.GK||[]),...(game.aiTeam.DEF||[]),...(game.aiTeam.MIL||[])]
   const selected = aiSelectPlayers(allAi, 'defense', game.difficulty)
 

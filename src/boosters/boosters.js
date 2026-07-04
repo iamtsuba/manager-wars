@@ -1170,20 +1170,17 @@ function showHardcodedOdds() {
   document.getElementById('odds-close').addEventListener('click', () => overlay.remove())
 }
 
-// ── Monetag Vignette Banner + overlay 5s ────────────────
-// Zone ID : 11240210 — injecté une seule fois au 1er clic booster pub
+// ── Monetag Onclick zone 11240756 + overlay 5s ───────────
 
 function showAd() {
   return new Promise(resolve => {
-    // Injecter la vignette Monetag une seule fois
-    if (!document.querySelector('script[data-zone="11240210"]')) {
+    if (!document.querySelector('script[data-zone="11240756"]')) {
       const s = document.createElement('script')
-      s.dataset.zone = '11240210'
-      s.src = 'https://n6wxm.com/vignette.min.js'
+      s.dataset.zone = '11240756'
+      s.src = 'https://al5sm.com/tag.min.js'
       document.body.appendChild(s)
     }
 
-    // Overlay 5s pendant que la vignette s'affiche
     const overlay = document.createElement('div')
     overlay.style.cssText = `
       position:fixed;inset:0;background:rgba(0,0,0,0.88);

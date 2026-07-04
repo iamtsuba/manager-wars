@@ -339,7 +339,7 @@ import{s as E,F as hi,h as Pt,j as Yi,l as at,i as Ao,k as zo,b as So}from"./for
         border:1.5px solid #ddd;background:#fff;
         font-size:14px;font-weight:700;cursor:pointer;color:#555;
       }
-    </style>`}async function Xi({player1Id:e,player2Id:t,score1:i,score2:s,gc1:l,gc2:d}){const[a,p]=[e,t].sort(),f=e!==a,n=f?s:i,o=f?i:s,m=f?d:l,b=f?l:d,g=n>o?1:0,T=o>n?1:0,r=n===o?1:0,{data:c}=await E.from("friend_match_stats").select("*").eq("player1_id",a).eq("player2_id",p).single();c?await E.from("friend_match_stats").update({wins_p1:c.wins_p1+g,wins_p2:c.wins_p2+T,draws:c.draws+r,goals_p1:c.goals_p1+n,goals_p2:c.goals_p2+o,gc_used_p1:c.gc_used_p1+m,gc_used_p2:c.gc_used_p2+b,matches_total:c.matches_total+1}).eq("player1_id",a).eq("player2_id",p):await E.from("friend_match_stats").insert({player1_id:a,player2_id:p,wins_p1:g,wins_p2:T,draws:r,goals_p1:n,goals_p2:o,gc_used_p1:m,gc_used_p2:b,matches_total:1})}const Po="2026.07.04-2148";async function ji(e,{state:t,navigate:i,toast:s}){var d,a;const l=t.profile;l&&(e.innerHTML=`
+    </style>`}async function Xi({player1Id:e,player2Id:t,score1:i,score2:s,gc1:l,gc2:d}){const[a,p]=[e,t].sort(),f=e!==a,n=f?s:i,o=f?i:s,m=f?d:l,b=f?l:d,g=n>o?1:0,T=o>n?1:0,r=n===o?1:0,{data:c}=await E.from("friend_match_stats").select("*").eq("player1_id",a).eq("player2_id",p).single();c?await E.from("friend_match_stats").update({wins_p1:c.wins_p1+g,wins_p2:c.wins_p2+T,draws:c.draws+r,goals_p1:c.goals_p1+n,goals_p2:c.goals_p2+o,gc_used_p1:c.gc_used_p1+m,gc_used_p2:c.gc_used_p2+b,matches_total:c.matches_total+1}).eq("player1_id",a).eq("player2_id",p):await E.from("friend_match_stats").insert({player1_id:a,player2_id:p,wins_p1:g,wins_p2:T,draws:r,goals_p1:n,goals_p2:o,gc_used_p1:m,gc_used_p2:b,matches_total:1})}const Po="2026.07.04-2151";async function ji(e,{state:t,navigate:i,toast:s}){var d,a;const l=t.profile;l&&(e.innerHTML=`
   <style>
     @media (min-width: 768px) {
       .home-page-body {
@@ -1063,7 +1063,7 @@ import{s as E,F as hi,h as Pt,j as Yi,l as at,i as Ao,k as zo,b as So}from"./for
     </div>
     <div class="page-body">
       <div class="booster-grid">
-        ${d.map(g=>{const T=g.cost===0||l>=g.cost,r=o[g.id]===!0;return`<div class="booster-card ${isDisabled?"disabled":""}" data-booster="${g.id}" style="position:relative">
+        ${d.map(g=>{const T=g.cost===0||l>=g.cost,r=o[g.id]===!0;return`<div class="booster-card ${!T||r?"disabled":""}" data-booster="${g.id}" style="position:relative">
             <button class="booster-info-btn" data-booster-id="${g.id}"
               style="position:absolute;top:6px;right:6px;width:20px;height:20px;border-radius:50%;
               background:rgba(0,0,0,0.15);border:none;cursor:pointer;font-size:11px;font-weight:700;

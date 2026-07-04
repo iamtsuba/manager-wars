@@ -493,17 +493,25 @@ export function getClubLogo(p) {
   return url ? `${url}/storage/v1/object/public/assets/clubs/${p.clubLogo}` : null
 }
 
-export function renderMiniCardHTML(p, w=44, h=58) {
+export function renderMiniCardHTML(p, w=44, h=58, stadDef=null) {
   if (!p) return `<div style="width:${w}px;height:${h}px;border:1.5px dashed rgba(255,255,255,0.2);border-radius:5px"></div>`
   const portrait = (typeof p.portrait === 'string' && p.portrait.startsWith('http')) ? p.portrait : getPortrait(p)
   const logoUrl  = getClubLogo(p)
   const role     = p._line || p.job || 'MIL'
   const jobColor = JOB_COLORS[role] || '#555'
   const rarityBorder = { normal:'#aaa', pepite:'#D4A017', pépite:'#D4A017', papyte:'#222', legende:'#7a28b8', légende:'#7a28b8' }[p?.rarity] || '#aaa'
-  const note = p.note !== undefined ? Number(p.note)||0 : (Number(getNoteForRole(p, role))||0) + (p.boost||0)
   const flag = countryFlag(p?.country_code)
   const nameH = Math.round(h*0.19), botH = Math.round(h*0.25), portH = h - Math.round(h*0.19) - Math.round(h*0.25)
   const op = p?.used ? 0.28 : 1
+  // Note : priorité à p.note (déjà calculé), sinon calcul complet avec evo + stade
+  const evo = p._evolution_bonus ?? p.evolution_bonus ?? 0
+  const baseNote = p.note !== undefined ? Number(p.note)||0 : (Number(getNoteForRole(p, role))||0) + (p.boost||0) + ((p.job===role||p.job2===role) ? evo : 0)
+  const hasStadBonus = !p.used && (p.stadiumBonus || (stadDef && (
+    (stadDef.club_id && String(p.club_id) === String(stadDef.club_id)) ||
+    (stadDef.country_code && p.country_code === stadDef.country_code)
+  )))
+  const note = baseNote + (hasStadBonus ? 10 : 0)
+  const noteColor = hasStadBonus ? '#E87722' : '#111'
   return `<div style="width:${w}px;height:${h}px;border-radius:5px;border:2px solid ${rarityBorder};background:${jobColor};position:relative;overflow:hidden;flex-shrink:0;opacity:${op}">
     <div style="position:absolute;top:0;left:0;right:0;height:${nameH}px;background:rgba(255,255,255,0.93);display:flex;align-items:center;justify-content:center;z-index:2">
       <span style="font-size:${Math.max(5,Math.round(w/9))}px;font-weight:900;color:#111;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:${w-4}px">${(p?.name||'').slice(0,9)}</span>
@@ -511,7 +519,7 @@ export function renderMiniCardHTML(p, w=44, h=58) {
     ${portrait && !p?.used ? `<img src="${portrait}" style="position:absolute;top:${nameH}px;left:0;width:${w}px;height:${portH}px;object-fit:cover;object-position:top center">` : ''}
     <div style="position:absolute;bottom:0;left:0;right:0;height:${botH}px;background:rgba(255,255,255,0.93);display:flex;align-items:center;justify-content:space-between;padding:0 3px;z-index:2">
       ${flagImgUrl(p?.country_code) ? `<img src="${flagImgUrl(p.country_code)}" style="width:${botH+2}px;height:${botH-3}px;object-fit:cover;border-radius:1px">` : `<span style="font-size:${botH-4}px">${flag}</span>`}
-      <span style="font-size:${botH-2}px;font-weight:900;color:#111;font-family:Arial Black,Arial">${p?.used?'–':note}</span>
+      <span style="font-size:${botH-2}px;font-weight:900;color:${p?.used?'#111':noteColor};font-family:Arial Black,Arial">${p?.used?'–':note}</span>
       ${logoUrl ? `<img src="${logoUrl}" style="width:${botH-4}px;height:${botH-4}px;object-fit:contain">` : (p?.clubName ? `<span style="font-size:${Math.max(4,botH-8)}px;font-weight:700;color:#333">${(p.clubName||'').slice(0,3).toUpperCase()}</span>` : '')}
     </div>
   </div>`

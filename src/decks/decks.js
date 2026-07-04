@@ -279,7 +279,7 @@ function renderBuilder(container, builder, ctx) {
       <div style="font-size:11px;font-weight:700;margin-bottom:8px;color:rgba(255,255,255,0.6);letter-spacing:1px;text-transform:uppercase">Remplaçants (${builder.subs.length}/5)</div>
       <div style="display:flex;gap:8px;align-items:flex-end;overflow-x:auto;padding-bottom:4px" id="subs-list">
         ${subPlayers.map(card => {
-          const p = card.player
+          const p = { ...card.player, _evolution_bonus: card.evolution_bonus || 0 }
           return `<div style="position:relative;flex-shrink:0">
             ${renderMiniCardHTML(p, 44, 58, _stadDef)}
             <button data-remove-sub="${card.id}"

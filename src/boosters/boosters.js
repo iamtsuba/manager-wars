@@ -1170,18 +1170,21 @@ function showHardcodedOdds() {
   document.getElementById('odds-close').addEventListener('click', () => overlay.remove())
 }
 
-// ── Monetag Vignette Banner ───────────────────────────────
-// Injecté en lazy UNIQUEMENT au clic sur le booster pub
+// ── Monetag Onclick (Popunder) ───────────────────────────
+// Zone ID : 11240624 — déclenché au clic sur le booster pub
 
 function showAd() {
   return new Promise(resolve => {
-    if (!document.querySelector('script[data-zone="11240210"]')) {
+    // Injecter le script Monetag Onclick si pas encore chargé
+    if (!document.querySelector('script[data-zone="11240624"]')) {
       const s = document.createElement('script')
-      s.dataset.zone = '11240210'
-      s.src = 'https://n6wxm.com/vignette.min.js'
+      s.dataset.zone = '11240624'
+      s.src = 'https://al5sm.com/tag.min.js'
       document.body.appendChild(s)
     }
-    setTimeout(() => resolve(true), 4000)
+    // Le popunder s'ouvre automatiquement au prochain clic utilisateur
+    // On résout immédiatement pour ouvrir le booster en parallèle
+    resolve(true)
   })
 }
 

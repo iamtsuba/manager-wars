@@ -119,6 +119,7 @@ async function showMatchmakingSearch(container, ctx, deckId, formation, starters
         p_mmr     : myMmr,
         p_range   : range,
       })
+      console.log('[Ranked] try_matchmake_ranked result:', result, 'error:', JSON.stringify(error))
       if (cancelled) return
       if (error || !result?.success) { toast('Erreur matchmaking ranked', 'error'); _showBottomNav(container); navigate('home'); return }
       if (result.matched) {

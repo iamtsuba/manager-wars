@@ -200,12 +200,15 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
   if (!match) { toast('Match introuvable', 'error'); navigate('home'); return }
 
   async function buildGameState() {
+    console.log('[PvP] buildGameState match:', { id: match.id, home_deck_id: match.home_deck_id, away_deck_id: match.away_deck_id, mode: match.mode, is_ranked: match.is_ranked })
     const [{ data: p1D }, { data: p2D }, { data: p1P }, { data: p2P }] = await Promise.all([
+    const [{ data: p1D, error: e1 }, { data: p2D, error: e2 }, { data: p1P }, { data: p2P }] = await Promise.all([
       supabase.rpc('get_deck_for_match', { p_deck_id: match.home_deck_id }),
       supabase.rpc('get_deck_for_match', { p_deck_id: match.away_deck_id }),
       supabase.from('users').select('id,pseudo,club_name').eq('id', match.home_id).single(),
       supabase.from('users').select('id,pseudo,club_name').eq('id', match.away_id).single(),
     ])
+    console.log('[PvP] get_deck_for_match p1:', e1?.message, 'p2:', e2?.message, 'p1D:', p1D?.starters?.length, 'p2D:', p2D?.starters?.length)
     const toPlayer = (r) => {
       const evo = Number(r.evolution_bonus)||0
       return {

@@ -215,7 +215,7 @@ BEGIN
 
   -- Créer le match
   INSERT INTO matches (home_id, away_id, home_deck_id, away_deck_id, status, mode, is_ranked)
-  VALUES (v_opponent.user_id, p_user_id, v_opponent.deck_id, p_deck_id, 'in_progress', 'vs_random', TRUE)
+  VALUES (v_opponent.user_id, p_user_id, v_opponent.deck_id, p_deck_id, 'in_progress', 'ranked', TRUE)
   RETURNING id INTO v_match_id;
 
   -- Marquer l'adversaire comme matché

@@ -92,7 +92,7 @@ async function showMatchmakingSearch(container, ctx, deckId, formation, starters
     if (s) s.textContent = 'Adversaire trouvé !'
     await new Promise(r => setTimeout(r, 600))
     if (!container.isConnected) return
-    renderPvpMatch(container, ctx, matchId, amIHome, myGC, gcDefs, isRanked, rankedData)
+    renderPvpMatch(container, ctx, matchId, amIHome, myGC, gcDefs, isRanked, rankedData, stadiumDef)
   }
 
   if (isRanked) {
@@ -187,7 +187,7 @@ export async function resumePvpMatch(container, ctx, matchId) {
   renderPvpMatch(container, ctx, matchId, amIHome, [], [])
 }
 
-async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDefs = [], isRanked = false, rankedData = null) {
+async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDefs = [], isRanked = false, rankedData = null, stadiumDef = null) {
   const { state, navigate, toast } = ctx
   const myRole  = amIHome ? 'p1' : 'p2'
   const oppRole = amIHome ? 'p2' : 'p1'

@@ -339,7 +339,7 @@ import{s as T,F as $i,i as Ut,k as Zi,l as nt,m as ji,f as Rt,n as Lo,T as pi,j 
         border:1.5px solid #ddd;background:#fff;
         font-size:14px;font-weight:700;cursor:pointer;color:#555;
       }
-    </style>`}async function to({player1Id:e,player2Id:t,score1:i,score2:n,gc1:d,gc2:s}){const[r,l]=[e,t].sort(),m=e!==r,a=m?n:i,o=m?i:n,y=m?s:d,p=m?d:s,x=a>o?1:0,_=o>a?1:0,f=a===o?1:0,{data:c}=await T.from("friend_match_stats").select("*").eq("player1_id",r).eq("player2_id",l).single();c?await T.from("friend_match_stats").update({wins_p1:c.wins_p1+x,wins_p2:c.wins_p2+_,draws:c.draws+f,goals_p1:c.goals_p1+a,goals_p2:c.goals_p2+o,gc_used_p1:c.gc_used_p1+y,gc_used_p2:c.gc_used_p2+p,matches_total:c.matches_total+1}).eq("player1_id",r).eq("player2_id",l):await T.from("friend_match_stats").insert({player1_id:r,player2_id:l,wins_p1:x,wins_p2:_,draws:f,goals_p1:a,goals_p2:o,gc_used_p1:y,gc_used_p2:p,matches_total:1})}const Ho="2026.07.05-1503";async function Fi(e,{state:t,navigate:i,toast:n}){var s,r;const d=t.profile;d&&(e.innerHTML=`
+    </style>`}async function to({player1Id:e,player2Id:t,score1:i,score2:n,gc1:d,gc2:s}){const[r,l]=[e,t].sort(),m=e!==r,a=m?n:i,o=m?i:n,y=m?s:d,p=m?d:s,x=a>o?1:0,_=o>a?1:0,f=a===o?1:0,{data:c}=await T.from("friend_match_stats").select("*").eq("player1_id",r).eq("player2_id",l).single();c?await T.from("friend_match_stats").update({wins_p1:c.wins_p1+x,wins_p2:c.wins_p2+_,draws:c.draws+f,goals_p1:c.goals_p1+a,goals_p2:c.goals_p2+o,gc_used_p1:c.gc_used_p1+y,gc_used_p2:c.gc_used_p2+p,matches_total:c.matches_total+1}).eq("player1_id",r).eq("player2_id",l):await T.from("friend_match_stats").insert({player1_id:r,player2_id:l,wins_p1:x,wins_p2:_,draws:f,goals_p1:a,goals_p2:o,gc_used_p1:y,gc_used_p2:p,matches_total:1})}const Ho="2026.07.05-1759";async function Fi(e,{state:t,navigate:i,toast:n}){var s,r;const d=t.profile;d&&(e.innerHTML=`
   <style>
     @media (min-width: 768px) {
       .home-page-body {
@@ -1880,7 +1880,7 @@ import{s as T,F as $i,i as Ut,k as Zi,l as nt,m as ji,f as Rt,n as Lo,T as pi,j 
       ${a?`<div style="font-size:36px">${(S==null?void 0:S.emoji)||"⚽"}</div>`:""}
       <div style="width:64px;height:64px;border:4px solid rgba(255,255,255,0.15);border-top-color:${I};border-radius:50%;animation:mmspin 0.9s linear infinite"></div>
       <div style="font-size:18px;font-weight:900;color:#fff">${a?"Recherche Ranked...":"Recherche d'un adversaire..."}</div>
-      ${a?`<div style="font-size:13px;color:${(S==null?void 0:S.color)||"#D4A017"}">MMR : ${c} · ${(S==null?void 0:S.label)||""}</div>`:""}
+      ${a?`<div style="font-size:13px;color:${(S==null?void 0:S.color)||"#D4A017"}">${(S==null?void 0:S.emoji)||"⚔️"} ${(S==null?void 0:S.label)||"Ranked"}</div>`:""}
       <div id="mm-status" style="font-size:13px;color:rgba(255,255,255,0.5)">Connexion au matchmaking</div>
       <div id="mm-range" style="font-size:11px;color:rgba(255,255,255,0.3)"></div>
       <button id="mm-cancel" style="margin-top:12px;padding:12px 28px;border-radius:12px;border:1.5px solid rgba(255,255,255,0.25);background:transparent;color:rgba(255,255,255,0.7);font-size:14px;cursor:pointer">Annuler</button>

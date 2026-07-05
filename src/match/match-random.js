@@ -231,15 +231,17 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
     const p1F = p1D?.formation||'4-4-2', p2F = p2D?.formation||'4-4-2'
     let p1Team = buildTeam(p1Starters, p1F)
     let p2Team = buildTeam(p2Starters, p2F)
-    // Bonus stade : appliqué à l'équipe home (p1 = amIHome) + remplaçants
     const p1SubsRaw = (p1D?.subs||[]).map(r=>toPlayer(r))
-    if (stadiumDef && amIHome) {
-      p1Team = applyStadiumBonus(p1Team, stadiumDef)
-      applyStadiumBonusToSubs(p1SubsRaw, stadiumDef)
-    }
+    const p2SubsRaw = (p2D?.subs||[]).map(r=>toPlayer(r))
+
+    // Bonus stade : appliqué depuis stadium_def retourné par le RPC (les deux joueurs)
+    const p1StadiumDef = p1D?.stadium_def || (amIHome ? stadiumDef : null)
+    const p2StadiumDef = p2D?.stadium_def || (!amIHome ? stadiumDef : null)
+    if (p1StadiumDef) { p1Team = applyStadiumBonus(p1Team, p1StadiumDef); applyStadiumBonusToSubs(p1SubsRaw, p1StadiumDef) }
+    if (p2StadiumDef) { p2Team = applyStadiumBonus(p2Team, p2StadiumDef); applyStadiumBonusToSubs(p2SubsRaw, p2StadiumDef) }
     return {
       p1Team, p2Team,
-      p1Subs: p1SubsRaw, p2Subs: (p2D?.subs||[]).map(r=>toPlayer(r)),
+      p1Subs: p1SubsRaw, p2Subs: p2SubsRaw,
       p1Formation: p1F, p2Formation: p2F,
       p1Name: p1P?.club_name||p1P?.pseudo||'Joueur 1',
       p2Name: p2P?.club_name||p2P?.pseudo||'Joueur 2',

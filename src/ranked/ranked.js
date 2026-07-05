@@ -29,6 +29,24 @@ export async function renderRanked(container, ctx) {
 
   if (!profile) { toast('Erreur chargement profil', 'error'); navigate('home'); return }
 
+  // Si aucune saison active : mode ranked suspendu
+  if (!season) {
+    container.innerHTML = `
+    <div style="min-height:100%;background:linear-gradient(160deg,#1a1a1a,#2a2a2a);padding:16px;display:flex;flex-direction:column;gap:16px">
+      <div style="display:flex;align-items:center;gap:10px">
+        <button id="ranked-back" style="background:rgba(255,255,255,0.1);border:none;border-radius:10px;padding:8px 12px;color:#fff;font-size:15px;cursor:pointer">←</button>
+        <div style="flex:1;text-align:center;font-size:16px;font-weight:900;color:#fff;letter-spacing:2px;text-transform:uppercase">MODE RANKED</div>
+      </div>
+      <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;text-align:center;padding:40px">
+        <div style="font-size:64px">⏸️</div>
+        <div style="font-size:20px;font-weight:900;color:#fff">Ranked en pause</div>
+        <div style="font-size:14px;color:rgba(255,255,255,0.5);max-width:260px">Aucune saison n'est active pour le moment. Revenez bientôt !</div>
+      </div>
+    </div>`
+    document.getElementById('ranked-back')?.addEventListener('click', () => navigate('home'))
+    return
+  }
+
   const mmr        = profile.mmr ?? 1000
   const rd         = profile.mmr_deviation ?? 350
   const sigma      = profile.mmr_volatility ?? 0.06

@@ -17,6 +17,7 @@ import { renderJournal         } from './pages/journal.js'
 import { renderTutorialAdmin   } from './pages/tutorial-admin.js'
 import { renderStadiums        } from './pages/stadiums.js'
 import { renderGCCards }         from './pages/gc-cards.js'
+import { renderRankedSeasons }   from './pages/ranked-seasons.js'
 
 // ── Toast helper ──────────────────────────────────────────
 export function toast(msg, type = 'info') {
@@ -54,6 +55,7 @@ const PAGES = {
   'tutorial':        { title: 'Tutoriel',              fn: renderTutorialAdmin },
   'stadiums':        { title: 'Stades',                fn: renderStadiums },
   'gc-cards':         { title: 'Game Changers',          fn: renderGCCards },
+  'ranked-seasons':   { title: 'Saisons Ranked',         fn: renderRankedSeasons },
 }
 
 let currentPage = 'dashboard'

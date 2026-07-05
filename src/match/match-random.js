@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase.js'
+import { computeGlicko2, getTier, previewDelta } from '../ranked/glicko2.js'
 import { applyOwnEvolution } from './evolutive-cards.js'
 import {
   GC_DEFS, getNoteForRole, calcAttack, calcDefense,
@@ -18,10 +19,9 @@ import {
 // pickers, règles de but défenseur, hauteur mobile robuste, etc.
 // ═══════════════════════════════════════════════════════════
 
-export async function renderMatchRandom(container, ctx) {
+export async function renderMatchRandom(container, ctx, isRanked = false) {
   // Nettoyage à l'entrée : supprimer tout canal Realtime de matchmaking/pvp
   // resté actif d'une session précédente + repartir d'une file propre.
-  // Évite qu'un ancien canal fantôme déclenche un match indésirable.
   try {
     const uid = ctx?.state?.profile?.id
     try {
@@ -37,23 +37,38 @@ export async function renderMatchRandom(container, ctx) {
       await supabase.rpc('cancel_matchmaking', { p_user_id: uid }).catch(()=>{})
     }
   } catch {}
+
+  // Récupérer rankedData depuis params si mode ranked
+  const rankedData = isRanked ? (ctx?.state?.params?.rankedData || null) : null
+
   await loadMatchSetup(container, ctx, 'random', ({ deckId, formation, starters, subsRaw, gcCardsEnriched, gcDefs, stadiumDef }) => {
-    const start = (selectedGC) => showMatchmakingSearch(container, ctx, deckId, formation, starters, subsRaw, selectedGC, gcDefs || [], stadiumDef)
+    const start = (selectedGC) => showMatchmakingSearch(container, ctx, deckId, formation, starters, subsRaw, selectedGC, gcDefs || [], stadiumDef, isRanked, rankedData)
     if (!gcCardsEnriched.length) { start([]); return }
     showGCSelection(container, gcCardsEnriched, start)
   })
 }
 
-async function showMatchmakingSearch(container, ctx, deckId, formation, starters, subsRaw, myGC = [], gcDefs = [], stadiumDef = null) {
+async function showMatchmakingSearch(container, ctx, deckId, formation, starters, subsRaw, myGC = [], gcDefs = [], stadiumDef = null, isRanked = false, rankedData = null) {
   const { state, navigate, toast } = ctx
   let cancelled = false, channel = null
 
   _hideBottomNav(container)
+
+  const myMmr = rankedData?.mmr ?? state.profile?.mmr ?? 1000
+  const tier   = isRanked ? getTier(myMmr) : null
+  const bgGrad = isRanked
+    ? `linear-gradient(180deg,#1a0030,#0a1628)`
+    : `linear-gradient(180deg,#0a1628,#1a0a2e)`
+  const spinCol = isRanked ? (tier?.color || '#D4A017') : '#FFD700'
+
   container.innerHTML = `
-    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:24px;background:linear-gradient(180deg,#0a1628,#1a0a2e);padding:24px;text-align:center">
-      <div style="width:64px;height:64px;border:4px solid rgba(255,255,255,0.15);border-top-color:#FFD700;border-radius:50%;animation:mmspin 0.9s linear infinite"></div>
-      <div style="font-size:18px;font-weight:900;color:#fff">Recherche d'un adversaire...</div>
+    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:24px;background:${bgGrad};padding:24px;text-align:center">
+      ${isRanked ? `<div style="font-size:36px">${tier?.emoji || '⚽'}</div>` : ''}
+      <div style="width:64px;height:64px;border:4px solid rgba(255,255,255,0.15);border-top-color:${spinCol};border-radius:50%;animation:mmspin 0.9s linear infinite"></div>
+      <div style="font-size:18px;font-weight:900;color:#fff">${isRanked ? 'Recherche Ranked...' : "Recherche d'un adversaire..."}</div>
+      ${isRanked ? `<div style="font-size:13px;color:${tier?.color || '#D4A017'}">MMR : ${myMmr} · ${tier?.label || ''}</div>` : ''}
       <div id="mm-status" style="font-size:13px;color:rgba(255,255,255,0.5)">Connexion au matchmaking</div>
+      <div id="mm-range" style="font-size:11px;color:rgba(255,255,255,0.3)"></div>
       <button id="mm-cancel" style="margin-top:12px;padding:12px 28px;border-radius:12px;border:1.5px solid rgba(255,255,255,0.25);background:transparent;color:rgba(255,255,255,0.7);font-size:14px;cursor:pointer">Annuler</button>
     </div>
     <style>@keyframes mmspin{to{transform:rotate(360deg)}}</style>`
@@ -77,20 +92,82 @@ async function showMatchmakingSearch(container, ctx, deckId, formation, starters
     if (s) s.textContent = 'Adversaire trouvé !'
     await new Promise(r => setTimeout(r, 600))
     if (!container.isConnected) return
-    renderPvpMatch(container, ctx, matchId, amIHome, myGC, gcDefs)
+    renderPvpMatch(container, ctx, matchId, amIHome, myGC, gcDefs, isRanked, rankedData)
   }
 
-  const { data: result, error } = await supabase.rpc('try_matchmake', { p_user_id: state.profile.id, p_deck_id: deckId })
-  if (error || !result?.success) { toast('Erreur de matchmaking', 'error'); _showBottomNav(container); navigate('home'); return }
-  if (result.matched) { startPvpMatch(result.match_id, result.opponent_id, false); return }
+  if (isRanked) {
+    // ── Matchmaking ranked avec plage MMR progressive ──────
+    const RANGES = [
+      { range: 50,  delay: 0     },
+      { range: 100, delay: 15000 },
+      { range: 200, delay: 30000 },
+      { range: 400, delay: 45000 },
+      { range: 800, delay: 60000 },
+    ]
+    let rangeIdx = 0
+    let matched  = false
 
-  const s = document.getElementById('mm-status')
-  if (s) s.textContent = "En attente d'un autre joueur..."
+    const tryRankedMatch = async () => {
+      if (cancelled || matched) return
+      const { range } = RANGES[rangeIdx]
+      const rangeEl = document.getElementById('mm-range')
+      if (rangeEl) rangeEl.textContent = `Plage MMR : ±${range}`
 
-  channel = supabase.channel('matchmaking-' + state.profile.id)
-    .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'matchmaking_queue', filter: `user_id=eq.${state.profile.id}` },
-      (payload) => { const row = payload.new; if (row.status === 'matched' && row.match_id) startPvpMatch(row.match_id, row.matched_with, true) })
-    .subscribe()
+      const { data: result, error } = await supabase.rpc('try_matchmake_ranked', {
+        p_user_id : state.profile.id,
+        p_deck_id : deckId,
+        p_mmr     : myMmr,
+        p_range   : range,
+      })
+      if (cancelled) return
+      if (error || !result?.success) { toast('Erreur matchmaking ranked', 'error'); _showBottomNav(container); navigate('home'); return }
+      if (result.matched) {
+        matched = true
+        startPvpMatch(result.match_id, result.opponent_id, false)
+        return
+      }
+
+      const sEl = document.getElementById('mm-status')
+      if (sEl) sEl.textContent = "En attente d'un adversaire..."
+
+      // Listener Realtime pour être notifié si on est matché par l'adversaire
+      if (!channel) {
+        channel = supabase.channel('matchmaking-' + state.profile.id)
+          .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'matchmaking_queue', filter: `user_id=eq.${state.profile.id}` },
+            (payload) => {
+              const row = payload.new
+              if (row.status === 'matched' && row.match_id && !matched) {
+                matched = true
+                startPvpMatch(row.match_id, row.matched_with, true)
+              }
+            })
+          .subscribe()
+      }
+
+      // Élargir la plage après délai
+      if (rangeIdx < RANGES.length - 1) {
+        const nextDelay = RANGES[rangeIdx + 1].delay - RANGES[rangeIdx].delay
+        rangeIdx++
+        setTimeout(() => { if (!cancelled && !matched) tryRankedMatch() }, nextDelay)
+      }
+    }
+
+    await tryRankedMatch()
+
+  } else {
+    // ── Matchmaking casual standard ────────────────────────
+    const { data: result, error } = await supabase.rpc('try_matchmake', { p_user_id: state.profile.id, p_deck_id: deckId })
+    if (error || !result?.success) { toast('Erreur de matchmaking', 'error'); _showBottomNav(container); navigate('home'); return }
+    if (result.matched) { startPvpMatch(result.match_id, result.opponent_id, false); return }
+
+    const s = document.getElementById('mm-status')
+    if (s) s.textContent = "En attente d'un autre joueur..."
+
+    channel = supabase.channel('matchmaking-' + state.profile.id)
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'matchmaking_queue', filter: `user_id=eq.${state.profile.id}` },
+        (payload) => { const row = payload.new; if (row.status === 'matched' && row.match_id) startPvpMatch(row.match_id, row.matched_with, true) })
+      .subscribe()
+  }
 }
 
 // Reprendre un match PvP en cours (random OU ami) à partir de son ID.
@@ -109,7 +186,7 @@ export async function resumePvpMatch(container, ctx, matchId) {
   renderPvpMatch(container, ctx, matchId, amIHome, [], [])
 }
 
-async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDefs = []) {
+async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDefs = [], isRanked = false, rankedData = null) {
   const { state, navigate, toast } = ctx
   const myRole  = amIHome ? 'p1' : 'p2'
   const oppRole = amIHome ? 'p2' : 'p1'
@@ -203,37 +280,101 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
   const _goalAnimShownFor = new Set()  // rounds dont l'animation BUT a déjà été montrée localement
   const _gcAnimShownFor = new Set()    // séquences GC dont l'animation a déjà été montrée localement
 
-  function showPvpEndScreen(row) {
+  async function showPvpEndScreen(row) {
     try { supabase.removeChannel(channel) } catch {}
     const myScore  = gameState[myRole+'Score']||0
     const oppScore = gameState[oppRole+'Score']||0
-    // Source de vérité : winner_id si présent, sinon comparaison des scores
     let iWon, isDraw
     if (row.winner_id) {
       iWon = row.winner_id === state.profile.id
       isDraw = false
     } else if (row.forfeit) {
-      // Forfait sans winner_id lisible → se fier au score (le vainqueur a 3)
       iWon = myScore > oppScore
       isDraw = false
     } else {
       isDraw = myScore === oppScore
       iWon = myScore > oppScore
     }
-    // Supprimer un éventuel overlay précédent
+
+    // ── Calcul MMR ranked (seulement côté home = p1 pour éviter double écriture) ──
+    let mmrHtml = ''
+    if (isRanked && amIHome) {
+      try {
+        // Récupérer les données MMR des deux joueurs
+        const { data: homeUser } = await supabase.from('users').select('id,mmr,mmr_deviation,mmr_volatility,placement_matches').eq('id', match.home_id).single()
+        const { data: awayUser } = await supabase.from('users').select('id,mmr,mmr_deviation,mmr_volatility,placement_matches').eq('id', match.away_id).single()
+
+        if (homeUser && awayUser) {
+          const homeScore  = iWon ? 1 : isDraw ? 0.5 : 0
+          const awayScore  = 1 - homeScore
+          const homePlacement = homeUser.placement_matches < 10
+          const awayPlacement = awayUser.placement_matches < 10
+
+          const homeResult = computeGlicko2(
+            homeUser.mmr, homeUser.mmr_deviation, homeUser.mmr_volatility,
+            awayUser.mmr, awayUser.mmr_deviation, homeScore === 1 ? 1 : homeScore === 0 ? 0 : 0.5,
+            homePlacement
+          )
+          const awayResult = computeGlicko2(
+            awayUser.mmr, awayUser.mmr_deviation, awayUser.mmr_volatility,
+            homeUser.mmr, homeUser.mmr_deviation, awayScore === 1 ? 1 : awayScore === 0 ? 0 : 0.5,
+            awayPlacement
+          )
+
+          // Appliquer via RPC (SECURITY DEFINER, seul home écrit)
+          await supabase.rpc('update_mmr_after_ranked', {
+            p_match_id      : matchId,
+            p_winner_id     : isDraw ? null : (iWon ? match.home_id : match.away_id),
+            p_home_id       : match.home_id,
+            p_away_id       : match.away_id,
+            p_home_delta    : homeResult.delta,
+            p_away_delta    : awayResult.delta,
+            p_home_new_rd   : homeResult.newRd,
+            p_away_new_rd   : awayResult.newRd,
+            p_home_new_vol  : homeResult.newSigma,
+            p_away_new_vol  : awayResult.newSigma,
+          })
+
+          const myDelta   = iWon ? homeResult.delta : (isDraw ? homeResult.delta : homeResult.delta)
+          const myNewMmr  = homeResult.newMmr
+          const myNewTier = getTier(myNewMmr)
+          const deltaSign = myDelta >= 0 ? '+' : ''
+          const deltaCol  = myDelta >= 0 ? '#4caf50' : '#ff6b6b'
+          const prevTier  = getTier(homeUser.mmr)
+
+          mmrHtml = `
+            <div style="background:rgba(255,255,255,0.08);border-radius:14px;padding:14px 20px;text-align:center;min-width:220px">
+              <div style="font-size:11px;color:rgba(255,255,255,0.5);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px">MMR Ranked</div>
+              <div style="display:flex;align-items:center;justify-content:center;gap:10px">
+                <div style="font-size:20px;color:rgba(255,255,255,0.5)">${homeUser.mmr}</div>
+                <div style="font-size:20px;font-weight:900;color:${deltaCol}">${deltaSign}${myDelta}</div>
+                <div style="font-size:20px;font-weight:900;color:#fff">= ${myNewMmr}</div>
+              </div>
+              ${myNewTier.id !== prevTier.id ? `
+              <div style="margin-top:8px;font-size:14px;font-weight:700;color:${myNewTier.color}">
+                ${myNewMmr > homeUser.mmr ? '📈' : '📉'} ${prevTier.emoji} → ${myNewTier.emoji} ${myNewTier.label}
+              </div>` : `<div style="font-size:12px;color:${myNewTier.color};margin-top:4px">${myNewTier.emoji} ${myNewTier.label}</div>`}
+              ${homePlacement ? `<div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:4px">Match de placement ×2</div>` : ''}
+            </div>`
+        }
+      } catch (e) { console.error('[Ranked] MMR update error:', e) }
+    }
+
     document.getElementById('pvp-end-overlay')?.remove()
     const overlay2 = document.createElement('div')
     overlay2.id = 'pvp-end-overlay'
-    overlay2.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.92);z-index:1500;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;color:#fff;padding:24px;text-align:center'
+    overlay2.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.92);z-index:1500;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;color:#fff;padding:24px;text-align:center;overflow-y:auto'
     const _emoji = isDraw ? '🤝' : iWon ? '🏆' : '😞'
     const _titleTxt = isDraw ? 'MATCH NUL' : iWon ? 'VICTOIRE !' : 'DÉFAITE'
     const _titleCol = isDraw ? '#fff' : iWon ? '#FFD700' : '#ff6b6b'
     overlay2.innerHTML = `
       <div style="font-size:64px">${_emoji}</div>
       <div style="font-size:26px;font-weight:900;color:${_titleCol}">${_titleTxt}</div>
+      ${isRanked ? '<div style="font-size:11px;color:rgba(255,255,255,0.4);letter-spacing:2px;text-transform:uppercase">⚔️ Match Ranked</div>' : ''}
       <div style="font-size:18px">${gameState[myRole+'Name']} ${myScore} – ${oppScore} ${gameState[oppRole+'Name']}</div>
       ${row.forfeit?`<div style="font-size:13px;color:rgba(255,255,255,0.5)">${iWon?"L'adversaire a quitté":'Perdu par forfait'}</div>`:''}
-      <button id="pvp-end-home" style="margin-top:10px;padding:14px 32px;border-radius:12px;border:none;background:#1A6B3C;color:#fff;font-size:16px;font-weight:900;cursor:pointer">Retour à l'accueil</button>`
+      ${mmrHtml}
+      <button id="pvp-end-home" style="margin-top:8px;padding:14px 32px;border-radius:12px;border:none;background:#1A6B3C;color:#fff;font-size:16px;font-weight:900;cursor:pointer">Retour à l'accueil</button>`
     document.body.appendChild(overlay2)
     overlay2.querySelector('#pvp-end-home')?.addEventListener('click', () => { overlay2.remove(); _showBottomNav(container); navigate('home') })
   }

@@ -22,6 +22,7 @@ import { renderMatchMiniLeague } from './match/match-minileague.js'
 import { checkAndShowTutorial } from './tutorial/tutorial.js'
 import { renderMarket }     from './market/market.js'
 import { renderRankings }   from './rankings/rankings.js'
+import { renderRanked }     from './ranked/ranked.js'
 import { renderMatches }    from './matches/matches.js'
 import { renderFriends }    from './friends/friends.js'
 import { setFormationLinksOverrides } from './match/formation-links.js'
@@ -113,12 +114,14 @@ async function renderPage() {
     case 'collection': await renderCollection(container, ctx); break
     case 'decks':      await renderDecks(container, ctx);      break
     case 'boosters':   await renderBoosters(container, ctx);   break
+    case 'ranked':     await renderRanked(container, ctx);     break
     case 'match': {
       const mm = (state.params && state.params.matchMode) || 'vs_ai_easy'
-      if (mm === 'random') await renderMatchRandom(container, ctx)
+      if (mm === 'random')  await renderMatchRandom(container, ctx, false)
+      else if (mm === 'ranked') await renderMatchRandom(container, ctx, true)
       else if (mm === 'friend') await renderMatchFriend(container, ctx, state.params?.friendId, state.params?.friendName)
       else if (mm === 'mini-league') await renderMatchMiniLeague(container, ctx, state.params?.mlMatchId, state.params?.leagueId)
-      else                 await renderMatchIA(container, ctx)
+      else                   await renderMatchIA(container, ctx)
       break
     }
     case 'market':     await renderMarket(container, ctx);     break

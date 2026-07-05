@@ -167,7 +167,7 @@ function renderClubs(container, helpers) {
     if (!list.length) { el.innerHTML = '<p style="color:var(--gray-600);padding:20px">Aucun club.</p>'; return }
     el.innerHTML = list.map(c => {
       const kit    = buildKitFromClub(c)
-      const kitSVG = generateKitPreviewSVG(kit).replace('<svg ', '<svg style="width:40px;height:48px" ')
+      const kitSVG = generateKitPreviewSVG(kit, c.id).replace('<svg ', '<svg style="width:40px;height:48px" ')
       const logo   = c.logo_url
         ? `<img src="${c.logo_url}" style="width:40px;height:40px;object-fit:contain;border-radius:8px">`
         : `<div style="width:40px;height:40px;background:linear-gradient(135deg,${kit.color1},${kit.color2});border-radius:8px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:10px;font-weight:900">${c.encoded_name.slice(0,3)}</div>`
@@ -356,7 +356,7 @@ function getKit() {
 function refreshKit() {
   const wrap = document.getElementById('kit-preview-wrap')
   if (!wrap) return
-  wrap.innerHTML = generateKitPreviewSVG(getKit())
+  wrap.innerHTML = generateKitPreviewSVG(getKit(), 'modal')
 }
 
 // ── Sauvegarde ────────────────────────────────────────────

@@ -180,8 +180,7 @@ function body(x, y, w, h, kt) {
     fill="none" stroke="${kt.color2}" stroke-width="${Math.max(1.5, w*0.018)}"/>`
 }
 
-function kitPattern(kt, totalW) {
-  const id = 'kitPat'
+function kitPatternId(kt, totalW, id) {
   const c1 = kt.color1, c2 = kt.color2
   switch (kt.style) {
     case 'rayures_v':
@@ -228,6 +227,10 @@ function kitPattern(kt, totalW) {
       return `<linearGradient id="${id}"><stop stop-color="${c1}"/></linearGradient>`
   }
 }
+function kitPattern(kt, totalW) {
+  return kitPatternId(kt, totalW, 'kitPat')
+}
+
 
 function legs(cx, topY, legH, footH, totalW, kt, skin) {
   const legW = totalW * 0.2
@@ -498,23 +501,23 @@ function lighten(hex) {
  * @param {Object} kit  { style, color1, color2, shorts, socks }
  * @returns {string} SVG string
  */
-export function generateKitPreviewSVG(kit = {}) {
-  const kt = { ...DEFAULT_KIT, ...kit }
+export function generateKitPreviewSVG(kit = {}, uid = '') {
+  const kt  = { ...DEFAULT_KIT, ...kit }
+  const pid = 'kitPat' + (uid || Math.random().toString(36).slice(2, 7))
   const w = 120, h = 140
-  const cx = w / 2
 
   return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" xmlns="http://www.w3.org/2000/svg">
   <defs>
-    ${kitPattern(kt, w)}
+    ${kitPatternId(kt, w, pid)}
   </defs>
 
   <!-- Maillot corps -->
   <path d="M 25 38 L 15 28 L 35 22 L 45 36 L 75 36 L 85 22 L 105 28 L 95 38 L 95 90 Q 95 95 90 95 L 30 95 Q 25 95 25 90 Z"
-    fill="url(#kitPat)"/>
+    fill="url(#${pid})"/>
 
   <!-- Manches -->
-  <path d="M 25 38 L 15 28 L 8 50 L 20 55 Z" fill="url(#kitPat)"/>
-  <path d="M 95 38 L 105 28 L 112 50 L 100 55 Z" fill="url(#kitPat)"/>
+  <path d="M 25 38 L 15 28 L 8 50 L 20 55 Z" fill="url(#${pid})"/>
+  <path d="M 95 38 L 105 28 L 112 50 L 100 55 Z" fill="url(#${pid})"/>
 
   <!-- Col V -->
   <path d="M 45 36 Q 60 48 75 36" fill="none" stroke="${kt.color2}" stroke-width="2.5" stroke-linecap="round"/>

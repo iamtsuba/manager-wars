@@ -201,7 +201,6 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
 
   async function buildGameState() {
     console.log('[PvP] buildGameState match:', { id: match.id, home_deck_id: match.home_deck_id, away_deck_id: match.away_deck_id, mode: match.mode, is_ranked: match.is_ranked })
-    const [{ data: p1D }, { data: p2D }, { data: p1P }, { data: p2P }] = await Promise.all([
     const [{ data: p1D, error: e1 }, { data: p2D, error: e2 }, { data: p1P }, { data: p2P }] = await Promise.all([
       supabase.rpc('get_deck_for_match', { p_deck_id: match.home_deck_id }),
       supabase.rpc('get_deck_for_match', { p_deck_id: match.away_deck_id }),

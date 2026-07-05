@@ -358,7 +358,7 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
                   </div>
                   <div style="font-size:13px;color:rgba(255,255,255,0.5);margin-top:4px">${myNewMmr > homeUser.mmr ? 'Promotion !' : 'Rétrogradation'}</div>`
                 : `<div style="font-size:36px">${myDelta >= 0 ? '📈' : '📉'}</div>
-                   <div style="font-size:18px;font-weight:900;color:${tier.color}">${tier.emoji} ${tier.label}</div>`
+                   <div style="font-size:18px;font-weight:900;color:${myNewTier.color}">${myNewTier.emoji} ${myNewTier.label}</div>`
               }
               ${homePlacement ? `<div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:6px">Match de placement (${homeUser.placement_matches + 1}/10)</div>` : ''}
             </div>`

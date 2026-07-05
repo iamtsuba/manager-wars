@@ -257,19 +257,23 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
   }
 
   let gameState = match.game_state && Object.keys(match.game_state).length ? match.game_state : null
+  console.log('[PvP] init - amIHome:', amIHome, 'gameState exists:', !!gameState, 'match.status:', match.status, 'home_id:', match.home_id, 'away_id:', match.away_id, 'myId:', state.profile.id)
   if (!gameState) {
     if (amIHome) {
       gameState = await buildGameState()
+      console.log('[PvP] home - gameState built, p1Team keys:', Object.keys(gameState?.p1Team||{}))
       const { data: check } = await supabase.from('matches').select('game_state').eq('id', matchId).single()
       if (!check?.game_state || !Object.keys(check.game_state).length)
         await supabase.from('matches').update({ game_state: gameState, turn_user_id: match.home_id }).eq('id', matchId)
       else gameState = check.game_state
     } else {
       container.innerHTML = '<div style="padding:40px;text-align:center;color:#aaa">⚽ Synchronisation...</div>'
+      console.log('[PvP] away - waiting for home to write game_state...')
       for (let i = 0; i < 30 && !gameState; i++) {
         await new Promise(r => setTimeout(r, 400))
         const { data: m2 } = await supabase.from('matches').select('game_state').eq('id', matchId).single()
         if (m2?.game_state && Object.keys(m2.game_state).length) gameState = m2.game_state
+        if (i % 5 === 0) console.log('[PvP] away - poll', i, 'game_state:', !!m2?.game_state)
       }
       if (!gameState) { toast('Erreur de synchronisation', 'error'); navigate('home'); return }
       gameState.gc_p2 = myGCIds; gameState.gcCardsFull_p2 = myGCFull

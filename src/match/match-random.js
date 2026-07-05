@@ -66,7 +66,7 @@ async function showMatchmakingSearch(container, ctx, deckId, formation, starters
       ${isRanked ? `<div style="font-size:36px">${tier?.emoji || '⚽'}</div>` : ''}
       <div style="width:64px;height:64px;border:4px solid rgba(255,255,255,0.15);border-top-color:${spinCol};border-radius:50%;animation:mmspin 0.9s linear infinite"></div>
       <div style="font-size:18px;font-weight:900;color:#fff">${isRanked ? 'Recherche Ranked...' : "Recherche d'un adversaire..."}</div>
-      ${isRanked ? `<div style="font-size:13px;color:${tier?.color || '#D4A017'}">MMR : ${myMmr} · ${tier?.label || ''}</div>` : ''}
+      ${isRanked ? `<div style="font-size:13px;color:${tier?.color || '#D4A017'}">${tier?.emoji || '⚔️'} ${tier?.label || 'Ranked'}</div>` : ''}
       <div id="mm-status" style="font-size:13px;color:rgba(255,255,255,0.5)">Connexion au matchmaking</div>
       <div id="mm-range" style="font-size:11px;color:rgba(255,255,255,0.3)"></div>
       <button id="mm-cancel" style="margin-top:12px;padding:12px 28px;border-radius:12px;border:1.5px solid rgba(255,255,255,0.25);background:transparent;color:rgba(255,255,255,0.7);font-size:14px;cursor:pointer">Annuler</button>

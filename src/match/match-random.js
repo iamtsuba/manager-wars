@@ -344,17 +344,16 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
 
           mmrHtml = `
             <div style="background:rgba(255,255,255,0.08);border-radius:14px;padding:14px 20px;text-align:center;min-width:220px">
-              <div style="font-size:11px;color:rgba(255,255,255,0.5);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px">MMR Ranked</div>
-              <div style="display:flex;align-items:center;justify-content:center;gap:10px">
-                <div style="font-size:20px;color:rgba(255,255,255,0.5)">${homeUser.mmr}</div>
-                <div style="font-size:20px;font-weight:900;color:${deltaCol}">${deltaSign}${myDelta}</div>
-                <div style="font-size:20px;font-weight:900;color:#fff">= ${myNewMmr}</div>
-              </div>
-              ${myNewTier.id !== prevTier.id ? `
-              <div style="margin-top:8px;font-size:14px;font-weight:700;color:${myNewTier.color}">
-                ${myNewMmr > homeUser.mmr ? '📈' : '📉'} ${prevTier.emoji} → ${myNewTier.emoji} ${myNewTier.label}
-              </div>` : `<div style="font-size:12px;color:${myNewTier.color};margin-top:4px">${myNewTier.emoji} ${myNewTier.label}</div>`}
-              ${homePlacement ? `<div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:4px">Match de placement ×2</div>` : ''}
+              <div style="font-size:11px;color:rgba(255,255,255,0.5);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px">⚔️ Résultat Ranked</div>
+              ${myNewTier.id !== prevTier.id
+                ? `<div style="font-size:20px;font-weight:900;color:${myNewTier.color}">
+                    ${myNewMmr > homeUser.mmr ? '📈' : '📉'} ${prevTier.emoji} ${prevTier.label} → ${myNewTier.emoji} ${myNewTier.label}
+                  </div>
+                  <div style="font-size:13px;color:rgba(255,255,255,0.5);margin-top:4px">${myNewMmr > homeUser.mmr ? 'Promotion !' : 'Rétrogradation'}</div>`
+                : `<div style="font-size:36px">${myDelta >= 0 ? '📈' : '📉'}</div>
+                   <div style="font-size:18px;font-weight:900;color:${tier.color}">${tier.emoji} ${tier.label}</div>`
+              }
+              ${homePlacement ? `<div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:6px">Match de placement (${homeUser.placement_matches + 1}/10)</div>` : ''}
             </div>`
         }
       } catch (e) { console.error('[Ranked] MMR update error:', e) }

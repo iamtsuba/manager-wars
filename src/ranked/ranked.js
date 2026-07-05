@@ -77,8 +77,6 @@ export async function renderRanked(container, ctx) {
     <div style="background:rgba(0,0,0,0.35);border-radius:20px;padding:20px 16px;text-align:center;border:2px solid ${tier.color}40">
       <div style="font-size:52px;margin-bottom:4px">${tier.emoji}</div>
       <div style="font-size:22px;font-weight:900;color:${tier.color};letter-spacing:3px;text-transform:uppercase">${tier.label}</div>
-      <div style="font-size:32px;font-weight:900;color:#fff;margin-top:4px">${mmr} <span style="font-size:14px;color:rgba(255,255,255,0.5);font-weight:400">MMR</span></div>
-      ${rd > 100 ? `<div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:4px">Incertitude ±${Math.round(rd)} — Jouez plus pour stabiliser votre rang</div>` : ''}
     </div>
 
     <!-- Progression bar -->
@@ -86,7 +84,7 @@ export async function renderRanked(container, ctx) {
     <div style="background:rgba(0,0,0,0.3);border-radius:12px;padding:12px 16px">
       <div style="display:flex;justify-content:space-between;font-size:11px;color:rgba(255,255,255,0.5);margin-bottom:6px">
         <span>${tier.emoji} ${tier.label}</span>
-        ${nextTier ? `<span>${nextTier.emoji} ${nextTier.label} (${nextTier.min} MMR)</span>` : ''}
+        ${nextTier ? `<span>${nextTier.emoji} ${nextTier.label}</span>` : ''}
       </div>
       <div style="background:rgba(255,255,255,0.1);border-radius:6px;height:10px;overflow:hidden">
         <div style="height:100%;width:${progress}%;background:linear-gradient(90deg,${tier.color},${tier.color}aa);border-radius:6px;transition:width 0.8s ease"></div>

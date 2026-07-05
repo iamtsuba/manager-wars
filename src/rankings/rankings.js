@@ -60,8 +60,9 @@ export async function renderRankings(container, ctx) {
               <div style="font-size:11px;color:var(--gray-600)">${u.club_name} · ${tier.label}</div>
             </div>
             <div style="text-align:right;flex-shrink:0">
-              <div style="font-size:16px;font-weight:900;color:${tier.color}">${placed ? '?' : u.mmr}</div>
-              <div style="font-size:10px;color:var(--gray-600)">${placed ? 'Placement' : `${wr}% WR`}</div>
+              <div style="font-size:20px">${placed ? '❓' : tier.emoji}</div>
+              <div style="font-size:11px;font-weight:700;color:${tier.color}">${placed ? 'Placement' : tier.label}</div>
+              ${!placed ? `<div style="font-size:10px;color:var(--gray-600)">${wr}% WR</div>` : ''}
             </div>
           </div>`
       }).join('') : '<div style="text-align:center;color:var(--gray-600);padding:40px">Aucun joueur classé.</div>'

@@ -292,50 +292,6 @@ function kitPatternId(kt, totalW, id) {
       return `<linearGradient id="${id}"><stop stop-color="${c1}"/></linearGradient>`
   }
 }
-    case 'rayures_v':
-      return `<pattern id="${id}" x="0" y="0" width="12" height="100%" patternUnits="userSpaceOnUse">
-        <rect width="6" height="100%" fill="${c1}"/>
-        <rect x="6" width="6" height="100%" fill="${c2}"/>
-      </pattern>`
-    case 'rayures_h':
-      return `<pattern id="${id}" x="0" y="0" width="100%" height="10" patternUnits="userSpaceOnUse">
-        <rect width="100%" height="5" fill="${c1}"/>
-        <rect y="5" width="100%" height="5" fill="${c2}"/>
-      </pattern>`
-    case 'hoops':
-      return `<pattern id="${id}" x="0" y="0" width="100%" height="16" patternUnits="userSpaceOnUse">
-        <rect width="100%" height="8" fill="${c1}"/>
-        <rect y="8" width="100%" height="8" fill="${c2}"/>
-      </pattern>`
-    case 'degrade':
-      return `<linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stop-color="${c1}"/>
-        <stop offset="100%" stop-color="${c2}"/>
-      </linearGradient>`
-    case 'epaules':
-      // On utilise une couleur pleine + patch épaules via le body draw
-      return `<linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stop-color="${c2}"/>
-        <stop offset="30%" stop-color="${c1}"/>
-        <stop offset="100%" stop-color="${c1}"/>
-      </linearGradient>`
-    case 'bandes':
-      return `<pattern id="${id}" x="0" y="0" width="100%" height="100%" patternUnits="objectBoundingBox">
-        <rect width="100%" height="100%" fill="${c1}"/>
-        <rect x="0" width="18%" height="100%" fill="${c2}"/>
-        <rect x="82%" width="18%" height="100%" fill="${c2}"/>
-      </pattern>`
-    case 'diagonal':
-      return `<linearGradient id="${id}" x1="0" y1="0" x2="1" y2="1">
-        <stop offset="0%" stop-color="${c1}"/>
-        <stop offset="50%" stop-color="${c1}"/>
-        <stop offset="50%" stop-color="${c2}"/>
-        <stop offset="100%" stop-color="${c2}"/>
-      </linearGradient>`
-    default: // uni
-      return `<linearGradient id="${id}"><stop stop-color="${c1}"/></linearGradient>`
-  }
-}
 function kitPattern(kt, totalW) {
   return kitPatternId(kt, totalW, 'kitPat')
 }

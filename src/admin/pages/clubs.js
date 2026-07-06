@@ -135,7 +135,7 @@ function generateSquad(clubId, countryCode) {
 
     const rarity = pepites.has(idx) ? 'pepite' : papytes.has(idx) ? 'papyte' : 'normal'
     const surnameReal    = pick(SURNAMES)
-    const surnameEncoded = encodeVowels(surnameReal.toUpperCase())
+    const surnameEncoded = surnameReal.toUpperCase()
 
     return {
       job, job2,

@@ -232,15 +232,9 @@ function openPlayerModal(player, clubs, container, helpers) {
         </div>
         <div class="form-group">
           <label>Nom réel *</label>
-          <div style="display:flex;gap:4px">
-            <input id="pm-real" value="${player?.surname_real||''}" placeholder="Silva" style="flex:1">
-            <button class="btn btn-ghost btn-sm" id="pm-encode-btn" title="Encoder ↻">↻</button>
-          </div>
+<input id="pm-real" value="${player?.surname_real||''}" placeholder="Silva">
         </div>
-        <div class="form-group">
-          <label>Nom encodé *</label>
-          <input id="pm-enc" value="${player?.surname_encoded||''}" style="font-family:monospace;text-transform:uppercase">
-        </div>
+<input type="hidden" id="pm-enc" value="${player?.surname_encoded||''}">
         <div class="form-group">
           <label>Pays</label>
           <select id="pm-country">${countryOpts}</select>
@@ -344,14 +338,9 @@ function openPlayerModal(player, clubs, container, helpers) {
     WATCH.forEach(id => document.getElementById(id)?.addEventListener('input', refreshCard))
     WATCH.forEach(id => document.getElementById(id)?.addEventListener('change', refreshCard))
 
-    document.getElementById('pm-encode-btn')?.addEventListener('click', () => {
-      const real = document.getElementById('pm-real')?.value || ''
-      document.getElementById('pm-enc').value = encodeVowels(real.toUpperCase())
-      refreshCard()
-    })
     document.getElementById('pm-real')?.addEventListener('input', () => {
       const enc = document.getElementById('pm-enc')
-      if (!enc?.value) { enc.value = encodeVowels(document.getElementById('pm-real').value.toUpperCase()); refreshCard() }
+      if (enc) { enc.value = document.getElementById('pm-real').value.toUpperCase(); refreshCard() }
     })
 
     document.getElementById('pm-save')?.addEventListener('click', () => savePlayer(player, isEdit, container, helpers))
@@ -365,7 +354,7 @@ function getFormData() {
   return {
     firstname:       (g('pm-fn') || '').trim(),
     surname_real:    (g('pm-real') || '').trim(),
-    surname_encoded: (g('pm-enc') || '').trim().toUpperCase(),
+    surname_encoded: (g('pm-real') || '').trim().toUpperCase(),
     country_code:    g('pm-country') || 'FR',
     club_id:         g('pm-club') || null,
     club_encoded_name: clubOpt?.text !== '— Club —' ? clubOpt?.text : null,

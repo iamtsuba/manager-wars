@@ -58,13 +58,6 @@ function randCC(exclude) {
 
 // ── Génération effectif ───────────────────────────────────
 function generateSquad(clubId, countryCode) {
-  const slots = [
-    { job:'GK',  count:2 },
-    { job:'DEF', count:8 },
-    { job:'MIL', count:6 },
-    { job:'ATT', count:4 },
-  ]
-  const JOB2 = { ATT:'MIL', MIL:'DEF', DEF:'MIL', GK: null }
   const FIRSTNAMES = [
     'Lucas','Mateo','Rafael','Carlos','Luis','Diego','Andre','Paulo','Marco','Stefan',
     'Ahmed','Omar','Yusuf','Mamadou','Ibrahima','Cheikh','Moussa','Kofi','Emeka','Tunde',
@@ -83,42 +76,80 @@ function generateSquad(clubId, countryCode) {
     'Garcia','Fernandez','Rodriguez','Gonzalez','Hernandez','López','Sánchez',
   ]
 
-  const players = []
-  // Mélanger l'ordre pour que les 10 premiers ne soient pas tous du même poste
-  let idx = 0
-  slots.forEach(({ job, count }) => {
-    for (let i = 0; i < count; i++) {
-      idx++
-      const isNative = idx <= 10
-      const cc   = isNative ? countryCode : randCC(countryCode)
-      const skin = skinForCountry(cc)
-      const hair = hairForCountry(cc)
-      const len  = pick(ALL_LENGTHS)
-      const note = rand(1, 20)
-      const hasSecondary = job !== 'GK' && Math.random() > 0.4
-      const noteSec = hasSecondary ? Math.max(1, note - rand(1, 4)) : null
+  // 20 slots : 2 GK, 8 DEF, 6 MIL, 4 ATT
+  const slots = [
+    ...Array(2).fill('GK'),
+    ...Array(8).fill('DEF'),
+    ...Array(6).fill('MIL'),
+    ...Array(4).fill('ATT'),
+  ]
 
-      // Notes par poste principal + secondaire
-      const base = { note_g: rand(1,8), note_d: rand(1,8), note_m: rand(1,8), note_a: rand(1,8) }
-      if (job === 'GK')  { base.note_g = note }
-      if (job === 'DEF') { base.note_d = note; if (noteSec) base.note_m = noteSec }
-      if (job === 'MIL') { base.note_m = note; if (noteSec) base.note_d = noteSec }
-      if (job === 'ATT') { base.note_a = note; if (noteSec) base.note_m = noteSec }
+  // 4 joueurs auront une 2e note (indices aléatoires, jamais les GK)
+  const nonGKIdxs = [2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19]
+  const dualIdxs  = new Set(nonGKIdxs.sort(() => Math.random()-0.5).slice(0,4))
 
-      players.push({
-        job, job2: hasSecondary ? JOB2[job] : null,
-        firstname: pick(FIRSTNAMES),
-        surname_real: pick(SURNAMES),
-        surname_encoded: encodeVowels(pick(SURNAMES).toUpperCase()),
-        country_code: cc,
-        club_id: clubId,
-        ...base,
-        skin, hair, hair_length: len,
-        rarity: 'normal',
-      })
+  // Raretés : 2 papytes + 2 pépites parmi les non-GK, le reste normal
+  const rarPool  = [...nonGKIdxs].sort(() => Math.random()-0.5)
+  const pepites  = new Set(rarPool.slice(0,2))
+  const papytes  = new Set(rarPool.slice(2,4))
+
+  // 50% natifs, 50% étrangers (mélangés)
+  const nativeCount = 10
+  const isNativeArr = slots.map((_,i) => i < nativeCount)
+  // Mélanger pour ne pas que les 10 premiers soient tous GK/DEF
+  for (let i = isNativeArr.length-1; i>0; i--) {
+    const j = Math.floor(Math.random()*(i+1));
+    [isNativeArr[i],isNativeArr[j]] = [isNativeArr[j],isNativeArr[i]]
+  }
+
+  return slots.map((job, idx) => {
+    const cc   = isNativeArr[idx] ? countryCode : randCC(countryCode)
+    const skin = skinForCountry(cc)
+    const hair = hairForCountry(cc)
+    const len  = pick(ALL_LENGTHS)
+
+    const note     = rand(1, 20)
+    const hasDual  = dualIdxs.has(idx)
+    const noteSec  = hasDual ? Math.max(0, note - 2) : 0
+
+    // Construction des notes selon les règles
+    let note_g = 0, note_d = 0, note_m = 0, note_a = 0
+    let job2 = null
+
+    if (job === 'GK') {
+      note_g = note
+    } else if (job === 'DEF') {
+      note_d = note
+      if (hasDual) { note_m = noteSec; job2 = 'MIL' }
+    } else if (job === 'ATT') {
+      note_a = note
+      if (hasDual) { note_m = noteSec; job2 = 'MIL' }
+    } else { // MIL
+      note_m = note
+      if (hasDual) {
+        const side = Math.random() < 0.5 ? 'DEF' : 'ATT'
+        if (side === 'DEF') { note_d = noteSec; job2 = 'DEF' }
+        else                { note_a = noteSec; job2 = 'ATT' }
+      }
+    }
+
+    const rarity = pepites.has(idx) ? 'pepite' : papytes.has(idx) ? 'papyte' : 'normal'
+    const surnameReal    = pick(SURNAMES)
+    const surnameEncoded = encodeVowels(surnameReal.toUpperCase())
+
+    return {
+      job, job2,
+      firstname: pick(FIRSTNAMES),
+      surname_real: surnameReal,
+      surname_encoded: surnameEncoded,
+      country_code: cc,
+      club_id: clubId,
+      note_g, note_d, note_m, note_a,
+      skin, hair, hair_length: len,
+      rarity,
+      sell_price: 0,
     }
   })
-  return players
 }
 
 // ── Génération effectif (réutilisable) ────────────────────

@@ -60,6 +60,11 @@ function renderPage(container, players, clubs, helpers) {
         </select>
       </div>
       <div id="count-label" style="font-size:12px;color:var(--gray-600)">${players.length} joueur(s)</div>
+      <div id="bulk-bar" style="display:none;align-items:center;gap:8px;padding:8px 10px;background:rgba(187,32,32,0.08);border:1px solid #bb2020;border-radius:10px">
+        <span id="bulk-count" style="font-size:13px;font-weight:700;color:#bb2020;flex:1"></span>
+        <button class="btn btn-danger btn-sm" id="bulk-delete-btn">🗑️ Supprimer la sélection</button>
+        <button class="btn btn-ghost btn-sm" id="bulk-cancel-btn">Annuler</button>
+      </div>
       <!-- Liste -->
       <div id="players-list" style="display:flex;flex-direction:column;gap:6px"></div>
     </div>`
@@ -79,6 +84,20 @@ function renderPage(container, players, clubs, helpers) {
     )
   }
 
+  const selected = new Set()
+
+  function updateBulkBar() {
+    const bar = document.getElementById('bulk-bar')
+    const cnt = document.getElementById('bulk-count')
+    if (!bar) return
+    if (selected.size > 0) {
+      bar.style.display = 'flex'
+      cnt.textContent = `${selected.size} joueur(s) sélectionné(s)`
+    } else {
+      bar.style.display = 'none'
+    }
+  }
+
   function renderList() {
     const list = filtered()
     document.getElementById('count-label').textContent = `${list.length} joueur(s)`
@@ -88,8 +107,11 @@ function renderPage(container, players, clubs, helpers) {
     el.innerHTML = list.map(p => {
       const rarColor = RARITY_COLORS[p.rarity] || '#aaa'
       const jobColor = JOB_COLORS[p.job]       || '#aaa'
+      const isSel    = selected.has(p.id)
       return `
-        <div class="card-panel" style="display:flex;align-items:center;gap:10px;padding:10px 12px">
+        <div class="card-panel" style="display:flex;align-items:center;gap:10px;padding:10px 12px;${isSel ? 'border:2px solid #bb2020;background:rgba(187,32,32,0.05)' : ''}">
+          <!-- Checkbox -->
+          <input type="checkbox" data-check="${p.id}" ${isSel ? 'checked' : ''} style="width:18px;height:18px;flex-shrink:0;cursor:pointer;accent-color:#bb2020">
           <!-- Note + poste -->
           <div style="flex-shrink:0;width:40px;height:40px;border-radius:10px;border:2px solid ${rarColor};
             background:${jobColor}22;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px">
@@ -124,6 +146,21 @@ function renderPage(container, players, clubs, helpers) {
         </div>`
     }).join('')
 
+    // Checkboxes
+    el.querySelectorAll('[data-check]').forEach(cb => {
+      cb.addEventListener('change', () => {
+        if (cb.checked) selected.add(cb.dataset.check)
+        else            selected.delete(cb.dataset.check)
+        updateBulkBar()
+        // Re-highlight la card
+        const card = cb.closest('.card-panel')
+        if (card) {
+          card.style.border = cb.checked ? '2px solid #bb2020' : ''
+          card.style.background = cb.checked ? 'rgba(187,32,32,0.05)' : ''
+        }
+      })
+    })
+
     el.querySelectorAll('[data-edit]').forEach(btn => {
       const p = players.find(x => x.id === btn.dataset.edit)
       btn.addEventListener('click', () => openPlayerModal(p, clubs, container, helpers))
@@ -144,6 +181,20 @@ function renderPage(container, players, clubs, helpers) {
   document.getElementById('filter-rarity').addEventListener('change', renderList)
   document.getElementById('filter-club').addEventListener('change', renderList)
   document.getElementById('filter-country').addEventListener('change', renderList)
+
+  document.getElementById('bulk-cancel-btn')?.addEventListener('click', () => {
+    selected.clear(); updateBulkBar(); renderList()
+  })
+  document.getElementById('bulk-delete-btn')?.addEventListener('click', async () => {
+    if (!selected.size) return
+    if (!confirm(`Supprimer ${selected.size} joueur(s) ? Cette action est irréversible.`)) return
+    const ids = [...selected]
+    const { error } = await supabase.from('players').delete().in('id', ids)
+    if (error) { toast(error.message, 'error'); return }
+    toast(`${ids.length} joueur(s) supprimé(s) ✅`, 'success')
+    selected.clear()
+    loadPlayers(container, helpers)
+  })
   document.getElementById('add-player-btn').addEventListener('click', () => openPlayerModal(null, clubs, container, helpers))
 }
 

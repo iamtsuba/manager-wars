@@ -185,6 +185,7 @@ function buildKitFromClub(c) {
     style:  c.kit_style  || DEFAULT_KIT.style,
     color1: c.kit_color1 || DEFAULT_KIT.color1,
     color2: c.kit_color2 || DEFAULT_KIT.color2,
+    color3: c.kit_color3 || DEFAULT_KIT.color3,
     shorts: c.kit_shorts || DEFAULT_KIT.shorts,
     socks:  c.kit_socks  || DEFAULT_KIT.socks,
   }
@@ -335,16 +336,17 @@ function openClubModal(club, container, helpers) {
               <select id="m-kit-style" style="width:100%">${kitStyleOptions}</select>
             </div>
             ${[
-              ['Couleur principale', 'm-kit-color1', kit.color1],
-              ['Couleur secondaire', 'm-kit-color2', kit.color2],
-              ['Short',             'm-kit-shorts',  kit.shorts],
-              ['Chaussettes',       'm-kit-socks',   kit.socks],
-            ].map(([lbl, id, val]) => `
-              <div class="form-group">
+              ['Couleur 1', 'm-kit-color1', kit.color1, false],
+              ['Couleur 2', 'm-kit-color2', kit.color2, false],
+              ['Couleur 3', 'm-kit-color3', kit.color3, true],
+              ['Short',     'm-kit-shorts',  kit.shorts, false],
+              ['Chaussettes','m-kit-socks',  kit.socks, false],
+            ].map(([lbl, id, val, isC3]) => `
+              <div class="form-group" id="wrap-${id}" ${isC3 ? 'style="display:none"' : ''}>
                 <label>${lbl}</label>
                 <div style="display:flex;gap:6px;align-items:center">
-                  <input type="color" id="${id}" value="${val}" style="width:38px;height:32px;padding:2px;border:1px solid var(--gray-200);border-radius:6px;cursor:pointer;flex-shrink:0">
-                  <input id="${id}-txt" value="${val}" maxlength="7" style="flex:1;font-family:monospace;font-size:12px">
+                  <input type="color" id="${id}" value="${val || '#000000'}" style="width:38px;height:32px;padding:2px;border:1px solid var(--gray-200);border-radius:6px;cursor:pointer;flex-shrink:0">
+                  <input id="${id}-txt" value="${val || '#000000'}" maxlength="7" style="flex:1;font-family:monospace;font-size:12px">
                 </div>
               </div>`).join('')}
           </div>
@@ -368,7 +370,7 @@ function openClubModal(club, container, helpers) {
           <input type="checkbox" id="m-gen-squad" style="width:16px;height:16px">
           ⚽ Générer 20 joueurs (2 GK · 8 DEF · 6 MIL · 4 ATT)
         </label>
-        <div style="font-size:11px;color:var(--gray-600);padding-left:4px">50% nationalité du club · notes 1–20 · physique adapté au pays</div>
+        <div style="font-size:11px;color:var(--gray-600);padding-left:4px">50% nationalité du club · notes 0–20 · physique adapté au pays · 2 pépites + 2 papytes</div>
       </div>` : ''}
 
       <div id="m-error" style="color:#bb2020;font-size:13px;min-height:16px"></div>
@@ -382,8 +384,17 @@ function openClubModal(club, container, helpers) {
   setTimeout(() => {
     refreshKit()
 
+    // Afficher/masquer couleur 3 selon le style choisi
+    function updateColor3Visibility() {
+      const style = document.getElementById('m-kit-style')?.value || 'uni'
+      const needs3 = KIT_STYLES[style]?.colors === 3
+      const wrap = document.getElementById('wrap-m-kit-color3')
+      if (wrap) wrap.style.display = needs3 ? '' : 'none'
+    }
+    updateColor3Visibility()
+
     // Sync color pickers ↔ text inputs
-    ;['m-kit-color1','m-kit-color2','m-kit-shorts','m-kit-socks'].forEach(id => {
+    ;['m-kit-color1','m-kit-color2','m-kit-color3','m-kit-shorts','m-kit-socks'].forEach(id => {
       const picker = document.getElementById(id)
       const txt    = document.getElementById(id + '-txt')
       if (!picker || !txt) return
@@ -398,7 +409,7 @@ function openClubModal(club, container, helpers) {
         if (/^#[0-9a-fA-F]{6}$/.test(v)) { picker.value = v; txt.value = v; refreshKit() }
       })
     })
-    document.getElementById('m-kit-style')?.addEventListener('change', refreshKit)
+    document.getElementById('m-kit-style')?.addEventListener('change', () => { updateColor3Visibility(); refreshKit() })
 
     // Auto-encode
     const realInput    = document.getElementById('m-real')
@@ -427,6 +438,7 @@ function getKit() {
     style:  document.getElementById('m-kit-style')?.value  || 'uni',
     color1: document.getElementById('m-kit-color1')?.value || '#1A6B3C',
     color2: document.getElementById('m-kit-color2')?.value || '#ffffff',
+    color3: document.getElementById('m-kit-color3')?.value || '#000000',
     shorts: document.getElementById('m-kit-shorts')?.value || '#111111',
     socks:  document.getElementById('m-kit-socks')?.value  || '#ffffff',
   }
@@ -461,7 +473,7 @@ async function saveClub(club, isEdit, container, helpers) {
   const payload = {
     real_name: realName, encoded_name: encodedName,
     country_code: countryCode, logo_url: logoUrl,
-    kit_style: k.style, kit_color1: k.color1, kit_color2: k.color2,
+    kit_style: k.style, kit_color1: k.color1, kit_color2: k.color2, kit_color3: k.color3,
     kit_shorts: k.shorts, kit_socks: k.socks,
   }
 

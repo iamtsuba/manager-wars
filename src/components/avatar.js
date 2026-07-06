@@ -71,14 +71,22 @@ export const HAIR_STYLES = {
 }
 
 export const KIT_STYLES = {
-  uni:        { label: 'Uni' },
-  rayures_v:  { label: 'Rayures verticales' },
-  rayures_h:  { label: 'Rayures horizontales' },
-  degrade:    { label: 'Dégradé' },
-  epaules:    { label: 'Épaules contrastées' },
-  bandes:     { label: 'Bandes latérales' },
-  diagonal:   { label: 'Diagonal' },
-  hoops:      { label: 'Cercles (Hoops)' },
+  uni:          { label: 'Uni',                    colors: 1 },
+  rayures_v:    { label: 'Rayures verticales',     colors: 2 },
+  rayures_v3:   { label: 'Rayures 3 couleurs',     colors: 3 },
+  rayures_h:    { label: 'Rayures horizontales',   colors: 2 },
+  rayures_h3:   { label: 'Rayures H 3 couleurs',   colors: 3 },
+  degrade:      { label: 'Dégradé',                colors: 2 },
+  degrade3:     { label: 'Dégradé 3 couleurs',     colors: 3 },
+  epaules:      { label: 'Épaules contrastées',    colors: 2 },
+  epaules3:     { label: 'Épaules 3 couleurs',     colors: 3 },
+  bandes:       { label: 'Bandes latérales',       colors: 2 },
+  bandes3:      { label: 'Bandes 3 couleurs',      colors: 3 },
+  diagonal:     { label: 'Diagonal',               colors: 2 },
+  diagonal3:    { label: 'Diagonal 3 couleurs',    colors: 3 },
+  hoops:        { label: 'Cercles (Hoops)',         colors: 2 },
+  hoops3:       { label: 'Hoops 3 couleurs',        colors: 3 },
+  croix:        { label: 'Croix centrale',          colors: 3 },
 }
 
 // ── Config par défaut ─────────────────────────────────────
@@ -98,6 +106,7 @@ export const DEFAULT_KIT = {
   style:   'uni',
   color1:  '#1A6B3C',
   color2:  '#ffffff',
+  color3:  '#000000',
   shorts:  '#111111',
   socks:   '#ffffff',
 }
@@ -181,8 +190,108 @@ function body(x, y, w, h, kt) {
 }
 
 function kitPatternId(kt, totalW, id) {
-  const c1 = kt.color1, c2 = kt.color2
+  const c1 = kt.color1, c2 = kt.color2, c3 = kt.color3 || '#000000'
   switch (kt.style) {
+    case 'rayures_v':
+      return `<pattern id="${id}" x="0" y="0" width="12" height="100%" patternUnits="userSpaceOnUse">
+        <rect width="6" height="100%" fill="${c1}"/>
+        <rect x="6" width="6" height="100%" fill="${c2}"/>
+      </pattern>`
+    case 'rayures_v3':
+      return `<pattern id="${id}" x="0" y="0" width="18" height="100%" patternUnits="userSpaceOnUse">
+        <rect width="6" height="100%" fill="${c1}"/>
+        <rect x="6" width="6" height="100%" fill="${c2}"/>
+        <rect x="12" width="6" height="100%" fill="${c3}"/>
+      </pattern>`
+    case 'rayures_h':
+      return `<pattern id="${id}" x="0" y="0" width="100%" height="10" patternUnits="userSpaceOnUse">
+        <rect width="100%" height="5" fill="${c1}"/>
+        <rect y="5" width="100%" height="5" fill="${c2}"/>
+      </pattern>`
+    case 'rayures_h3':
+      return `<pattern id="${id}" x="0" y="0" width="100%" height="15" patternUnits="userSpaceOnUse">
+        <rect width="100%" height="5" fill="${c1}"/>
+        <rect y="5" width="100%" height="5" fill="${c2}"/>
+        <rect y="10" width="100%" height="5" fill="${c3}"/>
+      </pattern>`
+    case 'hoops':
+      return `<pattern id="${id}" x="0" y="0" width="100%" height="16" patternUnits="userSpaceOnUse">
+        <rect width="100%" height="8" fill="${c1}"/>
+        <rect y="8" width="100%" height="8" fill="${c2}"/>
+      </pattern>`
+    case 'hoops3':
+      return `<pattern id="${id}" x="0" y="0" width="100%" height="24" patternUnits="userSpaceOnUse">
+        <rect width="100%" height="8" fill="${c1}"/>
+        <rect y="8" width="100%" height="8" fill="${c2}"/>
+        <rect y="16" width="100%" height="8" fill="${c3}"/>
+      </pattern>`
+    case 'degrade':
+      return `<linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="${c1}"/>
+        <stop offset="100%" stop-color="${c2}"/>
+      </linearGradient>`
+    case 'degrade3':
+      return `<linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="${c1}"/>
+        <stop offset="50%" stop-color="${c2}"/>
+        <stop offset="100%" stop-color="${c3}"/>
+      </linearGradient>`
+    case 'epaules':
+      return `<linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="${c2}"/>
+        <stop offset="30%" stop-color="${c1}"/>
+        <stop offset="100%" stop-color="${c1}"/>
+      </linearGradient>`
+    case 'epaules3':
+      return `<linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="${c3}"/>
+        <stop offset="25%" stop-color="${c2}"/>
+        <stop offset="45%" stop-color="${c1}"/>
+        <stop offset="100%" stop-color="${c1}"/>
+      </linearGradient>`
+    case 'bandes':
+      return `<pattern id="${id}" x="0" y="0" width="100%" height="100%" patternUnits="objectBoundingBox">
+        <rect width="100%" height="100%" fill="${c1}"/>
+        <rect x="0" width="18%" height="100%" fill="${c2}"/>
+        <rect x="82%" width="18%" height="100%" fill="${c2}"/>
+      </pattern>`
+    case 'bandes3':
+      return `<pattern id="${id}" x="0" y="0" width="100%" height="100%" patternUnits="objectBoundingBox">
+        <rect width="100%" height="100%" fill="${c1}"/>
+        <rect x="0" width="12%" height="100%" fill="${c2}"/>
+        <rect x="14%" width="8%" height="100%" fill="${c3}"/>
+        <rect x="78%" width="8%" height="100%" fill="${c3}"/>
+        <rect x="88%" width="12%" height="100%" fill="${c2}"/>
+      </pattern>`
+    case 'diagonal':
+      return `<linearGradient id="${id}" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0%" stop-color="${c1}"/>
+        <stop offset="50%" stop-color="${c1}"/>
+        <stop offset="50%" stop-color="${c2}"/>
+        <stop offset="100%" stop-color="${c2}"/>
+      </linearGradient>`
+    case 'diagonal3':
+      return `<linearGradient id="${id}" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0%" stop-color="${c1}"/>
+        <stop offset="33%" stop-color="${c1}"/>
+        <stop offset="33%" stop-color="${c2}"/>
+        <stop offset="66%" stop-color="${c2}"/>
+        <stop offset="66%" stop-color="${c3}"/>
+        <stop offset="100%" stop-color="${c3}"/>
+      </linearGradient>`
+    case 'croix':
+      // Couleur de fond c1, croix centrale c2, contour croix c3
+      return `<pattern id="${id}" x="0" y="0" width="100%" height="100%" patternUnits="objectBoundingBox">
+        <rect width="100%" height="100%" fill="${c1}"/>
+        <rect x="40%" width="20%" height="100%" fill="${c3}"/>
+        <rect y="35%" width="100%" height="30%" fill="${c3}"/>
+        <rect x="42%" width="16%" height="100%" fill="${c2}"/>
+        <rect y="37%" width="100%" height="26%" fill="${c2}"/>
+      </pattern>`
+    default: // uni
+      return `<linearGradient id="${id}"><stop stop-color="${c1}"/></linearGradient>`
+  }
+}
     case 'rayures_v':
       return `<pattern id="${id}" x="0" y="0" width="12" height="100%" patternUnits="userSpaceOnUse">
         <rect width="6" height="100%" fill="${c1}"/>

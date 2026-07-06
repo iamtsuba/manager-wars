@@ -21,15 +21,24 @@ const COUNTRY_SKIN = {
   PS:'metisse', LB:'metisse', SY:'metisse', IL:'metisse', PK:'metisse',
   IN:'metisse', BD:'typ', LK:'metisse', NP:'typ', AF:'metisse',
 }
-const COUNTRY_HAIR = {
-  JP:'raide', KR:'raide', CN:'raide', VN:'raide', TH:'raide', ID:'raide',
-  PH:'raide', MY:'raide', SG:'raide',
-  NG:'afro', SN:'afro', CI:'afro', CM:'afro', GH:'afro', ML:'afro',
-  GN:'afro', BF:'afro', TG:'afro', BJ:'afro', GA:'afro', CG:'afro',
-  CD:'afro', AO:'afro', MZ:'afro', KE:'afro', ET:'afro',
+const ALL_LENGTHS = ['rase', 'court', 'milong', 'long']
+const COUNTRY_HAIR = {} // plus utilisé mais conservé pour compatibilité
+const HAIR_COLORS     = ['blond', 'marron', 'noir']
+
+function hairColorForCountry(cc) {
+  const skin = skinForCountry(cc)
+  if (skin === 'noir')    return 'noir'
+  if (skin === 'typ')     return Math.random() < 0.9 ? 'noir' : 'marron'
+  if (skin === 'metisse') return Math.random() < 0.6 ? 'noir' : 'marron'
+  const r = Math.random()
+  return r < 0.35 ? 'blond' : r < 0.75 ? 'marron' : 'noir'
 }
-const ALL_HAIR    = ['court','mi-long','pompadour','fade','raide','afro','boucle','ondule']
-const ALL_LENGTHS = ['rase','court','moyen']
+
+// Vérification que chauve est possible (5% de chance)
+function randomHair(cc) {
+  if (Math.random() < 0.05) return 'chauve'
+  return hairColorForCountry(cc)
+}
 const ALL_COUNTRIES = [
   'FR','DE','ES','PT','IT','GB','NL','BE','DK','SE','NO','PL','CH','AT',
   'CZ','HR','RS','AL','TR','AR','BR','UY','CO','MX','CL','PE','EC',
@@ -39,14 +48,7 @@ const ALL_COUNTRIES = [
 ]
 
 function skinForCountry(cc)  { return COUNTRY_SKIN[cc] || 'blanc' }
-function hairForCountry(cc)  {
-  const h = COUNTRY_HAIR[cc]
-  if (h) return h
-  const skin = skinForCountry(cc)
-  if (skin === 'noir') return 'afro'
-  if (skin === 'typ')  return 'raide'
-  return ALL_HAIR[Math.floor(Math.random() * 4)]
-}
+function hairForCountry(cc)  { return randomHair(cc) }
 function rand(a, b)  { return Math.floor(Math.random() * (b - a + 1)) + a }
 function pick(arr)   { return arr[Math.floor(Math.random() * arr.length)] }
 function randCC(exclude) {

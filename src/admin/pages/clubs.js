@@ -155,21 +155,30 @@ function generateSquad(clubId, countryCode) {
 // ── Génération effectif (réutilisable) ────────────────────
 async function runGenSquad(clubId, countryCode, toast) {
   const squad = generateSquad(clubId, countryCode)
-  let ok = 0
-  let lastErr = null
-  for (const p of squad) {
-    const { data: newPlayer, error: eP } = await supabase.from('players').insert(p).select().single()
-    if (eP) {
-      console.error('[GenSquad]', eP.message, eP.details, '\nPayload:', JSON.stringify(p))
-      lastErr = eP.message
-      continue
-    }
-    ok++
-    await supabase.from('cards').insert({ card_type: 'player', player_id: newPlayer.id })
+
+  // Insert tous les joueurs en une seule requête batch
+  const { data: newPlayers, error: eP } = await supabase
+    .from('players')
+    .insert(squad)
+    .select('id')
+
+  if (eP) {
+    console.error('[GenSquad] Erreur batch insert:', eP.message, eP.details)
+    toast('Erreur: ' + eP.message, 'error')
+    return
   }
+
+  // Insert toutes les cartes en batch
+  const cards = (newPlayers || []).map(p => ({ card_type: 'player', player_id: p.id }))
+  if (cards.length) {
+    const { error: eC } = await supabase.from('cards').insert(cards)
+    if (eC) console.warn('[GenSquad] Erreur cartes:', eC.message)
+  }
+
+  const ok = newPlayers?.length || 0
   console.log('[GenSquad] Créés:', ok, '/', squad.length)
   if (ok > 0) toast(`${ok} joueurs générés ✅`, 'success')
-  else toast('Erreur: ' + (lastErr || 'inconnue'), 'error')
+  else toast('Erreur génération joueurs', 'error')
 }
 function buildKitFromClub(c) {
   return {

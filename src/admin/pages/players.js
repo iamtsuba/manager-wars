@@ -48,19 +48,34 @@ function renderPage(container, players, clubs, helpers) {
         </select>
         <button class="btn btn-primary" id="add-player-btn" style="white-space:nowrap">+ Joueur</button>
       </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <select id="filter-club" style="flex:1;min-width:140px">
+          <option value="">Tous les clubs</option>
+          ${clubs.map(c => `<option value="${c.id}">${c.encoded_name}</option>`).join('')}
+        </select>
+        <select id="filter-country" style="flex:1;min-width:120px">
+          <option value="">Tous les pays</option>
+          ${[...new Set(players.map(p => p.country_code).filter(Boolean))].sort()
+            .map(cc => `<option value="${cc}">${cc}</option>`).join('')}
+        </select>
+      </div>
       <div id="count-label" style="font-size:12px;color:var(--gray-600)">${players.length} joueur(s)</div>
       <!-- Liste -->
       <div id="players-list" style="display:flex;flex-direction:column;gap:6px"></div>
     </div>`
 
   function filtered() {
-    const q   = document.getElementById('search-players').value.toLowerCase()
-    const job = document.getElementById('filter-job').value
-    const rar = document.getElementById('filter-rarity').value
+    const q      = document.getElementById('search-players').value.toLowerCase()
+    const job    = document.getElementById('filter-job').value
+    const rar    = document.getElementById('filter-rarity').value
+    const club   = document.getElementById('filter-club').value
+    const country= document.getElementById('filter-country').value
     return players.filter(p =>
-      (!q   || `${p.firstname} ${p.surname_encoded} ${p.surname_real||''}`.toLowerCase().includes(q)) &&
-      (!job || p.job === job) &&
-      (!rar || p.rarity === rar)
+      (!q       || `${p.firstname} ${p.surname_encoded} ${p.surname_real||''}`.toLowerCase().includes(q)) &&
+      (!job     || p.job === job) &&
+      (!rar     || p.rarity === rar) &&
+      (!club    || p.club_id === club) &&
+      (!country || p.country_code === country)
     )
   }
 
@@ -127,6 +142,8 @@ function renderPage(container, players, clubs, helpers) {
   document.getElementById('search-players').addEventListener('input', renderList)
   document.getElementById('filter-job').addEventListener('change', renderList)
   document.getElementById('filter-rarity').addEventListener('change', renderList)
+  document.getElementById('filter-club').addEventListener('change', renderList)
+  document.getElementById('filter-country').addEventListener('change', renderList)
   document.getElementById('add-player-btn').addEventListener('click', () => openPlayerModal(null, clubs, container, helpers))
 }
 

@@ -283,22 +283,22 @@ function openPlayerModal(player, clubs, container, helpers) {
 
       <!-- Notes -->
       <div style="border-top:1px solid var(--gray-200);padding-top:10px">
-        <div style="font-weight:700;font-size:13px;margin-bottom:8px">📊 Notes (1–20)</div>
+        <div style="font-weight:700;font-size:13px;margin-bottom:8px">📊 Notes (0–10)</div>
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px">
           ${[['GK','pm-g','note_g'],['DEF','pm-d','note_d'],['MIL','pm-m','note_m'],['ATT','pm-a','note_a']].map(([lbl,id,field]) => `
             <div class="form-group" style="text-align:center">
               <label style="color:${JOB_COLORS[lbl]};font-weight:700">${lbl}</label>
-              <input id="${id}" type="number" min="0" max="20" value="${player?.[field]??0}" style="text-align:center;font-size:18px;font-weight:900;padding:6px 4px">
+              <input id="${id}" type="number" min="0" max="10" value="${player?.[field]??0}" style="text-align:center;font-size:18px;font-weight:900;padding:6px 4px">
             </div>`).join('')}
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">
           <div class="form-group">
             <label>Note min</label>
-            <input id="pm-nmin" type="number" min="0" max="20" value="${player?.note_min||''}">
+            <input id="pm-nmin" type="number" min="0" max="10" value="${player?.note_min||''}">
           </div>
           <div class="form-group">
             <label>Note max</label>
-            <input id="pm-nmax" type="number" min="0" max="20" value="${player?.note_max||''}">
+            <input id="pm-nmax" type="number" min="0" max="10" value="${player?.note_max||''}">
           </div>
         </div>
       </div>

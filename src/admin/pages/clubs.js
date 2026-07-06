@@ -108,7 +108,7 @@ function generateSquad(clubId, countryCode) {
     const hair = hairForCountry(cc)
     const len  = pick(ALL_LENGTHS)
 
-    const note     = rand(1, 20)
+    const note     = rand(1, 10)
     const hasDual  = dualIdxs.has(idx)
     const noteSec  = hasDual ? Math.max(0, note - 2) : 0
 

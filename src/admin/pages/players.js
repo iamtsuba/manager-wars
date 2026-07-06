@@ -151,9 +151,9 @@ function openPlayerModal(player, clubs, container, helpers) {
     isEdit ? `✏️ ${player.firstname} ${player.surname_encoded}` : '➕ Nouveau joueur',
     `<div style="display:flex;flex-direction:column;gap:12px">
 
-      <!-- Aperçu carte -->
-      <div style="display:flex;justify-content:center;margin-bottom:4px">
-        <div id="card-preview" style="transform:scale(1);transform-origin:top center"></div>
+      <!-- Aperçu carte sticky -->
+      <div style="position:sticky;top:0;z-index:10;background:var(--bg,#fff);padding:12px 0 8px;margin:-4px 0 0;border-bottom:1px solid var(--gray-200);display:flex;justify-content:center">
+        <div id="card-preview"></div>
       </div>
 
       <!-- Identité -->
@@ -328,7 +328,6 @@ function refreshCard() {
     firstname: d.firstname || 'Prénom',
     surname_encoded: d.surname_encoded || 'NOM',
   }
-  console.log('[CardPreview]', playerLike.job, playerLike.note_g, playerLike.note_d, playerLike.note_m, playerLike.note_a)
   wrap.innerHTML = renderCardHTML(playerLike, { size: 'md', showNotes: false })
 }
 

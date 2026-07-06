@@ -119,7 +119,20 @@ function generateSquad(clubId, countryCode) {
   return players
 }
 
-// ── Utilitaires ───────────────────────────────────────────
+// ── Génération effectif (réutilisable) ────────────────────
+async function runGenSquad(clubId, countryCode, toast) {
+  const squad = generateSquad(clubId, countryCode)
+  let ok = 0
+  for (const p of squad) {
+    const { data: newPlayer, error: eP } = await supabase.from('players').insert(p).select().single()
+    if (eP) { console.error('[GenSquad]', eP.message, eP.details, JSON.stringify(p)); continue }
+    ok++
+    await supabase.from('cards').insert({ card_type: 'player', player_id: newPlayer.id })
+  }
+  console.log('[GenSquad] Créés:', ok, '/', squad.length)
+  if (ok > 0) toast(`${ok} joueurs générés ✅`, 'success')
+  else toast('Erreur génération joueurs — voir console', 'error')
+}
 function buildKitFromClub(c) {
   return {
     style:  c.kit_style  || DEFAULT_KIT.style,
@@ -137,13 +150,19 @@ export async function pageClubs(container, helpers) {
 }
 
 async function loadClubs(container, helpers) {
-  const { data, error } = await supabase.from('clubs').select('*').order('real_name')
+  const [{ data, error }, { data: playerCounts }] = await Promise.all([
+    supabase.from('clubs').select('*').order('real_name'),
+    supabase.from('players').select('club_id'),
+  ])
   if (error) { container.innerHTML = `<p style="color:red">${error.message}</p>`; return }
   clubs = data || []
-  renderClubs(container, helpers)
+  // Compter les joueurs par club
+  const countMap = {}
+  ;(playerCounts || []).forEach(p => { countMap[p.club_id] = (countMap[p.club_id] || 0) + 1 })
+  renderClubs(container, helpers, countMap)
 }
 
-function renderClubs(container, helpers) {
+function renderClubs(container, helpers, countMap = {}) {
   const { toast, openModal, closeModal } = helpers
 
   container.innerHTML = `
@@ -166,11 +185,12 @@ function renderClubs(container, helpers) {
     const el = document.getElementById('clubs-list')
     if (!list.length) { el.innerHTML = '<p style="color:var(--gray-600);padding:20px">Aucun club.</p>'; return }
     el.innerHTML = list.map(c => {
-      const kit    = buildKitFromClub(c)
-      const kitSVG = generateKitPreviewSVG(kit, c.id).replace('<svg ', '<svg style="width:40px;height:48px" ')
-      const logo   = c.logo_url
+      const kit      = buildKitFromClub(c)
+      const kitSVG   = generateKitPreviewSVG(kit, c.id).replace('<svg ', '<svg style="width:40px;height:48px" ')
+      const logo     = c.logo_url
         ? `<img src="${c.logo_url}" style="width:40px;height:40px;object-fit:contain;border-radius:8px">`
         : `<div style="width:40px;height:40px;background:linear-gradient(135deg,${kit.color1},${kit.color2});border-radius:8px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:10px;font-weight:900">${c.encoded_name.slice(0,3)}</div>`
+      const nbPlayers = countMap[c.id] || 0
       return `
         <div class="card-panel" style="display:flex;align-items:center;gap:10px;padding:10px 12px">
           ${logo}
@@ -180,15 +200,27 @@ function renderClubs(container, helpers) {
               <img src="https://flagsapi.com/${c.country_code}/flat/24.png" style="height:12px" onerror="this.style.display='none'">
               <span style="font-size:11px;color:var(--gray-600);font-family:monospace">${c.encoded_name} · ${c.country_code}</span>
             </div>
+            <div style="font-size:11px;margin-top:2px;color:${nbPlayers === 0 ? '#e67e22' : 'var(--gray-600)'}">
+              ${nbPlayers === 0 ? '⚠️ Aucun joueur' : `👥 ${nbPlayers} joueur${nbPlayers > 1 ? 's' : ''}`}
+            </div>
           </div>
           ${kitSVG}
-          <div style="display:flex;gap:4px;flex-shrink:0">
+          <div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0">
+            ${nbPlayers === 0 ? `<button class="btn btn-primary btn-sm" data-gen="${c.id}" data-cc="${c.country_code}" data-name="${c.real_name}" title="Générer joueurs">⚽</button>` : ''}
             <button class="btn btn-ghost btn-sm" data-edit="${c.id}">✏️</button>
             <button class="btn btn-danger btn-sm" data-del="${c.id}">🗑️</button>
           </div>
         </div>`
     }).join('')
 
+    el.querySelectorAll('[data-gen]').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        if (!confirm(`Générer 20 joueurs pour ${btn.dataset.name} ?`)) return
+        btn.disabled = true; btn.textContent = '⏳'
+        await runGenSquad(btn.dataset.gen, btn.dataset.cc, toast)
+        loadClubs(container, helpers)
+      })
+    })
     el.querySelectorAll('[data-edit]').forEach(btn => {
       const club = clubs.find(c => c.id === btn.dataset.edit)
       btn.addEventListener('click', () => openClubModal(club, container, helpers))
@@ -412,19 +444,7 @@ async function saveClub(club, isEdit, container, helpers) {
     // Génération effectif
     if (genSquad) {
       btn.textContent = '⚽ Génération des joueurs…'
-      const squad = generateSquad(clubId, countryCode)
-      let successCount = 0
-      for (const p of squad) {
-        const { data: newPlayer, error: eP } = await supabase.from('players').insert(p).select().single()
-        if (eP) {
-          console.error('[GenSquad] Erreur joueur:', eP.message, eP.details, 'payload:', JSON.stringify(p))
-          errEl.textContent = 'Erreur joueur: ' + eP.message
-          continue
-        }
-        successCount++
-        await supabase.from('cards').insert({ card_type: 'player', player_id: newPlayer.id })
-      }
-      console.log('[GenSquad] Créés:', successCount, '/', squad.length)
+      await runGenSquad(clubId, countryCode, toast)
     }
   }
 

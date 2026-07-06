@@ -321,7 +321,6 @@ function refreshCard() {
   const wrap = document.getElementById('card-preview')
   if (!wrap) return
   const d = getFormData()
-  // Construire un objet player-like pour renderCardHTML
   const playerLike = {
     ...d,
     rarity: d.rarity,
@@ -329,6 +328,7 @@ function refreshCard() {
     firstname: d.firstname || 'Prénom',
     surname_encoded: d.surname_encoded || 'NOM',
   }
+  console.log('[CardPreview]', playerLike.job, playerLike.note_g, playerLike.note_d, playerLike.note_m, playerLike.note_a)
   wrap.innerHTML = renderCardHTML(playerLike, { size: 'md', showNotes: false })
 }
 

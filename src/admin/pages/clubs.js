@@ -413,11 +413,18 @@ async function saveClub(club, isEdit, container, helpers) {
     if (genSquad) {
       btn.textContent = '⚽ Génération des joueurs…'
       const squad = generateSquad(clubId, countryCode)
+      let successCount = 0
       for (const p of squad) {
         const { data: newPlayer, error: eP } = await supabase.from('players').insert(p).select().single()
-        if (eP) { console.warn('[GenSquad] Erreur joueur:', eP.message); continue }
+        if (eP) {
+          console.error('[GenSquad] Erreur joueur:', eP.message, eP.details, 'payload:', JSON.stringify(p))
+          errEl.textContent = 'Erreur joueur: ' + eP.message
+          continue
+        }
+        successCount++
         await supabase.from('cards').insert({ card_type: 'player', player_id: newPlayer.id })
       }
+      console.log('[GenSquad] Créés:', successCount, '/', squad.length)
     }
   }
 

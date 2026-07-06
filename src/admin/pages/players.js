@@ -220,7 +220,7 @@ function openPlayerModal(player, clubs, container, helpers) {
           ${[['GK','pm-g','note_g'],['DEF','pm-d','note_d'],['MIL','pm-m','note_m'],['ATT','pm-a','note_a']].map(([lbl,id,field]) => `
             <div class="form-group" style="text-align:center">
               <label style="color:${JOB_COLORS[lbl]};font-weight:700">${lbl}</label>
-              <input id="${id}" type="number" min="1" max="20" value="${player?.[field]||1}" style="text-align:center;font-size:18px;font-weight:900;padding:6px 4px">
+              <input id="${id}" type="number" min="0" max="20" value="${player?.[field]??0}" style="text-align:center;font-size:18px;font-weight:900;padding:6px 4px">
             </div>`).join('')}
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">
@@ -304,10 +304,10 @@ function getFormData() {
     job:             g('pm-job') || 'ATT',
     job2:            g('pm-job2') || null,
     rarity:          g('pm-rarity') || 'normal',
-    note_g:          parseInt(g('pm-g'))    || 1,
-    note_d:          parseInt(g('pm-d'))    || 1,
-    note_m:          parseInt(g('pm-m'))    || 1,
-    note_a:          parseInt(g('pm-a'))    || 1,
+    note_g:          parseInt(g('pm-g'))    ?? 0,
+    note_d:          parseInt(g('pm-d'))    ?? 0,
+    note_m:          parseInt(g('pm-m'))    ?? 0,
+    note_a:          parseInt(g('pm-a'))    ?? 0,
     note_min:        parseInt(g('pm-nmin')) || null,
     note_max:        parseInt(g('pm-nmax')) || null,
     skin:            g('pm-skin')   || 'blanc',

@@ -123,15 +123,20 @@ function generateSquad(clubId, countryCode) {
 async function runGenSquad(clubId, countryCode, toast) {
   const squad = generateSquad(clubId, countryCode)
   let ok = 0
+  let lastErr = null
   for (const p of squad) {
     const { data: newPlayer, error: eP } = await supabase.from('players').insert(p).select().single()
-    if (eP) { console.error('[GenSquad]', eP.message, eP.details, JSON.stringify(p)); continue }
+    if (eP) {
+      console.error('[GenSquad]', eP.message, eP.details, '\nPayload:', JSON.stringify(p))
+      lastErr = eP.message
+      continue
+    }
     ok++
     await supabase.from('cards').insert({ card_type: 'player', player_id: newPlayer.id })
   }
   console.log('[GenSquad] Créés:', ok, '/', squad.length)
   if (ok > 0) toast(`${ok} joueurs générés ✅`, 'success')
-  else toast('Erreur génération joueurs — voir console', 'error')
+  else toast('Erreur: ' + (lastErr || 'inconnue'), 'error')
 }
 function buildKitFromClub(c) {
   return {

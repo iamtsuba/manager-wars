@@ -96,11 +96,11 @@ export function renderPlayerCard(p, opts = {}) {
   //   gauche  : x=55
   //   droit   : x=342
 
-  const photoTop = ax(165)
-  const photoW   = ax(220)
-  const photoH   = ax(215)   // s'arrête au haut de l'octogone (y≈380)
+  const photoTop = ax(155)
+  const photoW   = ax(260)
+  const photoH   = ax(235)   // s'arrête au haut de l'octogone (y≈380)
 
-  const noteTop  = ax(450)
+  const noteTop  = ax(440)
   const noteH    = ax(179)
   const noteX    = ax(150)
   const noteW    = ax(209)
@@ -148,21 +148,19 @@ export function renderPlayerCard(p, opts = {}) {
     <span style="font-size:${px(30)};font-weight:900;color:#e03030;font-family:Arial Black,Arial;line-height:1">${job2Note}</span>
   </div>` : ''}
 
-  <!-- Drapeau : rectangle gauche -->
+  <!-- Drapeau : sans fond -->
   <div style="position:absolute;left:${rectLX}px;top:${rectY}px;width:${rectW}px;height:${rectH}px;z-index:3;
-    border-radius:${rectR}px;background:${accent};
     display:flex;align-items:center;justify-content:center;overflow:hidden">
     ${flagUrl
-      ? `<img src="${flagUrl}" style="width:100%;height:100%;object-fit:cover">`
+      ? `<img src="${flagUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:${rectR}px">`
       : `<span style="font-size:${px(22)}">🌍</span>`}
   </div>
 
-  <!-- Logo club : rectangle droit -->
+  <!-- Logo club : sans fond -->
   <div style="position:absolute;left:${rectRX}px;top:${rectY}px;width:${rectW}px;height:${rectH}px;z-index:3;
-    border-radius:${rectR}px;background:${accent};
     display:flex;align-items:center;justify-content:center;overflow:hidden">
     ${clubLogoUrl
-      ? `<img src="${clubLogoUrl}" style="width:88%;height:88%;object-fit:contain">`
+      ? `<img src="${clubLogoUrl}" style="width:100%;height:100%;object-fit:contain">`
       : `<span style="font-size:${px(14)};font-weight:900;color:#fff">${(p.clubs?.encoded_name||p.clubName||'').slice(0,3).toUpperCase()}</span>`}
   </div>
 

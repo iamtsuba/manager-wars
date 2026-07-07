@@ -545,11 +545,20 @@ function openStadiumSelector(builder, container, ctx) {
         const logo = def?.club?.logo_url || null
         const imgUrl = def?.image_url ? (import.meta.env.BASE_URL + 'icons/' + def.image_url) : null
         const sel = builder.stadiumCardId === c.id
-        return `<div class="stad-choice" data-stad-id="${c.id}" style="cursor:pointer;width:70px;text-align:center">
-          <div style="width:65px;height:85px;border-radius:8px;background:linear-gradient(135deg,#1a3a6b,#0a1a3a);border:2px solid ${sel?'#E87722':'#444'};display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;overflow:hidden;position:relative">
+        const flagUrl = def?.country_code && !logo ? `https://flagsapi.com/${def.country_code.slice(0,2).toUpperCase()}/flat/64.png` : null
+        // Nom : "Stade" sur la 1re ligne, suite sur la 2e
+        const fullName = def?.name || 'Stade'
+        const nameParts = fullName.match(/^(Stade\s+(?:de\s+)?(?:\w+)?)(.*)?$/i)
+        const nameLine1 = nameParts ? nameParts[1].trim() : fullName.slice(0,8)
+        const nameLine2 = nameParts?.[2]?.trim() || ''
+        return `<div class="stad-choice" data-stad-id="${c.id}" style="cursor:pointer;width:80px;text-align:center">
+          <div style="width:75px;height:95px;border-radius:8px;background:linear-gradient(135deg,#1a3a6b,#0a1a3a);border:2px solid ${sel?'#4fc3f7':'#444'};display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;overflow:hidden;position:relative">
             ${imgUrl ? `<img src="${imgUrl}" style="width:100%;height:100%;object-fit:cover;position:absolute;inset:0;opacity:0.4">` : ''}
-            ${logo ? `<img src="${logo}" style="width:32px;height:32px;object-fit:contain;position:relative;z-index:1">` : `<span style="font-size:22px">🏟️</span>`}
-            <span style="font-size:8px;font-weight:700;color:${sel?'#E87722':'#ccc'};position:relative;z-index:1;padding:0 2px;text-align:center">${(def?.name||'Stade').slice(0,12)}</span>
+            ${logo ? `<img src="${logo}" style="width:36px;height:36px;object-fit:contain;position:relative;z-index:1">` : flagUrl ? `<img src="${flagUrl}" style="width:40px;height:28px;object-fit:cover;border-radius:3px;position:relative;z-index:1">` : `<span style="font-size:24px;position:relative;z-index:1">🏟️</span>`}
+            <div style="position:relative;z-index:1;text-align:center;padding:0 3px">
+              <div style="font-size:8px;font-weight:700;color:${sel?'#4fc3f7':'#ccc'}">${nameLine1}</div>
+              ${nameLine2 ? `<div style="font-size:8px;font-weight:700;color:${sel?'#4fc3f7':'#aaa'}">${nameLine2}</div>` : ''}
+            </div>
           </div>
         </div>`
       }).join('')}

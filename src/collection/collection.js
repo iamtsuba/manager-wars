@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase.js'
+import { renderPlayerCard } from '../components/player-card.js'
 import { GC_DEFS } from '../match/game-logic.js'
 import { FORMATION_LINKS, FORMATION_POSITIONS } from '../match/formation-links.js'
 import { EVOLUTIVE_RULES, currentSecondaryNote, getBaseMainNote } from '../match/evolutive-cards.js'
@@ -57,106 +58,20 @@ function getNote(p, job) {
 function renderCard(card, countBadge = '') {
   const p = card.player
   if (!p) return ''
-
-  const job      = p.job || 'ATT'
-  const jobColor = JOB_COLORS[job]
-  const rarColor = RAR_COLORS[p.rarity] || '#ccc'
-  // Pour pépite/papyte : afficher current_note (note évolutive), sinon note du poste
-  const isEvolutive = p.rarity === 'pepite' || p.rarity === 'papyte'
-  const evoBonus = card.evolution_bonus || 0
-  const note1    = (isEvolutive && card.current_note != null ? card.current_note : getNote(p, job)) + evoBonus
-  const rawNote2 = p.job2 ? (isEvolutive ? currentSecondaryNote(card, job2NoteKey(p.job2)) : getNote(p, p.job2)) : null
-  const note2    = rawNote2 != null ? (rawNote2 > 0 ? rawNote2 + evoBonus : rawNote2) : null
-  const job2Color = p.job2 ? JOB_COLORS[p.job2] : null
-  const portrait = getPortrait(p)
-  const country  = COUNTRY_NAMES[p.country_code] || p.country_code || ''
-
-  return `
-  <div style="
-    width:140px;border-radius:12px;padding:6px;
-    background:${rarColor};cursor:pointer;flex-shrink:0;position:relative
-  " data-card-id="${card.id}">
-    ${countBadge}
-    <div style="background:#f2e8d2;border-radius:8px;overflow:hidden;display:flex;flex-direction:column">
-      <!-- Nom -->
-      <div style="padding:5px 6px 2px;text-align:center">
-        <div style="font-size:8px;letter-spacing:1.2px;text-transform:uppercase;color:#666">${p.firstname}</div>
-        <div style="font-size:14px;font-weight:900;color:#111;font-family:Arial Black,Arial;line-height:1.1">${(p.surname_encoded||'').toUpperCase()}</div>
-      </div>
-      <!-- Zone étoiles : bandeau fixe + étoile principale dedans + petite étoile dessous -->
-      <div style="position:relative;height:80px;background:#f2e8d2;display:flex;flex-direction:column;align-items:center">
-        <!-- Bandeau de couleur fixe (toujours au même endroit) -->
-        <div style="position:absolute;top:16px;width:100%;height:28px;background:${jobColor}"></div>
-        <!-- Étoile principale centrée sur le bandeau, contour blanc -->
-        <svg width="54" height="52" viewBox="0 0 54 52" style="position:absolute;top:4px;z-index:2;display:block">
-          <polygon points="27,3 33,18 50,18 37,29 41,47 27,37 13,47 17,29 4,18 21,18"
-            fill="${jobColor}" stroke="white" stroke-width="2.5"/>
-          <text x="27" y="33" text-anchor="middle" font-size="16" font-weight="900"
-            fill="white" font-family="Arial Black,Arial">${note1}</text>
-        </svg>
-        <!-- Petite étoile poste secondaire, toujours en dessous du bandeau -->
-        ${note2 !== null ? `
-        <svg width="32" height="31" viewBox="0 0 32 31" style="position:absolute;top:50px;z-index:2;display:block">
-          <polygon points="16,2 19.5,11 30,11 22,17.5 25,27 16,21.5 7,27 10,17.5 2,11 12.5,11"
-            fill="${job2Color}" stroke="white" stroke-width="1.5"/>
-          <text x="16" y="20" text-anchor="middle" font-size="9" font-weight="900"
-            fill="white" font-family="Arial Black,Arial">${note2}</text>
-        </svg>` : ''}
-      </div>
-      <!-- Portrait -->
-      <div style="height:106px;overflow:hidden;background:#b8d4f0;position:relative">
-        ${portrait
-          ? `<img src="${portrait}" style="width:100%;height:100%;object-fit:cover;object-position:center top;display:block"
-               onerror="this.parentElement.innerHTML='<div style=\'width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:36px;color:#8fa5be\'>👤</div>'">`
-          : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:36px;color:#8fa5be">👤</div>`}
-      </div>
-      <!-- Footer -->
-      <div style="background:#f2e8d2;padding:3px 6px;display:flex;align-items:center;justify-content:space-between;min-height:26px;gap:4px">
-        <img src="https://flagsapi.com/${p.country_code}/flat/32.png"
-          style="width:20px;height:14px;border-radius:2px;object-fit:cover;flex-shrink:0"
-          onerror="this.style.display='none'">
-        <div style="font-size:7px;letter-spacing:.8px;text-transform:uppercase;color:#555;flex:1;text-align:center">${country}</div>
-        ${p.clubs?.logo_url
-          ? `<img src="${p.clubs.logo_url}" style="width:22px;height:18px;object-fit:contain;flex-shrink:0">`
-          : `<div style="background:#1a3a7a;color:#fff;border-radius:3px;padding:1px 4px;font-size:6px;font-weight:800;flex-shrink:0">${(p.clubs?.encoded_name||'').slice(0,6)}</div>`}
-      </div>
-    </div>
+  const evo = card.evolution_bonus || 0
+  const player = { ...p, _evolution_bonus: evo }
+  const badge = countBadge ? `<div style="position:absolute;top:6px;right:6px;z-index:10;background:#0a3d1e;color:#fff;border-radius:10px;font-size:10px;font-weight:700;padding:2px 7px">${countBadge}</div>` : ''
+  return `<div style="position:relative;display:inline-block;cursor:pointer" data-card-id="${card.id}">
+    ${badge}
+    ${renderPlayerCard(player, { width: 140 })}
   </div>`
 }
-
 // ── Rendu d'une carte joueur MANQUANTE (grisée, non possédée) ──
 function renderMissingCard(p) {
-  const job = p.job || 'ATT'
-  const note1 = getNote(p, job)
-  const country = COUNTRY_NAMES[p.country_code] || p.country_code || ''
-
-  return `
-  <div style="
-    width:140px;border-radius:12px;padding:6px;
-    background:#ccc;flex-shrink:0;position:relative;filter:grayscale(1);opacity:0.45
-  ">
-    <div style="background:#e8e8e8;border-radius:8px;overflow:hidden;display:flex;flex-direction:column">
-      <div style="padding:5px 6px 2px;text-align:center">
-        <div style="font-size:8px;letter-spacing:1.2px;text-transform:uppercase;color:#888">${p.firstname}</div>
-        <div style="font-size:14px;font-weight:900;color:#444;font-family:Arial Black,Arial;line-height:1.1">${(p.surname_encoded||'').toUpperCase()}</div>
-      </div>
-      <div style="position:relative;height:80px;background:#e8e8e8;display:flex;flex-direction:column;align-items:center">
-        <div style="position:absolute;top:16px;width:100%;height:28px;background:#999"></div>
-        <svg width="54" height="52" viewBox="0 0 54 52" style="position:absolute;top:4px;z-index:2;display:block">
-          <polygon points="27,3 33,18 50,18 37,29 41,47 27,37 13,47 17,29 4,18 21,18"
-            fill="#999" stroke="white" stroke-width="2.5"/>
-          <text x="27" y="33" text-anchor="middle" font-size="16" font-weight="900"
-            fill="white" font-family="Arial Black,Arial">${note1}</text>
-        </svg>
-      </div>
-      <div style="height:106px;overflow:hidden;background:#ddd;display:flex;align-items:center;justify-content:center;font-size:36px;color:#aaa">👤</div>
-      <div style="background:#e8e8e8;padding:3px 6px;display:flex;align-items:center;justify-content:center;min-height:26px">
-        <div style="font-size:7px;letter-spacing:.8px;text-transform:uppercase;color:#999">${country}</div>
-      </div>
-    </div>
+  return `<div style="display:inline-block;filter:grayscale(1);opacity:0.4">
+    ${renderPlayerCard(p, { width: 140 })}
   </div>`
 }
-
 // ── Page principale ────────────────────────────────────────
 export async function renderCollection(container, ctx) {
   const { state, navigate, toast, openModal, closeModal } = ctx
@@ -166,7 +81,7 @@ export async function renderCollection(container, ctx) {
     .from('cards')
     .select(`id, card_type, current_note, gc_type, formation, is_for_sale, sale_price, stadium_id, evolution_bonus,
       player:players(id, firstname, surname_encoded, country_code, club_id, job, job2,
-        note_g, note_d, note_m, note_a, rarity, note_min, note_max, skin, hair, hair_length, sell_price,
+        note_g, note_d, note_m, note_a, rarity, note_min, note_max, skin, hair, hair_length, sell_price, face,
         clubs(encoded_name, logo_url)),
       stadium_def:stadium_definitions(id, name, club_id, country_code, image_url,
         club:clubs(encoded_name, logo_url))`)

@@ -374,7 +374,6 @@ function renderBuilder(container, builder, ctx) {
   const mobileLayout = container.querySelector('.deck-mobile-layout')
   if (pcLayout)     pcLayout.style.display     = isDesktop ? 'block' : 'none'
   if (mobileLayout) mobileLayout.style.display = isDesktop ? 'none'  : 'block'
-  if (formMobile)   formMobile.style.display   = isDesktop ? 'none'  : 'block'
 
   renderDeckField(container, builder, positions, ctx)
 

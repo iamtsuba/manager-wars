@@ -40,7 +40,9 @@ function getClubLogoUrl(p) {
 
 function getNoteForJob(p, job, evo = 0) {
   if (!job) return 0
-  const base = Number(p[`note_${job.toLowerCase()}`]) || 0
+  const keyMap = { GK:'g', DEF:'d', MIL:'m', ATT:'a' }
+  const key = 'note_' + (keyMap[job] || job.toLowerCase())
+  const base = Number(p[key]) || 0
   return base + ((job === p.job || job === p.job2) ? evo : 0)
 }
 
@@ -101,19 +103,19 @@ export function renderPlayerCard(p, opts = {}) {
   const photoH   = ax(235)   // s'arrête au haut de l'octogone (y≈380)
 
   // Octogone central mesuré: y=380→639, x=100→409, centre x=254, y=509
-  // Note : centrée dans l'octogone
-  const noteTop  = ax(380)
-  const noteH    = ax(259)   // hauteur totale octogone
+  // Note : dans le tiers supérieur de l'octogone
+  const noteTop  = ax(390)
+  const noteH    = ax(180)
   const noteX    = ax(100)
-  const noteW    = ax(309)   // largeur totale octogone
+  const noteW    = ax(309)
 
-  // Drapeaux/logo : rectangles au niveau du centre de l'octogone (y=509)
-  // de chaque côté extérieur de l'octogone
-  const rectH    = ax(90)
+  // Drapeaux/logo : rectangles flanquant l'octogone, centrés à y=460
+  // Restent dans la carte (x=0→507)
+  const rectH    = ax(85)
   const rectW    = ax(95)
-  const rectY    = ax(509) - ax(45)  // centré sur y=509
-  const rectLX   = ax(0)             // juste à gauche de l'octogone
-  const rectRX   = ax(412)           // juste à droite
+  const rectY    = ax(455)
+  const rectLX   = ax(5)     // collé au bord gauche de la carte
+  const rectRX   = ax(407)   // collé au bord droit de la carte
   const rectR    = ax(6)
 
   return `<div style="position:relative;width:${width}px;height:${height}px;flex-shrink:0;${opacity}user-select:none">

@@ -356,76 +356,61 @@ function renderDeckField(container, builder, positions, ctx) {
     }
   }
 
-  const W=300, H=300, CW=48, CH=64, NAMEH=13, BOTHH=16, PAD=38
+  // Terrain HTML : cartes positionnées en absolu sur un terrain de 320x320
+  const W = 320, H = 320
+  const CARD_W = 60  // largeur carte sur le terrain
 
-  function px(pos) {
-    const p = FPOS[pos]; return p ? { x:p.x*W, y:p.y*H } : null
-  }
-
-  let svg = ''
-
-  // 1. Liens
+  // SVG des liens uniquement
+  let linkSvg = ''
   for (const [posA, posB] of FLINKS) {
-    const a = px(posA), b = px(posB); if (!a||!b) continue
-    const pA = slots[posA] ? { ...slots[posA], club_id: slots[posA].club_id, country_code: slots[posA].country_code, rarity: slots[posA].rarity } : null
-    const pB = slots[posB] ? { ...slots[posB], club_id: slots[posB].club_id, country_code: slots[posB].country_code, rarity: slots[posB].rarity } : null
+    const fA = FPOS[posA], fB = FPOS[posB]; if (!fA||!fB) continue
+    const ax = fA.x*W, ay = fA.y*H, bx = fB.x*W, by = fB.y*H
+    const pA = slots[posA], pB = slots[posB]
     const lc = linkColor(pA, pB)
     const noLink = lc === '#ff3333' || lc === '#cc2222'
     if (!noLink) {
-      svg += `<line x1="${a.x.toFixed(1)}" y1="${a.y.toFixed(1)}" x2="${b.x.toFixed(1)}" y2="${b.y.toFixed(1)}" stroke="${lc}" stroke-width="8" stroke-linecap="round" opacity="0.2"/>`
-      svg += `<line x1="${a.x.toFixed(1)}" y1="${a.y.toFixed(1)}" x2="${b.x.toFixed(1)}" y2="${b.y.toFixed(1)}" stroke="${lc}" stroke-width="2.5" stroke-linecap="round" opacity="0.9"/>`
+      linkSvg += `<line x1="${ax.toFixed(1)}" y1="${ay.toFixed(1)}" x2="${bx.toFixed(1)}" y2="${by.toFixed(1)}" stroke="${lc}" stroke-width="8" stroke-linecap="round" opacity="0.15"/>`
+      linkSvg += `<line x1="${ax.toFixed(1)}" y1="${ay.toFixed(1)}" x2="${bx.toFixed(1)}" y2="${by.toFixed(1)}" stroke="${lc}" stroke-width="2.5" stroke-linecap="round" opacity="0.85"/>`
     } else {
-      svg += `<line x1="${a.x.toFixed(1)}" y1="${a.y.toFixed(1)}" x2="${b.x.toFixed(1)}" y2="${b.y.toFixed(1)}" stroke="${lc}" stroke-width="2.5" stroke-linecap="round" opacity="0.4"/>`
+      linkSvg += `<line x1="${ax.toFixed(1)}" y1="${ay.toFixed(1)}" x2="${bx.toFixed(1)}" y2="${by.toFixed(1)}" stroke="${lc}" stroke-width="2" stroke-linecap="round" opacity="0.35"/>`
     }
   }
 
-  // 2. Cartes joueurs
+  // Cartes HTML
+  let cardsHtml = ''
+  const CARD_H = Math.round(CARD_W * 657/507)
   for (const pos of positions) {
-    const c = px(pos); if (!c) continue
-    const p    = slots[pos]
-    const role = pos.replace(/\d+/,'')
-    const bg   = JOB_COLORS[role] || '#555'
-    const x0   = (c.x - CW/2).toFixed(1)
-    const y0   = (c.y - CH/2).toFixed(1)
-    const rarityBorder = { normal:'#aaa', pepite:'#D4A017', pépite:'#D4A017', papyte:'#222', legende:'#7a28b8', légende:'#7a28b8' }[p?.rarity] || '#aaa'
+    const fp = FPOS[pos]; if (!fp) continue
+    const p = slots[pos]
+    const cx = fp.x * W
+    const cy = fp.y * H
+    const left = Math.round(cx - CARD_W/2)
+    const top  = Math.round(cy - CARD_H/2)
 
     if (p) {
-      const portrait = getPortrait(p)
-      const logoUrl  = getClubLogo(p)
-      const flag     = flagImgUrl(p.country_code)
-      const evoSlot = (p._evolution_bonus || 0)
-      const note0    = (Number(role==='GK'?p.note_g:role==='DEF'?p.note_d:role==='MIL'?p.note_m:p.note_a)||0) + (role===p.job||role===p.job2?evoSlot:0)
-      // Bonus stade : +10 si même club ou même pays
-      const hasBonus = stadDef && (
-        (stadDef.club_id && String(p.club_id) === String(stadDef.club_id)) ||
-        (stadDef.country_code && p.country_code === stadDef.country_code)
+      const cardHtml = renderPlayerCard(
+        { ...p, _evolution_bonus: p._evolution_bonus||0 },
+        { width: CARD_W, showStad: true, stadDef }
       )
-      const note = hasBonus ? note0 + 10 : note0
-      const portH    = CH - NAMEH - BOTHH
-
-      svg += `<defs><clipPath id="dcp-${pos}"><rect x="${x0}" y="${(c.y-CH/2+NAMEH).toFixed(1)}" width="${CW}" height="${portH}"/></clipPath></defs>`
-      svg += `<rect x="${x0}" y="${y0}" width="${CW}" height="${CH}" rx="5" fill="${bg}"/>`
-      if (portrait) svg += `<image href="${portrait}" x="${x0}" y="${(c.y-CH/2+NAMEH).toFixed(1)}" width="${CW}" height="${portH}" clip-path="url(#dcp-${pos})" preserveAspectRatio="xMidYMin slice"/>`
-      svg += `<rect x="${x0}" y="${y0}" width="${CW}" height="${NAMEH}" fill="rgba(255,255,255,0.93)"/>`
-      svg += `<text x="${c.x.toFixed(1)}" y="${(c.y-CH/2+8.5).toFixed(1)}" text-anchor="middle" dominant-baseline="central" font-size="6.5" font-weight="900" fill="#111" font-family="Arial Black,Arial">${(p.surname_encoded||'').slice(0,9)}</text>`
-      const by0 = (c.y+CH/2-BOTHH).toFixed(1)
-      svg += `<rect x="${x0}" y="${by0}" width="${CW}" height="${BOTHH}" fill="rgba(255,255,255,0.93)"/>`
-      if (flag) svg += `<image href="${flag}" x="${(c.x-21).toFixed(1)}" y="${(c.y+CH/2-BOTHH+3).toFixed(1)}" width="13" height="10" preserveAspectRatio="xMidYMid slice"/>`
-      svg += `<text x="${c.x.toFixed(1)}" y="${(c.y+CH/2-BOTHH/2).toFixed(1)}" text-anchor="middle" dominant-baseline="central" font-size="12" font-weight="900" fill="${hasBonus ? '#E87722' : '#111'}" font-family="Arial Black">${note}</text>`
-      if (logoUrl) svg += `<image href="${logoUrl}" x="${(c.x+CW/2-14).toFixed(1)}" y="${(c.y+CH/2-BOTHH+2).toFixed(1)}" width="12" height="12" preserveAspectRatio="xMidYMid meet"/>`
-      svg += `<rect x="${x0}" y="${y0}" width="${CW}" height="${CH}" rx="5" fill="none" stroke="${rarityBorder}" stroke-width="2"/>`
+      cardsHtml += `<div style="position:absolute;left:${left}px;top:${top}px;cursor:pointer;z-index:2" class="deck-slot-hit" data-pos="${pos}">${cardHtml}</div>`
     } else {
-      // Slot vide
-      svg += `<rect x="${x0}" y="${y0}" width="${CW}" height="${CH}" rx="5" fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.35)" stroke-width="2" stroke-dasharray="5,3"/>`
-      svg += `<text x="${c.x.toFixed(1)}" y="${c.y.toFixed(1)}" text-anchor="middle" dominant-baseline="central" font-size="22" fill="rgba(255,255,255,0.35)">+</text>`
-      svg += `<text x="${c.x.toFixed(1)}" y="${(c.y+16).toFixed(1)}" text-anchor="middle" font-size="7" fill="rgba(255,255,255,0.3)">${role}</text>`
+      const role = pos.replace(/\d+/, '')
+      cardsHtml += `<div style="position:absolute;left:${left}px;top:${top}px;width:${CARD_W}px;height:${CARD_H}px;
+        border:2px dashed rgba(255,255,255,0.35);border-radius:6px;
+        display:flex;flex-direction:column;align-items:center;justify-content:center;
+        cursor:pointer;z-index:2;background:rgba(255,255,255,0.04)"
+        class="deck-slot-hit" data-pos="${pos}">
+        <span style="font-size:20px;color:rgba(255,255,255,0.35)">+</span>
+        <span style="font-size:8px;color:rgba(255,255,255,0.3);margin-top:2px">${role}</span>
+      </div>`
     }
-
-    // Zone cliquable
-    svg += `<rect x="${x0}" y="${y0}" width="${CW}" height="${CH}" rx="5" fill="rgba(0,0,0,0.01)" class="deck-slot-hit" data-pos="${pos}" style="cursor:pointer"/>`
   }
 
-  field.innerHTML = `<svg viewBox="${-PAD} ${-PAD} ${W+PAD*2} ${H+PAD*2}" width="100%" style="display:block;max-width:440px;margin:0 auto">${svg}</svg>`
+  field.innerHTML = `
+    <div style="position:relative;width:${W}px;height:${H}px;margin:0 auto">
+      <svg style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none" viewBox="0 0 ${W} ${H}">${linkSvg}</svg>
+      ${cardsHtml}
+    </div>`
 
   field.querySelectorAll('.deck-slot-hit').forEach(el => {
     el.addEventListener('click', () => openPlayerSelector(el.dataset.pos, builder, container, ctx))

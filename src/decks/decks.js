@@ -279,8 +279,8 @@ function renderBuilder(container, builder, ctx) {
         </div>
 
         <!-- Terrain PC (colonne centrale) -->
-        <div style="flex:1;background:linear-gradient(180deg,#1a6b3c,#0a3d1e);overflow:hidden">
-          <div id="deck-field-pc"></div>
+        <div style="flex:1;background:linear-gradient(180deg,#1a6b3c,#0a3d1e);overflow:hidden;height:630px">
+          <div id="deck-field-pc" style="margin-top:50px"></div>
         </div>
 
         <!-- Formation + Stade (colonne droite) -->
@@ -390,6 +390,47 @@ function renderBuilder(container, builder, ctx) {
     builder.slots = clean
     renderBuilder(container, builder, ctx)
   })
+  document.getElementById('formation-pc-btn')?.addEventListener('click', () => {
+    const { openModal, closeModal } = ctx
+    openModal('⚽ Choisir une formation',
+      `<div style="display:flex;flex-wrap:wrap;gap:8px;padding:8px">
+        ${formationOptions.map(f => `
+          <div class="forma-choice" data-forma="${f}" style="cursor:pointer;
+            padding:10px 16px;border-radius:8px;
+            background:${f===builder.formation?'#1A6B3C':'#f0f0f0'};
+            color:${f===builder.formation?'#fff':'#111'};font-weight:900;font-size:16px;
+            border:2px solid ${f===builder.formation?'#1A6B3C':'#ddd'}">
+            ${f}
+          </div>`).join('')}
+      </div>`
+    )
+    document.querySelectorAll('.forma-choice').forEach(el => {
+      el.addEventListener('click', () => {
+        builder.formation = el.dataset.forma
+        closeModal()
+        renderBuilder(container, builder, ctx)
+      })
+    })
+  })
+
+
+  document.getElementById('formation-pc-btn')?.addEventListener('click', () => {
+    const { openModal, closeModal } = ctx
+    openModal('Choisir une formation',
+      `<div style="display:flex;flex-wrap:wrap;gap:8px;padding:8px">
+        ${formationOptions.map(f => `
+          <div class="forma-choice" data-forma="${f}" style="cursor:pointer;padding:10px 16px;border-radius:8px;background:${f===builder.formation?'#1A6B3C':'#f0f0f0'};color:${f===builder.formation?'#fff':'#111'};font-weight:900;font-size:16px;border:2px solid ${f===builder.formation?'#1A6B3C':'#ddd'}">${f}</div>`).join('')}
+      </div>`
+    )
+    document.querySelectorAll('.forma-choice').forEach(el => {
+      el.addEventListener('click', () => {
+        builder.formation = el.dataset.forma
+        closeModal()
+        renderBuilder(container, builder, ctx)
+      })
+    })
+  })
+
   document.getElementById('add-stad-btn')?.addEventListener('click', () => {
     openStadiumSelector(builder, container, ctx)
   })
@@ -441,7 +482,7 @@ function renderDeckField(container, builder, positions, ctx) {
   const availW = isDesktopRDF ? window.innerWidth - 280 : window.innerWidth - 20
   const W      = isDesktopRDF ? Math.min(availW, 860) : availW
   const H      = isDesktopRDF ? Math.round(W * 0.82)  : Math.round(W * 1.35)
-  const CARD_W = isDesktopRDF ? 70 : 44
+  const CARD_W = isDesktopRDF ? 84 : 44  // 70 * 1.2 = 84
 
   // SVG des liens uniquement
   let linkSvg = ''
@@ -482,7 +523,7 @@ function renderDeckField(container, builder, positions, ctx) {
         { ...p, _evolution_bonus: p._evolution_bonus||0 },
         { width: CARD_W, showStad: false, stadDef, role }
       )
-      const stadIcon = hasStad ? `<div style="position:absolute;top:-${Math.round(CARD_H*0.12)}px;left:0;right:0;text-align:center;font-size:${Math.round(CARD_W*0.35)}px;z-index:5;line-height:1">🏟️</div>` : ''
+      const stadIcon = hasStad ? `<div style="position:absolute;top:-35px;left:0;right:0;text-align:center;font-size:${Math.round(CARD_W*0.5)}px;z-index:5;line-height:1">🏟️</div>` : ''
       cardsHtml += `<div style="position:absolute;left:${left}px;top:${top}px;cursor:pointer;z-index:2;position:absolute" class="deck-slot-hit" data-pos="${pos}">
         <div style="position:relative">${stadIcon}${cardHtml}</div>
       </div>`

@@ -380,15 +380,7 @@ function renderBuilder(container, builder, ctx) {
 
   container.querySelectorAll('#builder-back').forEach(el => el.addEventListener('click', () => navigate('decks')))
 
-  document.getElementById('formation-select').addEventListener('change', e => {
-    builder.formation = e.target.value
-    // Réinitialiser les slots hors nouvelles positions
-    const newPositions = buildPositions(builder.formation)
-    const clean = {}
-    newPositions.forEach(p => { if (builder.slots[p]) clean[p] = builder.slots[p] })
-    builder.slots = clean
-    renderBuilder(container, builder, ctx)
-  })
+
   // Formation mobile et PC : même modal
   const openFormationModal = () => {
     const { openModal, closeModal } = ctx
@@ -402,6 +394,11 @@ function renderBuilder(container, builder, ctx) {
     document.querySelectorAll('#modal-body [data-forma]').forEach(el => {
       el.addEventListener('click', () => {
         builder.formation = el.dataset.forma
+        // Nettoyer les slots incompatibles avec la nouvelle formation
+        const newPos = buildPositions(builder.formation)
+        const clean = {}
+        newPos.forEach(p => { if (builder.slots[p]) clean[p] = builder.slots[p] })
+        builder.slots = clean
         closeModal()
         renderBuilder(container, builder, ctx)
       })

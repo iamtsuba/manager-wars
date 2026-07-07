@@ -57,6 +57,19 @@ function randCC(exclude) {
 }
 
 // ── Génération effectif ───────────────────────────────────
+// Ethnie selon le pays
+function ethnieForCountry(cc) {
+  const europeans = ['FR','DE','ES','PT','IT','GB','NL','BE','DK','SE','NO','PL','CH','AT','CZ','HR','RS','AL','TR','GR','RO','BG','UA','RU']
+  const northAfricans = ['MA','DZ','TN','EG','LY']
+  const africans = ['NG','SN','CI','CM','GH','ML','GN','CD','AO','ZA','KE','TZ','UG','ET']
+  const asians = ['JP','KR','CN','VN','TH','ID','PH','IN','PK','BD','SA','AE','IR']
+  if (europeans.includes(cc) || ['AR','UY','CL','PE','EC','CO','MX','BR'].includes(cc)) return 'Europeans'
+  if (northAfricans.includes(cc)) return 'North Africans'
+  if (africans.includes(cc)) return 'Africans'
+  if (asians.includes(cc)) return 'Asians'
+  return 'Europeans'
+}
+
 function generateSquad(clubId, countryCode) {
   const FIRSTNAMES = [
     'Lucas','Mateo','Rafael','Carlos','Luis','Diego','Andre','Paulo','Marco','Stefan',
@@ -148,6 +161,8 @@ function generateSquad(clubId, countryCode) {
       skin, hair, hair_length: len,
       rarity,
       sell_price: 0,
+      ethnie: ethnieForCountry(cc),
+      _ethnie: ethnieForCountry(cc),  // pour attribuer la face après
     }
   })
 }
@@ -155,6 +170,37 @@ function generateSquad(clubId, countryCode) {
 // ── Génération effectif (réutilisable) ────────────────────
 async function runGenSquad(clubId, countryCode, toast) {
   const squad = generateSquad(clubId, countryCode)
+
+  // Charger le manifest des faces
+  let manifest = {}
+  try {
+    const r = await fetch(BASE + 'faces-manifest.json')
+    manifest = await r.json()
+  } catch(e) { console.warn('Manifest faces non chargé') }
+
+  // Charger les faces déjà utilisées en base
+  const { data: usedFacesData } = await supabase.from('players').select('face').not('face', 'is', null)
+  const usedFaces = new Set((usedFacesData || []).map(r => r.face).filter(Boolean))
+
+  // Attribuer une face unique à chaque joueur selon son ethnie
+  const usedInBatch = new Set()
+  for (const p of squad) {
+    const ethnie = p._ethnie || 'Europeans'
+    const files = manifest[ethnie] || []
+    // Mélanger pour un choix aléatoire
+    const shuffled = [...files].sort(() => Math.random() - 0.5)
+    const available = shuffled.find(f => {
+      const fullPath = 'public/faces/' + ethnie + '/' + f
+      return !usedFaces.has(fullPath) && !usedInBatch.has(fullPath)
+    })
+    if (available) {
+      const fullPath = 'public/faces/' + ethnie + '/' + available
+      p.face = fullPath
+      usedInBatch.add(fullPath)
+    }
+    // Nettoyer _ethnie (pas en base)
+    delete p._ethnie
+  }
 
   // Insert tous les joueurs en une seule requête batch
   const { data: newPlayers, error: eP } = await supabase

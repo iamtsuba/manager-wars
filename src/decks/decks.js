@@ -272,12 +272,12 @@ function renderBuilder(container, builder, ctx) {
             ${subPlayers.map(card => {
               const p = { ...card.player, _evolution_bonus: card.evolution_bonus || 0 }
               return `<div style="position:relative;flex-shrink:0;overflow:visible">
-                ${renderPlayerCard({ ...p, _evolution_bonus: p._evolution_bonus||0 }, { width: 65, showStad: true, stadDef: _stadDef })}
+                ${renderPlayerCard({ ...p, _evolution_bonus: p._evolution_bonus||0 }, { width: 55, showStad: true, stadDef: _stadDef })}
                 <button data-remove-sub="${card.id}"
                   style="position:absolute;top:-6px;right:-6px;width:18px;height:18px;background:#c0392b;border:none;border-radius:50%;color:#fff;font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;padding:0;z-index:10">✕</button>
               </div>`
             }).join('')}
-            ${builder.subs.length < 5 ? `<div id="add-sub-btn" style="width:40px;height:55px;border:2px dashed rgba(255,255,255,0.3);border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:22px;color:rgba(255,255,255,0.4);cursor:pointer;flex-shrink:0">+</div>` : ''}
+            ${builder.subs.length < 5 ? `<div id="add-sub-btn" style="width:34px;height:47px;border:2px dashed rgba(255,255,255,0.3);border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:18px;color:rgba(255,255,255,0.4);cursor:pointer;flex-shrink:0">+</div>` : ''}
           </div>
         </div>
         <!-- Stade : à droite -->
@@ -369,9 +369,9 @@ function renderDeckField(container, builder, positions, ctx) {
   // Terrain HTML : cartes positionnées en absolu sur un terrain de 320x320
   // Taille responsive : grand sur PC, compact sur mobile
   const isDesktop = window.innerWidth >= 768
-  const W      = isDesktop ? 560 : 320
-  const H      = isDesktop ? 680 : 420
-  const CARD_W = isDesktop ? 88  : 52
+  const W      = isDesktop ? 560 : window.innerWidth - 32
+  const H      = isDesktop ? 680 : Math.round((window.innerWidth - 32) * 1.55)
+  const CARD_W = isDesktop ? 88  : 48
 
   // SVG des liens uniquement
   let linkSvg = ''

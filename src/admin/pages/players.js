@@ -1,17 +1,27 @@
-import { supabase }                from '../../lib/supabase.js'
-import { encodeVowels, renderCardHTML } from '../../components/card.js'
+import { supabase } from '../../lib/supabase.js'
+import { renderPlayerCard } from '../../components/player-card.js'
 
+const BASE = import.meta.env.BASE_URL
 const RARITY_LABELS = { normal:'Normal', pepite:'Pépite', papyte:'Papyte', legende:'Légende' }
-const RARITY_COLORS = { normal:'#aaa',   pepite:'#D4A017', papyte:'#909090', legende:'#7a28b8' }
-const JOB_COLORS    = { GK:'#111', DEF:'#bb2020', MIL:'#D4A017', ATT:'#1A6B3C' }
+const JOB_COLORS    = { GK:'#aaaaaa', DEF:'#bb2020', MIL:'#D4A017', ATT:'#1A6B3C' }
 
-const ALL_COUNTRIES = [
-  'FR','DE','ES','PT','IT','GB','NL','BE','DK','SE','NO','PL','CH','AT',
-  'CZ','HR','RS','AL','TR','AR','BR','UY','CO','MX','CL','PE','EC',
-  'MA','DZ','TN','EG','NG','SN','CI','CM','GH','ML','GN','CD','AO','ZA','KE',
-  'JP','KR','CN','VN','TH','ID','PH','US','CA','AU','RU','UA','GR',
-  'RO','BG','IR','SA','AE','IN','PK','BD',
-]
+// Manifeste des faces (chargé une fois)
+let FACES_MANIFEST = null
+async function getFacesManifest() {
+  if (FACES_MANIFEST) return FACES_MANIFEST
+  try {
+    const r = await fetch(BASE + 'faces-manifest.json')
+    FACES_MANIFEST = await r.json()
+  } catch { FACES_MANIFEST = {} }
+  return FACES_MANIFEST
+}
+
+function mainNote(p) {
+  if (p.job === 'GK')  return p.note_g || 0
+  if (p.job === 'DEF') return p.note_d || 0
+  if (p.job === 'MIL') return p.note_m || 0
+  return p.note_a || 0
+}
 
 export async function pagePlayers(container, helpers) {
   await loadPlayers(container, helpers)
@@ -19,13 +29,11 @@ export async function pagePlayers(container, helpers) {
 
 async function loadPlayers(container, helpers) {
   const { toast } = helpers
-
   const [{ data: players, error }, { data: clubs }] = await Promise.all([
-    supabase.from('players').select('*, clubs(id,encoded_name,logo_url,kit_color1,kit_color2)').order('surname_encoded'),
+    supabase.from('players').select('*, clubs(id,encoded_name,logo_url)').order('surname_encoded'),
     supabase.from('clubs').select('id,encoded_name').order('encoded_name'),
   ])
   if (error) { container.innerHTML = `<p style="color:red">${error.message}</p>`; return }
-
   renderPage(container, players || [], clubs || [], helpers)
 }
 
@@ -34,7 +42,6 @@ function renderPage(container, players, clubs, helpers) {
 
   container.innerHTML = `
     <div style="display:flex;flex-direction:column;gap:10px">
-      <!-- Filtres -->
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         <input id="search-players" placeholder="🔍 Nom, prénom…" style="flex:1;min-width:140px">
         <select id="filter-job" style="width:100px">
@@ -65,18 +72,18 @@ function renderPage(container, players, clubs, helpers) {
         <button class="btn btn-danger btn-sm" id="bulk-delete-btn">🗑️ Supprimer la sélection</button>
         <button class="btn btn-ghost btn-sm" id="bulk-cancel-btn">Annuler</button>
       </div>
-      <!-- Liste -->
-      <div id="players-list" style="display:flex;flex-direction:column;gap:6px"></div>
+      <!-- Grille de cartes -->
+      <div id="players-list" style="display:flex;flex-wrap:wrap;gap:12px"></div>
     </div>`
 
   function filtered() {
-    const q      = document.getElementById('search-players').value.toLowerCase()
-    const job    = document.getElementById('filter-job').value
-    const rar    = document.getElementById('filter-rarity').value
-    const club   = document.getElementById('filter-club').value
-    const country= document.getElementById('filter-country').value
+    const q       = document.getElementById('search-players').value.toLowerCase()
+    const job     = document.getElementById('filter-job').value
+    const rar     = document.getElementById('filter-rarity').value
+    const club    = document.getElementById('filter-club').value
+    const country = document.getElementById('filter-country').value
     return players.filter(p =>
-      (!q       || `${p.firstname} ${p.surname_encoded} ${p.surname_real||''}`.toLowerCase().includes(q)) &&
+      (!q       || `${p.firstname} ${p.surname_encoded}`.toLowerCase().includes(q)) &&
       (!job     || p.job === job) &&
       (!rar     || p.rarity === rar) &&
       (!club    || p.club_id === club) &&
@@ -85,17 +92,12 @@ function renderPage(container, players, clubs, helpers) {
   }
 
   const selected = new Set()
-
   function updateBulkBar() {
     const bar = document.getElementById('bulk-bar')
     const cnt = document.getElementById('bulk-count')
     if (!bar) return
-    if (selected.size > 0) {
-      bar.style.display = 'flex'
-      cnt.textContent = `${selected.size} joueur(s) sélectionné(s)`
-    } else {
-      bar.style.display = 'none'
-    }
+    bar.style.display = selected.size > 0 ? 'flex' : 'none'
+    if (cnt) cnt.textContent = `${selected.size} joueur(s) sélectionné(s)`
   }
 
   function renderList() {
@@ -105,68 +107,33 @@ function renderPage(container, players, clubs, helpers) {
     if (!list.length) { el.innerHTML = '<div style="color:var(--gray-600);padding:20px;text-align:center">Aucun joueur.</div>'; return }
 
     el.innerHTML = list.map(p => {
-      const rarColor = RARITY_COLORS[p.rarity] || '#aaa'
-      const jobColor = JOB_COLORS[p.job]       || '#aaa'
-      const isSel    = selected.has(p.id)
-      return `
-        <div class="card-panel" style="display:flex;align-items:center;gap:10px;padding:10px 12px;${isSel ? 'border:2px solid #bb2020;background:rgba(187,32,32,0.05)' : ''}">
-          <!-- Checkbox -->
-          <input type="checkbox" data-check="${p.id}" ${isSel ? 'checked' : ''} style="width:18px;height:18px;flex-shrink:0;cursor:pointer;accent-color:#bb2020">
-          <!-- Note + poste -->
-          <div style="flex-shrink:0;width:40px;height:40px;border-radius:10px;border:2px solid ${rarColor};
-            background:${jobColor}22;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px">
-            <div style="font-size:16px;font-weight:900;color:${jobColor};line-height:1">${mainNote(p)}</div>
-            <div style="font-size:9px;font-weight:700;color:${jobColor}">${p.job}</div>
-          </div>
-          <!-- Infos -->
-          <div style="flex:1;min-width:0">
-            <div style="font-weight:700;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
-              ${p.firstname} <span style="font-family:monospace">${p.surname_encoded}</span>
-            </div>
-            <div style="display:flex;align-items:center;gap:6px;margin-top:2px">
-              <img src="https://flagsapi.com/${p.country_code}/flat/24.png" style="height:12px" onerror="this.style.display='none'">
-              <span style="font-size:11px;color:var(--gray-600)">${p.country_code}</span>
-              ${p.clubs ? `<span style="font-size:11px;color:var(--gray-600)">· ${p.clubs.encoded_name}</span>` : ''}
-              ${p.job2 ? `<span style="font-size:10px;color:#aaa;background:rgba(0,0,0,0.08);border-radius:4px;padding:1px 4px">${p.job2}</span>` : ''}
-            </div>
-            <div style="font-size:10px;color:${rarColor};font-weight:700;margin-top:2px">${RARITY_LABELS[p.rarity]||p.rarity}</div>
-          </div>
-          <!-- Notes secondaires -->
-          <div style="flex-shrink:0;font-size:10px;color:var(--gray-600);text-align:right;line-height:1.6;font-family:monospace">
-            <div>GK <b>${p.note_g}</b></div>
-            <div>DEF <b>${p.note_d}</b></div>
-            <div>MIL <b>${p.note_m}</b></div>
-            <div>ATT <b>${p.note_a}</b></div>
-          </div>
-          <!-- Actions -->
-          <div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0">
-            <button class="btn btn-ghost btn-sm" data-edit="${p.id}">✏️</button>
-            <button class="btn btn-danger btn-sm" data-del="${p.id}">🗑️</button>
-          </div>
-        </div>`
+      const playerObj = {
+        ...p,
+        clubs: p.clubs,
+        face: p.face || null,
+      }
+      const card = renderPlayerCard(playerObj, { width: 120 })
+      return `<div style="position:relative;cursor:pointer" data-edit="${p.id}">
+        ${card}
+        <div style="position:absolute;top:4px;left:4px;z-index:10;display:flex;gap:3px">
+          <button class="btn-del-player" data-del="${p.id}"
+            style="width:20px;height:20px;border-radius:50%;background:#c0392b;border:none;color:#fff;font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0"
+            onclick="event.stopPropagation()">✕</button>
+        </div>
+      </div>`
     }).join('')
 
-    // Checkboxes
-    el.querySelectorAll('[data-check]').forEach(cb => {
-      cb.addEventListener('change', () => {
-        if (cb.checked) selected.add(cb.dataset.check)
-        else            selected.delete(cb.dataset.check)
-        updateBulkBar()
-        // Re-highlight la card
-        const card = cb.closest('.card-panel')
-        if (card) {
-          card.style.border = cb.checked ? '2px solid #bb2020' : ''
-          card.style.background = cb.checked ? 'rgba(187,32,32,0.05)' : ''
-        }
+    // Clic carte → éditer
+    el.querySelectorAll('[data-edit]').forEach(div => {
+      div.addEventListener('click', () => {
+        const p = players.find(x => x.id === div.dataset.edit)
+        if (p) openPlayerModal(p, clubs, container, helpers)
       })
     })
-
-    el.querySelectorAll('[data-edit]').forEach(btn => {
-      const p = players.find(x => x.id === btn.dataset.edit)
-      btn.addEventListener('click', () => openPlayerModal(p, clubs, container, helpers))
-    })
-    el.querySelectorAll('[data-del]').forEach(btn => {
-      btn.addEventListener('click', async () => {
+    // Bouton supprimer
+    el.querySelectorAll('.btn-del-player').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation()
         if (!confirm('Supprimer ce joueur ?')) return
         const { error } = await supabase.from('players').delete().eq('id', btn.dataset.del)
         if (error) toast(error.message, 'error')
@@ -181,13 +148,9 @@ function renderPage(container, players, clubs, helpers) {
   document.getElementById('filter-rarity').addEventListener('change', renderList)
   document.getElementById('filter-club').addEventListener('change', renderList)
   document.getElementById('filter-country').addEventListener('change', renderList)
-
-  document.getElementById('bulk-cancel-btn')?.addEventListener('click', () => {
-    selected.clear(); updateBulkBar(); renderList()
-  })
+  document.getElementById('bulk-cancel-btn')?.addEventListener('click', () => { selected.clear(); updateBulkBar(); renderList() })
   document.getElementById('bulk-delete-btn')?.addEventListener('click', async () => {
-    if (!selected.size) return
-    if (!confirm(`Supprimer ${selected.size} joueur(s) ? Cette action est irréversible.`)) return
+    if (!selected.size || !confirm(`Supprimer ${selected.size} joueur(s) ?`)) return
     const ids = [...selected]
     const { error } = await supabase.from('players').delete().in('id', ids)
     if (error) { toast(error.message, 'error'); return }
@@ -198,216 +161,304 @@ function renderPage(container, players, clubs, helpers) {
   document.getElementById('add-player-btn').addEventListener('click', () => openPlayerModal(null, clubs, container, helpers))
 }
 
-function mainNote(p) {
-  if (p.job === 'GK')  return p.note_g
-  if (p.job === 'DEF') return p.note_d
-  if (p.job === 'MIL') return p.note_m
-  return p.note_a
-}
-
-// ── Modal avec card-builder live ──────────────────────────
-function openPlayerModal(player, clubs, container, helpers) {
+// ── Modal Card Builder ────────────────────────────────────
+async function openPlayerModal(player, clubs, container, helpers) {
   const { toast, openModal, closeModal } = helpers
   const isEdit = !!player
+  const manifest = await getFacesManifest()
+
+  // Faces déjà utilisées
+  const { data: usedFaces } = await supabase.from('players').select('face').not('face', 'is', null)
+  const usedSet = new Set((usedFaces || []).map(r => r.face).filter(Boolean))
+  if (player?.face) usedSet.delete(player.face) // permettre de réutiliser la face actuelle
 
   const clubOpts = `<option value="">— Club —</option>` +
     clubs.map(c => `<option value="${c.id}" ${player?.club_id === c.id ? 'selected' : ''}>${c.encoded_name}</option>`).join('')
-  const countryOpts = ALL_COUNTRIES
-    .map(c => `<option value="${c}" ${(player?.country_code || 'FR') === c ? 'selected' : ''}>${c}</option>`).join('')
+
+  const folderOpts = Object.keys(manifest).map(f =>
+    `<option value="${f}" ${player?.face?.startsWith(f) ? 'selected' : ''}>${f}</option>`
+  ).join('')
 
   openModal(
     isEdit ? `✏️ ${player.firstname} ${player.surname_encoded}` : '➕ Nouveau joueur',
-    `<div style="display:flex;flex-direction:column;gap:12px">
+    `<div style="display:flex;gap:20px;align-items:flex-start">
 
-      <!-- Aperçu carte sticky -->
-      <div style="position:sticky;top:0;z-index:10;background:var(--bg,#fff);padding:12px 0 8px;margin:-4px 0 0;border-bottom:1px solid var(--gray-200);display:flex;justify-content:center">
-        <div id="card-preview"></div>
+      <!-- Colonne gauche : aperçu carte -->
+      <div style="flex-shrink:0;position:sticky;top:0">
+        <div style="font-size:11px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;text-align:center">Aperçu</div>
+        <div id="card-preview" style="min-width:160px"></div>
       </div>
 
-      <!-- Identité -->
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-        <div class="form-group">
-          <label>Prénom *</label>
-          <input id="pm-fn" value="${player?.firstname||''}" placeholder="Lucas">
-        </div>
-        <div class="form-group">
-          <label>Nom réel *</label>
-<input id="pm-real" value="${player?.surname_real||''}" placeholder="Silva">
-        </div>
-<input type="hidden" id="pm-enc" value="${player?.surname_encoded||''}">
-        <div class="form-group">
-          <label>Pays</label>
-          <select id="pm-country">${countryOpts}</select>
-        </div>
-      </div>
+      <!-- Colonne droite : formulaire -->
+      <div style="flex:1;min-width:300px;display:flex;flex-direction:column;gap:12px">
 
-      <!-- Poste + club + rareté -->
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
-        <div class="form-group">
-          <label>Poste 1 *</label>
-          <select id="pm-job">
-            ${['GK','DEF','MIL','ATT'].map(j => `<option value="${j}" ${player?.job===j?'selected':''}>${j}</option>`).join('')}
-          </select>
+        <!-- Identité -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <div class="form-group">
+            <label>Prénom *</label>
+            <input id="pm-fn" value="${player?.firstname||''}" placeholder="Lucas">
+          </div>
+          <div class="form-group">
+            <label>Nom *</label>
+            <input id="pm-real" value="${player?.surname_real||player?.surname_encoded||''}" placeholder="Silva">
+          </div>
         </div>
-        <div class="form-group">
-          <label>Poste 2</label>
-          <select id="pm-job2">
-            <option value="">Aucun</option>
-            ${['GK','DEF','MIL','ATT'].map(j => `<option value="${j}" ${player?.job2===j?'selected':''}>${j}</option>`).join('')}
-          </select>
-        </div>
-        <div class="form-group">
-          <label>Rareté</label>
-          <select id="pm-rarity">
-            ${['normal','pepite','papyte','legende'].map(r => `<option value="${r}" ${player?.rarity===r?'selected':''}>${RARITY_LABELS[r]}</option>`).join('')}
-          </select>
-        </div>
-      </div>
 
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-        <div class="form-group">
-          <label>Club</label>
-          <select id="pm-club">${clubOpts}</select>
-        </div>
-        <div class="form-group">
-          <label>Prix vente (cr.)</label>
-          <input id="pm-price" type="number" min="0" value="${player?.sell_price||0}">
-        </div>
-      </div>
-
-      <!-- Notes -->
-      <div style="border-top:1px solid var(--gray-200);padding-top:10px">
-        <div style="font-weight:700;font-size:13px;margin-bottom:8px">📊 Notes (0–20)</div>
+        <!-- Poste + Rareté + Pays -->
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px">
-          ${[['GK','pm-g','note_g'],['DEF','pm-d','note_d'],['MIL','pm-m','note_m'],['ATT','pm-a','note_a']].map(([lbl,id,field]) => `
-            <div class="form-group" style="text-align:center">
-              <label style="color:${JOB_COLORS[lbl]};font-weight:700">${lbl}</label>
-              <input id="${id}" type="number" min="0" max="20" value="${player?.[field]??0}" style="text-align:center;font-size:18px;font-weight:900;padding:6px 4px">
-            </div>`).join('')}
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">
           <div class="form-group">
-            <label>Note min</label>
-            <input id="pm-nmin" type="number" min="0" max="20" value="${player?.note_min||''}">
+            <label>Poste 1</label>
+            <select id="pm-job">
+              ${['GK','DEF','MIL','ATT'].map(j => `<option value="${j}" ${player?.job===j?'selected':''}>${j}</option>`).join('')}
+            </select>
           </div>
           <div class="form-group">
-            <label>Note max</label>
-            <input id="pm-nmax" type="number" min="0" max="20" value="${player?.note_max||''}">
+            <label>Poste 2</label>
+            <select id="pm-job2">
+              <option value="">Aucun</option>
+              ${['GK','DEF','MIL','ATT'].map(j => `<option value="${j}" ${player?.job2===j?'selected':''}>${j}</option>`).join('')}
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Rareté</label>
+            <select id="pm-rarity">
+              ${['normal','pepite','papyte','legende'].map(r => `<option value="${r}" ${player?.rarity===r?'selected':''}>${RARITY_LABELS[r]}</option>`).join('')}
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Pays</label>
+            <select id="pm-country">
+              ${['FR','DE','ES','PT','IT','GB','NL','BE','DK','SE','NO','PL','CH','AT','CZ','HR','RS','AL','TR','AR','BR','UY','CO','MX','CL','PE','EC','MA','DZ','TN','EG','NG','SN','CI','CM','GH','ML','GN','CD','AO','ZA','KE','JP','KR','CN','VN','TH','ID','PH','US','CA','AU','RU','UA','GR','RO','BG','IR','SA','AE','IN','PK','BD']
+                .map(c => `<option value="${c}" ${(player?.country_code||'FR')===c?'selected':''}>${c}</option>`).join('')}
+            </select>
           </div>
         </div>
-      </div>
 
-      <!-- Physique -->
-      <div style="border-top:1px solid var(--gray-200);padding-top:10px">
-        <div style="font-weight:700;font-size:13px;margin-bottom:8px">🧑 Physique</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+        <!-- Club + Prix -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
           <div class="form-group">
-            <label>Peau</label>
-            <select id="pm-skin">
-              ${['blanc','metisse','typ','noir'].map(s => `<option value="${s}" ${player?.skin===s?'selected':''}>${s}</option>`).join('')}
-            </select>
+            <label>Club</label>
+            <select id="pm-club">${clubOpts}</select>
           </div>
           <div class="form-group">
-            <label>Cheveux</label>
-            <select id="pm-hair">
-              ${['blond','marron','noir','chauve'].map(h => `<option value="${h}" ${player?.hair===h?'selected':''}>${h}</option>`).join('')}
-            </select>
-          </div>
-          <div class="form-group">
-            <label>Longueur</label>
-            <select id="pm-hlen">
-              ${['rase','court','milong','long'].map(l => `<option value="${l}" ${player?.hair_length===l?'selected':''}>${l}</option>`).join('')}
-            </select>
+            <label>Prix vente (cr.)</label>
+            <input id="pm-price" type="number" min="0" value="${player?.sell_price||0}">
           </div>
         </div>
-      </div>
 
-      <div id="pm-error" style="color:#bb2020;font-size:13px;min-height:16px"></div>
-      <button class="btn btn-primary" id="pm-save" style="width:100%;padding:14px;font-size:15px">
-        ${isEdit ? '💾 Enregistrer' : '✅ Créer le joueur'}
-      </button>
+        <!-- Notes -->
+        <div style="border-top:1px solid var(--gray-200);padding-top:10px">
+          <div style="font-weight:700;font-size:13px;margin-bottom:8px">📊 Notes (0–20)</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px">
+            ${[['GK','pm-g','note_g'],['DEF','pm-d','note_d'],['MIL','pm-m','note_m'],['ATT','pm-a','note_a']].map(([lbl,id,field]) => `
+              <div class="form-group" style="text-align:center">
+                <label style="color:${JOB_COLORS[lbl]};font-weight:700">${lbl}</label>
+                <input id="${id}" type="number" min="0" max="20" value="${player?.[field]??0}" style="text-align:center;font-size:18px;font-weight:900;padding:6px 4px">
+              </div>`).join('')}
+          </div>
+          <div id="pm-minmax" style="display:${['pepite','papyte'].includes(player?.rarity)?'grid':'none'};grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">
+            <div class="form-group">
+              <label>Note min</label>
+              <input id="pm-nmin" type="number" min="0" max="20" value="${player?.note_min||''}">
+            </div>
+            <div class="form-group">
+              <label>Note max</label>
+              <input id="pm-nmax" type="number" min="0" max="20" value="${player?.note_max||''}">
+            </div>
+          </div>
+        </div>
+
+        <!-- Physique : choix du dossier puis de la face -->
+        <div style="border-top:1px solid var(--gray-200);padding-top:10px">
+          <div style="font-weight:700;font-size:13px;margin-bottom:8px">🧑 Physique</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+            <div class="form-group">
+              <label>Ethnie</label>
+              <select id="pm-folder">
+                <option value="">— Choisir —</option>
+                ${folderOpts}
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Visage</label>
+              <select id="pm-face">
+                <option value="">— Choisir un visage —</option>
+              </select>
+            </div>
+          </div>
+          <!-- Aperçu grille de visages -->
+          <div id="faces-grid" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;max-height:200px;overflow-y:auto"></div>
+        </div>
+
+        <div id="pm-error" style="color:#bb2020;font-size:13px;min-height:16px"></div>
+        <button class="btn btn-primary" id="pm-save" style="width:100%;padding:14px;font-size:15px">
+          ${isEdit ? '💾 Enregistrer' : '✅ Créer le joueur'}
+        </button>
+      </div>
     </div>`
   )
 
-  // ── Init après DOM ──────────────────────────────────────
   setTimeout(() => {
-    refreshCard()
+    let currentFace = player?.face || null
 
-    // Live preview sur tous les champs
-    const WATCH = ['pm-fn','pm-enc','pm-real','pm-country','pm-job','pm-job2','pm-rarity','pm-g','pm-d','pm-m','pm-a','pm-skin','pm-hair','pm-hlen','pm-club']
-    WATCH.forEach(id => document.getElementById(id)?.addEventListener('input', refreshCard))
-    WATCH.forEach(id => document.getElementById(id)?.addEventListener('change', refreshCard))
+    function refreshCard() {
+      const wrap = document.getElementById('card-preview')
+      if (!wrap) return
+      const fn  = document.getElementById('pm-fn')?.value || ''
+      const nm  = (document.getElementById('pm-real')?.value || '').toUpperCase()
+      const job = document.getElementById('pm-job')?.value || 'ATT'
+      const job2 = document.getElementById('pm-job2')?.value || null
+      const rar = document.getElementById('pm-rarity')?.value || 'normal'
+      const cc  = document.getElementById('pm-country')?.value || 'FR'
+      const cid = document.getElementById('pm-club')?.value || null
+      const clubEl = document.getElementById('pm-club')
+      const clubOpt = clubEl?.options[clubEl.selectedIndex]
+      const clubName = clubOpt?.text !== '— Club —' ? clubOpt?.text : null
 
-    document.getElementById('pm-real')?.addEventListener('input', () => {
-      const enc = document.getElementById('pm-enc')
-      if (enc) { enc.value = document.getElementById('pm-real').value.toUpperCase(); refreshCard() }
+      const ng = parseInt(document.getElementById('pm-g')?.value) || 0
+      const nd = parseInt(document.getElementById('pm-d')?.value) || 0
+      const nm2 = parseInt(document.getElementById('pm-m')?.value) || 0
+      const na = parseInt(document.getElementById('pm-a')?.value) || 0
+
+      // Trouver le logo du club sélectionné
+      const selClub = clubs.find(c => c.id === cid)
+
+      const p = {
+        firstname: fn || 'Prénom',
+        surname_encoded: nm || 'NOM',
+        job, job2: job2 || null,
+        rarity: rar,
+        country_code: cc,
+        club_id: cid,
+        note_g: ng, note_d: nd, note_m: nm2, note_a: na,
+        face: currentFace,
+        clubs: selClub ? { encoded_name: selClub.encoded_name, logo_url: selClub.logo_url } : null,
+      }
+      wrap.innerHTML = renderPlayerCard(p, { width: 160 })
+
+      // Afficher/masquer note min/max
+      const mm = document.getElementById('pm-minmax')
+      if (mm) mm.style.display = ['pepite','papyte'].includes(rar) ? 'grid' : 'none'
+    }
+
+    function loadFacesGrid(folder) {
+      const grid = document.getElementById('faces-grid')
+      const sel  = document.getElementById('pm-face')
+      if (!grid || !sel) return
+      const files = manifest[folder] || []
+      const avail = files.filter(f => {
+        const path = folder + '/' + f
+        return path === currentFace || !usedSet.has(path)
+      })
+
+      // Mettre à jour le select
+      sel.innerHTML = '<option value="">— Choisir un visage —</option>' +
+        avail.map(f => {
+          const path = folder + '/' + f
+          return `<option value="${path}" ${currentFace === path ? 'selected' : ''}>${f}</option>`
+        }).join('')
+
+      // Grille visuelle
+      grid.innerHTML = avail.map(f => {
+        const path = folder + '/' + f
+        const isSel = currentFace === path
+        return `<div data-face="${path}" style="cursor:pointer;border:2px solid ${isSel?'#4fc3f7':'transparent'};border-radius:6px;overflow:hidden;width:52px;height:52px;flex-shrink:0;background:#222">
+          <img src="${BASE}faces/${path}" style="width:52px;height:52px;object-fit:cover" onerror="this.parentElement.style.display='none'">
+        </div>`
+      }).join('')
+
+      // Clic sur une face dans la grille
+      grid.querySelectorAll('[data-face]').forEach(el => {
+        el.addEventListener('click', () => {
+          currentFace = el.dataset.face
+          // Mettre à jour le select
+          const s = document.getElementById('pm-face')
+          if (s) s.value = currentFace
+          // Mettre à jour la grille
+          grid.querySelectorAll('[data-face]').forEach(e => {
+            e.style.border = `2px solid ${e.dataset.face === currentFace ? '#4fc3f7' : 'transparent'}`
+          })
+          refreshCard()
+        })
+      })
+    }
+
+    // Init dossier si joueur existant
+    const initFolder = player?.face ? player.face.split('/')[0] : ''
+    if (initFolder && manifest[initFolder]) {
+      document.getElementById('pm-folder').value = initFolder
+      loadFacesGrid(initFolder)
+    }
+
+    // Changement de dossier
+    document.getElementById('pm-folder')?.addEventListener('change', e => {
+      loadFacesGrid(e.target.value)
     })
 
-    document.getElementById('pm-save')?.addEventListener('click', () => savePlayer(player, isEdit, container, helpers))
+    // Changement de select face
+    document.getElementById('pm-face')?.addEventListener('change', e => {
+      currentFace = e.target.value || null
+      refreshCard()
+    })
+
+    // Live preview
+    const WATCH = ['pm-fn','pm-real','pm-country','pm-job','pm-job2','pm-rarity','pm-g','pm-d','pm-m','pm-a','pm-club']
+    WATCH.forEach(id => {
+      document.getElementById(id)?.addEventListener('input', refreshCard)
+      document.getElementById(id)?.addEventListener('change', refreshCard)
+    })
+
+    document.getElementById('pm-save')?.addEventListener('click', () => savePlayer(player, isEdit, currentFace, container, helpers))
+    refreshCard()
   }, 50)
 }
 
-function getFormData() {
+function getFormData(face) {
   const g = id => document.getElementById(id)?.value
-  const clubEl  = document.getElementById('pm-club')
-  const clubOpt = clubEl?.options[clubEl.selectedIndex]
   return {
     firstname:       (g('pm-fn') || '').trim(),
     surname_real:    (g('pm-real') || '').trim(),
     surname_encoded: (g('pm-real') || '').trim().toUpperCase(),
     country_code:    g('pm-country') || 'FR',
     club_id:         g('pm-club') || null,
-    club_encoded_name: clubOpt?.text !== '— Club —' ? clubOpt?.text : null,
     job:             g('pm-job') || 'ATT',
     job2:            g('pm-job2') || null,
     rarity:          g('pm-rarity') || 'normal',
-    note_g:          parseInt(g('pm-g'))    ?? 0,
-    note_d:          parseInt(g('pm-d'))    ?? 0,
-    note_m:          parseInt(g('pm-m'))    ?? 0,
-    note_a:          parseInt(g('pm-a'))    ?? 0,
+    note_g:          parseInt(g('pm-g'))    || 0,
+    note_d:          parseInt(g('pm-d'))    || 0,
+    note_m:          parseInt(g('pm-m'))    || 0,
+    note_a:          parseInt(g('pm-a'))    || 0,
     note_min:        parseInt(g('pm-nmin')) || null,
     note_max:        parseInt(g('pm-nmax')) || null,
-    skin:            g('pm-skin')   || 'blanc',
-    hair:            g('pm-hair')   || 'marron',
-    hair_length:     g('pm-hlen')   || 'court',
     sell_price:      parseInt(g('pm-price')) || 0,
+    face:            face || null,
+    is_active:       true,
   }
 }
 
-function refreshCard() {
-  const wrap = document.getElementById('card-preview')
-  if (!wrap) return
-  const d = getFormData()
-  const playerLike = {
-    ...d,
-    rarity: d.rarity,
-    job: d.job, job2: d.job2 || null,
-    firstname: d.firstname || 'Prénom',
-    surname_encoded: d.surname_encoded || 'NOM',
-  }
-  wrap.innerHTML = renderCardHTML(playerLike, { size: 'md', showNotes: false })
-}
-
-async function savePlayer(player, isEdit, container, helpers) {
+async function savePlayer(player, isEdit, face, container, helpers) {
   const { toast, closeModal } = helpers
   const errEl = document.getElementById('pm-error')
   const btn   = document.getElementById('pm-save')
-  const d     = getFormData()
+  const d     = getFormData(face)
 
-  if (!d.firstname)       { errEl.textContent = 'Le prénom est requis.';      return }
-  if (!d.surname_real)    { errEl.textContent = 'Le nom réel est requis.';    return }
-  if (!d.surname_encoded) { errEl.textContent = 'Le nom encodé est requis.';  return }
+  if (!d.firstname)       { errEl.textContent = 'Le prénom est requis.';   return }
+  if (!d.surname_real)    { errEl.textContent = 'Le nom est requis.';      return }
 
   btn.disabled = true; btn.textContent = 'Enregistrement…'
 
-  // Retirer club_encoded_name (pas en DB)
-  const { club_encoded_name, ...payload } = d
+  const { surname_real, ...payload } = d
 
   const { error } = isEdit
     ? await supabase.from('players').update({ ...payload, updated_at: new Date().toISOString() }).eq('id', player.id)
     : await supabase.from('players').insert(payload)
 
-  if (error) { errEl.textContent = error.message; btn.disabled = false; btn.textContent = isEdit ? '💾 Enregistrer' : '✅ Créer le joueur'; return }
+  if (error) {
+    errEl.textContent = error.message
+    btn.disabled = false
+    btn.textContent = isEdit ? '💾 Enregistrer' : '✅ Créer le joueur'
+    return
+  }
 
   toast(isEdit ? 'Joueur modifié ✅' : 'Joueur créé ✅', 'success')
   closeModal()

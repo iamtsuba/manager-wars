@@ -434,23 +434,6 @@ function renderBuilder(container, builder, ctx) {
 
 
   // Formation mobile et PC : même modal
-  const openFormationModal = () => {
-    const { openModal, closeModal } = ctx
-    openModal('⚽ Choisir une formation',
-      `<div style="display:flex;flex-wrap:wrap;gap:8px;padding:8px">
-        ${formationOptions.map(f => `
-          <div class="forma-choice" data-forma="${f}" style="cursor:pointer;padding:10px 16px;border-radius:8px;background:${f===builder.formation?'#1A6B3C':'#f0f0f0'};color:${f===builder.formation?'#fff':'#111'};font-weight:900;font-size:16px;border:2px solid ${f===builder.formation?'#1A6B3C':'#ddd'}">${f}</div>`).join('')}
-      </div>`
-    )
-    document.querySelectorAll('.forma-choice').forEach(el => {
-      el.addEventListener('click', () => {
-        builder.formation = el.dataset.forma
-        closeModal()
-        renderBuilder(container, builder, ctx)
-      })
-    })
-  }
-  document.getElementById('formation-mobile-btn')?.addEventListener('click', openFormationModal)
   document.getElementById('formation-pc-btn')?.addEventListener('click', () => {
     openFormationModal()
   })

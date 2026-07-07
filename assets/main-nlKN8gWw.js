@@ -339,7 +339,7 @@ import{s as T,F as ki,i as Ht,k as eo,l as nt,m as ji,f as Nt,n as Lo,T as ci,j 
         border:1.5px solid #ddd;background:#fff;
         font-size:14px;font-weight:700;cursor:pointer;color:#555;
       }
-    </style>`}async function oo({player1Id:e,player2Id:t,score1:i,score2:n,gc1:d,gc2:s}){const[r,l]=[e,t].sort(),m=e!==r,a=m?n:i,o=m?i:n,y=m?s:d,p=m?d:s,x=a>o?1:0,_=o>a?1:0,f=a===o?1:0,{data:c}=await T.from("friend_match_stats").select("*").eq("player1_id",r).eq("player2_id",l).single();c?await T.from("friend_match_stats").update({wins_p1:c.wins_p1+x,wins_p2:c.wins_p2+_,draws:c.draws+f,goals_p1:c.goals_p1+a,goals_p2:c.goals_p2+o,gc_used_p1:c.gc_used_p1+y,gc_used_p2:c.gc_used_p2+p,matches_total:c.matches_total+1}).eq("player1_id",r).eq("player2_id",l):await T.from("friend_match_stats").insert({player1_id:r,player2_id:l,wins_p1:x,wins_p2:_,draws:f,goals_p1:a,goals_p2:o,gc_used_p1:y,gc_used_p2:p,matches_total:1})}const Ho="2026.07.07-2135";async function Fi(e,{state:t,navigate:i,toast:n}){var s,r;const d=t.profile;d&&(e.innerHTML=`
+    </style>`}async function oo({player1Id:e,player2Id:t,score1:i,score2:n,gc1:d,gc2:s}){const[r,l]=[e,t].sort(),m=e!==r,a=m?n:i,o=m?i:n,y=m?s:d,p=m?d:s,x=a>o?1:0,_=o>a?1:0,f=a===o?1:0,{data:c}=await T.from("friend_match_stats").select("*").eq("player1_id",r).eq("player2_id",l).single();c?await T.from("friend_match_stats").update({wins_p1:c.wins_p1+x,wins_p2:c.wins_p2+_,draws:c.draws+f,goals_p1:c.goals_p1+a,goals_p2:c.goals_p2+o,gc_used_p1:c.gc_used_p1+y,gc_used_p2:c.gc_used_p2+p,matches_total:c.matches_total+1}).eq("player1_id",r).eq("player2_id",l):await T.from("friend_match_stats").insert({player1_id:r,player2_id:l,wins_p1:x,wins_p2:_,draws:f,goals_p1:a,goals_p2:o,gc_used_p1:y,gc_used_p2:p,matches_total:1})}const Ho="2026.07.07-2137";async function Fi(e,{state:t,navigate:i,toast:n}){var s,r;const d=t.profile;d&&(e.innerHTML=`
   <style>
     @media (min-width: 768px) {
       .home-page-body {
@@ -814,7 +814,7 @@ import{s as T,F as ki,i as Ht,k as eo,l as nt,m as ji,f as Nt,n as Lo,T as ci,j 
             ${[["GK",o.note_g],["DEF",o.note_d],["MIL",o.note_m],["ATT",o.note_a]].map(([se,pe])=>{const de=pi[se],H=se===o.job||se===o.job2,ee=(Number(pe)||0)+(H&&q>0?q:0);return`<div style="display:flex;flex-direction:column;align-items:center;gap:4px">
                 <div style="width:48px;height:48px;border-radius:8px;background:#111;border:2.5px solid ${de};
                   display:flex;align-items:center;justify-content:center">
-                  <span style="font-size:20px;font-weight:900;color:#fff;font-family:Arial Black,Arial;line-height:1">${ee}</span>
+                  <span style="font-size:20px;font-weight:900;color:${de};font-family:Arial Black,Arial;line-height:1">${ee}</span>
                 </div>
                 <span style="font-size:10px;font-weight:700;color:${de}">${se}</span>
               </div>`}).join("")}

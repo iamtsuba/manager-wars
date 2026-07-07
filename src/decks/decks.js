@@ -82,7 +82,7 @@ export async function renderDecks(container, ctx) {
     .eq('owner_id', state.profile.id).order('created_at', { ascending: false })
 
   container.innerHTML = `
-  <div style="height:100%;overflow-y:auto;padding-bottom:80px;background:var(--page-bg)">
+  <div style="height:100%;overflow:hidden;background:var(--page-bg)">
     <div class="page-header">
       <h2>Mes decks</h2>
       <p>${decks?.length || 0} deck(s) · 11 titulaires + 5 remplaçants max</p>
@@ -238,7 +238,7 @@ function renderBuilder(container, builder, ctx) {
   const allUsed    = [...Object.values(builder.slots), ...builder.subs]
 
   container.innerHTML = `
-  <div style="height:100%;overflow-y:auto;padding-bottom:80px;background:var(--page-bg)">
+  <div style="height:100%;overflow:hidden;background:var(--page-bg)">
     <div class="page-header" style="display:flex;align-items:center;gap:10px">
       <button class="btn-icon" id="builder-back" style="font-size:20px">←</button>
       <div style="flex:1">

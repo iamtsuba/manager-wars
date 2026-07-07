@@ -112,9 +112,9 @@ export function renderPlayerCard(p, opts = {}) {
   // Drapeaux/logo : alignés sur le centre de la note (y centre note = 390+90=480)
   const rectH    = ax(85)
   const rectW    = ax(95)
-  const rectY    = ax(435)   // centré sur y≈477 (milieu de noteTop+noteH/2)
-  const rectLX   = ax(18)    // pas collé au bord
-  const rectRX   = ax(394)   // pas collé au bord
+  const rectY    = ax(435)
+  const rectLX   = ax(38)    // moins collé au bord
+  const rectRX   = ax(374)   // moins collé au bord
   const rectR    = ax(6)
 
   return `<div style="position:relative;width:${width}px;height:${height}px;flex-shrink:0;${opacity}user-select:none">
@@ -145,7 +145,7 @@ export function renderPlayerCard(p, opts = {}) {
 
   <!-- Note secondaire : carré arrondi rouge sous l'octogone -->
   ${job2Note !== null ? `
-  <div style="position:absolute;left:50%;transform:translateX(-50%);top:${px(555)};
+  <div style="position:absolute;left:50%;transform:translateX(-50%);top:${px(530)};
     width:${px(90)};height:${px(60)};z-index:5;
     border-radius:${px(8)};
     background:#0a0a0a;border:${px(2)} solid #e03030;

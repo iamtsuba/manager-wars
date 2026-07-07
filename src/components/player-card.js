@@ -109,13 +109,12 @@ export function renderPlayerCard(p, opts = {}) {
   const noteX    = ax(100)
   const noteW    = ax(309)
 
-  // Drapeaux/logo : rectangles flanquant l'octogone, centrés à y=460
-  // Restent dans la carte (x=0→507)
+  // Drapeaux/logo : alignés sur le centre de la note (y centre note = 390+90=480)
   const rectH    = ax(85)
   const rectW    = ax(95)
-  const rectY    = ax(455)
-  const rectLX   = ax(5)     // collé au bord gauche de la carte
-  const rectRX   = ax(407)   // collé au bord droit de la carte
+  const rectY    = ax(435)   // centré sur y≈477 (milieu de noteTop+noteH/2)
+  const rectLX   = ax(18)    // pas collé au bord
+  const rectRX   = ax(394)   // pas collé au bord
   const rectR    = ax(6)
 
   return `<div style="position:relative;width:${width}px;height:${height}px;flex-shrink:0;${opacity}user-select:none">
@@ -144,14 +143,14 @@ export function renderPlayerCard(p, opts = {}) {
     <span style="font-size:${px(80)};font-weight:900;color:${noteColor};font-family:Arial Black,Arial;line-height:1;text-shadow:0 2px 8px rgba(0,0,0,0.9)">${mainNote}</span>
   </div>
 
-  <!-- Note secondaire : sous l'octogone note -->
+  <!-- Note secondaire : carré arrondi rouge sous l'octogone -->
   ${job2Note !== null ? `
-  <div style="position:absolute;left:50%;transform:translateX(-50%);top:${px(580)};
-    width:${px(80)};height:${px(58)};z-index:5;
-    clip-path:polygon(30% 0%,70% 0%,100% 30%,100% 70%,70% 100%,30% 100%,0% 70%,0% 30%);
+  <div style="position:absolute;left:50%;transform:translateX(-50%);top:${px(555)};
+    width:${px(90)};height:${px(60)};z-index:5;
+    border-radius:${px(8)};
     background:#0a0a0a;border:${px(2)} solid #e03030;
     display:flex;align-items:center;justify-content:center">
-    <span style="font-size:${px(30)};font-weight:900;color:#e03030;font-family:Arial Black,Arial;line-height:1">${job2Note}</span>
+    <span style="font-size:${px(32)};font-weight:900;color:#e03030;font-family:Arial Black,Arial;line-height:1">${job2Note}</span>
   </div>` : ''}
 
   <!-- Drapeau : sans fond -->

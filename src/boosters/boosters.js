@@ -1051,7 +1051,7 @@ function buildCardFace(card) {
     const label = def?.club?.encoded_name || def?.country_code || '—'
     const imgUrl = def?.image_url
       ? `${import.meta.env.BASE_URL}icons/${def.image_url}`
-      : (def?.club?.logo_url || (def?.country_code ? `https://flagcdn.com/64x48/${def.country_code.toLowerCase()}.png` : null))
+      : (def?.club?.logo_url || (def?.country_code ? `https://flagsapi.com/${$def.country_code.toLowerCase().slice(0,2).toUpperCase()}/flat/64.png` : null))
     return `<div style="width:160px;height:230px;background:linear-gradient(160deg,#E87722,#c45a00);border-radius:14px;border:3px solid #c45a00;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 0 24px rgba(232,119,34,0.6)">
       <div style="padding:8px 10px;background:rgba(0,0,0,0.25);text-align:center;flex-shrink:0">
         <div style="font-size:7px;font-weight:700;color:rgba(255,255,255,0.65);letter-spacing:1px">🏟️ STADE</div>

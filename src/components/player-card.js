@@ -27,7 +27,7 @@ function getFaceUrl(p) {
 
 function getFlagUrl(code) {
   if (!code || code.length < 2) return null
-  return `https://flagcdn.com/64x48/${code.slice(0, 2).toLowerCase()}.png`
+  return `https://flagsapi.com/${code.slice(0, 2).toUpperCase()}/flat/64.png`
 }
 
 function getClubLogoUrl(p) {

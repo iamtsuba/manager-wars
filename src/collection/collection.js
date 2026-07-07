@@ -515,7 +515,7 @@ export async function renderCollection(container, ctx) {
         const bg   = BG[def?.color]  ||BG.purple
         const bord = BORD[def?.color]||BORD.purple
         const effect = def?.effect||gc.desc||''
-        const imgUrl = def?.image_url ? `${import.meta.env.BASE_URL}icons/${def.image_url}` : (def?.club?.logo_url || (def?.country_code ? `https://flagcdn.com/w80/${def.country_code.toLowerCase()}.png` : null))
+        const imgUrl = def?.image_url ? `${import.meta.env.BASE_URL}icons/${def.image_url}` : (def?.club?.logo_url || (def?.country_code ? `https://flagsapi.com/${$def.country_code.toLowerCase().slice(0,2).toUpperCase()}/flat/64.png` : null))
         if (owned && card) return `<div data-gc-id="${card.id}" data-gc-type="${type}" style="position:relative;width:140px;border-radius:12px;border:3px solid ${bord};background:${bg};display:flex;flex-direction:column;overflow:hidden;box-shadow:0 0 24px ${bord}66;cursor:pointer">
           ${badge}
           <div style="padding:10px 12px;background:rgba(255,255,255,0.14);text-align:center">
@@ -563,7 +563,7 @@ export async function renderCollection(container, ctx) {
         const label = def?.club?.encoded_name || def?.country_code || '—'
         const imgUrl = def?.image_url
         ? `${BASE2}icons/${def.image_url}`
-        : (def?.club?.logo_url || (def?.country_code ? `https://flagcdn.com/w80/${def.country_code.toLowerCase()}.png` : null))
+        : (def?.club?.logo_url || (def?.country_code ? `https://flagsapi.com/${$def.country_code.toLowerCase().slice(0,2).toUpperCase()}/flat/64.png` : null))
         const imgHTML = imgUrl
           ? `<img src="${imgUrl}" style="width:90px;height:90px;object-fit:contain;border-radius:4px" onerror="this.style.display='none'">`
           : `<div style="font-size:56px">🏟️</div>`
@@ -587,7 +587,7 @@ export async function renderCollection(container, ctx) {
         const label = def?.club?.encoded_name || def?.country_code || '—'
         const imgUrl = def?.image_url
         ? `${BASE2}icons/${def.image_url}`
-        : (def?.club?.logo_url || (def?.country_code ? `https://flagcdn.com/w80/${def.country_code.toLowerCase()}.png` : null))
+        : (def?.club?.logo_url || (def?.country_code ? `https://flagsapi.com/${$def.country_code.toLowerCase().slice(0,2).toUpperCase()}/flat/64.png` : null))
         const imgHTML = imgUrl
           ? `<img src="${imgUrl}" style="width:64px;height:64px;object-fit:contain;border-radius:4px" onerror="this.style.display='none'">`
           : '<span style="font-size:32px">🏟️</span>'

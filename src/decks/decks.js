@@ -438,16 +438,16 @@ function renderDeckField(container, builder, positions, ctx) {
   // Taille responsive
   const isDesktopRDF = window.innerWidth >= 768
   // PC : terrain dans la colonne droite (largeur - 140px stade)
-  const availW = isDesktopRDF ? window.innerWidth - 200 : window.innerWidth - 20
-  const W      = isDesktopRDF ? Math.min(availW, 900) : availW
-  const H      = isDesktopRDF ? Math.round(W * 1.05)  : Math.round(W * 1.35)
-  const CARD_W = isDesktopRDF ? 75 : 44
+  const availW = isDesktopRDF ? window.innerWidth - 280 : window.innerWidth - 20
+  const W      = isDesktopRDF ? Math.min(availW, 860) : availW
+  const H      = isDesktopRDF ? Math.round(W * 0.82)  : Math.round(W * 1.35)
+  const CARD_W = isDesktopRDF ? 70 : 44
 
   // SVG des liens uniquement
   let linkSvg = ''
   for (const [posA, posB] of FLINKS) {
     const fA = FPOS[posA], fB = FPOS[posB]; if (!fA||!fB) continue
-    const ax = fA.x*W, ay = fA.y*H, bx = fB.x*W, by = fB.y*H
+    const ax = fA.x*W, ay = Math.round(0.03*H + fA.y*0.85*H), bx = fB.x*W, by = Math.round(0.03*H + fB.y*0.85*H)
     const pA = slots[posA], pB = slots[posB]
     const lc = linkColor(pA, pB)
     const noLink = lc === '#ff3333' || lc === '#cc2222'
@@ -466,17 +466,26 @@ function renderDeckField(container, builder, positions, ctx) {
     const fp = FPOS[pos]; if (!fp) continue
     const p = slots[pos]
     const cx = fp.x * W
-    const cy = fp.y * H
+    // Compression Y : remap [0,1] → [0.03, 0.88] pour tout rentrer dans le viewport
+    const cyRaw = fp.y * H
+    const cy = Math.round(0.03 * H + fp.y * (0.85 * H))
     const left = Math.round(cx - CARD_W/2)
     const top  = Math.round(cy - CARD_H/2)
 
     if (p) {
       const role = pos.replace(/\d+/, '')
+      const hasStad = stadDef && (
+        (stadDef.club_id && String(p.club_id) === String(stadDef.club_id)) ||
+        (stadDef.country_code && p.country_code === stadDef.country_code)
+      )
       const cardHtml = renderPlayerCard(
         { ...p, _evolution_bonus: p._evolution_bonus||0 },
-        { width: CARD_W, showStad: true, stadDef, role }
+        { width: CARD_W, showStad: false, stadDef, role }
       )
-      cardsHtml += `<div style="position:absolute;left:${left}px;top:${top}px;cursor:pointer;z-index:2" class="deck-slot-hit" data-pos="${pos}">${cardHtml}</div>`
+      const stadIcon = hasStad ? `<div style="position:absolute;top:-${Math.round(CARD_H*0.12)}px;left:0;right:0;text-align:center;font-size:${Math.round(CARD_W*0.35)}px;z-index:5;line-height:1">🏟️</div>` : ''
+      cardsHtml += `<div style="position:absolute;left:${left}px;top:${top}px;cursor:pointer;z-index:2;position:absolute" class="deck-slot-hit" data-pos="${pos}">
+        <div style="position:relative">${stadIcon}${cardHtml}</div>
+      </div>`
     } else {
       const role = pos.replace(/\d+/, '')
       cardsHtml += `<div style="position:absolute;left:${left}px;top:${top}px;width:${CARD_W}px;height:${CARD_H}px;

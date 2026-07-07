@@ -342,14 +342,13 @@ function renderBuilder(container, builder, ctx) {
           </div>
           <!-- Stade mobile : à droite -->
           <div style="flex-shrink:0;text-align:center">
-            <div style="font-size:10px;font-weight:700;margin-bottom:6px;color:rgba(255,255,255,0.6);letter-spacing:1px;text-transform:uppercase">🏟️</div>
             <div id="add-stad-btn" style="cursor:pointer">
               ${_selStadCard ? (() => {
                 const def = builder.stadDefMap[_selStadCard.stadium_id]
                 const logo = def?.club?.logo_url || null
                 return `<div style="width:50px;height:65px;border-radius:6px;background:linear-gradient(135deg,#1a3a6b,#0a1a3a);border:2px solid #4fc3f7;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px">
                   ${logo ? `<img src="${logo}" style="width:26px;height:26px;object-fit:contain">` : `<span style="font-size:18px">🏟️</span>`}
-                  <span style="font-size:7px;font-weight:700;color:#E87722;text-align:center;padding:0 2px">${(def?.name||'Stade').slice(0,10)}</span>
+                  <span style="font-size:14px;font-weight:700;color:#E87722;text-align:center;padding:0 2px">${(def?.name||'Stade').slice(0,10)}</span>
                 </div>`
               })() : `<div style="width:50px;height:65px;border:2px dashed rgba(255,165,0,0.4);border-radius:6px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px">
                 <span style="font-size:18px">🏟️</span>
@@ -373,7 +372,6 @@ function renderBuilder(container, builder, ctx) {
   const isDesktop = window.innerWidth >= 768
   const pcLayout     = container.querySelector('.deck-pc-layout')
   const mobileLayout = container.querySelector('.deck-mobile-layout')
-  const formMobile   = container.querySelector('.formation-mobile-only')
   if (pcLayout)     pcLayout.style.display     = isDesktop ? 'block' : 'none'
   if (mobileLayout) mobileLayout.style.display = isDesktop ? 'none'  : 'block'
   if (formMobile)   formMobile.style.display   = isDesktop ? 'none'  : 'block'
@@ -395,42 +393,24 @@ function renderBuilder(container, builder, ctx) {
   const openFormationModal = () => {
     const { openModal, closeModal } = ctx
     openModal('⚽ Choisir une formation',
-      `<div style="display:flex;flex-wrap:wrap;gap:8px;padding:8px">
+      `<div id="forma-grid" style="display:flex;flex-wrap:wrap;gap:8px;padding:8px">
         ${formationOptions.map(f => `
-          <div class="forma-choice" data-forma="${f}" style="cursor:pointer;padding:10px 16px;border-radius:8px;background:${f===builder.formation?'#1A6B3C':'#f0f0f0'};color:${f===builder.formation?'#fff':'#111'};font-weight:900;font-size:16px;border:2px solid ${f===builder.formation?'#1A6B3C':'#ddd'}">${f}</div>`).join('')}
+          <div data-forma="${f}" style="cursor:pointer;padding:10px 16px;border-radius:8px;background:${f===builder.formation?'#1A6B3C':'#f0f0f0'};color:${f===builder.formation?'#fff':'#111'};font-weight:900;font-size:16px;border:2px solid ${f===builder.formation?'#1A6B3C':'#ddd'}">${f}</div>`).join('')}
       </div>`
     )
-    document.querySelectorAll('.forma-choice').forEach(el => {
-      el.addEventListener('click', () => {
+    // Délégation sur le conteneur pour éviter les conflits
+    setTimeout(() => {
+      document.getElementById('forma-grid')?.addEventListener('click', e => {
+        const el = e.target.closest('[data-forma]')
+        if (!el) return
         builder.formation = el.dataset.forma
         closeModal()
         renderBuilder(container, builder, ctx)
       })
-    })
+    }, 50)
   }
   document.getElementById('formation-mobile-btn')?.addEventListener('click', openFormationModal)
-  document.getElementById('formation-pc-btn')?.addEventListener('click', () => {
-    const { openModal, closeModal } = ctx
-    openModal('⚽ Choisir une formation',
-      `<div style="display:flex;flex-wrap:wrap;gap:8px;padding:8px">
-        ${formationOptions.map(f => `
-          <div class="forma-choice" data-forma="${f}" style="cursor:pointer;
-            padding:10px 16px;border-radius:8px;
-            background:${f===builder.formation?'#1A6B3C':'#f0f0f0'};
-            color:${f===builder.formation?'#fff':'#111'};font-weight:900;font-size:16px;
-            border:2px solid ${f===builder.formation?'#1A6B3C':'#ddd'}">
-            ${f}
-          </div>`).join('')}
-      </div>`
-    )
-    document.querySelectorAll('.forma-choice').forEach(el => {
-      el.addEventListener('click', () => {
-        builder.formation = el.dataset.forma
-        closeModal()
-        renderBuilder(container, builder, ctx)
-      })
-    })
-  })
+  document.getElementById('formation-pc-btn')?.addEventListener('click', openFormationModal)
 
 
   // Formation mobile et PC : même modal
@@ -488,7 +468,7 @@ function renderDeckField(container, builder, positions, ctx) {
   // PC : terrain dans la colonne droite (largeur - 140px stade)
   const availW = isDesktopRDF ? window.innerWidth - 280 : window.innerWidth - 20
   const W      = isDesktopRDF ? Math.min(availW, 860) : availW
-  const H      = isDesktopRDF ? Math.round(W * 0.82)  : Math.round(W * 1.35)
+  const H      = isDesktopRDF ? Math.round(W * 0.82)  : Math.round(W * 1.2)
   const CARD_W = isDesktopRDF ? 84 : 44  // 70 * 1.2 = 84
 
   // SVG des liens uniquement

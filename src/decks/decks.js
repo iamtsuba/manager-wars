@@ -456,7 +456,7 @@ function renderDeckField(container, builder, positions, ctx) {
   // PC : terrain dans la colonne droite (largeur - 140px stade)
   const availW = isDesktopRDF ? window.innerWidth - 280 : window.innerWidth - 20
   const W      = isDesktopRDF ? Math.min(availW, 860) : availW
-  const H      = isDesktopRDF ? Math.round(W * 0.82)  : Math.round(W * 0.9)
+  const H      = isDesktopRDF ? Math.round(W * 0.82)  : Math.round(W * 0.85)
   const CARD_W = isDesktopRDF ? 84 : 44  // 70 * 1.2 = 84
 
   // SVG des liens uniquement

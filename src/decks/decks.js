@@ -352,6 +352,13 @@ function renderBuilder(container, builder, ctx) {
     </div>
   </div>`
 
+  // Activer le bon layout AVANT renderDeckField
+  const isDesktop = window.innerWidth >= 768
+  const pcLayout     = container.querySelector('.deck-pc-layout')
+  const mobileLayout = container.querySelector('.deck-mobile-layout')
+  if (pcLayout)     pcLayout.style.display     = isDesktop ? 'block' : 'none'
+  if (mobileLayout) mobileLayout.style.display = isDesktop ? 'none'  : 'block'
+
   renderDeckField(container, builder, positions, ctx)
 
   document.getElementById('builder-back').addEventListener('click', () => navigate('decks'))
@@ -411,12 +418,12 @@ function renderDeckField(container, builder, positions, ctx) {
 
   // Terrain HTML : cartes positionnées en absolu sur un terrain de 320x320
   // Taille responsive
-  const isDesktop = window.innerWidth >= 768
+  const isDesktopRDF = window.innerWidth >= 768
   // PC : terrain dans la colonne droite (largeur - 140px stade)
-  const availW = isDesktop ? window.innerWidth - 180 : window.innerWidth - 20
-  const W      = isDesktop ? Math.min(availW, 800) : availW
-  const H      = isDesktop ? Math.round(W * 1.3)   : Math.round(W * 1.35)
-  const CARD_W = isDesktop ? 80 : 44
+  const availW = isDesktopRDF ? window.innerWidth - 180 : window.innerWidth - 20
+  const W      = isDesktopRDF ? Math.min(availW, 800) : availW
+  const H      = isDesktopRDF ? Math.round(W * 1.3)   : Math.round(W * 1.35)
+  const CARD_W = isDesktopRDF ? 80 : 44
 
   // SVG des liens uniquement
   let linkSvg = ''

@@ -254,8 +254,8 @@ function renderBuilder(container, builder, ctx) {
       <div style="display:flex;gap:0;min-height:600px">
 
         <!-- Remplaçants (colonne gauche) -->
-        <div style="width:130px;flex-shrink:0;background:rgba(0,0,0,0.3);display:flex;flex-direction:column;align-items:center;padding:12px 8px;gap:10px;border-right:1px solid rgba(255,255,255,0.1)">
-          <div style="font-size:10px;font-weight:700;color:rgba(255,255,255,0.6);letter-spacing:1px;text-transform:uppercase;text-align:center">Remplaçants (${builder.subs.length}/5)</div>
+        <div style="width:105px;flex-shrink:0;background:rgba(0,0,0,0.3);display:flex;flex-direction:column;align-items:center;padding:12px 6px;gap:8px;border-right:1px solid rgba(255,255,255,0.1)">
+
 
           <!-- Remplaçants PC : colonne verticale -->
           <div style="font-size:11px;font-weight:700;color:rgba(255,255,255,0.6);letter-spacing:1px;text-transform:uppercase;text-align:center;margin-top:8px">Remplaçants<br>(${builder.subs.length}/5)</div>

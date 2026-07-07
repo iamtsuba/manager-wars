@@ -159,7 +159,7 @@ async function openDeckBuilder(deckId, container, ctx) {
     .from('cards')
     .select(`id, card_type, formation, stadium_id, evolution_bonus,
       player:players(id, firstname, surname_encoded, country_code, club_id, job, job2,
-        note_g, note_d, note_m, note_a, rarity, skin, hair, hair_length,
+        note_g, note_d, note_m, note_a, rarity, skin, hair, hair_length, face,
         clubs(encoded_name, logo_url))`)
     .eq('owner_id', state.profile.id)
 

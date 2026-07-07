@@ -53,7 +53,7 @@ async function loadMarket(container, ctx) {
       seller:users!seller_id(pseudo),
       card:cards(id, card_type, current_note, evolution_bonus,
         player:players(id, firstname, surname_encoded, country_code, job, job2,
-          note_g, note_d, note_m, note_a, rarity, note_min, note_max,
+          note_g, note_d, note_m, note_a, rarity, face, note_min, note_max,
           clubs(encoded_name, logo_url, logo_url)))`)
     .eq('status', 'active')
     .order('listed_at', { ascending: false })
@@ -65,7 +65,7 @@ async function loadMarket(container, ctx) {
       buyer:users!buyer_id(pseudo),
       card:cards(id, card_type, current_note, evolution_bonus,
         player:players(id, firstname, surname_encoded, country_code, job, job2,
-          note_g, note_d, note_m, note_a, rarity,
+          note_g, note_d, note_m, note_a, rarity, face,
           clubs(encoded_name, logo_url)))`)
     .eq('seller_id', state.profile.id)
     .in('status', ['active', 'sold'])

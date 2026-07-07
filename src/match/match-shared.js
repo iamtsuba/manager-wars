@@ -341,7 +341,7 @@ export async function renderDeckSelect(container, ctx, matchMode) {
     .select(`deck_id, position, is_starter, slot_order,
       card:cards(id,card_type,formation,stadium_id,evolution_bonus,
         player:players(id,firstname,surname_encoded,country_code,club_id,job,job2,
-          note_g,note_d,note_m,note_a,rarity,skin,hair,hair_length,
+          note_g,note_d,note_m,note_a,rarity,skin,hair,hair_length,face,
           clubs(encoded_name,logo_url)))`)
     .in('deck_id', deckIds)
     .order('slot_order')
@@ -720,7 +720,7 @@ export async function loadMatchSetup(container, ctx, matchMode, onReady) {
         .select(`position, is_starter, slot_order,
           card:cards(id, card_type, formation, evolution_bonus,
             player:players(id,firstname,surname_encoded,country_code,club_id,job,job2,
-              note_g,note_d,note_m,note_a,rarity,skin,hair,hair_length,
+              note_g,note_d,note_m,note_a,rarity,skin,hair,hair_length,face,
               clubs(encoded_name,logo_url)))`)
         .eq('deck_id', deckId).order('slot_order')
     ])

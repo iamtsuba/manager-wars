@@ -69,7 +69,7 @@ export function renderPlayerCard(p, opts = {}) {
   const stadB  = showStad && (p.stadiumBonus || hasStadBonus(p, stadDef)) ? 10 : 0
 
   const mainNote  = getNoteForJob(p, job, evo) + extraNote + stadB
-  const noteColor = stadB > 0 ? '#E87722' : accent
+  const noteColor = stadB > 0 ? '#4fc3f7' : accent
   const job2      = (p.job2 && p.job2 !== job) ? p.job2 : null
   const job2Note  = job2 ? getNoteForJob(p, job2, evo) + extraNote + stadB : null
 
@@ -117,7 +117,9 @@ export function renderPlayerCard(p, opts = {}) {
   const rectRX   = ax(374)   // moins collé au bord
   const rectR    = ax(6)
 
-  return `<div style="position:relative;width:${width}px;height:${height}px;flex-shrink:0;${opacity}user-select:none">
+  return `<div style="position:relative;width:${width}px;height:${height + (stadB>0 ? ax(22) : 0)}px;flex-shrink:0;${opacity}user-select:none">
+  ${stadB > 0 ? `<div style="position:absolute;top:0;left:0;right:0;text-align:center;z-index:5;font-size:${px(14)};line-height:1">🏟️</div>` : ''}
+  <div style="position:absolute;bottom:0;left:0;width:${width}px;height:${height}px">
 
   <img src="${tmpl}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:fill" draggable="false">
 
@@ -169,7 +171,7 @@ export function renderPlayerCard(p, opts = {}) {
       : `<span style="font-size:${px(14)};font-weight:900;color:#fff">${(p.clubs?.encoded_name||p.clubName||'').slice(0,3).toUpperCase()}</span>`}
   </div>
 
-</div>`
+</div></div>`
 }
 
 export function createPlayerCardEl(p, opts = {}) {

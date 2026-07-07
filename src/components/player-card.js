@@ -1,6 +1,11 @@
 /**
  * player-card.js — Composant universel carte joueur Manager Wars
- * Positions mesurées sur template 507x657px
+ * Template 507x657px — positions mesurées au pixel
+ *
+ * Octogones bas (mesurés) :
+ *   Gauche  : x=1→199,   y=450→629, centre x=100, y=539
+ *   Centre  : x=150→359, y=450→629, centre x=254, y=539
+ *   Droit   : x=307→505, y=450→629, centre x=406, y=539
  */
 
 const BASE = import.meta.env.BASE_URL
@@ -27,7 +32,7 @@ function getFaceUrl(p) {
 
 function getFlagUrl(code) {
   if (!code || code.length < 2) return null
-  return `https://flagcdn.com/48x36/${code.slice(0, 2).toLowerCase()}.png`
+  return `https://flagcdn.com/64x48/${code.slice(0, 2).toLowerCase()}.png`
 }
 
 function getClubLogoUrl(p) {
@@ -41,8 +46,7 @@ function getClubLogoUrl(p) {
 
 function getNoteForJob(p, job, evo = 0) {
   if (!job) return 0
-  const key = `note_${job.toLowerCase()}`
-  const base = Number(p[key]) || 0
+  const base = Number(p[`note_${job.toLowerCase()}`]) || 0
   return base + ((job === p.job || job === p.job2) ? evo : 0)
 }
 
@@ -53,21 +57,15 @@ function hasStadBonus(p, stadDef) {
 }
 
 export function renderPlayerCard(p, opts = {}) {
-  const {
-    width = 160,
-    showStad = false,
-    stadDef = null,
-    used = false,
-    extraNote = 0,
-  } = opts
+  const { width = 160, showStad = false, stadDef = null, used = false, extraNote = 0 } = opts
 
-  if (!p) return `<div style="width:${width}px;height:${Math.round(width*1.295)}px;border-radius:8px;background:#111;opacity:0.3"></div>`
+  if (!p) return `<div style="width:${width}px;height:${Math.round(width*657/507)}px;border-radius:8px;background:#111;opacity:0.3"></div>`
 
-  // Template 507x657 → ratio
   const ratio  = width / 507
   const height = Math.round(width * 657 / 507)
   const px     = (n) => Math.round(n * ratio) + 'px'
-  const pct    = (n, total) => (n / total * 100).toFixed(2) + '%'
+  // left/top/right/bottom en px absolus depuis les mesures template
+  const ax     = (n) => Math.round(n * ratio)  // valeur numérique
 
   const job    = p._line || p.job || 'MIL'
   const accent = JOB_ACCENT[job] || '#D4A017'
@@ -77,75 +75,64 @@ export function renderPlayerCard(p, opts = {}) {
 
   const mainNote  = getNoteForJob(p, job, evo) + extraNote + stadB
   const noteColor = stadB > 0 ? '#E87722' : '#fff'
+  const job2      = (p.job2 && p.job2 !== job) ? p.job2 : null
+  const job2Note  = job2 ? getNoteForJob(p, job2, evo) + extraNote + stadB : null
 
-  const job2     = (p.job2 && p.job2 !== job) ? p.job2 : null
-  const job2Note = job2 ? getNoteForJob(p, job2, evo) + extraNote + stadB : null
-
-  const faceUrl     = getFaceUrl(p)
   const flagUrl     = getFlagUrl(p.country_code)
   const clubLogoUrl = getClubLogoUrl(p)
-
-  const firstname = (p.firstname || '').toUpperCase()
-  const surname   = (p.surname_encoded || p.name || '').toUpperCase()
-  const opacity   = used ? 'opacity:0.35;' : ''
+  const firstname   = (p.firstname || '').toUpperCase()
+  const surname     = (p.surname_encoded || p.name || '').toUpperCase()
+  const opacity     = used ? 'opacity:0.35;' : ''
 
   // Taille police nom adaptée à la longueur
-  const surnameFsNum = surname.length > 10 ? 36 : surname.length > 7 ? 42 : 48
-  const surnameFsPx  = px(surnameFsNum)
+  const surnameFsN = surname.length > 10 ? 34 : surname.length > 7 ? 40 : 46
+
+  // Positions octogones (mesurées sur 507x657)
+  // Gauche  : x=1→199,   y=450→629  → décalé vers centre : x=30→228
+  // Centre  : x=150→359, y=450→629
+  // Droit   : x=307→505, y=450→629  → décalé vers centre : x=278→476
+  const octL_x = ax(30),  octL_w = ax(170), octL_y = ax(450), octL_h = ax(179)
+  const octR_x = ax(307), octR_w = ax(170), octR_y = ax(450), octR_h = ax(179)
+  const octC_x = ax(150), octC_w = ax(209), octC_y = ax(450), octC_h = ax(179)
 
   return `<div style="position:relative;width:${width}px;height:${height}px;flex-shrink:0;${opacity}user-select:none">
 
-  <!-- Template de fond -->
   <img src="${tmpl}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:fill" draggable="false">
 
-  <!-- Prénom : bandeau haut, centre y≈42px/657 -->
-  <div style="position:absolute;top:${pct(38,657)};left:0;right:0;text-align:center;z-index:2;padding:0 ${px(50)}">
-    <span style="font-size:${px(18)};font-weight:700;color:${accent};letter-spacing:${px(2)};line-height:1;text-shadow:0 1px 3px #000">${firstname}</span>
+  <!-- Prénom -->
+  <div style="position:absolute;top:${px(38)};left:0;right:0;text-align:center;z-index:2;padding:0 ${px(50)}">
+    <span style="font-size:${px(17)};font-weight:700;color:${accent};letter-spacing:${px(2)};line-height:1;text-shadow:0 1px 3px #000">${firstname}</span>
   </div>
 
-  <!-- Nom : sous le prénom -->
-  <div style="position:absolute;top:${pct(60,657)};left:0;right:0;text-align:center;z-index:2;padding:0 ${px(16)}">
-    <span style="font-size:${surnameFsPx};font-weight:900;color:#fff;line-height:1;text-shadow:0 2px 8px #000;font-family:Arial Black,Arial;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block">${surname}</span>
+  <!-- Nom -->
+  <div style="position:absolute;top:${px(68)};left:0;right:0;text-align:center;z-index:2;padding:0 ${px(14)}">
+    <span style="font-size:${px(surnameFsN)};font-weight:900;color:#fff;line-height:1;text-shadow:0 2px 8px #000;font-family:Arial Black,Arial;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block">${surname}</span>
   </div>
 
-  <!-- Portrait : zone centrale, réduit pour rester dans la partie haute de l'octogone -->
-  ${faceUrl ? `<img src="${faceUrl}"
-    style="position:absolute;top:${pct(152,657)};left:50%;transform:translateX(-50%);
-    width:${px(240)};height:${pct(270,657)};object-fit:cover;object-position:top center;z-index:2"
-    onerror="this.style.display='none'">` : ''}
-
-  <!-- Note principale : superposée dans l'octogone du template (centre x=254, y=539 sur 507x657) -->
+  <!-- Note principale : centrée dans l'octogone du template -->
   <div style="position:absolute;
-    left:${pct(145,507)};right:${pct(145,507)};
-    top:${pct(450,657)};bottom:${pct(43,657)};
-    z-index:3;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:0">
-    <span style="font-size:${px(job2Note!==null?56:68)};font-weight:900;color:${noteColor};font-family:Arial Black,Arial;line-height:1;text-shadow:0 2px 6px rgba(0,0,0,0.8)">${mainNote}</span>
-    ${job2Note !== null ? `<span style="font-size:${px(26)};font-weight:900;color:#bb2020;font-family:Arial Black,Arial;line-height:1">${job2Note}</span>` : ''}
+    left:${octC_x}px;top:${octC_y}px;
+    width:${octC_w}px;height:${octC_h}px;
+    z-index:3;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0">
+    <span style="font-size:${px(job2Note!==null?54:66)};font-weight:900;color:${noteColor};font-family:Arial Black,Arial;line-height:1;text-shadow:0 2px 6px rgba(0,0,0,0.8)">${mainNote}</span>
+    ${job2Note !== null ? `<span style="font-size:${px(24)};font-weight:900;color:#bb2020;font-family:Arial Black,Arial;line-height:1.1">${job2Note}</span>` : ''}
   </div>
 
-  <!-- Drapeau : octogone gauche, flanquant la note -->
-  <div style="position:absolute;
-    left:${pct(22,507)};
-    top:${pct(468,657)};
-    width:${pct(100,507)};height:${pct(95,657)};
-    z-index:3;
+  <!-- Drapeau : octogone gauche décalé vers centre -->
+  <div style="position:absolute;left:${octL_x}px;top:${octL_y}px;width:${octL_w}px;height:${octL_h}px;z-index:3;
     clip-path:polygon(30% 0%,70% 0%,100% 30%,100% 70%,70% 100%,30% 100%,0% 70%,0% 30%);
     background:${accent};display:flex;align-items:center;justify-content:center;overflow:hidden">
     ${flagUrl
-      ? `<img src="${flagUrl}" style="width:85%;height:75%;object-fit:cover">`
+      ? `<img src="${flagUrl}" style="width:100%;height:100%;object-fit:cover">`
       : `<span style="font-size:${px(22)}">🌍</span>`}
   </div>
 
-  <!-- Logo club : octogone droit -->
-  <div style="position:absolute;
-    right:${pct(22,507)};
-    top:${pct(468,657)};
-    width:${pct(100,507)};height:${pct(95,657)};
-    z-index:3;
+  <!-- Logo club : octogone droit décalé vers centre -->
+  <div style="position:absolute;left:${octR_x}px;top:${octR_y}px;width:${octR_w}px;height:${octR_h}px;z-index:3;
     clip-path:polygon(30% 0%,70% 0%,100% 30%,100% 70%,70% 100%,30% 100%,0% 70%,0% 30%);
     background:${accent};display:flex;align-items:center;justify-content:center;overflow:hidden">
     ${clubLogoUrl
-      ? `<img src="${clubLogoUrl}" style="width:80%;height:80%;object-fit:contain">`
+      ? `<img src="${clubLogoUrl}" style="width:100%;height:100%;object-fit:contain">`
       : `<span style="font-size:${px(13)};font-weight:900;color:#fff">${(p.clubs?.encoded_name||p.clubName||'').slice(0,3).toUpperCase()}</span>`}
   </div>
 

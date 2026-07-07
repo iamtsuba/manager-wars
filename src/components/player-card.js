@@ -38,7 +38,9 @@ const JOB_ACCENT = {
 
 function getFaceUrl(p) {
   if (!p?.face) return null
-  return BASE + 'faces/' + p.face
+  // face peut contenir 'public/faces/Africans/afr664.png' ou 'faces/Africans/afr664.png' ou 'Africans/afr664.png'
+  const f = p.face.replace(/^public\//, '').replace(/^\//, '')
+  return BASE + f
 }
 
 function getFlagUrl(code) {
@@ -95,8 +97,8 @@ export function renderPlayerCard(p, opts = {}) {
   const mainNote = getNoteForJob(p, job, evo) + extraNote + stadBon
   const noteColor = stadBon > 0 ? '#E87722' : '#fff'
 
-  const job2     = p.job2
-  const job2Note = job2 ? getNoteForJob(p, job2, evo) + extraNote + stadBon : null
+  const job2     = p.job2 || null
+  const job2Note = (job2 && job2 !== job) ? getNoteForJob(p, job2, evo) + extraNote + stadBon : null
 
   const faceUrl    = getFaceUrl(p)
   const flagUrl    = getFlagUrl(p.country_code)
@@ -147,43 +149,47 @@ export function renderPlayerCard(p, opts = {}) {
     onerror="this.style.display='none'">
   ` : ''}
 
-  <!-- Drapeau (octogone gauche) -->
-  <div style="position:absolute;bottom:${r(38)}px;left:${r(38)}px;z-index:3;
-    width:${octSize}px;height:${octSize}px;
-    clip-path:polygon(30% 0%,70% 0%,100% 30%,100% 70%,70% 100%,30% 100%,0% 70%,0% 30%);
-    background:${accent};
-    display:flex;align-items:center;justify-content:center;overflow:hidden">
-    ${flagUrl
-      ? `<img src="${flagUrl}" style="width:${r(80)}px;height:${r(60)}px;object-fit:cover">`
-      : `<span style="font-size:${r(32)}px">🌍</span>`}
-  </div>
+  <!-- Zone basse : drapeau + note + logo, centrés verticalement -->
+  <div style="position:absolute;bottom:${r(18)}px;left:0;right:0;z-index:3;
+    display:flex;align-items:center;justify-content:center;gap:${r(8)}px">
 
-  <!-- Note principale (octogone centre) -->
-  <div style="position:absolute;bottom:${r(28)}px;left:50%;transform:translateX(-50%);z-index:3;
-    width:${noteBoxSize}px;height:${noteBoxSize}px;
-    clip-path:polygon(30% 0%,70% 0%,100% 30%,100% 70%,70% 100%,30% 100%,0% 70%,0% 30%);
-    background:#0a0a0a;border:${r(3)}px solid ${accent};
-    display:flex;align-items:center;justify-content:center;flex-direction:column">
-    <span style="font-size:${noteFs}px;font-weight:900;color:${noteColor};font-family:Arial Black,Arial;line-height:1">${mainNote}</span>
-    ${job2Note !== null ? `
-    <div style="position:absolute;bottom:-${r(20)}px;left:50%;transform:translateX(-50%);
-      width:${note2BoxSize}px;height:${note2BoxSize}px;
+    <!-- Drapeau (octogone gauche) -->
+    <div style="width:${octSize}px;height:${octSize}px;flex-shrink:0;
       clip-path:polygon(30% 0%,70% 0%,100% 30%,100% 70%,70% 100%,30% 100%,0% 70%,0% 30%);
-      background:#1a0000;border:${r(2)}px solid #bb2020;
-      display:flex;align-items:center;justify-content:center">
-      <span style="font-size:${note2Fs}px;font-weight:900;color:#bb2020;font-family:Arial Black,Arial">${job2Note}</span>
-    </div>` : ''}
-  </div>
+      background:${accent};
+      display:flex;align-items:center;justify-content:center;overflow:hidden">
+      ${flagUrl
+        ? `<img src="${flagUrl}" style="width:${r(80)}px;height:${r(60)}px;object-fit:cover">`
+        : `<span style="font-size:${r(28)}px">🌍</span>`}
+    </div>
 
-  <!-- Logo club (octogone droit) -->
-  <div style="position:absolute;bottom:${r(38)}px;right:${r(38)}px;z-index:3;
-    width:${octSize}px;height:${octSize}px;
-    clip-path:polygon(30% 0%,70% 0%,100% 30%,100% 70%,70% 100%,30% 100%,0% 70%,0% 30%);
-    background:${accent};
-    display:flex;align-items:center;justify-content:center;overflow:hidden">
-    ${clubLogoUrl
-      ? `<img src="${clubLogoUrl}" style="width:${r(72)}px;height:${r(72)}px;object-fit:contain">`
-      : `<span style="font-size:${r(20)}px;font-weight:900;color:#fff">${(p.clubs?.encoded_name||p.clubName||'').slice(0,3).toUpperCase()}</span>`}
+    <!-- Note principale (octogone centre) -->
+    <div style="position:relative;width:${noteBoxSize}px;flex-shrink:0">
+      <div style="width:${noteBoxSize}px;height:${noteBoxSize}px;
+        clip-path:polygon(30% 0%,70% 0%,100% 30%,100% 70%,70% 100%,30% 100%,0% 70%,0% 30%);
+        background:#0a0a0a;border:${r(3)}px solid ${accent};
+        display:flex;align-items:center;justify-content:center">
+        <span style="font-size:${noteFs}px;font-weight:900;color:${noteColor};font-family:Arial Black,Arial;line-height:1">${mainNote}</span>
+      </div>
+      ${job2Note !== null ? `
+      <div style="position:absolute;bottom:-${r(18)}px;left:50%;transform:translateX(-50%);
+        width:${note2BoxSize}px;height:${note2BoxSize}px;
+        clip-path:polygon(30% 0%,70% 0%,100% 30%,100% 70%,70% 100%,30% 100%,0% 70%,0% 30%);
+        background:#1a0000;border:${r(2)}px solid #bb2020;
+        display:flex;align-items:center;justify-content:center">
+        <span style="font-size:${note2Fs}px;font-weight:900;color:#bb2020;font-family:Arial Black,Arial">${job2Note}</span>
+      </div>` : ''}
+    </div>
+
+    <!-- Logo club (octogone droit) -->
+    <div style="width:${octSize}px;height:${octSize}px;flex-shrink:0;
+      clip-path:polygon(30% 0%,70% 0%,100% 30%,100% 70%,70% 100%,30% 100%,0% 70%,0% 30%);
+      background:${accent};
+      display:flex;align-items:center;justify-content:center;overflow:hidden">
+      ${clubLogoUrl
+        ? `<img src="${clubLogoUrl}" style="width:${r(72)}px;height:${r(72)}px;object-fit:contain">`
+        : `<span style="font-size:${r(16)}px;font-weight:900;color:#fff">${(p.clubs?.encoded_name||p.clubName||'').slice(0,3).toUpperCase()}</span>`}
+    </div>
   </div>
 </div>`
 }

@@ -950,39 +950,8 @@ async function openCardDetail(card, allPlayerCards, countByPlayer, ctx) {
     `<div style="display:flex;gap:16px;flex-wrap:wrap;justify-content:center">
 
       <!-- Carte visuelle -->
-      <div style="width:140px;border-radius:12px;padding:6px;background:${rarColor};flex-shrink:0">
-        <div style="background:#f2e8d2;border-radius:8px;overflow:hidden;display:flex;flex-direction:column">
-          <div style="padding:5px 6px 2px;text-align:center">
-            <div style="font-size:8px;letter-spacing:1.2px;text-transform:uppercase;color:#666">${p.firstname}</div>
-            <div style="font-size:14px;font-weight:900;color:#111;font-family:Arial Black,Arial;line-height:1.1">${(p.surname_encoded||'').toUpperCase()}</div>
-          </div>
-          <div style="position:relative;height:80px;background:#f2e8d2;display:flex;flex-direction:column;align-items:center">
-            <div style="position:absolute;top:16px;width:100%;height:28px;background:${jobColor}"></div>
-            <svg width="54" height="52" viewBox="0 0 54 52" style="position:absolute;top:4px;z-index:2;display:block">
-              <polygon points="27,3 33,18 50,18 37,29 41,47 27,37 13,47 17,29 4,18 21,18" fill="${jobColor}" stroke="white" stroke-width="2.5"/>
-              <text x="27" y="33" text-anchor="middle" font-size="16" font-weight="900" fill="white" font-family="Arial Black,Arial">${note1}</text>
-            </svg>
-            ${note2 !== null ? `
-            <svg width="32" height="31" viewBox="0 0 32 31" style="position:absolute;top:50px;z-index:2;display:block">
-              <polygon points="16,2 19.5,11 30,11 22,17.5 25,27 16,21.5 7,27 10,17.5 2,11 12.5,11" fill="${job2Color}" stroke="white" stroke-width="1.5"/>
-              <text x="16" y="20" text-anchor="middle" font-size="9" font-weight="900" fill="white" font-family="Arial Black,Arial">${note2}</text>
-            </svg>` : ''}
-          </div>
-          <div style="height:110px;overflow:hidden;background:#b8d4f0">
-            ${portrait
-              ? `<img src="${portrait}" style="width:100%;height:100%;object-fit:cover;object-position:center top;display:block"
-                   onerror="this.parentElement.innerHTML='<div style=\'width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:32px;color:#8fa5be\'>👤</div>'">`
-              : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:32px;color:#8fa5be">👤</div>`}
-          </div>
-          <div style="background:#f2e8d2;padding:3px 6px;display:flex;align-items:center;justify-content:space-between;min-height:24px">
-            <img src="https://flagsapi.com/${p.country_code}/flat/32.png" style="width:20px;height:13px;object-fit:cover;border-radius:2px" onerror="this.style.display='none'">
-            <div style="font-size:7px;text-transform:uppercase;color:#555">${country}</div>
-            ${p.clubs?.logo_url
-              ? `<img src="${p.clubs.logo_url}" style="width:22px;height:16px;object-fit:contain">`
-              : `<div style="background:#1a3a7a;color:#fff;border-radius:2px;padding:1px 3px;font-size:6px;font-weight:800">${(p.clubs?.encoded_name||'').slice(0,6)}</div>`}
-          </div>
-        </div>
-      </div>
+      ${renderPlayerCard({ ...p, _evolution_bonus: evoCard }, { width: 160 })}
+
 
       <!-- Infos -->
       <div style="flex:1;min-width:160px;display:flex;flex-direction:column;gap:10px">

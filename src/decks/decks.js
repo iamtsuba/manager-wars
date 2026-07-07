@@ -247,8 +247,8 @@ function renderBuilder(container, builder, ctx) {
       </div>
     </div>
 
-    <!-- Formation -->
-    <div style="padding:10px 16px;background:#fff;border-bottom:1px solid var(--gray-200)">
+    <!-- Formation (mobile uniquement — PC : dans la colonne gauche) -->
+    <div class="formation-mobile-only" style="padding:10px 16px;background:#fff;border-bottom:1px solid var(--gray-200)">
       <label style="font-size:11px;margin-bottom:4px;display:block">Formation ${builder.availableFormations.length === 0 ? '(aucune carte — toutes disponibles)' : ''}</label>
       <select id="formation-select" style="width:100%;padding:7px;border-radius:6px;border:1.5px solid var(--gray-200)">
         ${formationOptions.map(f => `<option value="${f}" ${f===builder.formation?'selected':''}>${f}</option>`).join('')}
@@ -259,8 +259,15 @@ function renderBuilder(container, builder, ctx) {
     <div class="deck-pc-layout" style="display:none">
       <div style="display:flex;gap:0;min-height:600px">
 
-        <!-- Stade (colonne gauche) -->
-        <div style="width:140px;flex-shrink:0;background:rgba(0,0,0,0.3);display:flex;flex-direction:column;align-items:center;padding:16px 8px;gap:12px;border-right:1px solid rgba(255,255,255,0.1)">
+        <!-- Stade + Formation (colonne gauche) -->
+        <div style="width:140px;flex-shrink:0;background:rgba(0,0,0,0.3);display:flex;flex-direction:column;align-items:center;padding:12px 8px;gap:10px;border-right:1px solid rgba(255,255,255,0.1)">
+          <!-- Formation -->
+          <div style="width:100%">
+            <div style="font-size:10px;font-weight:700;color:rgba(255,255,255,0.5);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px;text-align:center">Formation</div>
+            <select id="formation-select-pc" style="width:100%;padding:5px;border-radius:6px;border:1px solid #555;background:#222;color:#fff;font-size:12px">
+              ${formationOptions.map(f => `<option value="${f}" ${f===builder.formation?'selected':''}>${f}</option>`).join('')}
+            </select>
+          </div>
           <div style="font-size:11px;font-weight:700;color:rgba(255,255,255,0.6);letter-spacing:1px;text-transform:uppercase;text-align:center">🏟️ Stade</div>
           <div id="add-stad-btn" style="cursor:pointer">
             ${_selStadCard ? (() => {
@@ -281,12 +288,12 @@ function renderBuilder(container, builder, ctx) {
             ${subPlayers.map(card => {
               const p = { ...card.player, _evolution_bonus: card.evolution_bonus || 0 }
               return `<div style="position:relative;flex-shrink:0;overflow:visible">
-                ${renderPlayerCard({ ...p, _evolution_bonus: p._evolution_bonus||0 }, { width: 90, showStad: true, stadDef: _stadDef })}
+                ${renderPlayerCard({ ...p, _evolution_bonus: p._evolution_bonus||0 }, { width: 60, showStad: true, stadDef: _stadDef })}
                 <button data-remove-sub="${card.id}"
                   style="position:absolute;top:-6px;right:-6px;width:18px;height:18px;background:#c0392b;border:none;border-radius:50%;color:#fff;font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;padding:0;z-index:10">✕</button>
               </div>`
             }).join('')}
-            ${builder.subs.length < 5 ? `<div id="add-sub-btn" style="width:90px;height:116px;border:2px dashed rgba(255,255,255,0.3);border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:22px;color:rgba(255,255,255,0.4);cursor:pointer">+</div>` : ''}
+            ${builder.subs.length < 5 ? `<div id="add-sub-btn" style="width:60px;height:77px;border:2px dashed rgba(255,255,255,0.3);border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:18px;color:rgba(255,255,255,0.4);cursor:pointer">+</div>` : ''}
           </div>
         </div>
 
@@ -356,8 +363,10 @@ function renderBuilder(container, builder, ctx) {
   const isDesktop = window.innerWidth >= 768
   const pcLayout     = container.querySelector('.deck-pc-layout')
   const mobileLayout = container.querySelector('.deck-mobile-layout')
+  const formMobile   = container.querySelector('.formation-mobile-only')
   if (pcLayout)     pcLayout.style.display     = isDesktop ? 'block' : 'none'
   if (mobileLayout) mobileLayout.style.display = isDesktop ? 'none'  : 'block'
+  if (formMobile)   formMobile.style.display   = isDesktop ? 'none'  : 'block'
 
   renderDeckField(container, builder, positions, ctx)
 
@@ -422,8 +431,8 @@ function renderDeckField(container, builder, positions, ctx) {
   // PC : terrain dans la colonne droite (largeur - 140px stade)
   const availW = isDesktopRDF ? window.innerWidth - 180 : window.innerWidth - 20
   const W      = isDesktopRDF ? Math.min(availW, 800) : availW
-  const H      = isDesktopRDF ? Math.round(W * 1.3)   : Math.round(W * 1.35)
-  const CARD_W = isDesktopRDF ? 80 : 44
+  const H      = isDesktopRDF ? Math.round(W * 0.9)   : Math.round(W * 1.35)
+  const CARD_W = isDesktopRDF ? 65 : 44
 
   // SVG des liens uniquement
   let linkSvg = ''

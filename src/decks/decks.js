@@ -289,7 +289,7 @@ function renderBuilder(container, builder, ctx) {
           <!-- Stade -->
           <div style="width:100%;text-align:center">
             <div style="font-size:10px;font-weight:700;color:rgba(255,255,255,0.5);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px">🏟️ Stade</div>
-            <div id="add-stad-btn" style="cursor:pointer;margin:0 auto;width:fit-content">
+            <div id="add-stad-btn-pc" style="cursor:pointer;margin:0 auto;width:fit-content">
               ${_selStadCard ? (() => {
                 const def = builder.stadDefMap[_selStadCard.stadium_id]
                 const logo = def?.club?.logo_url || null
@@ -370,7 +370,7 @@ function renderBuilder(container, builder, ctx) {
   </div>`
 
   // Activer le bon layout AVANT renderDeckField
-  const isDesktop = window.innerWidth >= 768
+  const isDesktop = window.innerWidth >= 900
   const pcLayout     = container.querySelector('.deck-pc-layout')
   const mobileLayout = container.querySelector('.deck-mobile-layout')
   if (pcLayout)     pcLayout.style.display     = isDesktop ? 'block' : 'none'
@@ -413,9 +413,9 @@ function renderBuilder(container, builder, ctx) {
 
 
 
-  document.getElementById('add-stad-btn')?.addEventListener('click', () => {
-    openStadiumSelector(builder, container, ctx)
-  })
+  // Stade PC et mobile
+  document.getElementById('add-stad-btn-pc')?.addEventListener('click', () => openStadiumSelector(builder, container, ctx))
+  document.getElementById('add-stad-btn')?.addEventListener('click', () => openStadiumSelector(builder, container, ctx))
 
   document.getElementById('save-deck').addEventListener('click', () => saveDeck(builder, ctx))
 
@@ -434,7 +434,7 @@ function renderBuilder(container, builder, ctx) {
 }
 
 function renderDeckField(container, builder, positions, ctx) {
-  const isDesktopField = window.innerWidth >= 768
+  const isDesktopField = window.innerWidth >= 900
   const field = container.querySelector(isDesktopField ? '#deck-field-pc' : '#deck-field-mobile')
   if (!field) return
 
@@ -459,11 +459,11 @@ function renderDeckField(container, builder, positions, ctx) {
 
   // Terrain HTML : cartes positionnées en absolu sur un terrain de 320x320
   // Taille responsive
-  const isDesktopRDF = window.innerWidth >= 768
+  const isDesktopRDF = window.innerWidth >= 900
   // PC : terrain dans la colonne droite (largeur - 140px stade)
   const availW = isDesktopRDF ? window.innerWidth - 280 : window.innerWidth - 20
   const W      = isDesktopRDF ? Math.min(availW, 860) : availW
-  const H      = isDesktopRDF ? Math.round(W * 0.82)  : Math.round(W * 1.2)
+  const H      = isDesktopRDF ? Math.round(W * 0.82)  : Math.round(W * 1.05)
   const CARD_W = isDesktopRDF ? 84 : 44  // 70 * 1.2 = 84
 
   // SVG des liens uniquement
@@ -505,7 +505,7 @@ function renderDeckField(container, builder, positions, ctx) {
         { ...p, _evolution_bonus: p._evolution_bonus||0 },
         { width: CARD_W, showStad: false, stadDef, role }
       )
-      const stadIcon = hasStad ? `<div style="position:absolute;top:-30px;left:0;right:0;text-align:center;font-size:20px;z-index:5;line-height:1">🏟️</div>` : ''
+      const stadIcon = hasStad ? `<div style="position:absolute;top:-18px;left:0;right:0;text-align:center;font-size:14px;z-index:5;line-height:1">🏟️</div>` : ''
       cardsHtml += `<div style="position:absolute;left:${left}px;top:${top}px;cursor:pointer;z-index:2;position:absolute" class="deck-slot-hit" data-pos="${pos}">
         <div style="position:relative">${stadIcon}${cardHtml}</div>
       </div>`
@@ -626,37 +626,12 @@ function openPlayerSelector(position, builder, container, ctx) {
         <button class="btn btn-danger btn-sm" id="remove-player" style="width:100%;margin-bottom:4px">
           ✕ Retirer le joueur actuel
         </button>` : ''}
-      ${eligible.length > 0 ? eligible.map(c => {
-        const p = c.player
-        const evoPick = c.evolution_bonus||0
-        const note = (role==='GK'?p.note_g : role==='DEF'?p.note_d : role==='MIL'?p.note_m : p.note_a) + (role===p.job||role===p.job2?evoPick:0)
-        const portrait = getPortrait(p)
-        const rarColor = {normal:'#ccc',pepite:'#D4A017',papyte:'#909090',legende:'#7a28b8'}[p.rarity]
-        return `<div class="player-option" data-card-id="${c.id}"
-          style="display:flex;align-items:center;gap:10px;padding:8px;border:1.5px solid var(--gray-200);border-radius:10px;cursor:pointer">
-          <!-- Portrait -->
-          <div style="width:44px;height:44px;border-radius:8px;overflow:hidden;flex-shrink:0;background:#dde;border:2px solid ${JOB_COLORS[role]}">
-            ${portrait
-              ? `<img src="${portrait}" style="width:100%;height:100%;object-fit:cover">`
-              : `<div style="width:100%;height:100%;background:${JOB_COLORS[role]};display:flex;align-items:center;justify-content:center;color:#fff;font-size:10px;font-weight:700">${role}</div>`}
-          </div>
-          <!-- Infos -->
-          <div style="flex:1;min-width:0">
-            <div style="font-weight:700;font-size:13px">${p.firstname} ${p.surname_encoded}</div>
-            <div style="display:flex;align-items:center;gap:6px;margin-top:3px">
-              <img src="https://flagsapi.com/${p.country_code}/flat/32.png" style="width:18px;height:12px;border-radius:2px;object-fit:cover" alt="${p.country_code}">
-              ${p.clubs?.logo_url
-                ? `<img src="${p.clubs.logo_url}" style="width:18px;height:18px;object-fit:contain">`
-                : `<span style="font-size:10px;color:var(--gray-600)">${p.clubs?.encoded_name||'—'}</span>`}
-              <span style="font-size:10px;color:var(--gray-600)">${p.country_code}</span>
-            </div>
-          </div>
-          <!-- Note -->
-          <div style="width:36px;height:36px;border-radius:8px;background:${JOB_COLORS[role]};color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:16px;border:2px solid ${rarColor};flex-shrink:0">
-            ${note}
-          </div>
+      ${eligible.length > 0 ? `<div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center">` + eligible.map(c => {
+        const p = { ...c.player, _evolution_bonus: c.evolution_bonus||0 }
+        return `<div class="player-option" data-card-id="${c.id}" style="cursor:pointer">
+          ${renderPlayerCard(p, { width: 100, showStad: true, stadDef: _stadDef, role })}
         </div>`
-      }).join('') : '<div style="text-align:center;color:var(--gray-600);padding:20px">Aucun joueur pour ce poste.<br><small>Ouvre des boosters !</small></div>'}
+      }).join('') + '</div>' : '<div style="text-align:center;color:var(--gray-600);padding:20px">Aucun joueur pour ce poste.<br><small>Ouvre des boosters !</small></div>'}
     </div>`,
     `<button class="btn btn-ghost" id="close-selector">Fermer</button>`
   )
@@ -681,6 +656,8 @@ function openPlayerSelector(position, builder, container, ctx) {
 // ── Sélecteur remplaçant ──────────────────────────────────
 function openSubSelector(builder, container, ctx) {
   const { openModal, closeModal } = ctx
+  const _selStadCard2 = builder.stadiumCards?.find(c => c.id === builder.stadiumCardId)
+  const _selStadDef = _selStadCard2 ? (builder.stadDefMap?.[_selStadCard2.stadium_id] || null) : null
   // Exclure par player_id (unicité stricte)
   const usedPlayerIds = new Set()
   Object.keys(builder.slots).forEach(pos => {
@@ -705,24 +682,12 @@ function openSubSelector(builder, container, ctx) {
 
   openModal('Ajouter un remplaçant',
     `<div style="max-height:60vh;overflow-y:auto;display:flex;flex-direction:column;gap:8px">
-      ${available.length > 0 ? available.map(c => {
-        const p = c.player
-        const portrait = getPortrait(p)
-        const mainNote = (p.job==='GK'?p.note_g : p.job==='DEF'?p.note_d : p.job==='MIL'?p.note_m : p.note_a) + (c.evolution_bonus||0)
-        return `<div class="player-option" data-card-id="${c.id}"
-          style="display:flex;align-items:center;gap:10px;padding:8px;border:1.5px solid var(--gray-200);border-radius:10px;cursor:pointer">
-          <div style="width:40px;height:40px;border-radius:8px;overflow:hidden;flex-shrink:0;background:#dde;border:2px solid ${JOB_COLORS[p.job]}">
-            ${portrait ? `<img src="${portrait}" style="width:100%;height:100%;object-fit:cover">` : ''}
-          </div>
-          <div style="flex:1">
-            <div style="font-weight:700;font-size:13px">${p.firstname} ${p.surname_encoded}</div>
-            <div style="font-size:11px;color:var(--gray-600)">${p.job} · ${p.country_code} · ${p.clubs?.encoded_name||'—'}</div>
-          </div>
-          <div style="width:32px;height:32px;border-radius:6px;background:${JOB_COLORS[p.job]};color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900">
-            ${mainNote}
-          </div>
+      ${available.length > 0 ? `<div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center">` + available.map(c => {
+        const p = { ...c.player, _evolution_bonus: c.evolution_bonus||0 }
+        return `<div class="player-option" data-card-id="${c.id}" style="cursor:pointer">
+          ${renderPlayerCard(p, { width: 100, showStad: true, stadDef: _selStadDef })}
         </div>`
-      }).join('') : '<div style="text-align:center;padding:20px;color:var(--gray-600)">Tous vos joueurs sont déjà utilisés.</div>'}
+      }).join('') + '</div>' : '<div style="text-align:center;padding:20px;color:var(--gray-600)">Tous vos joueurs sont déjà utilisés.</div>'}
     </div>`,
     `<button class="btn btn-ghost" id="close-sub-selector">Fermer</button>`
   )

@@ -244,8 +244,8 @@ async function openPlayerModal(player, clubs, container, helpers) {
             <input id="pm-fn" value="${player?.firstname||''}" placeholder="Lucas">
           </div>
           <div class="form-group">
-            <label>Nom *</label>
-            <input id="pm-real" value="${player?.surname_real||player?.surname_encoded||''}" placeholder="Silva">
+            <label>Nom</label>
+            <input id="pm-real" value="${player?.surname_real||''}" placeholder="Silva">
           </div>
         </div>
 

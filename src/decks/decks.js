@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase.js'
+import { renderPlayerCard } from '../components/player-card.js'
 import { FORMATION_LINKS, FORMATION_POSITIONS, computeLinks, linkColor, getActiveLinks } from '../match/formation-links.js'
 
 const FORMATIONS = {
@@ -281,7 +282,7 @@ function renderBuilder(container, builder, ctx) {
         ${subPlayers.map(card => {
           const p = { ...card.player, _evolution_bonus: card.evolution_bonus || 0 }
           return `<div style="position:relative;flex-shrink:0;overflow:visible">
-            ${renderMiniCardHTML(p, 44, 58, _stadDef)}
+            ${renderPlayerCard({ ...p, _evolution_bonus: p._evolution_bonus||0 }, { width: 70, showStad: true, stadDef: _stadDef })}
             <button data-remove-sub="${card.id}"
               style="position:absolute;top:-6px;right:-6px;width:18px;height:18px;background:#c0392b;border:none;border-radius:50%;color:#fff;font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;padding:0;z-index:10">✕</button>
           </div>`

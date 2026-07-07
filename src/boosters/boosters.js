@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase.js'
+import { renderPlayerCard } from '../components/player-card.js'
 import { FORMATION_POSITIONS } from '../match/formation-links.js'
 import { loadActiveBoosters, drawCard, rollDropRate, recordBoosterClaim } from './booster-engine.js'
 
@@ -41,51 +42,12 @@ function getNote(p, job) {
   return Number(job==='GK'?p.note_g : job==='DEF'?p.note_d : job==='MIL'?p.note_m : p.note_a) || 0
 }
 
-// ── Rendu de carte joueur identique à la collection ──────
+// ── Rendu de carte joueur ────────────────────────────────
 function renderCollectionCard(card) {
   const p = card.player
   if (!p) return ''
-  const job = p.job || 'ATT'
-  const jobColor = JOB_COLORS[job]
-  const rarColor = RAR_COLORS[p.rarity] || '#ccc'
-  const note1 = getNote(p, job)
-  const note2 = p.job2 ? getNote(p, p.job2) : null
-  const job2Color = p.job2 ? JOB_COLORS[p.job2] : null
-  const portrait = getPortrait(p)
-  const country = COUNTRY_NAMES[p.country_code] || p.country_code || ''
-  return `
-  <div style="width:140px;border-radius:12px;padding:6px;background:${rarColor};cursor:pointer;flex-shrink:0;position:relative">
-    <div style="background:#f2e8d2;border-radius:8px;overflow:hidden;display:flex;flex-direction:column">
-      <div style="padding:5px 6px 2px;text-align:center">
-        <div style="font-size:8px;letter-spacing:1.2px;text-transform:uppercase;color:#666">${p.firstname}</div>
-        <div style="font-size:14px;font-weight:900;color:#111;font-family:Arial Black,Arial;line-height:1.1">${(p.surname_encoded||'').toUpperCase()}</div>
-      </div>
-      <div style="position:relative;height:80px;background:#f2e8d2;display:flex;flex-direction:column;align-items:center">
-        <div style="position:absolute;top:16px;width:100%;height:28px;background:${jobColor}"></div>
-        <svg width="54" height="52" viewBox="0 0 54 52" style="position:absolute;top:4px;z-index:2;display:block">
-          <polygon points="27,3 33,18 50,18 37,29 41,47 27,37 13,47 17,29 4,18 21,18" fill="${jobColor}" stroke="white" stroke-width="2.5"/>
-          <text x="27" y="33" text-anchor="middle" font-size="16" font-weight="900" fill="white" font-family="Arial Black,Arial">${note1}</text>
-        </svg>
-        ${note2 !== null ? `
-        <svg width="32" height="31" viewBox="0 0 32 31" style="position:absolute;top:50px;z-index:2;display:block">
-          <polygon points="16,2 19.5,11 30,11 22,17.5 25,27 16,21.5 7,27 10,17.5 2,11 12.5,11" fill="${job2Color}" stroke="white" stroke-width="1.5"/>
-          <text x="16" y="20" text-anchor="middle" font-size="9" font-weight="900" fill="white" font-family="Arial Black,Arial">${note2}</text>
-        </svg>` : ''}
-      </div>
-      <div style="height:106px;overflow:hidden;background:#b8d4f0;position:relative">
-        ${portrait
-          ? `<img src="${portrait}" style="width:100%;height:100%;object-fit:cover;object-position:center top;display:block" onerror="this.parentElement.innerHTML='<div style=\\'width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:36px;color:#8fa5be\\'>👤</div>'">`
-          : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:36px;color:#8fa5be">👤</div>`}
-      </div>
-      <div style="background:#f2e8d2;padding:3px 6px;display:flex;align-items:center;justify-content:space-between;min-height:26px;gap:4px">
-        <img src="https://flagsapi.com/${p.country_code}/flat/32.png" style="width:20px;height:14px;border-radius:2px;object-fit:cover;flex-shrink:0" onerror="this.style.display='none'">
-        <div style="font-size:7px;letter-spacing:.8px;text-transform:uppercase;color:#555;flex:1;text-align:center">${country}</div>
-        ${p.clubs?.logo_url
-          ? `<img src="${p.clubs.logo_url}" style="width:22px;height:18px;object-fit:contain;flex-shrink:0">`
-          : `<div style="background:#1a3a7a;color:#fff;border-radius:3px;padding:1px 4px;font-size:6px;font-weight:800;flex-shrink:0">${(p.clubs?.encoded_name||'').slice(0,6)}</div>`}
-      </div>
-    </div>
-  </div>`
+  const evo = card.evolution_bonus || 0
+  return renderPlayerCard({ ...p, _evolution_bonus: evo }, { width: 140 })
 }
 
 // ── Convertir un booster DB en format UI ─────────────────

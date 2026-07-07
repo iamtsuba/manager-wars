@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase.js'
+import { renderPlayerCard } from '../components/player-card.js'
 import { flagImgUrl } from '../match/match-shared.js'
 
 const JOB_COLORS  = { GK:'#111111', DEF:'#bb2020', MIL:'#D4A017', ATT:'#1A6B3C' }
@@ -152,15 +153,12 @@ async function loadMarket(container, ctx) {
     const note1     = getNote(p, p.job, evo)
     const note2     = p.job2 ? getNote(p, p.job2, evo) : 0
     const canAfford = (state.profile.credits||0) >= l.price
-    return `<div class="card-panel" style="display:flex;align-items:center;gap:8px;padding:10px 12px;overflow:hidden;padding-left:6px">
-      ${rarityBar(p.rarity)}
-      ${squareCell(note1, p.job)}
-      ${squareCell(note2, p.job2||null)}
-      ${flagImg(p.country_code)}
-      ${clubLogoImg(p.clubs?.logo_url)}
+    return `<div class="card-panel" style="display:flex;align-items:center;gap:10px;padding:8px 12px;overflow:hidden">
+      ${renderPlayerCard({...p, _evolution_bonus: evo}, { width: 80 })}
       <div style="flex:1;min-width:0">
-        <div style="font-size:13px;font-weight:900;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.firstname} ${p.surname_encoded}</div>
-        <div style="font-size:10px;color:#999;margin-top:1px">Vendeur : ${l.seller?.pseudo||'—'}</div>
+        <div style="font-size:12px;color:#999">${p.firstname}</div>
+        <div style="font-size:14px;font-weight:900;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.surname_encoded}</div>
+        <div style="font-size:10px;color:#999;margin-top:2px">Vendeur : ${l.seller?.pseudo||'—'}</div>
       </div>
       <div style="text-align:right;flex-shrink:0">
         <div style="font-size:14px;font-weight:900;color:#D4A017">${l.price.toLocaleString('fr')}</div>
@@ -176,14 +174,11 @@ async function loadMarket(container, ctx) {
     const note1  = getNote(p, p.job, evo)
     const note2  = p.job2 ? getNote(p, p.job2, evo) : 0
     const isSold = l.status === 'sold'
-    return `<div class="card-panel" style="display:flex;align-items:center;gap:8px;padding:10px 12px;overflow:hidden;padding-left:6px;${isSold?'opacity:0.7':''}">
-      ${rarityBar(p.rarity)}
-      ${squareCell(note1, p.job)}
-      ${squareCell(note2, p.job2||null)}
-      ${flagImg(p.country_code)}
-      ${clubLogoImg(p.clubs?.logo_url)}
+    return `<div class="card-panel" style="display:flex;align-items:center;gap:10px;padding:8px 12px;overflow:hidden;${isSold?'opacity:0.7':''}">
+      ${renderPlayerCard({...p, _evolution_bonus: evo}, { width: 80 })}
       <div style="flex:1;min-width:0">
-        <div style="font-size:13px;font-weight:900;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.firstname} ${p.surname_encoded}</div>
+        <div style="font-size:12px;color:#999">${p.firstname}</div>
+        <div style="font-size:14px;font-weight:900;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.surname_encoded}</div>
         <div style="font-size:10px;color:${isSold?'#22c55e':'#999'};margin-top:1px">
           ${isSold?`✅ Vendu à ${l.buyer?.pseudo||'—'} · ${l.sold_at?new Date(l.sold_at).toLocaleDateString('fr'):''}` : `🟢 En vente depuis le ${new Date(l.listed_at).toLocaleDateString('fr')}`}
         </div>

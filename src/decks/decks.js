@@ -255,39 +255,50 @@ function renderBuilder(container, builder, ctx) {
       </select>
     </div>
 
-    <!-- Carte Stade -->
-    <div style="padding:8px 16px;background:#fff;border-bottom:1px solid var(--gray-200);display:flex;align-items:center;gap:10px">
-      <span style="font-size:18px">🏟️</span>
-      <div style="flex:1;font-size:12px;font-weight:700;color:#555">Carte Stade <span style="font-size:10px;color:#aaa;font-weight:400">(+10 aux joueurs du même club/pays)</span></div>
-      ${builder.stadiumCards.length > 0 ? `
-        <select id="stadium-select" style="padding:6px;border-radius:6px;border:1.5px solid #E87722;font-size:12px;max-width:180px;background:#fff">
-          <option value="">Aucun stade</option>
-          ${builder.stadiumCards.map(c => {
-            const def = builder.stadDefMap[c.stadium_id]
-            const lbl = def ? def.name + (def.club?.encoded_name ? ` (${def.club.encoded_name})` : def.country_code ? ` (${def.country_code})` : '') : c.id.slice(0,8)
-            return `<option value="${c.id}" ${builder.stadiumCardId===c.id?'selected':''}>${lbl}</option>`
-          }).join('')}
-        </select>` : `<span style="font-size:11px;color:#aaa">Aucune carte Stade possédée</span>`}
-    </div>
+
 
     <!-- Terrain -->
-    <div style="background:linear-gradient(180deg,#1a6b3c,#0a3d1e);padding:0;position:relative">
+    <div style="background:linear-gradient(180deg,#1a6b3c,#0a3d1e);padding:8px 0;position:relative;overflow:hidden">
       <div id="deck-field"></div>
     </div>
 
-    <!-- Remplaçants → mini cartes -->
+    <!-- Remplaçants + Stade côte à côte -->
     <div style="padding:10px 12px;background:rgba(0,0,0,0.25);border-top:1px solid rgba(255,255,255,0.1)">
-      <div style="font-size:11px;font-weight:700;margin-bottom:8px;color:rgba(255,255,255,0.6);letter-spacing:1px;text-transform:uppercase">Remplaçants (${builder.subs.length}/5)</div>
-      <div style="display:flex;gap:8px;align-items:flex-end;overflow-x:auto;padding-bottom:4px" id="subs-list">
-        ${subPlayers.map(card => {
-          const p = { ...card.player, _evolution_bonus: card.evolution_bonus || 0 }
-          return `<div style="position:relative;flex-shrink:0;overflow:visible">
-            ${renderPlayerCard({ ...p, _evolution_bonus: p._evolution_bonus||0 }, { width: 70, showStad: true, stadDef: _stadDef })}
-            <button data-remove-sub="${card.id}"
-              style="position:absolute;top:-6px;right:-6px;width:18px;height:18px;background:#c0392b;border:none;border-radius:50%;color:#fff;font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;padding:0;z-index:10">✕</button>
-          </div>`
-        }).join('')}
-        ${builder.subs.length < 5 ? `<div id="add-sub-btn" style="width:44px;height:58px;border:2px dashed rgba(255,255,255,0.3);border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:22px;color:rgba(255,255,255,0.4);cursor:pointer;flex-shrink:0">+</div>` : ''}
+      <div style="display:flex;gap:16px;align-items:flex-start">
+        <!-- Remplaçants -->
+        <div style="flex:1;min-width:0">
+          <div style="font-size:11px;font-weight:700;margin-bottom:8px;color:rgba(255,255,255,0.6);letter-spacing:1px;text-transform:uppercase">Remplaçants (${builder.subs.length}/5)</div>
+          <div style="display:flex;gap:8px;align-items:flex-end;overflow-x:auto;padding-bottom:4px" id="subs-list">
+            ${subPlayers.map(card => {
+              const p = { ...card.player, _evolution_bonus: card.evolution_bonus || 0 }
+              return `<div style="position:relative;flex-shrink:0;overflow:visible">
+                ${renderPlayerCard({ ...p, _evolution_bonus: p._evolution_bonus||0 }, { width: 65, showStad: true, stadDef: _stadDef })}
+                <button data-remove-sub="${card.id}"
+                  style="position:absolute;top:-6px;right:-6px;width:18px;height:18px;background:#c0392b;border:none;border-radius:50%;color:#fff;font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;padding:0;z-index:10">✕</button>
+              </div>`
+            }).join('')}
+            ${builder.subs.length < 5 ? `<div id="add-sub-btn" style="width:40px;height:55px;border:2px dashed rgba(255,255,255,0.3);border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:22px;color:rgba(255,255,255,0.4);cursor:pointer;flex-shrink:0">+</div>` : ''}
+          </div>
+        </div>
+        <!-- Stade : à droite -->
+        <div style="flex-shrink:0;text-align:center">
+          <div style="font-size:11px;font-weight:700;margin-bottom:8px;color:rgba(255,255,255,0.6);letter-spacing:1px;text-transform:uppercase">🏟️ Stade</div>
+          <div id="add-stad-btn" style="cursor:pointer">
+            ${_selStadCard ? (() => {
+              const def = builder.stadDefMap[_selStadCard.stadium_id]
+              const imgUrl = def?.image_url ? (import.meta.env.BASE_URL + 'icons/' + def.image_url) : null
+              const logo = def?.club?.logo_url || null
+              return `<div style="position:relative;width:65px;height:85px;border-radius:8px;background:linear-gradient(135deg,#1a3a6b,#0a1a3a);border:2px solid #E87722;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;overflow:hidden">
+                ${imgUrl ? `<img src="${imgUrl}" style="width:100%;height:100%;object-fit:cover;position:absolute;inset:0;opacity:0.4">` : ''}
+                ${logo ? `<img src="${logo}" style="width:32px;height:32px;object-fit:contain;position:relative;z-index:1">` : `<span style="font-size:24px">🏟️</span>`}
+                <span style="font-size:8px;font-weight:700;color:#E87722;position:relative;z-index:1;text-align:center;padding:0 2px">${(def?.name||'Stade').slice(0,12)}</span>
+              </div>`
+            })() : `<div style="width:65px;height:85px;border:2px dashed rgba(255,165,0,0.4);border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px">
+              <span style="font-size:22px">🏟️</span>
+              <span style="font-size:9px;color:rgba(255,255,255,0.4)">Ajouter</span>
+            </div>`}
+          </div>
+        </div>
       </div>
     </div>
 
@@ -312,9 +323,8 @@ function renderBuilder(container, builder, ctx) {
     builder.slots = clean
     renderBuilder(container, builder, ctx)
   })
-  document.getElementById('stadium-select')?.addEventListener('change', e => {
-    builder.stadiumCardId = e.target.value || null
-    renderBuilder(container, builder, ctx)
+  document.getElementById('add-stad-btn')?.addEventListener('click', () => {
+    openStadiumSelector(builder, container, ctx)
   })
 
   document.getElementById('save-deck').addEventListener('click', () => saveDeck(builder, ctx))
@@ -350,15 +360,15 @@ function renderDeckField(container, builder, positions, ctx) {
     const cardId = builder.slots[pos]
     const card   = cardId ? builder.playerCards.find(c => c.id === cardId) : null
     if (card?.player) {
-      slots[pos] = { ...card.player, _evolution_bonus: card.evolution_bonus || 0 }
+      slots[pos] = { ...card.player, _evolution_bonus: card.evolution_bonus || 0, face: card.player.face || null }
     } else {
       slots[pos] = null
     }
   }
 
   // Terrain HTML : cartes positionnées en absolu sur un terrain de 320x320
-  const W = 320, H = 320
-  const CARD_W = 60  // largeur carte sur le terrain
+  const W = 300, H = 320
+  const CARD_W = 52  // largeur carte sur le terrain
 
   // SVG des liens uniquement
   let linkSvg = ''
@@ -417,6 +427,51 @@ function renderDeckField(container, builder, positions, ctx) {
   })
 }
 
+
+// ── Sélecteur de stade ───────────────────────────────────
+function openStadiumSelector(builder, container, ctx) {
+  const { openModal, closeModal } = ctx
+  const cards = builder.stadiumCards || []
+
+  openModal('🏟️ Choisir un stade',
+    `<div style="display:flex;flex-wrap:wrap;gap:10px;padding:8px">
+      <div id="stad-none" style="cursor:pointer;width:70px;text-align:center">
+        <div style="width:65px;height:85px;border:2px dashed #ccc;border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;${!builder.stadiumCardId?'border-color:#E87722':''}">
+          <span style="font-size:22px">🚫</span>
+          <span style="font-size:9px;color:#666">Aucun</span>
+        </div>
+      </div>
+      ${cards.map(c => {
+        const def = builder.stadDefMap[c.stadium_id]
+        const logo = def?.club?.logo_url || null
+        const imgUrl = def?.image_url ? (import.meta.env.BASE_URL + 'icons/' + def.image_url) : null
+        const sel = builder.stadiumCardId === c.id
+        return `<div class="stad-choice" data-stad-id="${c.id}" style="cursor:pointer;width:70px;text-align:center">
+          <div style="width:65px;height:85px;border-radius:8px;background:linear-gradient(135deg,#1a3a6b,#0a1a3a);border:2px solid ${sel?'#E87722':'#444'};display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;overflow:hidden;position:relative">
+            ${imgUrl ? `<img src="${imgUrl}" style="width:100%;height:100%;object-fit:cover;position:absolute;inset:0;opacity:0.4">` : ''}
+            ${logo ? `<img src="${logo}" style="width:32px;height:32px;object-fit:contain;position:relative;z-index:1">` : `<span style="font-size:22px">🏟️</span>`}
+            <span style="font-size:8px;font-weight:700;color:${sel?'#E87722':'#ccc'};position:relative;z-index:1;padding:0 2px;text-align:center">${(def?.name||'Stade').slice(0,12)}</span>
+          </div>
+        </div>`
+      }).join('')}
+    </div>`
+  )
+
+  document.getElementById('stad-none')?.addEventListener('click', () => {
+    builder.stadiumCardId = null
+    closeModal()
+    renderBuilder(container, builder, ctx)
+  })
+  document.querySelectorAll('.stad-choice').forEach(el => {
+    el.addEventListener('click', () => {
+      builder.stadiumCardId = el.dataset.stadId
+      closeModal()
+      renderBuilder(container, builder, ctx)
+    })
+  })
+}
+
+// ── Sélecteur de stade ───────────────────────────────────
 
 // ── Sélecteur de joueur (Petit 2 + 3) ────────────────────
 function openPlayerSelector(position, builder, container, ctx) {

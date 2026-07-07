@@ -985,7 +985,7 @@ async function openCardDetail(card, allPlayerCards, countByPlayer, ctx) {
               return `<div style="display:flex;flex-direction:column;align-items:center;gap:4px">
                 <div style="width:48px;height:48px;border-radius:8px;background:#111;border:2.5px solid ${col};
                   display:flex;align-items:center;justify-content:center">
-                  <span style="font-size:20px;font-weight:900;color:#fff;font-family:Arial Black,Arial;line-height:1">${val}</span>
+                  <span style="font-size:20px;font-weight:900;color:${col};font-family:Arial Black,Arial;line-height:1">${val}</span>
                 </div>
                 <span style="font-size:10px;font-weight:700;color:${col}">${j}</span>
               </div>`

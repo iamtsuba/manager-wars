@@ -522,7 +522,7 @@ export function renderCardRow(players, accentColor, total) {
 
 export function flagImgUrl(code) {
   if (!code || code.length < 2) return null
-  return `https://flagsapi.com/${$code.slice(0,2).toLowerCase().slice(0,2).toUpperCase()}/flat/64.png`
+  return `https://flagsapi.com/${code.slice(0,2).toUpperCase()}/flat/64.png`
 }
 
 export function countryFlag(code) {

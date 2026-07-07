@@ -312,7 +312,7 @@ function renderBuilder(container, builder, ctx) {
     <div class="deck-mobile-layout" style="display:none">
       <!-- Terrain mobile -->
       <div style="background:linear-gradient(180deg,#1a6b3c,#0a3d1e);overflow:hidden">
-        <div id="deck-field-mobile" style="margin-top:20px"></div>
+        <div id="deck-field-mobile" style="margin-top:30px"></div>
       </div>
 
       <!-- Remplaçants + Stade mobile -->

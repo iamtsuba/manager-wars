@@ -259,29 +259,10 @@ function renderBuilder(container, builder, ctx) {
     <div class="deck-pc-layout" style="display:none">
       <div style="display:flex;gap:0;min-height:600px">
 
-        <!-- Stade + Formation (colonne gauche) -->
-        <div style="width:140px;flex-shrink:0;background:rgba(0,0,0,0.3);display:flex;flex-direction:column;align-items:center;padding:12px 8px;gap:10px;border-right:1px solid rgba(255,255,255,0.1)">
-          <!-- Formation -->
-          <div style="width:100%">
-            <div style="font-size:10px;font-weight:700;color:rgba(255,255,255,0.5);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px;text-align:center">Formation</div>
-            <select id="formation-select-pc" style="width:100%;padding:5px;border-radius:6px;border:1px solid #555;background:#222;color:#fff;font-size:12px">
-              ${formationOptions.map(f => `<option value="${f}" ${f===builder.formation?'selected':''}>${f}</option>`).join('')}
-            </select>
-          </div>
-          <div style="font-size:11px;font-weight:700;color:rgba(255,255,255,0.6);letter-spacing:1px;text-transform:uppercase;text-align:center">🏟️ Stade</div>
-          <div id="add-stad-btn" style="cursor:pointer">
-            ${_selStadCard ? (() => {
-              const def = builder.stadDefMap[_selStadCard.stadium_id]
-              const logo = def?.club?.logo_url || null
-              return `<div style="width:100px;height:130px;border-radius:8px;background:linear-gradient(135deg,#1a3a6b,#0a1a3a);border:2px solid #E87722;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px">
-                ${logo ? `<img src="${logo}" style="width:48px;height:48px;object-fit:contain">` : `<span style="font-size:36px">🏟️</span>`}
-                <span style="font-size:10px;font-weight:700;color:#E87722;text-align:center;padding:0 4px">${(def?.name||'Stade').slice(0,14)}</span>
-              </div>`
-            })() : `<div style="width:100px;height:130px;border:2px dashed rgba(255,165,0,0.4);border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;cursor:pointer">
-              <span style="font-size:36px">🏟️</span>
-              <span style="font-size:10px;color:rgba(255,255,255,0.4)">Ajouter</span>
-            </div>`}
-          </div>
+        <!-- Remplaçants (colonne gauche) -->
+        <div style="width:115px;flex-shrink:0;background:rgba(0,0,0,0.3);display:flex;flex-direction:column;align-items:center;padding:12px 8px;gap:10px;border-right:1px solid rgba(255,255,255,0.1)">
+          <div style="font-size:10px;font-weight:700;color:rgba(255,255,255,0.6);letter-spacing:1px;text-transform:uppercase;text-align:center">Remplaçants (${builder.subs.length}/5)</div>
+
           <!-- Remplaçants PC : colonne verticale -->
           <div style="font-size:11px;font-weight:700;color:rgba(255,255,255,0.6);letter-spacing:1px;text-transform:uppercase;text-align:center;margin-top:8px">Remplaçants<br>(${builder.subs.length}/5)</div>
           <div style="display:flex;flex-direction:column;gap:6px;align-items:center" id="subs-list">
@@ -297,9 +278,37 @@ function renderBuilder(container, builder, ctx) {
           </div>
         </div>
 
-        <!-- Terrain PC (colonne droite) -->
+        <!-- Terrain PC (colonne centrale) -->
         <div style="flex:1;background:linear-gradient(180deg,#1a6b3c,#0a3d1e);overflow:hidden">
           <div id="deck-field-pc"></div>
+        </div>
+
+        <!-- Formation + Stade (colonne droite) -->
+        <div style="width:130px;flex-shrink:0;background:rgba(0,0,0,0.3);display:flex;flex-direction:column;align-items:center;padding:12px 8px;gap:12px;border-left:1px solid rgba(255,255,255,0.1)">
+          <!-- Formation -->
+          <div style="width:100%;text-align:center">
+            <div style="font-size:10px;font-weight:700;color:rgba(255,255,255,0.5);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px">Formation</div>
+            <div id="formation-pc-btn" style="cursor:pointer;width:100px;height:50px;border-radius:8px;background:#1a3a6b;border:2px solid #555;display:flex;align-items:center;justify-content:center;margin:0 auto">
+              <span style="font-size:18px;font-weight:900;color:#fff">${builder.formation}</span>
+            </div>
+          </div>
+          <!-- Stade -->
+          <div style="width:100%;text-align:center">
+            <div style="font-size:10px;font-weight:700;color:rgba(255,255,255,0.5);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px">🏟️ Stade</div>
+            <div id="add-stad-btn" style="cursor:pointer;margin:0 auto;width:fit-content">
+              ${_selStadCard ? (() => {
+                const def = builder.stadDefMap[_selStadCard.stadium_id]
+                const logo = def?.club?.logo_url || null
+                return `<div style="width:100px;height:130px;border-radius:8px;background:linear-gradient(135deg,#1a3a6b,#0a1a3a);border:2px solid #E87722;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px">
+                  ${logo ? `<img src="${logo}" style="width:48px;height:48px;object-fit:contain">` : `<span style="font-size:36px">🏟️</span>`}
+                  <span style="font-size:10px;font-weight:700;color:#E87722;text-align:center;padding:0 4px">${(def?.name||'Stade').slice(0,14)}</span>
+                </div>`
+              })() : `<div style="width:100px;height:130px;border:2px dashed rgba(255,165,0,0.4);border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px">
+                <span style="font-size:36px">🏟️</span>
+                <span style="font-size:10px;color:rgba(255,255,255,0.4)">Ajouter</span>
+              </div>`}
+            </div>
+          </div>
         </div>
 
       </div>
@@ -352,7 +361,7 @@ function renderBuilder(container, builder, ctx) {
     </div>
 
     <!-- Sauvegarder -->
-    <div class="page-body">
+    <div class="page-body" style="padding-bottom:20px">
       <button class="btn btn-primary" id="save-deck" style="width:100%" ${filled < 11 ? 'disabled' : ''}>
         ${filled < 11 ? `Placez encore ${11-filled} joueur(s)` : '💾 Enregistrer le deck'}
       </button>
@@ -429,10 +438,10 @@ function renderDeckField(container, builder, positions, ctx) {
   // Taille responsive
   const isDesktopRDF = window.innerWidth >= 768
   // PC : terrain dans la colonne droite (largeur - 140px stade)
-  const availW = isDesktopRDF ? window.innerWidth - 180 : window.innerWidth - 20
-  const W      = isDesktopRDF ? Math.min(availW, 800) : availW
-  const H      = isDesktopRDF ? Math.round(W * 0.9)   : Math.round(W * 1.35)
-  const CARD_W = isDesktopRDF ? 65 : 44
+  const availW = isDesktopRDF ? window.innerWidth - 200 : window.innerWidth - 20
+  const W      = isDesktopRDF ? Math.min(availW, 900) : availW
+  const H      = isDesktopRDF ? Math.round(W * 1.05)  : Math.round(W * 1.35)
+  const CARD_W = isDesktopRDF ? 75 : 44
 
   // SVG des liens uniquement
   let linkSvg = ''

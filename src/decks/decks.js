@@ -239,11 +239,11 @@ function renderBuilder(container, builder, ctx) {
 
   container.innerHTML = `
   <div style="height:100%;overflow:hidden;background:var(--page-bg)">
-    <div class="page-header" style="display:flex;align-items:center;gap:10px">
-      <button class="btn-icon" id="builder-back" style="font-size:20px">←</button>
+    <div class="page-header" style="display:flex;align-items:center;gap:8px;padding:6px 12px;min-height:0">
+      <button class="btn-icon" id="builder-back" style="font-size:16px">←</button>
       <div style="flex:1">
-        <h2 style="font-size:18px">${builder.name}</h2>
-        <p>${filled}/11 titulaires · ${builder.subs.length}/5 remplaçants</p>
+        <h2 style="font-size:14px;margin:0">${builder.name}</h2>
+        <p style="font-size:11px;margin:0">${filled}/11 · ${builder.subs.length}/5 rempl.</p>
       </div>
     </div>
 
@@ -321,7 +321,7 @@ function renderBuilder(container, builder, ctx) {
           <!-- Remplaçants mobile -->
           <div style="flex:1;min-width:0">
             <div style="font-size:10px;font-weight:700;margin-bottom:6px;color:rgba(255,255,255,0.6);letter-spacing:1px;text-transform:uppercase">Remplaçants (${builder.subs.length}/5)</div>
-            <div style="display:flex;gap:4px;align-items:flex-end;flex-wrap:nowrap;overflow-x:auto" id="subs-list">
+            <div style="display:flex;gap:4px;align-items:center;flex-wrap:nowrap;overflow-x:auto" id="subs-list">
               ${subPlayers.map(card => {
                 const p = { ...card.player, _evolution_bonus: card.evolution_bonus || 0 }
                 return `<div style="position:relative;flex-shrink:0;overflow:visible">

@@ -100,17 +100,21 @@ export function renderPlayerCard(p, opts = {}) {
   const photoW   = ax(260)
   const photoH   = ax(235)   // s'arrête au haut de l'octogone (y≈380)
 
-  const noteTop  = ax(440)
-  const noteH    = ax(179)
-  const noteX    = ax(150)
-  const noteW    = ax(209)
+  // Octogone central mesuré: y=380→639, x=100→409, centre x=254, y=509
+  // Note : centrée dans l'octogone
+  const noteTop  = ax(380)
+  const noteH    = ax(259)   // hauteur totale octogone
+  const noteX    = ax(100)
+  const noteW    = ax(309)   // largeur totale octogone
 
-  const rectY    = ax(468)
-  const rectW    = ax(110)
+  // Drapeaux/logo : rectangles au niveau du centre de l'octogone (y=509)
+  // de chaque côté extérieur de l'octogone
   const rectH    = ax(90)
-  const rectLX   = ax(55)
-  const rectRX   = ax(342)
-  const rectR    = ax(8)    // border-radius des rectangles
+  const rectW    = ax(95)
+  const rectY    = ax(509) - ax(45)  // centré sur y=509
+  const rectLX   = ax(0)             // juste à gauche de l'octogone
+  const rectRX   = ax(412)           // juste à droite
+  const rectR    = ax(6)
 
   return `<div style="position:relative;width:${width}px;height:${height}px;flex-shrink:0;${opacity}user-select:none">
 
@@ -135,7 +139,7 @@ export function renderPlayerCard(p, opts = {}) {
   <!-- Note principale : centrée dans l'octogone du template -->
   <div style="position:absolute;left:${noteX}px;top:${noteTop}px;width:${noteW}px;height:${noteH}px;
     z-index:4;display:flex;flex-direction:column;align-items:center;justify-content:center">
-    <span style="font-size:${px(72)};font-weight:900;color:${noteColor};font-family:Arial Black,Arial;line-height:1;text-shadow:0 2px 6px rgba(0,0,0,0.9)">${mainNote}</span>
+    <span style="font-size:${px(80)};font-weight:900;color:${noteColor};font-family:Arial Black,Arial;line-height:1;text-shadow:0 2px 8px rgba(0,0,0,0.9)">${mainNote}</span>
   </div>
 
   <!-- Note secondaire : sous l'octogone note -->

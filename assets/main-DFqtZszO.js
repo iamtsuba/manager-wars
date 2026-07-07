@@ -339,7 +339,7 @@ import{s as T,F as _i,i as Ht,k as Ki,l as ot,m as Li,f as Gt,n as bn,T as di,j 
         border:1.5px solid #ddd;background:#fff;
         font-size:14px;font-weight:700;cursor:pointer;color:#555;
       }
-    </style>`}async function Wi({player1Id:e,player2Id:t,score1:i,score2:o,gc1:d,gc2:a}){const[r,l]=[e,t].sort(),p=e!==r,s=p?o:i,n=p?i:o,x=p?a:d,u=p?d:a,h=s>n?1:0,_=n>s?1:0,m=s===n?1:0,{data:c}=await T.from("friend_match_stats").select("*").eq("player1_id",r).eq("player2_id",l).single();c?await T.from("friend_match_stats").update({wins_p1:c.wins_p1+h,wins_p2:c.wins_p2+_,draws:c.draws+m,goals_p1:c.goals_p1+s,goals_p2:c.goals_p2+n,gc_used_p1:c.gc_used_p1+x,gc_used_p2:c.gc_used_p2+u,matches_total:c.matches_total+1}).eq("player1_id",r).eq("player2_id",l):await T.from("friend_match_stats").insert({player1_id:r,player2_id:l,wins_p1:h,wins_p2:_,draws:m,goals_p1:s,goals_p2:n,gc_used_p1:x,gc_used_p2:u,matches_total:1})}const Mn="2026.07.08-0034";async function Ci(e,{state:t,navigate:i,toast:o}){var a,r;const d=t.profile;d&&(e.innerHTML=`
+    </style>`}async function Wi({player1Id:e,player2Id:t,score1:i,score2:o,gc1:d,gc2:a}){const[r,l]=[e,t].sort(),p=e!==r,s=p?o:i,n=p?i:o,x=p?a:d,u=p?d:a,h=s>n?1:0,_=n>s?1:0,m=s===n?1:0,{data:c}=await T.from("friend_match_stats").select("*").eq("player1_id",r).eq("player2_id",l).single();c?await T.from("friend_match_stats").update({wins_p1:c.wins_p1+h,wins_p2:c.wins_p2+_,draws:c.draws+m,goals_p1:c.goals_p1+s,goals_p2:c.goals_p2+n,gc_used_p1:c.gc_used_p1+x,gc_used_p2:c.gc_used_p2+u,matches_total:c.matches_total+1}).eq("player1_id",r).eq("player2_id",l):await T.from("friend_match_stats").insert({player1_id:r,player2_id:l,wins_p1:h,wins_p2:_,draws:m,goals_p1:s,goals_p2:n,gc_used_p1:x,gc_used_p2:u,matches_total:1})}const Mn="2026.07.08-0035";async function Ci(e,{state:t,navigate:i,toast:o}){var a,r;const d=t.profile;d&&(e.innerHTML=`
   <style>
     @media (min-width: 768px) {
       .home-page-body {
@@ -900,8 +900,8 @@ import{s as T,F as _i,i as Ht,k as Ki,l as ot,m as Li,f as Gt,n as bn,T as di,j 
       <div style="display:flex;gap:0;min-height:600px">
 
         <!-- Remplaçants (colonne gauche) -->
-        <div style="width:130px;flex-shrink:0;background:rgba(0,0,0,0.3);display:flex;flex-direction:column;align-items:center;padding:12px 8px;gap:10px;border-right:1px solid rgba(255,255,255,0.1)">
-          <div style="font-size:10px;font-weight:700;color:rgba(255,255,255,0.6);letter-spacing:1px;text-transform:uppercase;text-align:center">Remplaçants (${t.subs.length}/5)</div>
+        <div style="width:105px;flex-shrink:0;background:rgba(0,0,0,0.3);display:flex;flex-direction:column;align-items:center;padding:12px 6px;gap:8px;border-right:1px solid rgba(255,255,255,0.1)">
+
 
           <!-- Remplaçants PC : colonne verticale -->
           <div style="font-size:11px;font-weight:700;color:rgba(255,255,255,0.6);letter-spacing:1px;text-transform:uppercase;text-align:center;margin-top:8px">Remplaçants<br>(${t.subs.length}/5)</div>

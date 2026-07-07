@@ -378,7 +378,7 @@ function renderBuilder(container, builder, ctx) {
 
   renderDeckField(container, builder, positions, ctx)
 
-  document.getElementById('builder-back').addEventListener('click', () => navigate('decks'))
+  container.querySelector('#builder-back')?.addEventListener('click', () => navigate('decks'))
 
   document.getElementById('formation-select').addEventListener('change', e => {
     builder.formation = e.target.value
@@ -407,17 +407,17 @@ function renderBuilder(container, builder, ctx) {
       })
     })
   }
-  document.getElementById('formation-mobile-btn')?.addEventListener('click', openFormationModal)
-  document.getElementById('formation-pc-btn')?.addEventListener('click', openFormationModal)
+  container.querySelector('#formation-mobile-btn')?.addEventListener('click', openFormationModal)
+  container.querySelector('#formation-pc-btn')?.addEventListener('click', openFormationModal)
 
 
 
 
   // Stade PC et mobile
-  document.getElementById('add-stad-btn-pc')?.addEventListener('click', () => openStadiumSelector(builder, container, ctx))
-  document.getElementById('add-stad-btn')?.addEventListener('click', () => openStadiumSelector(builder, container, ctx))
+  container.querySelector('#add-stad-btn-pc')?.addEventListener('click', () => openStadiumSelector(builder, container, ctx))
+  container.querySelector('#add-stad-btn')?.addEventListener('click', () => openStadiumSelector(builder, container, ctx))
 
-  document.getElementById('save-deck').addEventListener('click', () => saveDeck(builder, ctx))
+  container.querySelector('#save-deck')?.addEventListener('click', () => saveDeck(builder, ctx))
 
   // Retirer un remplaçant
   container.querySelectorAll('[data-remove-sub]').forEach(btn => {
@@ -428,9 +428,7 @@ function renderBuilder(container, builder, ctx) {
   })
 
   // Ajouter un remplaçant
-  document.getElementById('add-sub-btn')?.addEventListener('click', () => {
-    openSubSelector(builder, container, ctx)
-  })
+  container.querySelectorAll('#add-sub-btn').forEach(el => el.addEventListener('click', () => openSubSelector(builder, container, ctx)))
 }
 
 function renderDeckField(container, builder, positions, ctx) {
@@ -583,6 +581,8 @@ function openStadiumSelector(builder, container, ctx) {
 function openPlayerSelector(position, builder, container, ctx) {
   const { openModal, closeModal } = ctx
   const role = position.replace(/\d+/, '')
+  const _selStadCardP = builder.stadiumCards?.find(c => c.id === builder.stadiumCardId)
+  const _stadDef = _selStadCardP ? (builder.stadDefMap?.[_selStadCardP.stadium_id] || null) : null
 
   // Exclure les joueurs déjà placés (par player_id pour éviter les doublons)
   const currentCardId = builder.slots[position]

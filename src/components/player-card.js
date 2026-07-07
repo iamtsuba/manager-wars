@@ -53,7 +53,7 @@ function hasStadBonus(p, stadDef) {
 }
 
 export function renderPlayerCard(p, opts = {}) {
-  const { width = 160, showStad = false, stadDef = null, used = false, extraNote = 0 } = opts
+  const { width = 160, showStad = false, stadDef = null, used = false, extraNote = 0, role: forceRole = null } = opts
 
   if (!p) return `<div style="width:${width}px;height:${Math.round(width*657/507)}px;border-radius:8px;background:#111;opacity:0.3"></div>`
 
@@ -62,15 +62,20 @@ export function renderPlayerCard(p, opts = {}) {
   const ax     = (n) => Math.round(n * ratio)
   const px     = (n) => ax(n) + 'px'
 
-  const job    = p._line || p.job || 'MIL'
+  // Si forceRole est défini (joueur positionné sur un poste spécifique), utiliser ce poste pour la note
+  const job    = forceRole || p._line || p.job || 'MIL'
   const accent = JOB_ACCENT[job] || '#D4A017'
   const tmpl   = CARD_TEMPLATES[job] || CARD_TEMPLATES.MIL
   const evo    = p._evolution_bonus ?? p.evolution_bonus ?? 0
   const stadB  = showStad && (p.stadiumBonus || hasStadBonus(p, stadDef)) ? 10 : 0
 
   const mainNote  = getNoteForJob(p, job, evo) + extraNote + stadB
-  const noteColor = stadB > 0 ? '#4fc3f7' : accent
-  const job2      = (p.job2 && p.job2 !== job) ? p.job2 : null
+  // Couleur note : bleu si stade, orange si poste secondaire, sinon couleur du poste
+  const isSecondaryRole = forceRole && forceRole !== p.job
+  const noteColor = stadB > 0 ? '#4fc3f7' : isSecondaryRole ? '#E87722' : accent
+  // On n'affiche que la note du poste joué (forceRole ou job principal)
+  // job2Note uniquement si pas de forceRole ET job2 existe
+  const job2      = (!forceRole && p.job2 && p.job2 !== job) ? p.job2 : null
   const job2Note  = job2 ? getNoteForJob(p, job2, evo) + extraNote + stadB : null
 
   const faceUrl     = getFaceUrl(p)
@@ -118,7 +123,7 @@ export function renderPlayerCard(p, opts = {}) {
   const rectR    = ax(6)
 
   return `<div style="position:relative;width:${width}px;height:${height + (stadB>0 ? ax(22) : 0)}px;flex-shrink:0;${opacity}user-select:none">
-  ${stadB > 0 ? `<div style="position:absolute;top:0;left:0;right:0;text-align:center;z-index:5;font-size:${px(14)};line-height:1">🏟️</div>` : ''}
+  ${stadB > 0 ? `<div style="position:absolute;top:0;left:0;right:0;text-align:center;z-index:5;font-size:${px(22)};line-height:1">🏟️</div>` : ''}
   <div style="position:absolute;bottom:0;left:0;width:${width}px;height:${height}px">
 
   <img src="${tmpl}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:fill" draggable="false">

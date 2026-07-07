@@ -292,7 +292,7 @@ function renderBuilder(container, builder, ctx) {
 
         <!-- Terrain PC (colonne droite) -->
         <div style="flex:1;background:linear-gradient(180deg,#1a6b3c,#0a3d1e);overflow:hidden">
-          <div id="deck-field"></div>
+          <div id="deck-field-pc"></div>
         </div>
 
       </div>
@@ -302,7 +302,7 @@ function renderBuilder(container, builder, ctx) {
     <div class="deck-mobile-layout" style="display:none">
       <!-- Terrain mobile -->
       <div style="background:linear-gradient(180deg,#1a6b3c,#0a3d1e);overflow:hidden">
-        <div id="deck-field"></div>
+        <div id="deck-field-mobile"></div>
       </div>
 
       <!-- Remplaçants + Stade mobile -->
@@ -386,7 +386,8 @@ function renderBuilder(container, builder, ctx) {
 }
 
 function renderDeckField(container, builder, positions, ctx) {
-  const field = container.querySelector('#deck-field')
+  const isDesktopField = window.innerWidth >= 768
+  const field = container.querySelector(isDesktopField ? '#deck-field-pc' : '#deck-field-mobile')
   if (!field) return
 
   // Calculer le stade sélectionné pour le bonus +10

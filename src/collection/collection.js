@@ -982,12 +982,12 @@ async function openCardDetail(card, allPlayerCards, countByPlayer, ctx) {
               const col = JOB_COLORS[j]
               const isJobNote = j === p.job || j === p.job2
               const val = (Number(n)||0) + (isJobNote && evo > 0 ? evo : 0)
-              return `<div style="display:flex;flex-direction:column;align-items:center;gap:2px">
-                <svg width="38" height="37" viewBox="0 0 38 37" style="display:block">
-                  <polygon points="19,2 24,13 36,13 26,21 30,33 19,26 8,33 12,21 2,13 14,13" fill="${col}" stroke="white" stroke-width="1.5"/>
-                  <text x="19" y="23" text-anchor="middle" font-size="13" font-weight="900" fill="white" font-family="Arial Black,Arial">${val}</text>
-                </svg>
-                <span style="font-size:9px;font-weight:700;color:var(--gray-600)">${j}</span>
+              return `<div style="display:flex;flex-direction:column;align-items:center;gap:4px">
+                <div style="width:48px;height:48px;border-radius:8px;background:#111;border:2.5px solid ${col};
+                  display:flex;align-items:center;justify-content:center">
+                  <span style="font-size:20px;font-weight:900;color:#fff;font-family:Arial Black,Arial;line-height:1">${val}</span>
+                </div>
+                <span style="font-size:10px;font-weight:700;color:${col}">${j}</span>
               </div>`
             }).join('')}
           </div>

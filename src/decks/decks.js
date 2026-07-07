@@ -312,7 +312,7 @@ function renderBuilder(container, builder, ctx) {
     <div class="deck-mobile-layout" style="display:none">
       <!-- Terrain mobile -->
       <div style="background:linear-gradient(180deg,#1a6b3c,#0a3d1e);overflow:hidden">
-        <div id="deck-field-mobile"></div>
+        <div id="deck-field-mobile" style="margin-top:20px"></div>
       </div>
 
       <!-- Remplaçants + Stade mobile -->
@@ -342,6 +342,7 @@ function renderBuilder(container, builder, ctx) {
           </div>
           <!-- Stade mobile : à droite -->
           <div style="flex-shrink:0;text-align:center">
+            <div style="font-size:10px;font-weight:700;margin-bottom:6px;color:rgba(255,255,255,0.6);letter-spacing:1px;text-transform:uppercase">🏟️</div>
             <div id="add-stad-btn" style="cursor:pointer">
               ${_selStadCard ? (() => {
                 const def = builder.stadDefMap[_selStadCard.stadium_id]
@@ -391,31 +392,26 @@ function renderBuilder(container, builder, ctx) {
   // Formation mobile et PC : même modal
   const openFormationModal = () => {
     const { openModal, closeModal } = ctx
-    openModal('⚽ Choisir une formation',
-      `<div id="forma-grid" style="display:flex;flex-wrap:wrap;gap:8px;padding:8px">
-        ${formationOptions.map(f => `
-          <div data-forma="${f}" style="cursor:pointer;padding:10px 16px;border-radius:8px;background:${f===builder.formation?'#1A6B3C':'#f0f0f0'};color:${f===builder.formation?'#fff':'#111'};font-weight:900;font-size:16px;border:2px solid ${f===builder.formation?'#1A6B3C':'#ddd'}">${f}</div>`).join('')}
-      </div>`
-    )
-    // Délégation sur le conteneur pour éviter les conflits
-    setTimeout(() => {
-      document.getElementById('forma-grid')?.addEventListener('click', e => {
-        const el = e.target.closest('[data-forma]')
-        if (!el) return
+    const bodyHtml = `<div style="display:flex;flex-wrap:wrap;gap:8px;padding:8px">
+      ${formationOptions.map(f =>
+        `<div data-forma="${f}" style="cursor:pointer;padding:10px 16px;border-radius:8px;background:${f===builder.formation?'#1A6B3C':'#f0f0f0'};color:${f===builder.formation?'#fff':'#111'};font-weight:900;font-size:16px;border:2px solid ${f===builder.formation?'#1A6B3C':'#ddd'}">${f}</div>`
+      ).join('')}
+    </div>`
+    openModal('⚽ Choisir une formation', bodyHtml)
+    // Attacher les listeners directement sur les éléments rendus
+    document.querySelectorAll('#modal-body [data-forma]').forEach(el => {
+      el.addEventListener('click', () => {
         builder.formation = el.dataset.forma
         closeModal()
         renderBuilder(container, builder, ctx)
       })
-    }, 50)
+    })
   }
   document.getElementById('formation-mobile-btn')?.addEventListener('click', openFormationModal)
   document.getElementById('formation-pc-btn')?.addEventListener('click', openFormationModal)
 
 
-  // Formation mobile et PC : même modal
-  document.getElementById('formation-pc-btn')?.addEventListener('click', () => {
-    openFormationModal()
-  })
+
 
   document.getElementById('add-stad-btn')?.addEventListener('click', () => {
     openStadiumSelector(builder, container, ctx)
@@ -507,7 +503,7 @@ function renderDeckField(container, builder, positions, ctx) {
       )
       const cardHtml = renderPlayerCard(
         { ...p, _evolution_bonus: p._evolution_bonus||0 },
-        { width: CARD_W, showStad: true, stadDef, role }
+        { width: CARD_W, showStad: false, stadDef, role }
       )
       const stadIcon = hasStad ? `<div style="position:absolute;top:-30px;left:0;right:0;text-align:center;font-size:20px;z-index:5;line-height:1">🏟️</div>` : ''
       cardsHtml += `<div style="position:absolute;left:${left}px;top:${top}px;cursor:pointer;z-index:2;position:absolute" class="deck-slot-hit" data-pos="${pos}">

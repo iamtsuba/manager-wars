@@ -336,9 +336,11 @@ async function openPlayerModal(player, clubs, container, helpers) {
         </div>
 
         <div id="pm-error" style="color:#bb2020;font-size:13px;min-height:16px"></div>
+        <div style="position:sticky;bottom:0;background:#fff;padding:8px 0 4px;margin-top:4px">
         <button class="btn btn-primary" id="pm-save" style="width:100%;padding:14px;font-size:15px">
           ${isEdit ? '💾 Enregistrer' : '✅ Créer le joueur'}
         </button>
+        </div>
       </div>
     </div>`
   )
@@ -377,7 +379,7 @@ async function openPlayerModal(player, clubs, container, helpers) {
         country_code: cc,
         club_id: cid,
         note_g: ng, note_d: nd, note_m: nm2, note_a: na,
-        face: currentFace,
+        face: currentFace ? 'faces/' + currentFace : null,
         clubs: selClub ? { encoded_name: selClub.encoded_name, logo_url: selClub.logo_url } : null,
       }
       wrap.innerHTML = renderPlayerCard(p, { width: 160 })

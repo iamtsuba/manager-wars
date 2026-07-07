@@ -378,7 +378,7 @@ function renderBuilder(container, builder, ctx) {
 
   renderDeckField(container, builder, positions, ctx)
 
-  container.querySelector('#builder-back')?.addEventListener('click', () => navigate('decks'))
+  container.querySelectorAll('#builder-back').forEach(el => el.addEventListener('click', () => navigate('decks')))
 
   document.getElementById('formation-select').addEventListener('change', e => {
     builder.formation = e.target.value
@@ -407,17 +407,15 @@ function renderBuilder(container, builder, ctx) {
       })
     })
   }
-  container.querySelector('#formation-mobile-btn')?.addEventListener('click', openFormationModal)
-  container.querySelector('#formation-pc-btn')?.addEventListener('click', openFormationModal)
+  container.querySelectorAll('#formation-mobile-btn, #formation-pc-btn').forEach(el => el.addEventListener('click', openFormationModal))
 
 
 
 
   // Stade PC et mobile
-  container.querySelector('#add-stad-btn-pc')?.addEventListener('click', () => openStadiumSelector(builder, container, ctx))
-  container.querySelector('#add-stad-btn')?.addEventListener('click', () => openStadiumSelector(builder, container, ctx))
+  container.querySelectorAll('#add-stad-btn-pc, #add-stad-btn').forEach(el => el.addEventListener('click', () => openStadiumSelector(builder, container, ctx)))
 
-  container.querySelector('#save-deck')?.addEventListener('click', () => saveDeck(builder, ctx))
+  container.querySelectorAll('#save-deck').forEach(el => el.addEventListener('click', () => saveDeck(builder, ctx)))
 
   // Retirer un remplaçant
   container.querySelectorAll('[data-remove-sub]').forEach(btn => {
@@ -501,7 +499,7 @@ function renderDeckField(container, builder, positions, ctx) {
       )
       const cardHtml = renderPlayerCard(
         { ...p, _evolution_bonus: p._evolution_bonus||0 },
-        { width: CARD_W, showStad: false, stadDef, role }
+        { width: CARD_W, showStad: true, stadDef, role }
       )
       const stadIcon = hasStad ? `<div style="position:absolute;top:-18px;left:0;right:0;text-align:center;font-size:14px;z-index:5;line-height:1">🏟️</div>` : ''
       cardsHtml += `<div style="position:absolute;left:${left}px;top:${top}px;cursor:pointer;z-index:2;position:absolute" class="deck-slot-hit" data-pos="${pos}">

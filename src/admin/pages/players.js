@@ -27,17 +27,32 @@ export async function pagePlayers(container, helpers) {
   await loadPlayers(container, helpers)
 }
 
-async function loadPlayers(container, helpers) {
+async function loadPlayers(container, helpers, savedFilters = null) {
   const { toast } = helpers
+  // Sauvegarder les filtres courants si non fournis
+  if (!savedFilters) {
+    savedFilters = {
+      search: document.getElementById('search-players')?.value || '',
+      job:    document.getElementById('filter-job')?.value || '',
+      rarity: document.getElementById('filter-rarity')?.value || '',
+      club:   document.getElementById('filter-club')?.value || '',
+      country:document.getElementById('filter-country')?.value || '',
+    }
+  }
   const [{ data: players, error }, { data: clubs }] = await Promise.all([
-    supabase.from('players').select('*, clubs(id,encoded_name,logo_url)').order('surname_encoded'),
+    supabase.from('players').select('*, clubs(id,encoded_name,logo_url)'),
     supabase.from('clubs').select('id,encoded_name').order('encoded_name'),
   ])
   if (error) { container.innerHTML = `<p style="color:red">${error.message}</p>`; return }
-  renderPage(container, players || [], clubs || [], helpers)
+  const JOB_ORDER = { GK:0, DEF:1, MIL:2, ATT:3 }
+  const sorted = (players || []).sort((a,b) => {
+    const jo = (JOB_ORDER[a.job]??4) - (JOB_ORDER[b.job]??4)
+    return jo !== 0 ? jo : (a.surname_encoded||'').localeCompare(b.surname_encoded||'')
+  })
+  renderPage(container, sorted, clubs || [], helpers, savedFilters)
 }
 
-function renderPage(container, players, clubs, helpers) {
+function renderPage(container, players, clubs, helpers, savedFilters = null) {
   const { toast } = helpers
 
   container.innerHTML = `
@@ -66,6 +81,7 @@ function renderPage(container, players, clubs, helpers) {
             .map(cc => `<option value="${cc}">${cc}</option>`).join('')}
         </select>
       </div>
+      <div id="filters-restore-hook" style="display:none"></div>
       <div id="count-label" style="font-size:12px;color:var(--gray-600)">${players.length} joueur(s)</div>
       <div id="bulk-bar" style="display:none;align-items:center;gap:8px;padding:8px 10px;background:rgba(187,32,32,0.08);border:1px solid #bb2020;border-radius:10px">
         <span id="bulk-count" style="font-size:13px;font-weight:700;color:#bb2020;flex:1"></span>
@@ -75,6 +91,28 @@ function renderPage(container, players, clubs, helpers) {
       <!-- Grille de cartes -->
       <div id="players-list" style="display:flex;flex-wrap:wrap;gap:12px"></div>
     </div>`
+
+  // Restaurer les filtres sauvegardés
+  if (savedFilters) {
+    const sf = savedFilters
+    const el = (id) => document.getElementById(id)
+    if (sf.search  && el('search-players')) el('search-players').value = sf.search
+    if (sf.job     && el('filter-job'))     el('filter-job').value     = sf.job
+    if (sf.rarity  && el('filter-rarity'))  el('filter-rarity').value  = sf.rarity
+    if (sf.club    && el('filter-club'))    el('filter-club').value    = sf.club
+    if (sf.country && el('filter-country')) el('filter-country').value = sf.country
+  }
+
+  // Restaurer les filtres sauvegardés
+  if (savedFilters) {
+    const sf = savedFilters
+    const el = (id) => document.getElementById(id)
+    if (sf.search  && el('search-players')) el('search-players').value = sf.search
+    if (sf.job     && el('filter-job'))     el('filter-job').value     = sf.job
+    if (sf.rarity  && el('filter-rarity'))  el('filter-rarity').value  = sf.rarity
+    if (sf.club    && el('filter-club'))    el('filter-club').value    = sf.club
+    if (sf.country && el('filter-country')) el('filter-country').value = sf.country
+  }
 
   function filtered() {
     const q       = document.getElementById('search-players').value.toLowerCase()
@@ -156,7 +194,14 @@ function renderPage(container, players, clubs, helpers) {
     if (error) { toast(error.message, 'error'); return }
     toast(`${ids.length} joueur(s) supprimé(s) ✅`, 'success')
     selected.clear()
-    loadPlayers(container, helpers)
+    const filters = {
+    search: document.getElementById('search-players')?.value || '',
+    job:    document.getElementById('filter-job')?.value || '',
+    rarity: document.getElementById('filter-rarity')?.value || '',
+    club:   document.getElementById('filter-club')?.value || '',
+    country:document.getElementById('filter-country')?.value || '',
+  }
+  loadPlayers(container, helpers, filters)
   })
   document.getElementById('add-player-btn').addEventListener('click', () => openPlayerModal(null, clubs, container, helpers))
 }
@@ -463,5 +508,12 @@ async function savePlayer(player, isEdit, face, container, helpers) {
 
   toast(isEdit ? 'Joueur modifié ✅' : 'Joueur créé ✅', 'success')
   closeModal()
-  loadPlayers(container, helpers)
+  const filters = {
+    search: document.getElementById('search-players')?.value || '',
+    job:    document.getElementById('filter-job')?.value || '',
+    rarity: document.getElementById('filter-rarity')?.value || '',
+    club:   document.getElementById('filter-club')?.value || '',
+    country:document.getElementById('filter-country')?.value || '',
+  }
+  loadPlayers(container, helpers, filters)
 }

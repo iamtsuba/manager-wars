@@ -367,8 +367,11 @@ function renderDeckField(container, builder, positions, ctx) {
   }
 
   // Terrain HTML : cartes positionnées en absolu sur un terrain de 320x320
-  const W = 320, H = 420
-  const CARD_W = 52  // largeur carte sur le terrain
+  // Taille responsive : grand sur PC, compact sur mobile
+  const isDesktop = window.innerWidth >= 768
+  const W      = isDesktop ? 560 : 320
+  const H      = isDesktop ? 680 : 420
+  const CARD_W = isDesktop ? 88  : 52
 
   // SVG des liens uniquement
   let linkSvg = ''

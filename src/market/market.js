@@ -153,12 +153,28 @@ async function loadMarket(container, ctx) {
     const note1     = getNote(p, p.job, evo)
     const note2     = p.job2 ? getNote(p, p.job2, evo) : 0
     const canAfford = (state.profile.credits||0) >= l.price
-    return `<div class="card-panel" style="display:flex;align-items:center;gap:10px;padding:8px 12px;overflow:hidden">
-      ${renderPlayerCard({...p, _evolution_bonus: evo}, { width: 80 })}
+    const flagUrl1 = p.country_code ? `https://flagsapi.com/${p.country_code.slice(0,2).toUpperCase()}/flat/64.png` : null
+    const noteCol1 = JOB_COLORS[p.job] || '#bbb'
+    const noteCol2 = p.job2 ? (JOB_COLORS[p.job2] || '#bbb') : null
+    return `<div class="card-panel" style="display:flex;align-items:center;gap:10px;padding:10px 12px;overflow:hidden">
+      <!-- Drapeau -->
+      ${flagUrl1 ? `<img src="${flagUrl1}" style="width:32px;height:24px;object-fit:cover;border-radius:3px;flex-shrink:0">` : `<span style="font-size:20px">🌍</span>`}
+      <!-- Logo club -->
+      ${p.clubs?.logo_url ? `<img src="${p.clubs.logo_url}" style="width:28px;height:28px;object-fit:contain;flex-shrink:0">` : ''}
+      <!-- Notes -->
+      <div style="display:flex;gap:4px;flex-shrink:0">
+        <div style="width:36px;height:36px;border-radius:6px;background:#111;border:2px solid ${noteCol1};display:flex;align-items:center;justify-content:center">
+          <span style="font-size:14px;font-weight:900;color:${noteCol1};font-family:Arial Black,Arial">${note1}</span>
+        </div>
+        ${note2 ? `<div style="width:36px;height:36px;border-radius:6px;background:#111;border:2px solid ${noteCol2};display:flex;align-items:center;justify-content:center">
+          <span style="font-size:14px;font-weight:900;color:${noteCol2};font-family:Arial Black,Arial">${note2}</span>
+        </div>` : ''}
+      </div>
+      <!-- Nom -->
       <div style="flex:1;min-width:0">
-        <div style="font-size:12px;color:#999">${p.firstname}</div>
+        <div style="font-size:11px;color:#999">${p.firstname}</div>
         <div style="font-size:14px;font-weight:900;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.surname_encoded}</div>
-        <div style="font-size:10px;color:#999;margin-top:2px">Vendeur : ${l.seller?.pseudo||'—'}</div>
+        <div style="font-size:10px;color:#999;margin-top:1px">Vendeur : ${l.seller?.pseudo||'—'}</div>
       </div>
       <div style="text-align:right;flex-shrink:0">
         <div style="font-size:14px;font-weight:900;color:#D4A017">${l.price.toLocaleString('fr')}</div>
@@ -174,10 +190,22 @@ async function loadMarket(container, ctx) {
     const note1  = getNote(p, p.job, evo)
     const note2  = p.job2 ? getNote(p, p.job2, evo) : 0
     const isSold = l.status === 'sold'
-    return `<div class="card-panel" style="display:flex;align-items:center;gap:10px;padding:8px 12px;overflow:hidden;${isSold?'opacity:0.7':''}">
-      ${renderPlayerCard({...p, _evolution_bonus: evo}, { width: 80 })}
+    const flagUrl2 = p.country_code ? `https://flagsapi.com/${p.country_code.slice(0,2).toUpperCase()}/flat/64.png` : null
+    const noteCol1m = JOB_COLORS[p.job] || '#bbb'
+    const noteCol2m = p.job2 ? (JOB_COLORS[p.job2] || '#bbb') : null
+    return `<div class="card-panel" style="display:flex;align-items:center;gap:10px;padding:10px 12px;overflow:hidden;${isSold?'opacity:0.7':''}">
+      ${flagUrl2 ? `<img src="${flagUrl2}" style="width:32px;height:24px;object-fit:cover;border-radius:3px;flex-shrink:0">` : `<span style="font-size:20px">🌍</span>`}
+      ${p.clubs?.logo_url ? `<img src="${p.clubs.logo_url}" style="width:28px;height:28px;object-fit:contain;flex-shrink:0">` : ''}
+      <div style="display:flex;gap:4px;flex-shrink:0">
+        <div style="width:36px;height:36px;border-radius:6px;background:#111;border:2px solid ${noteCol1m};display:flex;align-items:center;justify-content:center">
+          <span style="font-size:14px;font-weight:900;color:${noteCol1m};font-family:Arial Black,Arial">${note1}</span>
+        </div>
+        ${note2 ? `<div style="width:36px;height:36px;border-radius:6px;background:#111;border:2px solid ${noteCol2m};display:flex;align-items:center;justify-content:center">
+          <span style="font-size:14px;font-weight:900;color:${noteCol2m};font-family:Arial Black,Arial">${note2}</span>
+        </div>` : ''}
+      </div>
       <div style="flex:1;min-width:0">
-        <div style="font-size:12px;color:#999">${p.firstname}</div>
+        <div style="font-size:11px;color:#999">${p.firstname}</div>
         <div style="font-size:14px;font-weight:900;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.surname_encoded}</div>
         <div style="font-size:10px;color:${isSold?'#22c55e':'#999'};margin-top:1px">
           ${isSold?`✅ Vendu à ${l.buyer?.pseudo||'—'} · ${l.sold_at?new Date(l.sold_at).toLocaleDateString('fr'):''}` : `🟢 En vente depuis le ${new Date(l.listed_at).toLocaleDateString('fr')}`}

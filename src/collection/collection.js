@@ -980,14 +980,15 @@ async function openCardDetail(card, allPlayerCards, countByPlayer, ctx) {
           <div style="display:flex;align-items:center;gap:6px">
             ${[['GK',p.note_g],['DEF',p.note_d],['MIL',p.note_m],['ATT',p.note_a]].map(([j,n]) => {
               const col = JOB_COLORS[j]
+              const textCol = j === 'GK' ? '#fff' : col
               const isJobNote = j === p.job || j === p.job2
               const val = (Number(n)||0) + (isJobNote && evo > 0 ? evo : 0)
               return `<div style="display:flex;flex-direction:column;align-items:center;gap:4px">
                 <div style="width:48px;height:48px;border-radius:8px;background:#111;border:2.5px solid ${col};
                   display:flex;align-items:center;justify-content:center">
-                  <span style="font-size:20px;font-weight:900;color:${col};font-family:Arial Black,Arial;line-height:1">${val}</span>
+                  <span style="font-size:20px;font-weight:900;color:${textCol};font-family:Arial Black,Arial;line-height:1">${val}</span>
                 </div>
-                <span style="font-size:10px;font-weight:700;color:${col}">${j}</span>
+                <span style="font-size:10px;font-weight:700;color:${textCol}">${j}</span>
               </div>`
             }).join('')}
           </div>

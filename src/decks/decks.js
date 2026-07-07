@@ -247,13 +247,7 @@ function renderBuilder(container, builder, ctx) {
       </div>
     </div>
 
-    <!-- Formation (mobile uniquement — PC : dans la colonne gauche) -->
-    <div class="formation-mobile-only" style="padding:10px 16px;background:#fff;border-bottom:1px solid var(--gray-200)">
-      <label style="font-size:11px;margin-bottom:4px;display:block">Formation ${builder.availableFormations.length === 0 ? '(aucune carte — toutes disponibles)' : ''}</label>
-      <select id="formation-select" style="width:100%;padding:7px;border-radius:6px;border:1.5px solid var(--gray-200)">
-        ${formationOptions.map(f => `<option value="${f}" ${f===builder.formation?'selected':''}>${f}</option>`).join('')}
-      </select>
-    </div>
+
 
     <!-- ── LAYOUT PC ─────────────────────────────────────── -->
     <div class="deck-pc-layout" style="display:none">
@@ -339,6 +333,13 @@ function renderBuilder(container, builder, ctx) {
               ${builder.subs.length < 5 ? `<div id="add-sub-btn" style="width:28px;height:36px;border:2px dashed rgba(255,255,255,0.3);border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:16px;color:rgba(255,255,255,0.4);cursor:pointer;flex-shrink:0">+</div>` : ''}
             </div>
           </div>
+          <!-- Formation mobile -->
+          <div style="flex-shrink:0;text-align:center">
+            <div style="font-size:10px;font-weight:700;margin-bottom:6px;color:rgba(255,255,255,0.6);letter-spacing:1px;text-transform:uppercase">⚽</div>
+            <div id="formation-mobile-btn" style="cursor:pointer;width:50px;height:65px;border-radius:6px;background:#1a3a6b;border:2px solid #555;display:flex;align-items:center;justify-content:center">
+              <span style="font-size:11px;font-weight:900;color:#fff;text-align:center">${builder.formation}</span>
+            </div>
+          </div>
           <!-- Stade mobile : à droite -->
           <div style="flex-shrink:0;text-align:center">
             <div style="font-size:10px;font-weight:700;margin-bottom:6px;color:rgba(255,255,255,0.6);letter-spacing:1px;text-transform:uppercase">🏟️</div>
@@ -390,6 +391,24 @@ function renderBuilder(container, builder, ctx) {
     builder.slots = clean
     renderBuilder(container, builder, ctx)
   })
+  // Formation mobile et PC : même modal
+  const openFormationModal = () => {
+    const { openModal, closeModal } = ctx
+    openModal('⚽ Choisir une formation',
+      `<div style="display:flex;flex-wrap:wrap;gap:8px;padding:8px">
+        ${formationOptions.map(f => `
+          <div class="forma-choice" data-forma="${f}" style="cursor:pointer;padding:10px 16px;border-radius:8px;background:${f===builder.formation?'#1A6B3C':'#f0f0f0'};color:${f===builder.formation?'#fff':'#111'};font-weight:900;font-size:16px;border:2px solid ${f===builder.formation?'#1A6B3C':'#ddd'}">${f}</div>`).join('')}
+      </div>`
+    )
+    document.querySelectorAll('.forma-choice').forEach(el => {
+      el.addEventListener('click', () => {
+        builder.formation = el.dataset.forma
+        closeModal()
+        renderBuilder(container, builder, ctx)
+      })
+    })
+  }
+  document.getElementById('formation-mobile-btn')?.addEventListener('click', openFormationModal)
   document.getElementById('formation-pc-btn')?.addEventListener('click', () => {
     const { openModal, closeModal } = ctx
     openModal('⚽ Choisir une formation',
@@ -414,9 +433,10 @@ function renderBuilder(container, builder, ctx) {
   })
 
 
-  document.getElementById('formation-pc-btn')?.addEventListener('click', () => {
+  // Formation mobile et PC : même modal
+  const openFormationModal = () => {
     const { openModal, closeModal } = ctx
-    openModal('Choisir une formation',
+    openModal('⚽ Choisir une formation',
       `<div style="display:flex;flex-wrap:wrap;gap:8px;padding:8px">
         ${formationOptions.map(f => `
           <div class="forma-choice" data-forma="${f}" style="cursor:pointer;padding:10px 16px;border-radius:8px;background:${f===builder.formation?'#1A6B3C':'#f0f0f0'};color:${f===builder.formation?'#fff':'#111'};font-weight:900;font-size:16px;border:2px solid ${f===builder.formation?'#1A6B3C':'#ddd'}">${f}</div>`).join('')}
@@ -429,6 +449,10 @@ function renderBuilder(container, builder, ctx) {
         renderBuilder(container, builder, ctx)
       })
     })
+  }
+  document.getElementById('formation-mobile-btn')?.addEventListener('click', openFormationModal)
+  document.getElementById('formation-pc-btn')?.addEventListener('click', () => {
+    openFormationModal()
   })
 
   document.getElementById('add-stad-btn')?.addEventListener('click', () => {

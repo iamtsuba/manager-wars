@@ -339,7 +339,7 @@ import{s as T,F as _i,i as Ht,k as Ki,l as ot,m as Li,f as Gt,n as bn,T as di,j 
         border:1.5px solid #ddd;background:#fff;
         font-size:14px;font-weight:700;cursor:pointer;color:#555;
       }
-    </style>`}async function Wi({player1Id:e,player2Id:t,score1:i,score2:o,gc1:d,gc2:a}){const[r,l]=[e,t].sort(),p=e!==r,s=p?o:i,n=p?i:o,x=p?a:d,u=p?d:a,h=s>n?1:0,_=n>s?1:0,m=s===n?1:0,{data:c}=await T.from("friend_match_stats").select("*").eq("player1_id",r).eq("player2_id",l).single();c?await T.from("friend_match_stats").update({wins_p1:c.wins_p1+h,wins_p2:c.wins_p2+_,draws:c.draws+m,goals_p1:c.goals_p1+s,goals_p2:c.goals_p2+n,gc_used_p1:c.gc_used_p1+x,gc_used_p2:c.gc_used_p2+u,matches_total:c.matches_total+1}).eq("player1_id",r).eq("player2_id",l):await T.from("friend_match_stats").insert({player1_id:r,player2_id:l,wins_p1:h,wins_p2:_,draws:m,goals_p1:s,goals_p2:n,gc_used_p1:x,gc_used_p2:u,matches_total:1})}const Mn="2026.07.08-0032";async function Ci(e,{state:t,navigate:i,toast:o}){var a,r;const d=t.profile;d&&(e.innerHTML=`
+    </style>`}async function Wi({player1Id:e,player2Id:t,score1:i,score2:o,gc1:d,gc2:a}){const[r,l]=[e,t].sort(),p=e!==r,s=p?o:i,n=p?i:o,x=p?a:d,u=p?d:a,h=s>n?1:0,_=n>s?1:0,m=s===n?1:0,{data:c}=await T.from("friend_match_stats").select("*").eq("player1_id",r).eq("player2_id",l).single();c?await T.from("friend_match_stats").update({wins_p1:c.wins_p1+h,wins_p2:c.wins_p2+_,draws:c.draws+m,goals_p1:c.goals_p1+s,goals_p2:c.goals_p2+n,gc_used_p1:c.gc_used_p1+x,gc_used_p2:c.gc_used_p2+u,matches_total:c.matches_total+1}).eq("player1_id",r).eq("player2_id",l):await T.from("friend_match_stats").insert({player1_id:r,player2_id:l,wins_p1:h,wins_p2:_,draws:m,goals_p1:s,goals_p2:n,gc_used_p1:x,gc_used_p2:u,matches_total:1})}const Mn="2026.07.08-0034";async function Ci(e,{state:t,navigate:i,toast:o}){var a,r;const d=t.profile;d&&(e.innerHTML=`
   <style>
     @media (min-width: 768px) {
       .home-page-body {
@@ -885,11 +885,11 @@ import{s as T,F as _i,i as Ht,k as Ki,l as ot,m as Li,f as Gt,n as bn,T as di,j 
       stadium_def:stadium_definitions(id, name, club_id, country_code, image_url,
         club:clubs(encoded_name, logo_url))`).eq("owner_id",o.profile.id).eq("card_type","stadium"),p=(r||[]).filter(A=>A.card_type==="player"&&A.player),s=(r||[]).filter(A=>A.card_type==="formation"),n=(l||[]).filter(A=>A.card_type==="stadium"),x=[...new Set(n.map(A=>A.stadium_id).filter(Boolean))];let u={};if(n.forEach(A=>{A.stadium_def&&A.stadium_id&&(u[A.stadium_id]=A.stadium_def)}),x.length&&Object.keys(u).length<x.length){const{data:A}=await T.from("stadium_definitions").select("id,name,club_id,country_code,image_url,club:clubs(encoded_name,logo_url)").in("id",x);(A||[]).forEach(g=>{u[g.id]=g})}const h=s.map(A=>A.formation).filter(Boolean),{data:_}=await T.from("deck_cards").select("card_id, position, is_starter, slot_order").eq("deck_id",e);let m=a.formation||"4-4-2";h.length>0&&!h.includes(m)&&(m=h[0]);const c={deckId:e,name:a.name,formation:m,formationCardId:a.formation_card_id,stadiumCardId:a.stadium_card_id||null,slots:{},subs:[],playerCards:p,formationCards:s,stadiumCards:n,stadDefMap:u,availableFormations:h};(_||[]).forEach(A=>{A.is_starter?c.slots[A.position]=A.card_id:c.subs.includes(A.card_id)||c.subs.push(A.card_id)}),ht(t,c,i)}function ht(e,t,i){var _,m;const{navigate:o}=i;Zt[t.formation];const d=Ri(t.formation),a=d.filter(c=>t.slots[c]).length,r=t.availableFormations.length>0?t.availableFormations:Object.keys(Zt),l=(_=t.stadiumCards)==null?void 0:_.find(c=>c.id===t.stadiumCardId),p=l&&((m=t.stadDefMap)==null?void 0:m[l.stadium_id])||null,s=t.subs.map(c=>t.playerCards.find(A=>A.id===c)).filter(Boolean);[...Object.values(t.slots),...t.subs],e.innerHTML=`
   <div style="height:100%;overflow:hidden;background:var(--page-bg)">
-    <div class="page-header" style="display:flex;align-items:center;gap:10px">
-      <button class="btn-icon" id="builder-back" style="font-size:20px">←</button>
+    <div class="page-header" style="display:flex;align-items:center;gap:8px;padding:6px 12px;min-height:0">
+      <button class="btn-icon" id="builder-back" style="font-size:16px">←</button>
       <div style="flex:1">
-        <h2 style="font-size:18px">${t.name}</h2>
-        <p>${a}/11 titulaires · ${t.subs.length}/5 remplaçants</p>
+        <h2 style="font-size:14px;margin:0">${t.name}</h2>
+        <p style="font-size:11px;margin:0">${a}/11 · ${t.subs.length}/5 rempl.</p>
       </div>
     </div>
 
@@ -960,7 +960,7 @@ import{s as T,F as _i,i as Ht,k as Ki,l as ot,m as Li,f as Gt,n as bn,T as di,j 
           <!-- Remplaçants mobile -->
           <div style="flex:1;min-width:0">
             <div style="font-size:10px;font-weight:700;margin-bottom:6px;color:rgba(255,255,255,0.6);letter-spacing:1px;text-transform:uppercase">Remplaçants (${t.subs.length}/5)</div>
-            <div style="display:flex;gap:4px;align-items:flex-end;flex-wrap:nowrap;overflow-x:auto" id="subs-list">
+            <div style="display:flex;gap:4px;align-items:center;flex-wrap:nowrap;overflow-x:auto" id="subs-list">
               ${s.map(c=>{const A={...c.player,_evolution_bonus:c.evolution_bonus||0};return`<div style="position:relative;flex-shrink:0;overflow:visible">
                   ${st({...A,_evolution_bonus:A._evolution_bonus||0},{width:44,showStad:!0,stadDef:p})}
                   <button data-remove-sub="${c.id}"

@@ -247,7 +247,7 @@ function renderBuilder(container, builder, ctx) {
       </div>
     </div>
 
-    <!-- Formation (uniquement les cartes possédées) -->
+    <!-- Formation -->
     <div style="padding:10px 16px;background:#fff;border-bottom:1px solid var(--gray-200)">
       <label style="font-size:11px;margin-bottom:4px;display:block">Formation ${builder.availableFormations.length === 0 ? '(aucune carte — toutes disponibles)' : ''}</label>
       <select id="formation-select" style="width:100%;padding:7px;border-radius:6px;border:1.5px solid var(--gray-200)">
@@ -255,48 +255,90 @@ function renderBuilder(container, builder, ctx) {
       </select>
     </div>
 
+    <!-- ── LAYOUT PC ─────────────────────────────────────── -->
+    <div class="deck-pc-layout" style="display:none">
+      <div style="display:flex;gap:0;min-height:600px">
 
-
-    <!-- Terrain -->
-    <div style="background:linear-gradient(180deg,#1a6b3c,#0a3d1e);padding:8px 0;position:relative;overflow:hidden">
-      <div id="deck-field"></div>
-    </div>
-
-    <!-- Remplaçants + Stade côte à côte -->
-    <div style="padding:10px 12px;background:rgba(0,0,0,0.25);border-top:1px solid rgba(255,255,255,0.1)">
-      <div style="display:flex;gap:16px;align-items:flex-start">
-        <!-- Remplaçants -->
-        <div style="flex:1;min-width:0">
-          <div style="font-size:11px;font-weight:700;margin-bottom:8px;color:rgba(255,255,255,0.6);letter-spacing:1px;text-transform:uppercase">Remplaçants (${builder.subs.length}/5)</div>
-          <div style="display:flex;gap:8px;align-items:flex-end;overflow-x:auto;padding-bottom:4px" id="subs-list">
+        <!-- Stade (colonne gauche) -->
+        <div style="width:140px;flex-shrink:0;background:rgba(0,0,0,0.3);display:flex;flex-direction:column;align-items:center;padding:16px 8px;gap:12px;border-right:1px solid rgba(255,255,255,0.1)">
+          <div style="font-size:11px;font-weight:700;color:rgba(255,255,255,0.6);letter-spacing:1px;text-transform:uppercase;text-align:center">🏟️ Stade</div>
+          <div id="add-stad-btn" style="cursor:pointer">
+            ${_selStadCard ? (() => {
+              const def = builder.stadDefMap[_selStadCard.stadium_id]
+              const logo = def?.club?.logo_url || null
+              return `<div style="width:100px;height:130px;border-radius:8px;background:linear-gradient(135deg,#1a3a6b,#0a1a3a);border:2px solid #E87722;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px">
+                ${logo ? `<img src="${logo}" style="width:48px;height:48px;object-fit:contain">` : `<span style="font-size:36px">🏟️</span>`}
+                <span style="font-size:10px;font-weight:700;color:#E87722;text-align:center;padding:0 4px">${(def?.name||'Stade').slice(0,14)}</span>
+              </div>`
+            })() : `<div style="width:100px;height:130px;border:2px dashed rgba(255,165,0,0.4);border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;cursor:pointer">
+              <span style="font-size:36px">🏟️</span>
+              <span style="font-size:10px;color:rgba(255,255,255,0.4)">Ajouter</span>
+            </div>`}
+          </div>
+          <!-- Remplaçants PC : colonne verticale -->
+          <div style="font-size:11px;font-weight:700;color:rgba(255,255,255,0.6);letter-spacing:1px;text-transform:uppercase;text-align:center;margin-top:8px">Remplaçants<br>(${builder.subs.length}/5)</div>
+          <div style="display:flex;flex-direction:column;gap:6px;align-items:center" id="subs-list">
             ${subPlayers.map(card => {
               const p = { ...card.player, _evolution_bonus: card.evolution_bonus || 0 }
               return `<div style="position:relative;flex-shrink:0;overflow:visible">
-                ${renderPlayerCard({ ...p, _evolution_bonus: p._evolution_bonus||0 }, { width: 55, showStad: true, stadDef: _stadDef })}
+                ${renderPlayerCard({ ...p, _evolution_bonus: p._evolution_bonus||0 }, { width: 90, showStad: true, stadDef: _stadDef })}
                 <button data-remove-sub="${card.id}"
                   style="position:absolute;top:-6px;right:-6px;width:18px;height:18px;background:#c0392b;border:none;border-radius:50%;color:#fff;font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;padding:0;z-index:10">✕</button>
               </div>`
             }).join('')}
-            ${builder.subs.length < 5 ? `<div id="add-sub-btn" style="width:34px;height:47px;border:2px dashed rgba(255,255,255,0.3);border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:18px;color:rgba(255,255,255,0.4);cursor:pointer;flex-shrink:0">+</div>` : ''}
+            ${builder.subs.length < 5 ? `<div id="add-sub-btn" style="width:90px;height:116px;border:2px dashed rgba(255,255,255,0.3);border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:22px;color:rgba(255,255,255,0.4);cursor:pointer">+</div>` : ''}
           </div>
         </div>
-        <!-- Stade : à droite -->
-        <div style="flex-shrink:0;text-align:center">
-          <div style="font-size:11px;font-weight:700;margin-bottom:8px;color:rgba(255,255,255,0.6);letter-spacing:1px;text-transform:uppercase">🏟️ Stade</div>
-          <div id="add-stad-btn" style="cursor:pointer">
-            ${_selStadCard ? (() => {
-              const def = builder.stadDefMap[_selStadCard.stadium_id]
-              const imgUrl = def?.image_url ? (import.meta.env.BASE_URL + 'icons/' + def.image_url) : null
-              const logo = def?.club?.logo_url || null
-              return `<div style="position:relative;width:65px;height:85px;border-radius:8px;background:linear-gradient(135deg,#1a3a6b,#0a1a3a);border:2px solid #E87722;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;overflow:hidden">
-                ${imgUrl ? `<img src="${imgUrl}" style="width:100%;height:100%;object-fit:cover;position:absolute;inset:0;opacity:0.4">` : ''}
-                ${logo ? `<img src="${logo}" style="width:32px;height:32px;object-fit:contain;position:relative;z-index:1">` : `<span style="font-size:24px">🏟️</span>`}
-                <span style="font-size:8px;font-weight:700;color:#E87722;position:relative;z-index:1;text-align:center;padding:0 2px">${(def?.name||'Stade').slice(0,12)}</span>
-              </div>`
-            })() : `<div style="width:65px;height:85px;border:2px dashed rgba(255,165,0,0.4);border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px">
-              <span style="font-size:22px">🏟️</span>
-              <span style="font-size:9px;color:rgba(255,255,255,0.4)">Ajouter</span>
-            </div>`}
+
+        <!-- Terrain PC (colonne droite) -->
+        <div style="flex:1;background:linear-gradient(180deg,#1a6b3c,#0a3d1e);overflow:hidden">
+          <div id="deck-field"></div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ── LAYOUT MOBILE ─────────────────────────────────── -->
+    <div class="deck-mobile-layout" style="display:none">
+      <!-- Terrain mobile -->
+      <div style="background:linear-gradient(180deg,#1a6b3c,#0a3d1e);overflow:hidden">
+        <div id="deck-field"></div>
+      </div>
+
+      <!-- Remplaçants + Stade mobile -->
+      <div style="padding:8px 10px;background:rgba(0,0,0,0.25);border-top:1px solid rgba(255,255,255,0.1)">
+        <div style="display:flex;gap:10px;align-items:flex-start">
+          <!-- Remplaçants mobile -->
+          <div style="flex:1;min-width:0">
+            <div style="font-size:10px;font-weight:700;margin-bottom:6px;color:rgba(255,255,255,0.6);letter-spacing:1px;text-transform:uppercase">Remplaçants (${builder.subs.length}/5)</div>
+            <div style="display:flex;gap:4px;align-items:flex-end;flex-wrap:nowrap;overflow-x:auto" id="subs-list">
+              ${subPlayers.map(card => {
+                const p = { ...card.player, _evolution_bonus: card.evolution_bonus || 0 }
+                return `<div style="position:relative;flex-shrink:0;overflow:visible">
+                  ${renderPlayerCard({ ...p, _evolution_bonus: p._evolution_bonus||0 }, { width: 44, showStad: true, stadDef: _stadDef })}
+                  <button data-remove-sub="${card.id}"
+                    style="position:absolute;top:-5px;right:-5px;width:15px;height:15px;background:#c0392b;border:none;border-radius:50%;color:#fff;font-size:9px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;padding:0;z-index:10">✕</button>
+                </div>`
+              }).join('')}
+              ${builder.subs.length < 5 ? `<div id="add-sub-btn" style="width:28px;height:36px;border:2px dashed rgba(255,255,255,0.3);border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:16px;color:rgba(255,255,255,0.4);cursor:pointer;flex-shrink:0">+</div>` : ''}
+            </div>
+          </div>
+          <!-- Stade mobile : à droite -->
+          <div style="flex-shrink:0;text-align:center">
+            <div style="font-size:10px;font-weight:700;margin-bottom:6px;color:rgba(255,255,255,0.6);letter-spacing:1px;text-transform:uppercase">🏟️</div>
+            <div id="add-stad-btn" style="cursor:pointer">
+              ${_selStadCard ? (() => {
+                const def = builder.stadDefMap[_selStadCard.stadium_id]
+                const logo = def?.club?.logo_url || null
+                return `<div style="width:50px;height:65px;border-radius:6px;background:linear-gradient(135deg,#1a3a6b,#0a1a3a);border:2px solid #E87722;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px">
+                  ${logo ? `<img src="${logo}" style="width:26px;height:26px;object-fit:contain">` : `<span style="font-size:18px">🏟️</span>`}
+                  <span style="font-size:7px;font-weight:700;color:#E87722;text-align:center;padding:0 2px">${(def?.name||'Stade').slice(0,10)}</span>
+                </div>`
+              })() : `<div style="width:50px;height:65px;border:2px dashed rgba(255,165,0,0.4);border-radius:6px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px">
+                <span style="font-size:18px">🏟️</span>
+                <span style="font-size:8px;color:rgba(255,255,255,0.4)">+</span>
+              </div>`}
+            </div>
           </div>
         </div>
       </div>
@@ -367,11 +409,13 @@ function renderDeckField(container, builder, positions, ctx) {
   }
 
   // Terrain HTML : cartes positionnées en absolu sur un terrain de 320x320
-  // Taille responsive : grand sur PC, compact sur mobile
+  // Taille responsive
   const isDesktop = window.innerWidth >= 768
-  const W      = isDesktop ? 560 : window.innerWidth - 32
-  const H      = isDesktop ? 680 : Math.round((window.innerWidth - 32) * 1.55)
-  const CARD_W = isDesktop ? 88  : 48
+  // PC : terrain dans la colonne droite (largeur - 140px stade)
+  const availW = isDesktop ? window.innerWidth - 180 : window.innerWidth - 20
+  const W      = isDesktop ? Math.min(availW, 800) : availW
+  const H      = isDesktop ? Math.round(W * 1.3)   : Math.round(W * 1.35)
+  const CARD_W = isDesktop ? 80 : 44
 
   // SVG des liens uniquement
   let linkSvg = ''

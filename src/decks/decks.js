@@ -260,7 +260,7 @@ function renderBuilder(container, builder, ctx) {
       <div style="display:flex;gap:0;min-height:600px">
 
         <!-- Remplaçants (colonne gauche) -->
-        <div style="width:115px;flex-shrink:0;background:rgba(0,0,0,0.3);display:flex;flex-direction:column;align-items:center;padding:12px 8px;gap:10px;border-right:1px solid rgba(255,255,255,0.1)">
+        <div style="width:130px;flex-shrink:0;background:rgba(0,0,0,0.3);display:flex;flex-direction:column;align-items:center;padding:12px 8px;gap:10px;border-right:1px solid rgba(255,255,255,0.1)">
           <div style="font-size:10px;font-weight:700;color:rgba(255,255,255,0.6);letter-spacing:1px;text-transform:uppercase;text-align:center">Remplaçants (${builder.subs.length}/5)</div>
 
           <!-- Remplaçants PC : colonne verticale -->
@@ -279,7 +279,7 @@ function renderBuilder(container, builder, ctx) {
         </div>
 
         <!-- Terrain PC (colonne centrale) -->
-        <div style="flex:1;background:linear-gradient(180deg,#1a6b3c,#0a3d1e);overflow:hidden;height:630px">
+        <div style="flex:1;background:linear-gradient(180deg,#1a6b3c,#0a3d1e);overflow:hidden;height:700px">
           <div id="deck-field-pc" style="margin-top:50px"></div>
         </div>
 
@@ -521,9 +521,9 @@ function renderDeckField(container, builder, positions, ctx) {
       )
       const cardHtml = renderPlayerCard(
         { ...p, _evolution_bonus: p._evolution_bonus||0 },
-        { width: CARD_W, showStad: false, stadDef, role }
+        { width: CARD_W, showStad: true, stadDef, role }
       )
-      const stadIcon = hasStad ? `<div style="position:absolute;top:-35px;left:0;right:0;text-align:center;font-size:${Math.round(CARD_W*0.5)}px;z-index:5;line-height:1">🏟️</div>` : ''
+      const stadIcon = hasStad ? `<div style="position:absolute;top:-30px;left:0;right:0;text-align:center;font-size:20px;z-index:5;line-height:1">🏟️</div>` : ''
       cardsHtml += `<div style="position:absolute;left:${left}px;top:${top}px;cursor:pointer;z-index:2;position:absolute" class="deck-slot-hit" data-pos="${pos}">
         <div style="position:relative">${stadIcon}${cardHtml}</div>
       </div>`

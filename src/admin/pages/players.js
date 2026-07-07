@@ -221,7 +221,7 @@ async function openPlayerModal(player, clubs, container, helpers) {
     clubs.map(c => `<option value="${c.id}" ${player?.club_id === c.id ? 'selected' : ''}>${c.encoded_name}</option>`).join('')
 
   const folderOpts = Object.keys(manifest).map(f =>
-    `<option value="${f}" ${player?.face?.startsWith(f) ? 'selected' : ''}>${f}</option>`
+    `<option value="${f}" ${(player?.ethnie === f || (!player?.ethnie && player?.face?.startsWith(f))) ? 'selected' : ''}>${f}</option>`
   ).join('')
 
   openModal(
@@ -430,7 +430,7 @@ async function openPlayerModal(player, clubs, container, helpers) {
     }
 
     // Init dossier si joueur existant
-    const initFolder = player?.face ? player.face.split('/')[0] : ''
+    const initFolder = player?.ethnie || (player?.face ? player.face.replace('public/faces/', '').split('/')[0] : '')
     if (initFolder && manifest[initFolder]) {
       document.getElementById('pm-folder').value = initFolder
       loadFacesGrid(initFolder)
@@ -478,6 +478,7 @@ function getFormData(face) {
     note_max:        parseInt(g('pm-nmax')) || null,
     sell_price:      parseInt(g('pm-price')) || 0,
     face:            face ? 'public/faces/' + face : null,
+    ethnie:          g('pm-folder') || null,
     is_active:       true,
   }
 }

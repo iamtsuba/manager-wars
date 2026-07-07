@@ -90,7 +90,7 @@ import{s as w,r as De,g as Ne,K as Ee,D as S,S as et,a as j,H as tt,R as nt,e as
           </div>
           <div class="form-group">
             <label>Nom</label>
-            <input id="pm-real" value="${(e==null?void 0:e.surname_real)||""}" placeholder="Silva">
+            <input id="pm-real" value="${(e==null?void 0:e.surname_real)||(e!=null&&e.surname_encoded?e.surname_encoded.charAt(0).toUpperCase()+e.surname_encoded.slice(1).toLowerCase():"")}" placeholder="Silva">
           </div>
         </div>
 

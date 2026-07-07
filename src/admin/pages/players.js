@@ -169,7 +169,7 @@ async function openPlayerModal(player, clubs, container, helpers) {
 
   // Faces déjà utilisées
   const { data: usedFaces } = await supabase.from('players').select('face').not('face', 'is', null)
-  const usedSet = new Set((usedFaces || []).map(r => r.face).filter(Boolean))
+  const usedSet = new Set((usedFaces || []).map(r => r.face ? r.face.replace('public/faces/', '') : null).filter(Boolean))
   if (player?.face) usedSet.delete(player.face) // permettre de réutiliser la face actuelle
 
   const clubOpts = `<option value="">— Club —</option>` +
@@ -299,7 +299,8 @@ async function openPlayerModal(player, clubs, container, helpers) {
   )
 
   setTimeout(() => {
-    let currentFace = player?.face || null
+    // Chemin court (sans 'public/faces/') pour les comparaisons internes
+    let currentFace = player?.face ? player.face.replace('public/faces/', '') : null
 
     function refreshCard() {
       const wrap = document.getElementById('card-preview')
@@ -431,7 +432,7 @@ function getFormData(face) {
     note_min:        parseInt(g('pm-nmin')) || null,
     note_max:        parseInt(g('pm-nmax')) || null,
     sell_price:      parseInt(g('pm-price')) || 0,
-    face:            face || null,
+    face:            face ? 'public/faces/' + face : null,
     is_active:       true,
   }
 }

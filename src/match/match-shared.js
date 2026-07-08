@@ -627,7 +627,7 @@ export function buildTeamSVG(team, formation, phase, selectedIds, W=310, H=310, 
     }
   }
 
-  const PAD = 52
+  const PAD = 80  // espace extra pour les cartes hautes (template PNG) + icône stade
   return `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="${-PAD} ${-PAD} ${W+PAD*2} ${H+PAD*2}" width="100%" style="display:block;width:100%;max-width:440px;margin:0 auto">
     ${svg}
   </svg>`

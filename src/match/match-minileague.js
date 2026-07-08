@@ -21,8 +21,11 @@ import {
 
 // ── Helper : construire un objet player complet pour l'historique ─────────
 function histPlayer(p) {
+  const role = p._line || p.job || 'MIL'
+  const noteVal = role==='GK' ? (p.note_g||0) : role==='DEF' ? (p.note_d||0) : role==='MIL' ? (p.note_m||0) : (p.note_a||0)
   return {
     name: p.name, firstname: p.firstname || '',
+    note: noteVal + (p.boost||0) + (p.stadiumBonus ? 10 : 0),
     note_g: p.note_g||0, note_d: p.note_d||0, note_m: p.note_m||0, note_a: p.note_a||0,
     _evolution_bonus: 0,
     stadiumBonus: p.stadiumBonus || false,

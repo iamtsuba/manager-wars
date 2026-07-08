@@ -19,6 +19,26 @@ import {
 // pickers, règles de but défenseur, hauteur mobile robuste, etc.
 // ═══════════════════════════════════════════════════════════
 
+// ── Helper : construire un objet player complet pour l'historique ─────────
+function histPlayer(p) {
+  return {
+    name: p.name, firstname: p.firstname || '',
+    note_g: p.note_g||0, note_d: p.note_d||0, note_m: p.note_m||0, note_a: p.note_a||0,
+    _evolution_bonus: 0,
+    stadiumBonus: p.stadiumBonus || false,
+    boost: p.boost || 0,
+    job: p.job, job2: p.job2 || null,
+    _line: p._line || p.job, _col: p._col,
+    country_code: p.country_code,
+    club_id: p.club_id,
+    rarity: p.rarity,
+    clubName: p.clubName || p.clubs?.encoded_name || null,
+    clubLogo: p.clubLogo || p.clubs?.logo_url || null,
+    face: p.face || null,
+    portrait: getPortrait(p),
+  }
+}
+
 export async function renderMatchRandom(container, ctx, isRanked = false) {
   // Nettoyage à l'entrée : supprimer tout canal Realtime de matchmaking/pvp
   // resté actif d'une session précédente + repartir d'une file propre.
@@ -1445,7 +1465,7 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
 
     if (oppHasNoOne) {
       const newScore = (gameState[myRole+'Score']||0) + 1
-      const players = selected.map(p=>({ name:p.name, note:getNoteForRole(p,p._line||'ATT'), portrait:getPortrait(p), job:p.job }))
+      const players = selected.map(p=>histPlayer(p))
       log.push({ type:'duel', isGoal:true, homeScored:true,
         text:`⚽ BUT ! L'adversaire n'a plus de joueurs.`,
         homePlayers: players, homeTotal: calc.total, aiTotal: 0 })
@@ -1495,7 +1515,7 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
     const nextAttacker = attackerRole==='p1'?'p2':'p1'
     const round = (gameState.round||0) + 1
 
-    const attackPlayers = (gameState.pendingAttack.players||[]).map(p=>({ name:p.name, note:getNoteForRole(p,p._line||'ATT'), portrait:getPortrait(p), job:p.job }))
+    const attackPlayers = (gameState.pendingAttack.players||[]).map(p=>histPlayer(p))
     const log = [...(gameState.log||[])]
     log.push({ type:'duel',
       isGoal: goal, homeScored: goal && attackerRole===myRole,
@@ -1503,7 +1523,7 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
         ? `⚽ BUT de ${gameState[attackerRole+'Name']} ! (${gameState.pendingAttack.total} vs ${calc.total})`
         : `✋ Attaque stoppée (${gameState.pendingAttack.total} vs ${calc.total})`,
       homePlayers: attackPlayers,
-      aiPlayers: selected.map(p=>({ name:p.name, note:getNoteForRole(p,p._line||'DEF'), portrait:getPortrait(p), job:p.job })),
+      aiPlayers: selected.map(p=>histPlayer(p)),
       homeTotal: gameState.pendingAttack.total, aiTotal: calc.total })
 
     const newAttackerScore = goal ? (gameState[attackerRole+'Score']||0)+1 : (gameState[attackerRole+'Score']||0)

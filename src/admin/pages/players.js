@@ -465,8 +465,8 @@ function getFormData(face) {
   const g = id => document.getElementById(id)?.value
   return {
     firstname:       (g('pm-fn') || '').trim(),
-    surname_real:    (g('pm-real') || '').trim(),
-    surname_encoded: (g('pm-real') || '').trim().toUpperCase(),
+    surname_real:    (g('pm-real') || '').trim() || (g('pm-real') || '').trim().toUpperCase() || 'JOUEUR',
+    surname_encoded: (g('pm-real') || '').trim().toUpperCase() || 'JOUEUR',
     country_code:    g('pm-country') || 'FR',
     club_id:         g('pm-club') || null,
     job:             g('pm-job') || 'ATT',

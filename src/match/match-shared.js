@@ -512,7 +512,8 @@ export function renderCardRow(players, accentColor, total) {
   const shown = players.slice(0, 5)
   let html = '<div style="display:flex;align-items:center;gap:0;flex-wrap:nowrap;overflow:hidden">'
   shown.forEach((p, i) => {
-    html += renderMiniCardHTML(p, 40, 52)
+    const role = p._line || p.job || 'MIL'
+    html += renderPlayerCard(p, { width: 40, role, extraNote: p.boost || 0 })
     if (i < shown.length - 1) {
       const lc = linkColor(p, shown[i+1])
       const noLink = lc === '#ff3333' || lc === '#cc2222'
@@ -608,9 +609,11 @@ export function buildTeamSVG(team, formation, phase, selectedIds, W=310, H=310, 
       continue
     }
 
+    // Evo déjà intégré dans note_g/d/m/a par playerFromCard → _evolution_bonus:0
+    // p.stadiumBonus déjà géré par renderPlayerCard (ligne 84 player-card.js)
     const cardHtml = renderPlayerCard(
-      { ...p, _evolution_bonus: 0 },  // evo déjà intégré dans note_g/d/m/a par playerFromCard
-      { width: CW, showStad: false, stadDef: null, role, extraNote, _forceStadColor: p.stadiumBonus }
+      { ...p, _evolution_bonus: 0 },
+      { width: CW, showStad: true, stadDef: null, role, extraNote }
     )
     const selStyle = isSelected ? 'outline:3px solid #FFD700;outline-offset:2px;border-radius:8px;opacity:0.75;' : ''
     svg += `<foreignObject x="${fx}" y="${fy - 26}" width="${CW + 4}" height="${CH + 56}" style="overflow:visible">

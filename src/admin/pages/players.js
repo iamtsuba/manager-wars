@@ -353,7 +353,7 @@ async function openPlayerModal(player, clubs, container, helpers) {
       const wrap = document.getElementById('card-preview')
       if (!wrap) return
       const fn  = document.getElementById('pm-fn')?.value || ''
-      const nm  = (document.getElementById('pm-real')?.value || '').toUpperCase()
+      const nm  = (document.getElementById('pm-real')?.value || '').toUpperCase()  // toUpperCase pour l'affichage carte
       const job = document.getElementById('pm-job')?.value || 'ATT'
       const job2 = document.getElementById('pm-job2')?.value || null
       const rar = document.getElementById('pm-rarity')?.value || 'normal'

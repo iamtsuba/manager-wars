@@ -245,7 +245,7 @@ async function openPlayerModal(player, clubs, container, helpers) {
           </div>
           <div class="form-group">
             <label>Nom</label>
-            <input id="pm-real" value="${player?.surname_real || (player?.surname_real ? player.surname_real.charAt(0).toUpperCase() + player.surname_real.slice(1).toLowerCase() : '')}" placeholder="Silva">
+            <input id="pm-real" value="${player?.surname_real || ''}" placeholder="Silva">
           </div>
         </div>
 
@@ -465,8 +465,7 @@ function getFormData(face) {
   const g = id => document.getElementById(id)?.value
   return {
     firstname:       (g('pm-fn') || '').trim(),
-    surname_real:    (g('pm-real') || '').trim() || (g('pm-real') || '').trim().toUpperCase() || 'JOUEUR',
-    surname_real: (g('pm-real') || '').trim().toUpperCase() || 'JOUEUR',
+    surname_real: (g('pm-real') || '').trim() || 'JOUEUR',
     country_code:    g('pm-country') || 'FR',
     club_id:         g('pm-club') || null,
     job:             g('pm-job') || 'ATT',
@@ -496,7 +495,7 @@ async function savePlayer(player, isEdit, face, container, helpers) {
 
   btn.disabled = true; btn.textContent = 'Enregistrement…'
 
-  const { surname_real, ...payload } = d
+  const payload = d
 
   const { error } = isEdit
     ? await supabase.from('players').update({ ...payload, updated_at: new Date().toISOString() }).eq('id', player.id)

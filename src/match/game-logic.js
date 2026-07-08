@@ -33,13 +33,16 @@ export function assignCols(players, role, allLines) {
 // ── Note d'un joueur selon le rôle ────────────────────────
 export function getNoteForRole(player, role) {
   if (!player) return 0
+  let base = 0
   switch (role) {
-    case 'GK':  return Number(player.note_g) || 0
-    case 'DEF': return Number(player.note_d) || 0
-    case 'MIL': return Number(player.note_m) || 0
-    case 'ATT': return Number(player.note_a) || 0
-    default:    return 0
+    case 'GK':  base = Number(player.note_g) || 0; break
+    case 'DEF': base = Number(player.note_d) || 0; break
+    case 'MIL': base = Number(player.note_m) || 0; break
+    case 'ATT': base = Number(player.note_a) || 0; break
+    default:    base = 0
   }
+  // boost est ajouté ici (evo est déjà intégré dans les notes par playerFromCard)
+  return base + (player.boost || 0)
 }
 
 // ── Calcul des liens (GDD §7) ─────────────────────────────

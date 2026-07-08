@@ -53,7 +53,7 @@ function hasStadBonus(p, stadDef) {
 }
 
 export function renderPlayerCard(p, opts = {}) {
-  const { width = 160, showStad = false, stadDef = null, used = false, extraNote = 0, role: forceRole = null } = opts
+  const { width = 160, showStad = false, stadDef = null, used = false, extraNote = 0, role: forceRole = null, _forceStadColor = false } = opts
 
   if (!p) return `<div style="width:${width}px;height:${Math.round(width*657/507)}px;border-radius:8px;background:#111;opacity:0.3"></div>`
 
@@ -86,7 +86,7 @@ export function renderPlayerCard(p, opts = {}) {
   const mainNote  = getNoteForJob(p, job, evo) + extraNote + stadB
   // Couleur note : bleu si stade, orange si poste secondaire, sinon couleur du poste
   const isSecondaryRole = forceRole && forceRole !== p.job
-  const noteColor = stadB > 0 ? '#4fc3f7' : isSecondaryRole ? '#E87722' : accent
+  const noteColor = (stadB > 0 || _forceStadColor) ? '#4fc3f7' : isSecondaryRole ? '#E87722' : accent
   // On n'affiche que la note du poste joué (forceRole ou job principal)
   // job2Note uniquement si pas de forceRole ET job2 existe
   const job2      = (!forceRole && p.job2 && p.job2 !== job) ? p.job2 : null

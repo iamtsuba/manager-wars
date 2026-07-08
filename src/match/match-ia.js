@@ -341,8 +341,8 @@ function showMidfieldAnimation(container, game, ctx) {
   game.log.push({
     type: 'duel',
     title: 'Milieu de Terrain',
-    homePlayers: homeMils.map(p => ({ name:p.name, note:getNoteForRole(p,'MIL'), portrait:getPortrait(p), job:p.job, country_code:p.country_code, rarity:p.rarity, clubName:p.clubName, clubLogo:p.clubLogo })),
-    aiPlayers:   aiMils.map(p   => ({ name:p.name, note:getNoteForRole(p,'MIL'), portrait:getPortrait(p), job:p.job, country_code:p.country_code, rarity:p.rarity, clubName:p.clubName, clubLogo:p.clubLogo })),
+    homePlayers: homeMils.map(p => ({ name:p.name, note:getNoteForRole(p,'MIL'), portrait:getPortrait(p), job:p.job, country_code:p.country_code, rarity:p.rarity, clubName:p.clubName, clubLogo:p.clubLogo, face:p.face||null, club_id:p.club_id, note_g:p.note_g||0, note_d:p.note_d||0, note_m:p.note_m||0, note_a:p.note_a||0, _evolution_bonus:0 })),
+    aiPlayers:   aiMils.map(p   => ({ name:p.name, note:getNoteForRole(p,'MIL'), portrait:getPortrait(p), job:p.job, country_code:p.country_code, rarity:p.rarity, clubName:p.clubName, clubLogo:p.clubLogo, face:p.face||null, club_id:p.club_id, note_g:p.note_g||0, note_d:p.note_d||0, note_m:p.note_m||0, note_a:p.note_a||0, _evolution_bonus:0 })),
     homeTotal, aiTotal,
     text: `Duel milieu : ${game.clubName} ${homeTotal} – ${aiTotal} IA → ${homeWins ? game.clubName+' attaque' : 'IA attaque'}`,
   })
@@ -925,7 +925,7 @@ function confirmDefense(container, game, ctx) {
   const duelEntryDef = {
     type: 'duel',
     title: 'Défense',
-    aiPlayers:   (game.pendingAttack.players||[]).map(p => ({ name:p.name, note:p._line==='MIL'?p.note_m:p.note_a, portrait:getPortrait(p), job:p.job, country_code:p.country_code, rarity:p.rarity, clubName:p.clubName, clubLogo:p.clubLogo })),
+    aiPlayers:   (game.pendingAttack.players||[]).map(p => ({ name:p.name, note:p._line==='MIL'?p.note_m:p.note_a, portrait:getPortrait(p), job:p.job, country_code:p.country_code, rarity:p.rarity, clubName:p.clubName, clubLogo:p.clubLogo, face:p.face||null, club_id:p.club_id, note_g:p.note_g||0, note_d:p.note_d||0, note_m:p.note_m||0, note_a:p.note_a||0, _evolution_bonus:0 })),
     homePlayers: game.selected.map(s => { const pp = (game.homeTeam[s._role]||[]).find(x=>x.cardId===s.cardId)||s; return { name:pp.name, note:(pp._line==='GK'?Number(pp.note_g)||0:pp._line==='MIL'?Number(pp.note_m)||0:Number(pp.note_d)||0)+(pp.boost||0), portrait:getPortrait(pp), job:pp.job, country_code:pp.country_code, rarity:pp.rarity, clubName:pp.clubName, clubLogo:pp.clubLogo } }),
     homeTotal: calc.total,
     aiTotal: game.pendingAttack.total,
@@ -1029,7 +1029,7 @@ function aiTurn(container, game, ctx) {
     game.aiScore++
     const duelEntry = {
       type:'duel', isGoal:true, homeScored:false,
-      aiPlayers: selected.map(p => ({ name:p.name, note:p._line==='MIL'?p.note_m:p.note_a, portrait:getPortrait(p), job:p.job, country_code:p.country_code, rarity:p.rarity, clubName:p.clubName, clubLogo:p.clubLogo })),
+      aiPlayers: selected.map(p => ({ name:p.name, note:p._line==='MIL'?p.note_m:p.note_a, portrait:getPortrait(p), job:p.job, country_code:p.country_code, rarity:p.rarity, clubName:p.clubName, clubLogo:p.clubLogo, face:p.face||null, club_id:p.club_id, note_g:p.note_g||0, note_d:p.note_d||0, note_m:p.note_m||0, note_a:p.note_a||0, _evolution_bonus:0 })),
       aiTotal: calc.total,
       text:`⚽ BUT IA ! (aucun défenseur disponible)`,
     }
@@ -1058,7 +1058,7 @@ function aiDefend(container, game, ctx) {
     const att = game.pendingAttack?.players || []
     const duelEntry = {
       type:'duel', isGoal:true, homeScored:true,
-      homePlayers: att.map(p => ({ name:p.name, note:getNoteForRole(p,p._line||p.job), portrait:getPortrait(p), job:p.job, country_code:p.country_code, rarity:p.rarity, clubName:p.clubName, clubLogo:p.clubLogo })),
+      homePlayers: att.map(p => ({ name:p.name, note:getNoteForRole(p,p._line||p.job), portrait:getPortrait(p), job:p.job, country_code:p.country_code, rarity:p.rarity, clubName:p.clubName, clubLogo:p.clubLogo, face:p.face||null, club_id:p.club_id, note_g:p.note_g||0, note_d:p.note_d||0, note_m:p.note_m||0, note_a:p.note_a||0, _evolution_bonus:0 })),
       homeTotal: game.pendingAttack?.total || 0, aiTotal: 0,
       text: `⚽ BUT ! L'IA n'a plus de joueurs — but automatique !`,
     }
@@ -1077,8 +1077,8 @@ function aiDefend(container, game, ctx) {
   const duelEntryAttack = {
     type: 'duel',
     title: 'Attaque',
-    homePlayers: (game.pendingAttack.players||[]).map(p => ({ name:p.name, note:p._line==='MIL'?p.note_m:p.note_a, portrait:getPortrait(p), job:p.job, country_code:p.country_code, rarity:p.rarity, clubName:p.clubName, clubLogo:p.clubLogo })),
-    aiPlayers:   selected.map(p => ({ name:p.name, note:p._line==='GK'?p.note_g:p._line==='MIL'?p.note_m:p.note_d, portrait:getPortrait(p), job:p.job, country_code:p.country_code, rarity:p.rarity, clubName:p.clubName, clubLogo:p.clubLogo })),
+    homePlayers: (game.pendingAttack.players||[]).map(p => ({ name:p.name, note:p._line==='MIL'?p.note_m:p.note_a, portrait:getPortrait(p), job:p.job, country_code:p.country_code, rarity:p.rarity, clubName:p.clubName, clubLogo:p.clubLogo, face:p.face||null, club_id:p.club_id, note_g:p.note_g||0, note_d:p.note_d||0, note_m:p.note_m||0, note_a:p.note_a||0, _evolution_bonus:0 })),
+    aiPlayers:   selected.map(p => ({ name:p.name, note:p._line==='GK'?p.note_g:p._line==='MIL'?p.note_m:p.note_d, portrait:getPortrait(p), job:p.job, country_code:p.country_code, rarity:p.rarity, clubName:p.clubName, clubLogo:p.clubLogo, face:p.face||null, club_id:p.club_id, note_g:p.note_g||0, note_d:p.note_d||0, note_m:p.note_m||0, note_a:p.note_a||0, _evolution_bonus:0 })),
     homeTotal: game.pendingAttack.total,
     aiTotal: defVal,
     isGoal: false, homeScored: false,

@@ -570,111 +570,62 @@ export function buildTeamSVG(team, formation, phase, selectedIds, W=310, H=310, 
     }
   }
 
-  // 2. Cartes joueurs (style carte à la FUT)
-  const CW = 48, CH = 64, NAMEH = 13, BOTHH = 16
-  const rarityBorder = { normal:'#aaaaaa', pepite:'#D4A017', pépite:'#D4A017', papyte:'#111111', legende:'#7a28b8', légende:'#7a28b8' }
+  // 2. Cartes joueurs : renderPlayerCard via foreignObject
+  const CW = 52
+  const CH = Math.round(CW * 657/507)
 
   for (const [pos, p] of Object.entries(slots)) {
     const c = px(pos)
     if (!c || !p) continue
     const role = pos.replace(/[0-9]/g,'')
-    const bg   = JOB_COLORS[role] || '#555'
 
     const isExtraSelectable = extraSelectableIds.includes(p.cardId)
     const selectable = (phase==='attack' && (['MIL','ATT'].includes(role) || isExtraSelectable) && !p.used)
                     || (phase==='defense' && ['GK','DEF','MIL'].includes(role) && !p.used)
     const isSelected = selectedIds.includes(p.cardId)
 
-    let note
-    if      (phase==='attack')  note = isExtraSelectable ? Math.max(1, Number(p.note_a)||0) : role==='MIL'?Number(p.note_m)||0 : Number(p.note_a)||0
-    else if (phase==='defense') note = role==='GK'?Number(p.note_g)||0 : role==='MIL'?Number(p.note_m)||0 : Number(p.note_d)||0
-    else                        note = Number(role==='GK'?p.note_g:role==='DEF'?p.note_d:role==='MIL'?p.note_m:p.note_a)||0
-    note = note + (p.boost||0)
-    // Bonus stade conditionnel selon phase et rôle
+    let extraNote = p.boost || 0
     if (p.stadiumBonus) {
-      if (phase === 'attack'  && (role === 'ATT' || role === 'MIL')) note += 10
-      else if (phase === 'defense' && (role === 'GK' || role === 'DEF' || role === 'MIL')) note += 10
-      else if (!phase) note += 10  // deck select preview : toujours afficher avec +10
+      if (phase === 'attack' && (role === 'ATT' || role === 'MIL')) extraNote += 10
+      else if (phase === 'defense' && (role === 'GK' || role === 'DEF' || role === 'MIL')) extraNote += 10
+      else if (!phase) extraNote += 10
     }
 
-    const rx0 = (c.x - CW/2).toFixed(1)
-    const ry0 = (c.y - CH/2).toFixed(1)
-    const rarity  = rarityBorder[p?.rarity] || rarityBorder.normal
+    const fx = Math.round(c.x - CW/2)
+    const fy = Math.round(c.y - CH/2)
 
-    // ── Joueur utilisé : afficher le DOS de la carte (carte retournée) ──
     if (p.used) {
       const _base = (typeof import.meta !== 'undefined' && import.meta.env?.BASE_URL) || '/'
-      const _origin = (typeof window !== 'undefined' && window.location?.origin) || ''
-      const backUrl = `${_origin}${_base}icons/carte-dos.png`.replace(/([^:])\/\//g, '$1/')
-      svg += `<rect x=\"${rx0}\" y=\"${ry0}\" width=\"${CW}\" height=\"${CH}\" rx=\"5\" fill=\"#161616\"/>`
-      svg += `<image href=\"${backUrl}\" xlink:href=\"${backUrl}\" x=\"${rx0}\" y=\"${ry0}\" width=\"${CW}\" height=\"${CH}\" preserveAspectRatio=\"xMidYMid slice\"/>`
-      svg += `<rect x=\"${rx0}\" y=\"${ry0}\" width=\"${CW}\" height=\"${CH}\" rx=\"5\" fill=\"none\" stroke=\"${rarity}\" stroke-width=\"2\" opacity=\"0.7\"/>`
-      // Zone cliquable → ouvre le remplacement avec ce joueur présélectionné comme sortant
-      svg += `<rect x=\"${rx0}\" y=\"${ry0}\" width=\"${CW}\" height=\"${CH}\" rx=\"5\" fill=\"rgba(0,0,0,0.01)\" class=\"match-used-hit\" data-card-id=\"${p.cardId}\" data-role=\"${role}\" style=\"cursor:pointer\"/>`
+      const backUrl = `${_base}icons/carte-dos.png`
+      svg += `<image href="${backUrl}" x="${fx}" y="${fy}" width="${CW}" height="${CH}" preserveAspectRatio="xMidYMid slice" class="match-used-hit" data-card-id="${p.cardId}" data-role="${role}" style="cursor:pointer"/>`
       continue
     }
 
-    const cardOp  = isSelected ? 0.45 : 1
-    const bStroke = isSelected ? '#FFD700' : rarity
-    const bWidth  = isSelected ? 3 : (p?.rarity==='legende'||p?.rarity==='légende'||p?.rarity==='pepite'||p?.rarity==='pépite' ? 2.5 : 2)
+    const cardHtml = renderPlayerCard(
+      { ...p, _evolution_bonus: p.evolution_bonus || 0 },
+      { width: CW, showStad: !!p.stadiumBonus, role, extraNote }
+    )
+    const selStyle = isSelected ? 'outline:3px solid #FFD700;outline-offset:2px;border-radius:8px;opacity:0.75;' : ''
+    svg += `<foreignObject x="${fx}" y="${fy - 26}" width="${CW + 4}" height="${CH + 56}" style="overflow:visible">
+      <div xmlns="http://www.w3.org/1999/xhtml" style="${selStyle}position:relative">
+        ${cardHtml}
+      </div>
+    </foreignObject>`
 
-    // Clip portrait à la zone centrale (sans nom ni bas)
-    const portH = CH - NAMEH - BOTHH
-    svg += `<defs><clipPath id="cp-${pos}"><rect x="${rx0}" y="${(c.y - CH/2 + NAMEH).toFixed(1)}" width="${CW}" height="${portH}"/></clipPath></defs>`
-
-    // Fond
-    svg += `<rect x="${rx0}" y="${ry0}" width="${CW}" height="${CH}" rx="5" fill="${bg}" opacity="${cardOp}"/>`
-
-    // Portrait
-    const portrait = getPortrait(p)
-    if (portrait) {
-      svg += `<image href="${portrait}" xlink:href="${portrait}" x="${rx0}" y="${(c.y - CH/2 + NAMEH).toFixed(1)}" width="${CW}" height="${portH}" clip-path="url(#cp-${pos})" preserveAspectRatio="xMidYMin slice"/>`
-    }
-
-    // Barre nom (haut, fond blanc)
-    svg += `<rect x="${rx0}" y="${ry0}" width="${CW}" height="${NAMEH}" rx="4" fill="rgba(255,255,255,0.92)"/>`
-    svg += `<text x="${c.x.toFixed(1)}" y="${(c.y - CH/2 + 8.5).toFixed(1)}" text-anchor="middle" dominant-baseline="central" font-size="6.5" font-weight="900" fill="#111" font-family="Arial Black,Arial">${(p.name||'').slice(0,9)}</text>`
-
-    // Bande bas (fond blanc)
-    const by0 = (c.y + CH/2 - BOTHH).toFixed(1)
-    svg += `<rect x="${rx0}" y="${by0}" width="${CW}" height="${BOTHH}" fill="rgba(255,255,255,0.92)"/>`
-
-    {
-      // Drapeau pays (gauche)
-      const flagU = flagImgUrl(p.country_code)
-      if (flagU) svg += `<image href="${flagU}" xlink:href="${flagU}" x="${(c.x - 20).toFixed(1)}" y="${(c.y + CH/2 - BOTHH + 3).toFixed(1)}" width="13" height="10" preserveAspectRatio="xMidYMid slice"/>`
-      else svg += `<text x="${(c.x - 13).toFixed(1)}" y="${(c.y + CH/2 - BOTHH/2).toFixed(1)}" text-anchor="middle" dominant-baseline="central" font-size="10">${countryFlag(p.country_code)}</text>`
-      // Note (centre) — orange si stadiumBonus
-      const noteColor = p.stadiumBonus ? '#E87722' : '#111'
-      svg += `<text x="${c.x.toFixed(1)}" y="${(c.y + CH/2 - BOTHH/2).toFixed(1)}" text-anchor="middle" dominant-baseline="central" font-size="12" font-weight="900" fill="${noteColor}" font-family="Arial Black">${note}</text>`
-      // Club (droite, 3 lettres)
-      const logoUrl = getClubLogo(p)
-      if (logoUrl) {
-        svg += `<image href="${logoUrl}" xlink:href="${logoUrl}" x="${(c.x + CW/2 - 14).toFixed(1)}" y="${(c.y + CH/2 - BOTHH + 2).toFixed(1)}" width="12" height="12" preserveAspectRatio="xMidYMid meet"/>`
-      } else if (p.clubName) {
-        svg += `<text x="${(c.x + 14).toFixed(1)}" y="${(c.y + CH/2 - BOTHH/2).toFixed(1)}" text-anchor="middle" dominant-baseline="central" font-size="5.5" font-weight="700" fill="#333">${(p.clubName||'').slice(0,3).toUpperCase()}</text>`
-      }
-      // Boost badge
-      // Bordure orange si stadiumBonus (à la place du badge +10)
-      if (p.stadiumBonus) {
-        svg += `<rect x="${(c.x-CW/2).toFixed(1)}" y="${(c.y-CH/2).toFixed(1)}" width="${CW}" height="${CH}" rx="5" fill="none" stroke="#E87722" stroke-width="2" opacity="0.8"/>`
-      }
-    }
-
-    // Bordure rareté (+ surbrillance si sélectionné)
-    svg += `<rect x="${rx0}" y="${ry0}" width="${CW}" height="${CH}" rx="5" fill="${isSelected?'rgba(255,255,255,0.12)':'none'}" stroke="${bStroke}" stroke-width="${bWidth}" opacity="${cardOp}"/>`
-
-    // Zone cliquable (invisible)
     if (selectable) {
-      svg += `<rect x="${rx0}" y="${ry0}" width="${CW}" height="${CH}" rx="5" fill="rgba(0,0,0,0.01)" class="match-slot-hit ${isSelected?'selected':''}" data-card-id="${p.cardId}" data-role="${role}" style="cursor:pointer"/>`
+      svg += `<rect x="${fx}" y="${fy}" width="${CW}" height="${CH}" rx="5" fill="rgba(0,0,0,0.01)" class="match-slot-hit ${isSelected?'selected':''}" data-card-id="${p.cardId}" data-role="${role}" style="cursor:pointer"/>`
     }
   }
 
-  const PAD = 38  // marge pour cartes rectangulaires
+  const PAD = 52
   return `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="${-PAD} ${-PAD} ${W+PAD*2} ${H+PAD*2}" width="100%" style="display:block;width:100%;max-width:440px;margin:0 auto">
     ${svg}
   </svg>`
+  return `<div id="match-terrain-wrap" style="position:relative;padding:0 4px">
+    ${buildTeamSVG(team, formation, phase, selectedIds, W, H, extraSelectableIds)}
+  </div>`
 }
+
 
 export function renderTeam(team, formation, phase, selectedIds, W=300, H=300, extraSelectableIds=[]) {
   return `<div id="match-terrain-wrap" style="position:relative;padding:0 4px">

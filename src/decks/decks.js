@@ -55,12 +55,14 @@ function renderMiniCardHTML(p, w=44, h=58) {
   const role     = p?.job || 'MIL'
   const jobColor = JOB_COLORS[role] || '#555'
   const rarityBorder = { normal:'#aaa', pepite:'#D4A017', pépite:'#D4A017', papyte:'#222', legende:'#7a28b8', légende:'#7a28b8' }[p?.rarity] || '#aaa'
+  const GLOW_C = { legende:'#7a28b8', pepite:'#D4A017', pépite:'#D4A017', papyte:'#909090' }
+  const glowMini = GLOW_C[p?.rarity] ? `filter:drop-shadow(0 0 4px ${GLOW_C[p.rarity]}) drop-shadow(0 0 10px ${GLOW_C[p.rarity]});` : ''
   const evo57 = p?._evolution_bonus ?? p?.evolution_bonus ?? 0
   const noteBase57 = Number(role==='GK'?p?.note_g:role==='DEF'?p?.note_d:role==='MIL'?p?.note_m:p?.note_a)||0
   const note = noteBase57 + (role===p?.job||role===p?.job2 ? evo57 : 0)
   const nameH = Math.round(h*0.19), botH = Math.round(h*0.25), portH = h-nameH-botH
   if (!p) return `<div style="width:${w}px;height:${h}px;border:2px dashed rgba(255,255,255,0.3);border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:20px;color:rgba(255,255,255,0.3)">+</div>`
-  return `<div style="width:${w}px;height:${h}px;border-radius:5px;border:2px solid ${rarityBorder};background:${jobColor};position:relative;overflow:hidden;flex-shrink:0">
+  return `<div style="width:${w}px;height:${h}px;border-radius:5px;border:2px solid ${rarityBorder};background:${jobColor};position:relative;overflow:hidden;flex-shrink:0;${glowMini}">
     <div style="position:absolute;top:0;left:0;right:0;height:${nameH}px;background:rgba(255,255,255,0.93);display:flex;align-items:center;justify-content:center;z-index:2">
       <span style="font-size:${Math.max(5,Math.round(w/9))}px;font-weight:900;color:#111;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:${w-4}px">${(p?.surname_real||'').slice(0,9)}</span>
     </div>

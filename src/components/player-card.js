@@ -155,9 +155,9 @@ export function renderPlayerCard(p, opts = {}) {
   <div style="position:absolute;left:50%;transform:translateX(-50%);top:${px(530)};
     width:${px(90)};height:${px(60)};z-index:5;
     border-radius:${px(8)};
-    background:#0a0a0a;border:${px(2)} solid #e03030;
+    background:#0a0a0a;border:${px(2)} solid ${JOB_ACCENT[job2]||'#e03030'};
     display:flex;align-items:center;justify-content:center">
-    <span style="font-size:${px(32)};font-weight:900;color:#e03030;font-family:Arial Black,Arial;line-height:1">${job2Note}</span>
+    <span style="font-size:${px(32)};font-weight:900;color:${JOB_ACCENT[job2]||'#e03030'};font-family:Arial Black,Arial;line-height:1">${job2Note}</span>
   </div>` : ''}
 
   <!-- Drapeau : sans fond -->

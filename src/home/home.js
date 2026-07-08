@@ -85,6 +85,10 @@ export async function renderHome(container, { state, navigate, toast }) {
     }
     .play-tile:hover { background: rgba(255,255,255,0.09); }
     .play-tile:active { transform: scale(.96); }
+    .play-text-overlay { max-height: 26px !important; width: auto !important; }
+    .ranked-tile .play-text-overlay { max-height: 34px !important; }
+    .play-text-overlay { max-height: 28px !important; width: auto !important; }
+    .ranked-tile .play-text-overlay { max-height: 36px !important; }
 
     .home-footer {
       display: flex;

@@ -71,7 +71,7 @@ export function playerFromCard(card, position) {
     position: position || null,
     id: p.id,
     firstname: p.firstname,
-    name: p.surname_encoded,
+    name: p.surname_real,
     country_code: p.country_code,
     club_id: p.club_id,
     job: p.job, job2: p.job2,
@@ -340,7 +340,7 @@ export async function renderDeckSelect(container, ctx, matchMode) {
     .from('deck_cards')
     .select(`deck_id, position, is_starter, slot_order,
       card:cards(id,card_type,formation,stadium_id,evolution_bonus,
-        player:players(id,firstname,surname_encoded,country_code,club_id,job,job2,
+        player:players(id,firstname,surname_real,country_code,club_id,job,job2,
           note_g,note_d,note_m,note_a,rarity,skin,hair,hair_length,face,
           clubs(encoded_name,logo_url)))`)
     .in('deck_id', deckIds)
@@ -719,7 +719,7 @@ export async function loadMatchSetup(container, ctx, matchMode, onReady) {
       supabase.from('deck_cards')
         .select(`position, is_starter, slot_order,
           card:cards(id, card_type, formation, evolution_bonus,
-            player:players(id,firstname,surname_encoded,country_code,club_id,job,job2,
+            player:players(id,firstname,surname_real,country_code,club_id,job,job2,
               note_g,note_d,note_m,note_a,rarity,skin,hair,hair_length,face,
               clubs(encoded_name,logo_url)))`)
         .eq('deck_id', deckId).order('slot_order')

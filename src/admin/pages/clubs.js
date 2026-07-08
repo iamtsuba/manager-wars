@@ -154,7 +154,7 @@ function generateSquad(clubId, countryCode) {
       job, job2,
       firstname: pick(FIRSTNAMES),
       surname_real: surnameReal,
-      surname_encoded: surnameEncoded,
+      surname_real: surnameEncoded,
       country_code: cc,
       club_id: clubId,
       note_g, note_d, note_m, note_a,

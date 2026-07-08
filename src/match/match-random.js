@@ -212,7 +212,7 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
       const evo = Number(r.evolution_bonus)||0
       return {
         cardId: r.card_id, position: r.position, id: r.id,
-        firstname: r.firstname, name: r.surname_encoded,
+        firstname: r.firstname, name: r.surname_real,
         country_code: r.country_code, club_id: r.club_id,
         job: r.job, job2: r.job2,
         // Appliquer evolution_bonus sur les notes des postes principal et secondaire

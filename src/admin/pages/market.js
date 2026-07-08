@@ -9,7 +9,7 @@ export async function pageMarket(container, { toast }) {
       buyer:users!buyer_id(pseudo),
       card:cards(
         card_type,
-        player:players(firstname, surname_encoded, rarity, job)
+        player:players(firstname, surname_real, rarity, job)
       )
     `)
     .order('listed_at', { ascending: false })
@@ -43,7 +43,7 @@ export async function pageMarket(container, { toast }) {
           <tbody>
             ${listings.map(l => {
               const p = l.card?.player
-              const name = p ? `${p.firstname} ${p.surname_encoded}` : l.card?.card_type || '—'
+              const name = p ? `${p.firstname} ${p.surname_real}` : l.card?.card_type || '—'
               const statusColor = { active:'#1A6B3C', sold:'#D4A017', cancelled:'#aaa' }
               return `<tr>
                 <td><b>${name}</b>${p ? `<div style="font-size:10px;color:#999">${p.rarity} · ${p.job}</div>` : ''}</td>

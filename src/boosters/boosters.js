@@ -333,7 +333,7 @@ async function openMixedBooster(profile, booster) {
       const normRarity = (r) => ({ 'légende':'legende', 'pépite':'pepite', 'pépites':'pepite' }[r] || r)
       const wantedRarity = rate.rarity ? normRarity(rate.rarity) : null
       let q = supabase.from('players')
-        .select('id,job,firstname,surname_encoded,country_code,club_id,rarity,note_g,note_d,note_m,note_a,skin,hair,hair_length,face,sell_price,clubs(encoded_name,logo_url)')
+        .select('id,job,firstname,surname_real,country_code,club_id,rarity,note_g,note_d,note_m,note_a,skin,hair,hair_length,face,sell_price,clubs(encoded_name,logo_url)')
         .eq('is_active', true)
       if (wantedRarity) q = q.eq('rarity', wantedRarity)
       const { data: pool } = await q
@@ -423,7 +423,7 @@ async function openPlayersBooster(profile, count, cost) {
 
   const { data: players } = await supabase
     .from('players')
-    .select('id,job,firstname,surname_encoded,country_code,club_id,rarity,note_g,note_d,note_m,note_a,note_min,note_max,skin,hair,hair_length,face,sell_price,clubs(encoded_name,logo_url)')
+    .select('id,job,firstname,surname_real,country_code,club_id,rarity,note_g,note_d,note_m,note_a,note_min,note_max,skin,hair,hair_length,face,sell_price,clubs(encoded_name,logo_url)')
     .eq('is_active', true)
 
   if (!players?.length) throw new Error('Pas de joueurs en BDD — ajoutes-en via le panel admin !')
@@ -1301,7 +1301,7 @@ export async function renderStarterOnboarding(container, { state, navigate, toas
 async function ensureGKInBooster(profile, newCards) {
   try {
     const { data: gks } = await supabase.from('players')
-      .select('id,job,firstname,surname_encoded,country_code,club_id,rarity,note_g,note_d,note_m,note_a,skin,hair,hair_length,face,sell_price,clubs(encoded_name,logo_url)')
+      .select('id,job,firstname,surname_real,country_code,club_id,rarity,note_g,note_d,note_m,note_a,skin,hair,hair_length,face,sell_price,clubs(encoded_name,logo_url)')
       .eq('is_active', true).eq('job', 'GK')
     if (!gks?.length) return
     const gk = gks[Math.floor(Math.random()*gks.length)]

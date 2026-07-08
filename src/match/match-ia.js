@@ -95,7 +95,7 @@ export async function renderMatchIA(container, ctx) {
 async function generateAITeam(formation, difficulty) {
   const { data: players } = await supabase
     .from('players')
-    .select('id,firstname,surname_encoded,country_code,club_id,job,job2,note_g,note_d,note_m,note_a,rarity,skin,hair,hair_length,clubs(encoded_name,logo_url)')
+    .select('id,firstname,surname_real,country_code,club_id,job,job2,note_g,note_d,note_m,note_a,rarity,skin,hair,hair_length,clubs(encoded_name,logo_url)')
     .eq('is_active', true).limit(80)
 
   if (!players || players.length < 11) return { lines: generateFakeAITeam(formation), subs: [], gcCards: [], stadiumDef: null }
@@ -108,7 +108,7 @@ async function generateAITeam(formation, difficulty) {
     used.add(p.id)
     return {
       cardId:'ai-'+p.id+'-'+i, id:p.id,
-      firstname:p.firstname, name:p.surname_encoded,
+      firstname:p.firstname, name:p.surname_real,
       country_code:p.country_code, club_id:p.club_id,
       job:p.job, job2:p.job2,
       note_g:Number(p.note_g)||0, note_d:Number(p.note_d)||0,

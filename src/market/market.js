@@ -52,7 +52,7 @@ async function loadMarket(container, ctx) {
     .select(`id, price, status, listed_at, seller_id,
       seller:users!seller_id(pseudo),
       card:cards(id, card_type, current_note, evolution_bonus,
-        player:players(id, firstname, surname_encoded, country_code, job, job2,
+        player:players(id, firstname, surname_real, country_code, job, job2,
           note_g, note_d, note_m, note_a, rarity, face, note_min, note_max,
           clubs(encoded_name, logo_url, logo_url)))`)
     .eq('status', 'active')
@@ -64,7 +64,7 @@ async function loadMarket(container, ctx) {
     .select(`id, price, status, listed_at, sold_at, seller_id, buyer_id,
       buyer:users!buyer_id(pseudo),
       card:cards(id, card_type, current_note, evolution_bonus,
-        player:players(id, firstname, surname_encoded, country_code, job, job2,
+        player:players(id, firstname, surname_real, country_code, job, job2,
           note_g, note_d, note_m, note_a, rarity, face,
           clubs(encoded_name, logo_url)))`)
     .eq('seller_id', state.profile.id)
@@ -129,7 +129,7 @@ async function loadMarket(container, ctx) {
     return list.filter(l => {
       const p = l.card?.player
       if (!p) return false
-      const fullName = `${p.firstname} ${p.surname_encoded}`.toLowerCase()
+      const fullName = `${p.firstname} ${p.surname_real}`.toLowerCase()
       const club     = (p.clubs?.encoded_name||'').toLowerCase()
       const country  = (p.country_code||'').toLowerCase()
       const evo      = l.card?.evolution_bonus || 0
@@ -173,7 +173,7 @@ async function loadMarket(container, ctx) {
       <!-- Nom -->
       <div style="flex:1;min-width:0">
         <div style="font-size:11px;color:#999">${p.firstname}</div>
-        <div style="font-size:14px;font-weight:900;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.surname_encoded}</div>
+        <div style="font-size:14px;font-weight:900;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.surname_real}</div>
         <div style="font-size:10px;color:#999;margin-top:1px">Vendeur : ${l.seller?.pseudo||'—'}</div>
       </div>
       <div style="text-align:right;flex-shrink:0">
@@ -206,7 +206,7 @@ async function loadMarket(container, ctx) {
       </div>
       <div style="flex:1;min-width:0">
         <div style="font-size:11px;color:#999">${p.firstname}</div>
-        <div style="font-size:14px;font-weight:900;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.surname_encoded}</div>
+        <div style="font-size:14px;font-weight:900;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.surname_real}</div>
         <div style="font-size:10px;color:${isSold?'#22c55e':'#999'};margin-top:1px">
           ${isSold?`✅ Vendu à ${l.buyer?.pseudo||'—'} · ${l.sold_at?new Date(l.sold_at).toLocaleDateString('fr'):''}` : `🟢 En vente depuis le ${new Date(l.listed_at).toLocaleDateString('fr')}`}
         </div>
@@ -291,7 +291,7 @@ async function buyCard(listingId, list, container, ctx) {
 
 function showBuyConfirm(listing, onConfirm) {
   const p = listing.card?.player
-  const name = p ? `${p.firstname} ${p.surname_encoded}` : 'cette carte'
+  const name = p ? `${p.firstname} ${p.surname_real}` : 'cette carte'
   const ov = document.createElement('div')
   ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9000;display:flex;align-items:center;justify-content:center;padding:20px'
   ov.innerHTML = `

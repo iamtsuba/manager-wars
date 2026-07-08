@@ -47,7 +47,7 @@ async function loadPlayers(container, helpers, savedFilters = null) {
   const JOB_ORDER = { GK:0, DEF:1, MIL:2, ATT:3 }
   const sorted = (players || []).sort((a,b) => {
     const jo = (JOB_ORDER[a.job]??4) - (JOB_ORDER[b.job]??4)
-    return jo !== 0 ? jo : (a.surname_encoded||'').localeCompare(b.surname_encoded||'')
+    return jo !== 0 ? jo : (a.surname_real||'').localeCompare(b.surname_real||'')
   })
   renderPage(container, sorted, clubs || [], helpers, savedFilters)
 }
@@ -121,7 +121,7 @@ function renderPage(container, players, clubs, helpers, savedFilters = null) {
     const club    = document.getElementById('filter-club').value
     const country = document.getElementById('filter-country').value
     return players.filter(p =>
-      (!q       || `${p.firstname} ${p.surname_encoded}`.toLowerCase().includes(q)) &&
+      (!q       || `${p.firstname} ${p.surname_real}`.toLowerCase().includes(q)) &&
       (!job     || p.job === job) &&
       (!rar     || p.rarity === rar) &&
       (!club    || p.club_id === club) &&
@@ -225,7 +225,7 @@ async function openPlayerModal(player, clubs, container, helpers) {
   ).join('')
 
   openModal(
-    isEdit ? `✏️ ${player.firstname} ${player.surname_encoded}` : '➕ Nouveau joueur',
+    isEdit ? `✏️ ${player.firstname} ${player.surname_real}` : '➕ Nouveau joueur',
     `<div style="display:flex;gap:20px;align-items:flex-start">
 
       <!-- Colonne gauche : aperçu carte -->
@@ -245,7 +245,7 @@ async function openPlayerModal(player, clubs, container, helpers) {
           </div>
           <div class="form-group">
             <label>Nom</label>
-            <input id="pm-real" value="${player?.surname_real || (player?.surname_encoded ? player.surname_encoded.charAt(0).toUpperCase() + player.surname_encoded.slice(1).toLowerCase() : '')}" placeholder="Silva">
+            <input id="pm-real" value="${player?.surname_real || (player?.surname_real ? player.surname_real.charAt(0).toUpperCase() + player.surname_real.slice(1).toLowerCase() : '')}" placeholder="Silva">
           </div>
         </div>
 
@@ -373,7 +373,7 @@ async function openPlayerModal(player, clubs, container, helpers) {
 
       const p = {
         firstname: fn || 'Prénom',
-        surname_encoded: nm || 'NOM',
+        surname_real: nm || 'NOM',
         job, job2: job2 || null,
         rarity: rar,
         country_code: cc,
@@ -466,7 +466,7 @@ function getFormData(face) {
   return {
     firstname:       (g('pm-fn') || '').trim(),
     surname_real:    (g('pm-real') || '').trim() || (g('pm-real') || '').trim().toUpperCase() || 'JOUEUR',
-    surname_encoded: (g('pm-real') || '').trim().toUpperCase() || 'JOUEUR',
+    surname_real: (g('pm-real') || '').trim().toUpperCase() || 'JOUEUR',
     country_code:    g('pm-country') || 'FR',
     club_id:         g('pm-club') || null,
     job:             g('pm-job') || 'ATT',

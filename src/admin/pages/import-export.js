@@ -26,7 +26,7 @@ export async function pageImportExport(container, { toast }) {
     <!-- JOUEURS -->
     <div class="card-panel">
       <h3 style="font-size:15px;font-weight:700;margin-bottom:4px">🃏 Joueurs</h3>
-      <p style="font-size:12px;color:var(--gray-600);margin-bottom:16px">Exporter/importer les joueurs en masse via CSV. L'encodage des noms est automatique si la colonne surname_encoded est vide.</p>
+      <p style="font-size:12px;color:var(--gray-600);margin-bottom:16px">Exporter/importer les joueurs en masse via CSV. L'encodage des noms est automatique si la colonne surname_real est vide.</p>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         <button class="btn btn-ghost" id="export-players-template">📄 Template CSV vide</button>
         <button class="btn btn-primary" id="export-players">⬇️ Exporter les joueurs</button>
@@ -43,14 +43,14 @@ export async function pageImportExport(container, { toast }) {
       <h4 style="font-size:13px;font-weight:700;margin-bottom:8px">📋 Format CSV</h4>
       <div style="font-size:12px;color:var(--gray-600);line-height:1.8">
         <b>Clubs :</b> real_name, encoded_name, country_code, logo_url<br>
-        <b>Joueurs :</b> firstname, surname_real, surname_encoded, country_code, club_encoded_name, job, job2, note_g, note_d, note_m, note_a, rarity, note_min, note_max, skin, hair, hair_length, sell_price<br><br>
+        <b>Joueurs :</b> firstname, surname_real, surname_real, country_code, club_encoded_name, job, job2, note_g, note_d, note_m, note_a, rarity, note_min, note_max, skin, hair, hair_length, sell_price<br><br>
         <b>Valeurs autorisées :</b><br>
         • job/job2 : GK, DEF, MIL, ATT<br>
         • rarity : normal, pepite, papyte, legende<br>
         • skin : blanc, metisse, typ, noir<br>
         • hair : blond, marron, noir, chauve<br>
         • hair_length : rase, court, milong, long<br><br>
-        💡 Le séparateur est la virgule. Première ligne = en-têtes. Si surname_encoded est vide, il est calculé automatiquement.
+        💡 Le séparateur est la virgule. Première ligne = en-têtes. Si surname_real est vide, il est calculé automatiquement.
       </div>
     </div>
   </div>
@@ -66,7 +66,7 @@ export async function pageImportExport(container, { toast }) {
 
   document.getElementById('export-players-template').addEventListener('click', () => {
     downloadCSV('players_template.csv',
-      'firstname,surname_real,surname_encoded,country_code,club_encoded_name,job,job2,note_g,note_d,note_m,note_a,rarity,note_min,note_max,skin,hair,hair_length,sell_price\n' +
+      'firstname,surname_real,surname_real,country_code,club_encoded_name,job,job2,note_g,note_d,note_m,note_a,rarity,note_min,note_max,skin,hair,hair_length,sell_price\n' +
       'Kylian,Mbappe,,FR,PARIS FC,ATT,,0,0,2,9,legende,,,blanc,noir,court,50000\n' +
       'Achraf,Hakimi,,MA,PARIS FC,DEF,MIL,0,7,5,3,pepite,5,9,metisse,noir,court,20000\n')
   })
@@ -89,15 +89,15 @@ export async function pageImportExport(container, { toast }) {
   document.getElementById('export-players').addEventListener('click', async () => {
     const { data: players, error } = await supabase
       .from('players')
-      .select('firstname,surname_real,surname_encoded,country_code,job,job2,note_g,note_d,note_m,note_a,rarity,note_min,note_max,skin,hair,hair_length,sell_price,clubs(encoded_name)')
-      .order('surname_encoded')
+      .select('firstname,surname_real,surname_real,country_code,job,job2,note_g,note_d,note_m,note_a,rarity,note_min,note_max,skin,hair,hair_length,sell_price,clubs(encoded_name)')
+      .order('surname_real')
     if (error) { toast(error.message, 'error'); return }
     if (!players || players.length === 0) { toast('Aucun joueur à exporter', 'info'); return }
 
-    let csv = 'firstname,surname_real,surname_encoded,country_code,club_encoded_name,job,job2,note_g,note_d,note_m,note_a,rarity,note_min,note_max,skin,hair,hair_length,sell_price\n'
+    let csv = 'firstname,surname_real,surname_real,country_code,club_encoded_name,job,job2,note_g,note_d,note_m,note_a,rarity,note_min,note_max,skin,hair,hair_length,sell_price\n'
     players.forEach(p => {
       csv += [
-        p.firstname, p.surname_real, p.surname_encoded, p.country_code,
+        p.firstname, p.surname_real, p.surname_real, p.country_code,
         p.clubs?.encoded_name || '', p.job, p.job2 || '',
         p.note_g, p.note_d, p.note_m, p.note_a, p.rarity,
         p.note_min ?? '', p.note_max ?? '', p.skin, p.hair, p.hair_length, p.sell_price
@@ -188,7 +188,7 @@ export async function pageImportExport(container, { toast }) {
         const payload = {
           firstname: row.firstname,
           surname_real: row.surname_real,
-          surname_encoded: row.surname_encoded || encodeVowels(row.surname_real),
+          surname_real: row.surname_real || encodeVowels(row.surname_real),
           country_code: row.country_code.toUpperCase().slice(0,2),
           club_id: clubId,
           job: row.job,

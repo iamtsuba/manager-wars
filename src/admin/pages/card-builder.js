@@ -61,7 +61,7 @@ function updatePreview() {
   const get = id => document.getElementById(id)?.value || ''
   const player = {
     firstname:         get('cb-firstname'),
-    surname_encoded:   get('cb-surname-enc') || encodeVowels(get('cb-surname-real')),
+    surname_real:   get('cb-surname-enc') || encodeVowels(get('cb-surname-real')),
     country_code:      get('cb-country'),
     club_encoded_name: document.getElementById('cb-club')?.selectedOptions[0]?.text || '',
     job:               get('cb-job'),
@@ -93,7 +93,7 @@ function updatePreview() {
   const realName = get('cb-surname-real')
   const sumEl    = document.getElementById('encode-summary')
   if (sumEl && realName) {
-    sumEl.textContent = `${get('cb-firstname')} ${realName} → ${get('cb-firstname')} ${player.surname_encoded}`
+    sumEl.textContent = `${get('cb-firstname')} ${realName} → ${get('cb-firstname')} ${player.surname_real}`
   }
 }
 
@@ -171,7 +171,7 @@ async function savePlayer(toast) {
   const payload = {
     firstname:       get('cb-firstname').trim(),
     surname_real:    realName,
-    surname_encoded: encName,
+    surname_real: encName,
     country_code:    get('cb-country'),
     club_id:         get('cb-club') || null,
     job:             get('cb-job'),
@@ -193,7 +193,7 @@ async function savePlayer(toast) {
 
   const { error } = await supabase.from('players').insert(payload)
   if (error) { toast('Erreur: ' + error.message, 'error'); return }
-  toast(`✅ Joueur "${payload.firstname} ${payload.surname_encoded}" enregistré !`, 'success')
+  toast(`✅ Joueur "${payload.firstname} ${payload.surname_real}" enregistré !`, 'success')
 }
 
 // ── Rendu UI ─────────────────────────────────────────────

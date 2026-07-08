@@ -80,7 +80,7 @@ export async function renderCollection(container, ctx) {
   const { data: cards } = await supabase
     .from('cards')
     .select(`id, card_type, current_note, gc_type, formation, is_for_sale, sale_price, stadium_id, evolution_bonus,
-      player:players(id, firstname, surname_encoded, country_code, club_id, job, job2,
+      player:players(id, firstname, surname_real, country_code, club_id, job, job2,
         note_g, note_d, note_m, note_a, rarity, note_min, note_max, skin, hair, hair_length, sell_price, face,
         clubs(encoded_name, logo_url)),
       stadium_def:stadium_definitions(id, name, club_id, country_code, image_url,
@@ -90,7 +90,7 @@ export async function renderCollection(container, ctx) {
   // Tous les joueurs actifs (pour le mode "Voir tout")
   const { data: allPlayers } = await supabase
     .from('players')
-    .select(`id, firstname, surname_encoded, country_code, club_id, job, job2,
+    .select(`id, firstname, surname_real, country_code, club_id, job, job2,
       note_g, note_d, note_m, note_a, rarity, note_min, note_max, skin, hair, hair_length,
       clubs(encoded_name, logo_url)`)
     .eq('is_active', true)
@@ -138,7 +138,7 @@ export async function renderCollection(container, ctx) {
       const iA = JOB_ORDER.indexOf(a.player.job)
       const iB = JOB_ORDER.indexOf(b.player.job)
       if (iA !== iB) return iA - iB
-      return (a.player.surname_encoded||'').localeCompare(b.player.surname_encoded||'')
+      return (a.player.surname_real||'').localeCompare(b.player.surname_real||'')
     })
   }
 
@@ -147,7 +147,7 @@ export async function renderCollection(container, ctx) {
       const iA = JOB_ORDER.indexOf(a.job)
       const iB = JOB_ORDER.indexOf(b.job)
       if (iA !== iB) return iA - iB
-      return (a.surname_encoded||'').localeCompare(b.surname_encoded||'')
+      return (a.surname_real||'').localeCompare(b.surname_real||'')
     })
   }
 
@@ -155,7 +155,7 @@ export async function renderCollection(container, ctx) {
     return sortedCards().filter(c => {
       const p = c.player
       const matchJob    = activeFilter === 'Tous' || p.job === activeFilter
-      const matchSearch = !searchQ || `${p.firstname} ${p.surname_encoded}`.toLowerCase().includes(searchQ)
+      const matchSearch = !searchQ || `${p.firstname} ${p.surname_real}`.toLowerCase().includes(searchQ)
       return matchJob && matchSearch
     })
   }
@@ -163,7 +163,7 @@ export async function renderCollection(container, ctx) {
   function filteredAllPlayers() {
     return sortedAllPlayers().filter(p => {
       const matchJob    = activeFilter === 'Tous' || p.job === activeFilter
-      const matchSearch = !searchQ || `${p.firstname} ${p.surname_encoded}`.toLowerCase().includes(searchQ)
+      const matchSearch = !searchQ || `${p.firstname} ${p.surname_real}`.toLowerCase().includes(searchQ)
       return matchJob && matchSearch
     })
   }
@@ -946,7 +946,7 @@ async function openCardDetail(card, allPlayerCards, countByPlayer, ctx) {
       </div>
     </div>` : ''
 
-  openModal(`${p.firstname} ${p.surname_encoded}`,
+  openModal(`${p.firstname} ${p.surname_real}`,
     `<div style="display:flex;gap:16px;flex-wrap:wrap;justify-content:center">
 
       <!-- Carte visuelle -->
@@ -1097,7 +1097,7 @@ async function openCardDetail(card, allPlayerCards, countByPlayer, ctx) {
           <div style="font-size:48px;margin-bottom:10px">⬆️</div>
           <div style="font-size:17px;font-weight:900;margin-bottom:6px">Évolution par fusion</div>
           <div style="font-size:13px;color:#555;margin-bottom:6px">
-            <strong>${p.firstname} ${p.surname_encoded}</strong>
+            <strong>${p.firstname} ${p.surname_real}</strong>
           </div>
           <div style="background:#f0fdf4;border-radius:10px;padding:12px;margin-bottom:16px;font-size:13px;color:#333">
             🗑️ <strong>${idsToDelete.length}</strong> copie${idsToDelete.length>1?'s':''} sacrifiée${idsToDelete.length>1?'s':''}<br>
@@ -1138,7 +1138,7 @@ async function openCardDetail(card, allPlayerCards, countByPlayer, ctx) {
     if (evoErr) { toast('Erreur évolution : ' + evoErr.message, 'error'); return }
 
     const mainNoteAfter = note1 + newEvo
-    toast(`⬆️ ${p.firstname} ${p.surname_encoded} : note ${note1+card.evolution_bonus||note1} → ${mainNoteAfter}${idsToDelete.length?` · ${idsToDelete.length} copie${idsToDelete.length>1?'s':''} sacrifiée${idsToDelete.length>1?'s':''}`:''} !`, 'success', 4000)
+    toast(`⬆️ ${p.firstname} ${p.surname_real} : note ${note1+card.evolution_bonus||note1} → ${mainNoteAfter}${idsToDelete.length?` · ${idsToDelete.length} copie${idsToDelete.length>1?'s':''} sacrifiée${idsToDelete.length>1?'s':''}`:''} !`, 'success', 4000)
     closeModal()
     navigate('collection')
   })

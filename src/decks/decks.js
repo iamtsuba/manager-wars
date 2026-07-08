@@ -62,7 +62,7 @@ function renderMiniCardHTML(p, w=44, h=58) {
   if (!p) return `<div style="width:${w}px;height:${h}px;border:2px dashed rgba(255,255,255,0.3);border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:20px;color:rgba(255,255,255,0.3)">+</div>`
   return `<div style="width:${w}px;height:${h}px;border-radius:5px;border:2px solid ${rarityBorder};background:${jobColor};position:relative;overflow:hidden;flex-shrink:0">
     <div style="position:absolute;top:0;left:0;right:0;height:${nameH}px;background:rgba(255,255,255,0.93);display:flex;align-items:center;justify-content:center;z-index:2">
-      <span style="font-size:${Math.max(5,Math.round(w/9))}px;font-weight:900;color:#111;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:${w-4}px">${(p?.surname_encoded||'').slice(0,9)}</span>
+      <span style="font-size:${Math.max(5,Math.round(w/9))}px;font-weight:900;color:#111;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:${w-4}px">${(p?.surname_real||'').slice(0,9)}</span>
     </div>
     ${portrait?`<img src="${portrait}" style="position:absolute;top:${nameH}px;left:0;width:${w}px;height:${portH}px;object-fit:cover;object-position:top center">`:''}
     <div style="position:absolute;bottom:0;left:0;right:0;height:${botH}px;background:rgba(255,255,255,0.93);display:flex;align-items:center;justify-content:space-between;padding:0 3px;z-index:2">
@@ -158,7 +158,7 @@ async function openDeckBuilder(deckId, container, ctx) {
   const { data: cards } = await supabase
     .from('cards')
     .select(`id, card_type, formation, stadium_id, evolution_bonus,
-      player:players(id, firstname, surname_encoded, country_code, club_id, job, job2,
+      player:players(id, firstname, surname_real, country_code, club_id, job, job2,
         note_g, note_d, note_m, note_a, rarity, skin, hair, hair_length, face,
         clubs(encoded_name, logo_url))`)
     .eq('owner_id', state.profile.id)

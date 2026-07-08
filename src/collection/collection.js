@@ -325,7 +325,7 @@ export async function renderCollection(container, ctx) {
         var cardH    = inner.offsetHeight
         var cardW    = inner.offsetWidth
         if (cardH > 0 && cardW > 0 && availH > 40) {
-          var maxScale = isDesktop ? 2.2 : 1   // desktop : autoriser agrandissement
+          var maxScale = isDesktop ? 2.2 : 1.6   // mobile : agrandir la carte centrale
           var scale = Math.min(availH / cardH, availW / cardW, maxScale)
           inner.style.transform = 'scale(' + scale.toFixed(3) + ')'
           inner.style.transformOrigin = 'top center'

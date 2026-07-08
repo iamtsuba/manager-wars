@@ -190,8 +190,8 @@ export async function renderBoostersConfig(container) {
             <select class="rate-rarity" data-idx="${i}" style="padding:6px 4px;border:1px solid #ddd;border-radius:4px;font-size:12px;width:100%">
               ${RARITIES.map(rt=>`<option value="${rt.value}" ${(r.rarity||'')===(rt.value)?'selected':''}>${rt.label}</option>`).join('')}
             </select>
-            <input class="rate-note-min" data-idx="${i}" type="number" min="1" max="10" value="${r.note_min||''}" placeholder="min" style="padding:6px 4px;border:1px solid #ddd;border-radius:4px;text-align:center;font-size:12px;width:100%">
-            <input class="rate-note-max" data-idx="${i}" type="number" min="1" max="10" value="${r.note_max||''}" placeholder="max" style="padding:6px 4px;border:1px solid #ddd;border-radius:4px;text-align:center;font-size:12px;width:100%">
+            <input class="rate-note-min" data-idx="${i}" type="number" min="0" max="20" value="${r.note_min||''}" placeholder="min" style="padding:6px 4px;border:1px solid #ddd;border-radius:4px;text-align:center;font-size:12px;width:100%">
+            <input class="rate-note-max" data-idx="${i}" type="number" min="0" max="20" value="${r.note_max||''}" placeholder="max" style="padding:6px 4px;border:1px solid #ddd;border-radius:4px;text-align:center;font-size:12px;width:100%">
             <input class="rate-pct" data-idx="${i}" type="number" min="0.1" max="100" step="0.1" value="${r.percentage}" style="padding:6px 4px;border:1px solid #ddd;border-radius:4px;text-align:center;font-size:12px;width:100%">
             <button class="btn-del-rate" data-idx="${i}" style="background:#fee;border:1px solid #fcc;color:#e74c3c;border-radius:4px;cursor:pointer;font-size:16px;line-height:1;padding:4px;width:100%">×</button>
           </div>`).join('')}

@@ -785,7 +785,7 @@ function showBoosterAnimation(cards, booster, navigate, onClose = null) {
     }
 
     // WALKOUT (style FIFA) : drapeau → club → carte + feu d'artifice
-    if (firstSeen && mainNote > 6 && card.card_type === 'player' && card.player) {
+    if (firstSeen && (card.player?.rarity === 'legende' || mainNote >= 8) && card.card_type === 'player' && card.player) {
       playWalkout(card, () => paint(true))
     } else {
       paint(false)
@@ -794,37 +794,85 @@ function showBoosterAnimation(cards, booster, navigate, onClose = null) {
 
   function playWalkout(card, onDone) {
     walkoutPlaying = true
-    const p = card.player
+    const p        = card.player
     const flagUrl  = `https://flagsapi.com/${p.country_code}/flat/64.png`
     const clubLogo = p.clubs?.logo_url
+    const faceUrl  = p.face ? (import.meta.env.BASE_URL + p.face.replace(/^public\//, '').replace(/^\//, '')) : null
+    const job      = p.job || 'ATT'
+    const noteVal  = Number(job==='GK'?p.note_g:job==='DEF'?p.note_d:job==='MIL'?p.note_m:p.note_a) || 0
+    const evo      = card.evolution_bonus || 0
+    const mainNote = noteVal + evo
+    const isLeg    = p.rarity === 'legende'
+    const isHot    = mainNote >= 18
+
     const ov    = document.getElementById('walkout-overlay')
     const stage = document.getElementById('walkout-stage')
     if (!ov || !stage) { walkoutPlaying = false; onDone(); return }
-    ov.style.display = 'flex'
-    const fadeOut = () => { const el = stage.firstElementChild; if (el){ el.classList.remove('wo-in'); el.classList.add('wo-out') } }
 
-    // 1) Drapeau (2s)
+    // Musique Légende
+    let audio = null
+    if (isLeg) {
+      audio = new Audio(import.meta.env.BASE_URL + 'sounds/Legendary.mp3')
+      audio.volume = 0.8
+      audio.play().catch(() => {})
+    }
+
+    ov.style.display = 'flex'
+    const fadeOut = () => {
+      const el = stage.firstElementChild
+      if (el) { el.classList.remove('wo-in'); el.classList.add('wo-out') }
+    }
+
+    const STEP = 1800  // durée par étape en ms
+    const GAP  = 400   // pause entre étapes
+
+    // 1) Drapeau
     stage.innerHTML = `<img class="wo-in" src="${flagUrl}" style="height:130px;border-radius:10px;box-shadow:0 10px 36px rgba(0,0,0,.6)" onerror="this.style.display='none'">`
     if (navigator.vibrate) navigator.vibrate(30)
-    setTimeout(fadeOut, 2000)
+    setTimeout(fadeOut, STEP)
 
-    // 2) Logo du club (2s)
+    // 2) Logo du club
     setTimeout(() => {
       stage.innerHTML = clubLogo
         ? `<img class="wo-in" src="${clubLogo}" style="max-height:160px;max-width:210px;object-fit:contain">`
         : `<div class="wo-in" style="font-size:34px;font-weight:900;color:#fff;text-align:center">${(p.clubs?.encoded_name||'CLUB')}</div>`
       if (navigator.vibrate) navigator.vibrate(30)
-    }, 2450)
-    setTimeout(fadeOut, 4450)
+    }, STEP + GAP)
+    setTimeout(fadeOut, STEP*2 + GAP)
 
-    // 3) La carte + feu d'artifice
+    // 3) Face / portrait
+    setTimeout(() => {
+      stage.innerHTML = faceUrl
+        ? `<img class="wo-in" src="${faceUrl}" style="height:200px;border-radius:50%;box-shadow:0 0 40px rgba(255,255,255,0.3);object-fit:cover;object-position:top">`
+        : `<div class="wo-in" style="font-size:80px">👤</div>`
+      if (navigator.vibrate) navigator.vibrate(30)
+    }, (STEP + GAP)*2)
+    setTimeout(fadeOut, (STEP + GAP)*2 + STEP)
+
+    // 4) Note principale
+    const JOB_ACCENT_WO = { GK:'#c0c0c0', DEF:'#e03030', MIL:'#D4A017', ATT:'#3fbf5f' }
+    const noteColor = isHot ? '#FFD700' : (JOB_ACCENT_WO[job] || '#fff')
+    setTimeout(() => {
+      stage.innerHTML = `<div class="wo-in" style="
+        font-size:${isHot ? '120px' : '90px'};font-weight:900;color:${noteColor};
+        font-family:Arial Black,Arial;line-height:1;
+        text-shadow:0 0 30px ${noteColor}, 0 0 60px ${noteColor};
+        ${isHot ? 'animation:woGlow 0.8s ease-in-out infinite;' : ''}">
+        ${mainNote}
+      </div>`
+      if (isHot && navigator.vibrate) navigator.vibrate([50, 30, 100, 30, 200])
+    }, (STEP + GAP)*3)
+    setTimeout(fadeOut, (STEP + GAP)*3 + STEP)
+
+    // 5) Carte complète + feu d'artifice
     setTimeout(() => {
       ov.style.display = 'none'
       stage.innerHTML = ''
       walkoutPlaying = false
+      if (audio && !isLeg) audio.pause()
       if (navigator.vibrate) navigator.vibrate([40, 30, 80])
       onDone()
-    }, 4900)
+    }, (STEP + GAP)*4)
   }
 
   function goTo(idx) {

@@ -224,7 +224,7 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
         note_m: (Number(r.note_m)||0) + (r.job==='MIL'||(r.job2==='MIL'&&Number(r.note_m)>0)?evo:0),
         note_a: (Number(r.note_a)||0) + (r.job==='ATT'||(r.job2==='ATT'&&Number(r.note_a)>0)?evo:0),
         evolution_bonus: evo,
-        rarity: r.rarity, skin: r.skin, hair: r.hair, hair_length: r.hair_length,
+        rarity: r.rarity, skin: r.skin, hair: r.hair, hair_length: r.hair_length, face: r.face || null,
         clubName: r.club_encoded_name||null, clubLogo: r.club_logo_url||null,
         boost: 0, used: false, _line: null, _col: null,
       }

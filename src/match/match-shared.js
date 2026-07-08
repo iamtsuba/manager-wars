@@ -56,6 +56,13 @@ export function showMsg(container, icon, msg, btnLabel, btnFn) {
 }
 
 export function getPortrait(p) {
+  // Priorité : champ face (public/faces/...)
+  if (p?.face) {
+    const base = (typeof import.meta !== 'undefined' ? import.meta.env?.BASE_URL : null) || '/'
+    const f = p.face.replace(/^public\//, '').replace(/^\//, '')
+    return base + f
+  }
+  // Fallback ancien système skin/hair
   const url = typeof import.meta !== 'undefined' ? import.meta.env?.VITE_SUPABASE_URL : ''
   if (!url || !p?.skin || !p?.hair) return null
   const key = p.hair === 'chauve' ? `${p.skin}-chauve-rase` : `${p.skin}-${p.hair}-${p.hair_length}`
@@ -82,7 +89,7 @@ export function playerFromCard(card, position) {
     note_a: (Number(p.note_a)||0) + (p.job==='ATT' ? evo : 0) + (p.job2==='ATT' && j2base>0 ? evo : 0),
     evolution_bonus: evo,
     rarity: p.rarity,
-    skin: p.skin, hair: p.hair, hair_length: p.hair_length,
+    skin: p.skin, hair: p.hair, hair_length: p.hair_length, face: p.face || null,
     clubName: p.clubs?.encoded_name || null,
     clubLogo: p.clubs?.logo_url || null,
     boost: 0,

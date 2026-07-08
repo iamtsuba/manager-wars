@@ -66,6 +66,21 @@ export function renderPlayerCard(p, opts = {}) {
   const job    = forceRole || p._line || p.job || 'MIL'
   const accent = JOB_ACCENT[job] || '#D4A017'
   const tmpl   = CARD_TEMPLATES[job] || CARD_TEMPLATES.MIL
+
+
+  // Glow selon rareté
+  const RARITY_GLOW_COLOR = { legende:'#7a28b8', pepite:'#D4A017', pépite:'#D4A017', papyte:'#909090' }
+  const glowColor = RARITY_GLOW_COLOR[p.rarity]
+  const glowStyle = glowColor ? `filter:drop-shadow(0 0 5px ${glowColor}) drop-shadow(0 0 12px ${glowColor});` : ''
+
+  // Glow selon rareté
+  const RARITY_GLOW = {
+    legende: '0 0 12px 4px #7a28b8, 0 0 24px 8px rgba(122,40,184,0.5)',
+    pepite:  '0 0 12px 4px #D4A017, 0 0 24px 8px rgba(212,160,23,0.5)',
+    pépite:  '0 0 12px 4px #D4A017, 0 0 24px 8px rgba(212,160,23,0.5)',
+    papyte:  '0 0 10px 3px #909090, 0 0 20px 6px rgba(144,144,144,0.4)',
+  }
+  const glowStyle = RARITY_GLOW[p.rarity] ? `filter:drop-shadow(0 0 6px ${p.rarity==='legende'?'#7a28b8':p.rarity==='papyte'?'#909090':'#D4A017'});` : ''
   const evo    = p._evolution_bonus ?? p.evolution_bonus ?? 0
   const stadB  = showStad && (p.stadiumBonus || hasStadBonus(p, stadDef)) ? 10 : 0
 
@@ -122,7 +137,7 @@ export function renderPlayerCard(p, opts = {}) {
   const rectRX   = ax(374)   // moins collé au bord
   const rectR    = ax(6)
 
-  return `<div style="position:relative;width:${width}px;height:${height + (stadB>0 ? ax(22) : 0)}px;flex-shrink:0;${opacity}user-select:none">
+  return `<div style="position:relative;width:${width}px;height:${height + (stadB>0 ? ax(22) : 0)}px;flex-shrink:0;${opacity}user-select:none;${glowStyle}">
   ${stadB > 0 ? `<div style="position:absolute;top:0;left:0;right:0;text-align:center;z-index:5;font-size:${px(22)};line-height:1">🏟️</div>` : ''}
   <div style="position:absolute;bottom:0;left:0;width:${width}px;height:${height}px">
 

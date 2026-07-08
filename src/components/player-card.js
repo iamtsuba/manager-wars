@@ -80,7 +80,6 @@ export function renderPlayerCard(p, opts = {}) {
     pépite:  '0 0 12px 4px #D4A017, 0 0 24px 8px rgba(212,160,23,0.5)',
     papyte:  '0 0 10px 3px #909090, 0 0 20px 6px rgba(144,144,144,0.4)',
   }
-  const glowStyle = RARITY_GLOW[p.rarity] ? `filter:drop-shadow(0 0 6px ${p.rarity==='legende'?'#7a28b8':p.rarity==='papyte'?'#909090':'#D4A017'});` : ''
   const evo    = p._evolution_bonus ?? p.evolution_bonus ?? 0
   const stadB  = showStad && (p.stadiumBonus || hasStadBonus(p, stadDef)) ? 10 : 0
 

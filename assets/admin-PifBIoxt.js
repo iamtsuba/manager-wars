@@ -759,8 +759,8 @@ Achraf,Hakimi,,MA,PARIS FC,DEF,MIL,0,7,5,3,pepite,5,9,metisse,noir,court,20000
             <select class="rate-rarity" data-idx="${h}" style="padding:6px 4px;border:1px solid #ddd;border-radius:4px;font-size:12px;width:100%">
               ${Ht.map(E=>`<option value="${E.value}" ${(u.rarity||"")===E.value?"selected":""}>${E.label}</option>`).join("")}
             </select>
-            <input class="rate-note-min" data-idx="${h}" type="number" min="1" max="10" value="${u.note_min||""}" placeholder="min" style="padding:6px 4px;border:1px solid #ddd;border-radius:4px;text-align:center;font-size:12px;width:100%">
-            <input class="rate-note-max" data-idx="${h}" type="number" min="1" max="10" value="${u.note_max||""}" placeholder="max" style="padding:6px 4px;border:1px solid #ddd;border-radius:4px;text-align:center;font-size:12px;width:100%">
+            <input class="rate-note-min" data-idx="${h}" type="number" min="0" max="20" value="${u.note_min||""}" placeholder="min" style="padding:6px 4px;border:1px solid #ddd;border-radius:4px;text-align:center;font-size:12px;width:100%">
+            <input class="rate-note-max" data-idx="${h}" type="number" min="0" max="20" value="${u.note_max||""}" placeholder="max" style="padding:6px 4px;border:1px solid #ddd;border-radius:4px;text-align:center;font-size:12px;width:100%">
             <input class="rate-pct" data-idx="${h}" type="number" min="0.1" max="100" step="0.1" value="${u.percentage}" style="padding:6px 4px;border:1px solid #ddd;border-radius:4px;text-align:center;font-size:12px;width:100%">
             <button class="btn-del-rate" data-idx="${h}" style="background:#fee;border:1px solid #fcc;color:#e74c3c;border-radius:4px;cursor:pointer;font-size:16px;line-height:1;padding:4px;width:100%">×</button>
           </div>`).join("")}

@@ -36,13 +36,22 @@
 /* ── Thème "light" (NOUVEAU PAR DÉFAUT — celui du kit graphique)
    Bandeaux noirs, fond gris clair, tuiles blanches ── */
 :root, [data-theme="light"] {
-  --nav-bg: #111;
+  --nav-bg: #0a0f0a;
   --nav-fg: #fff;
-  --page-bg: var(--gray-100);
-  --tile-bg: #fff;
-  --tile-fg: var(--gray-800);
-  --tile-fg-on-page: var(--gray-800);
-  --tile-dark-bg: #3a3a3a;
+  --page-bg: #0d1a0f;
+  --page-gradient: radial-gradient(ellipse at 20% 50%, rgba(0,60,30,0.55) 0%, transparent 60%),
+                   radial-gradient(ellipse at 80% 20%, rgba(0,40,80,0.4) 0%, transparent 55%),
+                   linear-gradient(160deg, #0a0f0a 0%, #0d1a0f 40%, #080d08 100%);
+  --tile-bg: rgba(255,255,255,0.06);
+  --tile-border: rgba(255,255,255,0.1);
+  --tile-fg: #fff;
+  --tile-fg-on-page: #fff;
+  --tile-dark-bg: rgba(0,0,0,0.4);
+  --input-bg: rgba(255,255,255,0.07);
+  --input-border: rgba(255,255,255,0.15);
+  --input-fg: #fff;
+  --card-bg: rgba(255,255,255,0.06);
+  --card-border: rgba(255,255,255,0.1);
 }
 
 /* ── Thème "dark" (inversé)
@@ -61,8 +70,10 @@
 
 body {
   font-family: var(--font);
-  background: var(--gray-100);
-  color: var(--gray-800);
+  background: var(--page-bg, #0d1a0f);
+  background-image: var(--page-gradient);
+  background-attachment: fixed;
+  color: var(--tile-fg, #fff);
   min-height: 100vh;
 }
 
@@ -100,7 +111,7 @@ label { font-size: 12px; font-weight: 500; color: var(--gray-600);
 
 /* ── Cards ── */
 .card-panel {
-  background: #fff; border-radius: var(--radius-lg);
+  background: transparent; border-radius: var(--radius-lg);
   border: 1px solid var(--gray-200); padding: 1.25rem;
   box-shadow: var(--shadow);
 }
@@ -139,7 +150,7 @@ label { font-size: 12px; font-weight: 500; color: var(--gray-600);
 .admin-main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
 
 .admin-topbar {
-  height: 56px; background: #fff; border-bottom: 1px solid var(--gray-200);
+  height: 56px; background: rgba(0,0,0,0.6); backdrop-filter: blur(10px); border-bottom: 1px solid rgba(255,255,255,0.08);
   padding: 0 24px; display: flex; align-items: center;
   justify-content: space-between; flex-shrink: 0;
 }
@@ -153,7 +164,9 @@ table { width: 100%; border-collapse: collapse; font-size: 13px; }
 th { text-align: left; padding: 8px 12px; border-bottom: 2px solid var(--gray-200);
      font-size: 11px; text-transform: uppercase; letter-spacing: .4px; color: var(--gray-600); }
 td { padding: 8px 12px; border-bottom: 1px solid var(--gray-200); vertical-align: middle; }
-tr:hover td { background: #fafafa; }
+tr:hover td { background: rgba(255,255,255,0.05); }
+th { color: rgba(255,255,255,0.6); border-bottom-color: rgba(255,255,255,0.1); }
+td { border-bottom-color: rgba(255,255,255,0.06); color: #fff; }
 
 /* ── Toast ── */
 #toast {
@@ -175,7 +188,7 @@ tr:hover td { background: #fafafa; }
 }
 .modal-overlay.hidden { display: none; }
 .modal {
-  background: #fff; border-radius: var(--radius-lg);
+  background: transparent; border-radius: var(--radius-lg);
   width: 100%; max-width: 540px; max-height: 90vh;
   overflow-y: auto; box-shadow: 0 8px 40px rgba(0,0,0,0.2);
 }
@@ -230,3 +243,15 @@ tr:hover td { background: #fafafa; }
   .admin-layout { flex-direction: column; }
   .admin-sidebar { width: 100%; flex-direction: row; flex-wrap: wrap; }
 }
+
+/* ── Scrollbar sombre ── */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.25); }
+
+/* ── Overrides pour éléments blancs résiduels ── */
+.page { background: transparent; }
+p { color: rgba(255,255,255,0.7); }
+small { color: rgba(255,255,255,0.45); }
+select option { background: #0d1a0f; color: #fff; }

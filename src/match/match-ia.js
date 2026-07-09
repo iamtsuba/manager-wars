@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase.js'
+import { renderPlayerCard } from '../components/player-card.js'
 import {
   GC_DEFS, getNoteForRole, calcAttack, calcDefense,
   calcMidfieldDuel, resolveDuel, aiSelectPlayers, getRewards
@@ -193,7 +194,11 @@ function showOpponentReveal(container, game, ctx) {
     <div style="font-size:11px;color:rgba(255,255,255,0.5);letter-spacing:3px;text-transform:uppercase;margin-top:8px">Équipe adverse</div>
     <div style="font-size:20px;font-weight:900;color:#ff6b6b">IA (${game.difficulty.toUpperCase()})</div>
     ${game.aiStadiumDef ? `<div style="font-size:11px;color:#FFD700;margin-top:2px">🏟️ ${game.aiStadiumDef.name} · +10 aux joueurs ${game.aiStadiumDef.club?.encoded_name||''}</div>` : ''}
-    <div style="width:min(90vw,600px)">${buildTeamSVG(game.aiTeam, game.formation, null, [], window.innerWidth>=900?500:300, window.innerWidth>=900?620:380)}</div>
+    <div style="width:100%;max-width:900px;margin:0 auto">${buildTeamSVG(
+      game.aiTeam, game.formation, null, [],
+      Math.min(window.innerWidth - 40, 860),
+      Math.round(Math.min(window.innerWidth - 40, 860) * 1.1)
+    )}</div>
     <div style="font-size:15px;color:rgba(255,255,255,0.7)">
       <span class="loading-dots">Chargement</span>
     </div>
@@ -650,7 +655,7 @@ function renderGame(container, game, ctx) {
       // ─── Terrain ──────────────────────────────────────────
       const terrainHTML = `<div style="overflow:hidden;min-width:0;flex:1;min-height:0;display:flex;flex-direction:column" id="match-field">
         <div class="terrain-wrapper" style="overflow:hidden;width:100%;flex:1;min-height:0;display:flex;align-items:center;justify-content:center">
-          ${renderTeam(game.homeTeam,game.formation,game.phase,selectedIds,window.innerWidth>=900?500:300,window.innerWidth>=900?620:380,extraSelectableIds)}
+          ${renderTeam(game.homeTeam,game.formation,game.phase,selectedIds,Math.min(window.innerWidth-40,860),Math.round(Math.min(window.innerWidth-40,860)*1.05),extraSelectableIds)}
         </div>
       </div>`
 
@@ -680,7 +685,7 @@ function renderGame(container, game, ctx) {
         <div id="mobile-play-area" style="flex:1;min-height:0;display:flex;overflow:hidden">
           <div id="match-field" style="flex:1;min-width:0;min-height:0;overflow:hidden">
             <div class="terrain-wrapper" style="width:100%;height:100%;overflow:hidden">
-              ${renderTeam(game.homeTeam,game.formation,game.phase,selectedIds,window.innerWidth>=900?500:300,window.innerWidth>=900?620:380,extraSelectableIds)}
+              ${renderTeam(game.homeTeam,game.formation,game.phase,selectedIds,Math.min(window.innerWidth-40,860),Math.round(Math.min(window.innerWidth-40,860)*1.05),extraSelectableIds)}
             </div>
           </div>
         </div>
@@ -1757,7 +1762,7 @@ async function finishMatch(container, game, ctx) {
 function showAITeam(game, ctx) {
   ctx.openModal('Équipe adverse (IA)',
     `<div style="background:#0a3d1e;padding:12px;border-radius:8px">
-      ${buildTeamSVG(game.aiTeam, game.formation, null, [], window.innerWidth>=900?500:300, window.innerWidth>=900?620:380)}
+      ${buildTeamSVG(game.aiTeam, game.formation, null, [], Math.min(window.innerWidth-40,860), Math.round(Math.min(window.innerWidth-40,860)*1.1))}
     </div>`,
     `<button class="btn btn-primary" onclick="document.getElementById('modal-overlay').classList.add('hidden')">Fermer</button>`
   )

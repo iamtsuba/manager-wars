@@ -710,7 +710,7 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
     const phase = isMyAttack?'attack':isMyDefense?'defense':'idle'
     const terrainHTML = `<div style="overflow:hidden;min-width:0;flex:1;min-height:0;display:flex;flex-direction:column" id="match-field">
       <div class="terrain-wrapper" style="overflow:hidden;width:100%;flex:1;min-height:0;display:flex;align-items:center;justify-content:center">
-        ${renderTeam(myTeam, gameState[myRole+'Formation'], phase, selectedIds,window.innerWidth>=900?500:300,window.innerWidth>=900?620:300, extraSelectableIds)}
+        ${renderTeam(myTeam, gameState[myRole+'Formation'], phase, selectedIds,Math.min(window.innerWidth-40,860),Math.round(Math.min(window.innerWidth-40,860)*1.05), extraSelectableIds)}
       </div>
     </div>`
 
@@ -804,7 +804,7 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
         <div id="mobile-play-area" style="flex:1;min-height:0;display:flex;overflow:hidden">
           <div id="match-field" style="flex:1;min-width:0;min-height:0;overflow:hidden">
             <div class="terrain-wrapper" style="width:100%;height:100%;overflow:hidden">
-              ${renderTeam(myTeam, gameState[myRole+'Formation'], phase, selectedIds,window.innerWidth>=900?500:300,window.innerWidth>=900?620:300, extraSelectableIds)}
+              ${renderTeam(myTeam, gameState[myRole+'Formation'], phase, selectedIds,Math.min(window.innerWidth-40,860),Math.round(Math.min(window.innerWidth-40,860)*1.05), extraSelectableIds)}
             </div>
           </div>
         </div>
@@ -934,7 +934,7 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
     <div class="match-screen" style="display:flex;flex-direction:column;align-items:center;justify-content:flex-start;height:100%;overflow:hidden;gap:12px;padding:12px 16px;background:#0a3d1e;overflow-y:auto">
       <div style="font-size:11px;color:rgba(255,255,255,0.5);letter-spacing:3px;text-transform:uppercase;margin-top:8px">Équipe adverse</div>
       <div style="font-size:20px;font-weight:900;color:#ff6b6b">${gameState[oppRole+'Name']||'Adversaire'}</div>
-      <div style="width:min(90vw,420px)">${buildTeamSVG(gameState[oppRole+'Team'],gameState[oppRole+'Formation'],null,[],window.innerWidth>=900?500:300,window.innerWidth>=900?620:300)}</div>
+      <div style="width:min(90vw,420px)">${buildTeamSVG(gameState[oppRole+'Team'],gameState[oppRole+'Formation'],null,[],Math.min(window.innerWidth-40,860),Math.round(Math.min(window.innerWidth-40,860)*1.05))}</div>
     </div>`
     if (myRole==='p1') setTimeout(async()=>{ await pushState({ phase:'midfield' }) }, 5000)
   }
@@ -1344,7 +1344,7 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
     overlay.innerHTML=`
       <div style="font-size:12px;color:rgba(255,255,255,0.5);letter-spacing:2px;text-transform:uppercase">Équipe adverse</div>
       <div style="font-size:18px;font-weight:900;color:#ff6b6b">${gameState[oppRole+'Name']}</div>
-      <div style="width:min(90vw,420px)">${buildTeamSVG(gameState[oppRole+'Team'],gameState[oppRole+'Formation'],null,[],window.innerWidth>=900?500:300,window.innerWidth>=900?620:300)}</div>
+      <div style="width:min(90vw,420px)">${buildTeamSVG(gameState[oppRole+'Team'],gameState[oppRole+'Formation'],null,[],Math.min(window.innerWidth-40,860),Math.round(Math.min(window.innerWidth-40,860)*1.05))}</div>
       <button id="pvp-opp-close" style="margin-top:8px;padding:12px 28px;border-radius:12px;border:1.5px solid rgba(255,255,255,0.3);background:transparent;color:#fff;font-size:14px;cursor:pointer">Fermer</button>`
     document.body.appendChild(overlay)
     overlay.querySelector('#pvp-opp-close')?.addEventListener('click',()=>overlay.remove())

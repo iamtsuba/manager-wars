@@ -935,14 +935,17 @@ function confirmDefense(container, game, ctx) {
   if (game._timerInt) { clearInterval(game._timerInt); game._timerInt = null }
   updateLastPlayer(game, ctx, ctx.state.profile.id)
   // Re-piocher les objets joueurs À JOUR (boost inclus) depuis game.homeTeam.
+  const homeSt = game.stadiumDef || null
   const selected = game.selected.map(s => {
     const live = (game.homeTeam[s._role]||[]).find(x => x.cardId === s.cardId) || s
-    return { ...live, _line: s._role }
+    // Recalculer stadiumBonus depuis stadiumDef au cas où le flag serait perdu
+    const stadB = live.stadiumBonus || (homeSt && (
+      (homeSt.club_id     && String(live.club_id)     === String(homeSt.club_id)) ||
+      (homeSt.country_code && live.country_code        === homeSt.country_code)
+    )) || false
+    return { ...live, _line: s._role, stadiumBonus: stadB }
   })
-  // Debug temporaire
-  console.log('[DEBUG defense] selected:', selected.map(p => ({ name:p.name, _line:p._line, note_d:p.note_d, stadiumBonus:p.stadiumBonus, boost:p.boost })))
   const calc = calcDefense(selected, game.modifiers.home)
-  console.log('[DEBUG defense] calc:', calc)
   game.selected.forEach(sel => {
     const p = (game.homeTeam[sel._role]||[]).find(pp => pp.cardId === sel.cardId)
     if (p) p.used = true

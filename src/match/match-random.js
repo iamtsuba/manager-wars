@@ -1455,7 +1455,12 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
       const colIdx = lineArr.findIndex(x => x.cardId === s.cardId)
       const cols = getColsForLine(lineArr.length)
       const _col = colIdx>=0 ? cols[colIdx] : (live._col ?? 1)
-      return { ...live, _line: s._role, _col, ...(isExtra ? { note_a: Math.max(1, Number(live.note_a)||0) } : {}) }
+      const _st = gameState.stadiumDef || gameState.homeStadiumDef || null
+      const stadB = live.stadiumBonus || (_st && (
+        (_st.club_id     && String(live.club_id)     === String(_st.club_id)) ||
+        (_st.country_code && live.country_code        === _st.country_code)
+      )) || false
+      return { ...live, _line: s._role, _col, stadiumBonus: stadB, ...(isExtra ? { note_a: Math.max(1, Number(live.note_a)||0) } : {}) }
     })
     if (!selected.length) return
     const calc = calcAttack(selected, gameState.modifiers[myRole]||{})

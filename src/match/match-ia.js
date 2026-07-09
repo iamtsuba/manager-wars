@@ -939,7 +939,10 @@ function confirmDefense(container, game, ctx) {
     const live = (game.homeTeam[s._role]||[]).find(x => x.cardId === s.cardId) || s
     return { ...live, _line: s._role }
   })
+  // Debug temporaire
+  console.log('[DEBUG defense] selected:', selected.map(p => ({ name:p.name, _line:p._line, note_d:p.note_d, stadiumBonus:p.stadiumBonus, boost:p.boost })))
   const calc = calcDefense(selected, game.modifiers.home)
+  console.log('[DEBUG defense] calc:', calc)
   game.selected.forEach(sel => {
     const p = (game.homeTeam[sel._role]||[]).find(pp => pp.cardId === sel.cardId)
     if (p) p.used = true

@@ -193,7 +193,7 @@ function showOpponentReveal(container, game, ctx) {
     <div style="font-size:11px;color:rgba(255,255,255,0.5);letter-spacing:3px;text-transform:uppercase;margin-top:8px">Équipe adverse</div>
     <div style="font-size:20px;font-weight:900;color:#ff6b6b">IA (${game.difficulty.toUpperCase()})</div>
     ${game.aiStadiumDef ? `<div style="font-size:11px;color:#FFD700;margin-top:2px">🏟️ ${game.aiStadiumDef.name} · +10 aux joueurs ${game.aiStadiumDef.club?.encoded_name||''}</div>` : ''}
-    <div style="width:min(90vw,420px)">${buildTeamSVG(game.aiTeam, game.formation, null, [], 300, 380)}</div>
+    <div style="width:min(90vw,600px)">${buildTeamSVG(game.aiTeam, game.formation, null, [], window.innerWidth>=900?500:300, window.innerWidth>=900?620:380)}</div>
     <div style="font-size:15px;color:rgba(255,255,255,0.7)">
       <span class="loading-dots">Chargement</span>
     </div>
@@ -275,7 +275,10 @@ function showMidfieldAnimation(container, game, ctx) {
           ))
           return `
           <div class="duel-card duel-card-${side}" data-idx="${i}" style="opacity:0;transform:translateY(18px) scale(0.7);transition:opacity .35s ease, transform .35s cubic-bezier(.34,1.56,.64,1);flex-shrink:0">
-            ${renderMiniCardHTML({ ...p, _evolution_bonus: 0 }, 58, 78, stadDef)}
+            ${renderPlayerCard({ ...p, _evolution_bonus: 0 }, {
+              width: window.innerWidth >= 900 ? 90 : 58,
+              showStad: true, stadDef, role: 'MIL', extraNote: p.boost||0
+            })}
           </div>
           ${i < mils.length-1 ? `<div class="duel-link duel-link-${side}" data-idx="${i}" style="position:relative;width:18px;height:5px;border-radius:3px;background:${noLink?'rgba(255,255,255,0.12)':lc};flex-shrink:0;opacity:0;transition:opacity .3s ease;box-shadow:${noLink?'none':`0 0 8px ${lc}`}">
             ${linkVal?`<span style="position:absolute;top:-13px;left:50%;transform:translateX(-50%);font-size:8px;font-weight:900;color:${lc}">${linkVal}</span>`:''}
@@ -647,7 +650,7 @@ function renderGame(container, game, ctx) {
       // ─── Terrain ──────────────────────────────────────────
       const terrainHTML = `<div style="overflow:hidden;min-width:0;flex:1;min-height:0;display:flex;flex-direction:column" id="match-field">
         <div class="terrain-wrapper" style="overflow:hidden;width:100%;flex:1;min-height:0;display:flex;align-items:center;justify-content:center">
-          ${renderTeam(game.homeTeam,game.formation,game.phase,selectedIds,300,380,extraSelectableIds)}
+          ${renderTeam(game.homeTeam,game.formation,game.phase,selectedIds,window.innerWidth>=900?500:300,window.innerWidth>=900?620:380,extraSelectableIds)}
         </div>
       </div>`
 
@@ -677,7 +680,7 @@ function renderGame(container, game, ctx) {
         <div id="mobile-play-area" style="flex:1;min-height:0;display:flex;overflow:hidden">
           <div id="match-field" style="flex:1;min-width:0;min-height:0;overflow:hidden">
             <div class="terrain-wrapper" style="width:100%;height:100%;overflow:hidden">
-              ${renderTeam(game.homeTeam,game.formation,game.phase,selectedIds,300,380,extraSelectableIds)}
+              ${renderTeam(game.homeTeam,game.formation,game.phase,selectedIds,window.innerWidth>=900?500:300,window.innerWidth>=900?620:380,extraSelectableIds)}
             </div>
           </div>
         </div>
@@ -1754,7 +1757,7 @@ async function finishMatch(container, game, ctx) {
 function showAITeam(game, ctx) {
   ctx.openModal('Équipe adverse (IA)',
     `<div style="background:#0a3d1e;padding:12px;border-radius:8px">
-      ${buildTeamSVG(game.aiTeam, game.formation, null, [], 300, 380)}
+      ${buildTeamSVG(game.aiTeam, game.formation, null, [], window.innerWidth>=900?500:300, window.innerWidth>=900?620:380)}
     </div>`,
     `<button class="btn btn-primary" onclick="document.getElementById('modal-overlay').classList.add('hidden')">Fermer</button>`
   )

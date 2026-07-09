@@ -728,7 +728,7 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
     const phase = isMyAttack?'attack':isMyDefense?'defense':'idle'
     const terrainHTML = `<div style="overflow:hidden;min-width:0;flex:1;min-height:0;display:flex;flex-direction:column" id="match-field">
       <div class="terrain-wrapper" style="overflow:hidden;width:100%;flex:1;min-height:0;display:flex;align-items:center;justify-content:center">
-        ${renderTeam(myTeam, gameState[myRole+'Formation'], phase, selectedIds, 300, 300, extraSelectableIds)}
+        ${renderTeam(myTeam, gameState[myRole+'Formation'], phase, selectedIds,window.innerWidth>=900?500:300,window.innerWidth>=900?620:300, extraSelectableIds)}
       </div>
     </div>`
 
@@ -822,7 +822,7 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
         <div id="mobile-play-area" style="flex:1;min-height:0;display:flex;overflow:hidden">
           <div id="match-field" style="flex:1;min-width:0;min-height:0;overflow:hidden">
             <div class="terrain-wrapper" style="width:100%;height:100%;overflow:hidden">
-              ${renderTeam(myTeam, gameState[myRole+'Formation'], phase, selectedIds, 300, 300, extraSelectableIds)}
+              ${renderTeam(myTeam, gameState[myRole+'Formation'], phase, selectedIds,window.innerWidth>=900?500:300,window.innerWidth>=900?620:300, extraSelectableIds)}
             </div>
           </div>
         </div>
@@ -952,7 +952,7 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
     <div class="match-screen" style="display:flex;flex-direction:column;align-items:center;justify-content:flex-start;height:100%;overflow:hidden;gap:12px;padding:12px 16px;background:#0a3d1e;overflow-y:auto">
       <div style="font-size:11px;color:rgba(255,255,255,0.5);letter-spacing:3px;text-transform:uppercase;margin-top:8px">Équipe adverse</div>
       <div style="font-size:20px;font-weight:900;color:#ff6b6b">${gameState[oppRole+'Name']||'Adversaire'}</div>
-      <div style="width:min(90vw,420px)">${buildTeamSVG(gameState[oppRole+'Team'],gameState[oppRole+'Formation'],null,[],300,300)}</div>
+      <div style="width:min(90vw,420px)">${buildTeamSVG(gameState[oppRole+'Team'],gameState[oppRole+'Formation'],null,[],window.innerWidth>=900?500:300,window.innerWidth>=900?620:300)}</div>
     </div>`
     if (myRole==='p1') setTimeout(async()=>{ await pushState({ phase:'midfield' }) }, 5000)
   }
@@ -981,7 +981,7 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
             const noLink=!lc||lc==='#ff3333'||lc==='#cc2222'
             const lv=lc==='#00ff88'?'+2':lc==='#FFD700'?'+1':''
             return `<div class="duel-card duel-card-${side}" data-idx="${i}" style="opacity:0;transform:translateY(18px) scale(0.7);transition:opacity .35s ease,transform .35s cubic-bezier(.34,1.56,.64,1);flex-shrink:0">
-              ${renderMiniCardHTML({...p,note:getNoteForRole(p,'MIL'),_line:'MIL'},58,78)}
+              ${renderPlayerCard({...p, _evolution_bonus:0}, {width:window.innerWidth>=900?90:58, showStad:true, stadDef:gameState.homeStadiumDef||gameState.stadiumDef||null, role:'MIL', extraNote:p.boost||0})}
             </div>
             ${i<mils.length-1?`<div class="duel-link duel-link-${side}" style="position:relative;width:18px;height:5px;border-radius:3px;background:${noLink?'rgba(255,255,255,0.12)':lc};flex-shrink:0;opacity:0;transition:opacity .3s ease;box-shadow:${noLink?'none':`0 0 8px ${lc}`}">
               ${lv?`<span style="position:absolute;top:-13px;left:50%;transform:translateX(-50%);font-size:8px;font-weight:900;color:${lc}">${lv}</span>`:''}
@@ -1362,7 +1362,7 @@ async function renderPvpMatch(container, ctx, matchId, amIHome, myGC = [], gcDef
     overlay.innerHTML=`
       <div style="font-size:12px;color:rgba(255,255,255,0.5);letter-spacing:2px;text-transform:uppercase">Équipe adverse</div>
       <div style="font-size:18px;font-weight:900;color:#ff6b6b">${gameState[oppRole+'Name']}</div>
-      <div style="width:min(90vw,420px)">${buildTeamSVG(gameState[oppRole+'Team'],gameState[oppRole+'Formation'],null,[],300,300)}</div>
+      <div style="width:min(90vw,420px)">${buildTeamSVG(gameState[oppRole+'Team'],gameState[oppRole+'Formation'],null,[],window.innerWidth>=900?500:300,window.innerWidth>=900?620:300)}</div>
       <button id="pvp-opp-close" style="margin-top:8px;padding:12px 28px;border-radius:12px;border:1.5px solid rgba(255,255,255,0.3);background:transparent;color:#fff;font-size:14px;cursor:pointer">Fermer</button>`
     document.body.appendChild(overlay)
     overlay.querySelector('#pvp-opp-close')?.addEventListener('click',()=>overlay.remove())

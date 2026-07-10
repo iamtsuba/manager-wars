@@ -617,7 +617,7 @@ export function buildTeamSVG(team, formation, phase, selectedIds, W=310, H=310, 
       { width: CW, showStad: true, stadDef: null, role, extraNote }
     )
     const selStyle = isSelected ? 'outline:3px solid #FFD700;outline-offset:2px;border-radius:8px;opacity:0.75;' : ''
-    svg += `<foreignObject x="${fx}" y="${fy - 26}" width="${CW + 4}" height="${CH + 56}" style="overflow:visible">
+    svg += `<foreignObject x="${fx - 2}" y="${fy - 30}" width="${CW + 8}" height="${CH + 60}" style="overflow:visible">
       <div xmlns="http://www.w3.org/1999/xhtml" style="${selStyle}position:relative">
         ${cardHtml}
       </div>
@@ -629,7 +629,7 @@ export function buildTeamSVG(team, formation, phase, selectedIds, W=310, H=310, 
   }
 
   const PAD = 80  // espace extra pour les cartes hautes (template PNG) + icône stade
-  return `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="${-PAD} ${-PAD} ${W+PAD*2} ${H+PAD*2}" width="100%" style="display:block;width:100%;max-width:440px;margin:0 auto">
+  return `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="${-PAD} ${-PAD} ${W+PAD*2} ${H+PAD*2}" width="100%" style="display:block;width:100%;margin:0 auto">
     ${svg}
   </svg>`
   return `<div id="match-terrain-wrap" style="position:relative;padding:0 4px">

@@ -1,343 +1,361 @@
 /**
- * match-engine.js — Moteur de match universel
+ * match-engine.js — Moteur de rendu universel pour tous les modes de match.
  *
- * Gère tout le rendu UI et la logique commune à tous les modes :
- * - Affichage terrain (SVG responsive PC/mobile)
- * - Phases attaque/défense
- * - Historique des actions
- * - Substitutions
- * - Game Changers
- * - Animations (but, remplacement, milieu)
+ * Ce fichier est l'unique source de vérité pour :
+ *   - Calcul des dimensions SVG (svgW / svgH)
+ *   - Construction d'objets player pour l'historique (histPlayer / withStadBonus)
+ *   - Rendu du terrain (renderMatchField)
+ *   - Rendu de la révélation adverse (renderOpponentReveal)
+ *   - Rendu du duel milieu (renderMidfieldDuel)
+ *   - Rendu du résultat d'un duel (renderDuelResult)
+ *   - Rendu d'une entrée de log (renderLogEntry)
+ *   - Animations : but (showGoalAnimation), remplacement (showSubAnimation), toast (showGameToast)
  *
- * Chaque mode de match fournit des hooks :
- * {
- *   mode,           // 'ia' | 'random' | 'friend' | 'mini-league' | 'ranked'
- *   onSetup,        // async () => { homeTeam, aiTeam, formation, ... }
- *   onAttackEnd,    // async (result, game) => void
- *   onDefenseEnd,   // async (result, game) => void
- *   onMatchEnd,     // async (game) => void
- *   onAITurn,       // async (game) => { selected, phase } — pour IA uniquement
- * }
+ * Chaque mode de match (IA, random, friend, mini-league, ranked) importe ce fichier
+ * et y ajoute uniquement sa logique spécifique.
  */
 
-import { supabase } from '../lib/supabase.js'
 import { renderPlayerCard } from '../components/player-card.js'
-import {
-  calcAttack, calcDefense, calcMidfieldDuel, resolveDuel,
-  getNoteForRole, getRewards
-} from './game-logic.js'
-import {
-  showMsg, getPortrait, buildTeam, rollBoost,
-  applyStadiumBonus, applyStadiumBonusToSubs,
-  _hideBottomNav, _showBottomNav,
-  renderMiniCardHTML, renderCardRow, renderMiniPlayer,
-  buildTeamSVG, renderTeam, flagImgUrl,
-  getClubLogo, JOB_COLORS, FORMATIONS, loadMatchSetup,
-  renderDeckSelect, showGCSelection,
-} from './match-shared.js'
-import { FORMATION_LINKS, FORMATION_POSITIONS, getActiveLinks } from './formation-links.js'
+import { buildTeamSVG, renderTeam, getPortrait } from './match-shared.js'
 
 const BASE = import.meta.env.BASE_URL
 
-// ── Dimensions SVG responsive ────────────────────────────────────────────────
+// ── Dimensions SVG ─────────────────────────────────────────
+// Source unique pour W et H — garantit la cohérence PC/mobile
+
 export function svgW() {
   return Math.min(window.innerWidth - 40, 860)
 }
+
 export function svgH() {
-  return Math.round(svgW() * 1.05)
+  return Math.round(svgW() * 1.1)
 }
 
-// ── Helper histPlayer ─────────────────────────────────────────────────────────
+// ── Helper player pour l'historique ───────────────────────
+// Préserve : notes avec evo intégré, stadiumBonus, boost, face, _line
+
 export function histPlayer(p) {
+  if (!p) return null
   const role = p._line || p.job || 'MIL'
-  const noteVal = role==='GK' ? (p.note_g||0) : role==='DEF' ? (p.note_d||0)
-                : role==='MIL' ? (p.note_m||0) : (p.note_a||0)
+  const noteVal = role === 'GK'  ? (p.note_g || 0)
+                : role === 'DEF' ? (p.note_d || 0)
+                : role === 'MIL' ? (p.note_m || 0)
+                :                  (p.note_a || 0)
+  const stadB = p.stadiumBonus ? 10 : 0
   return {
-    name: p.name, firstname: p.firstname || '',
-    note: noteVal + (p.boost||0) + (p.stadiumBonus ? 10 : 0),
-    note_g: p.note_g||0, note_d: p.note_d||0, note_m: p.note_m||0, note_a: p.note_a||0,
-    _evolution_bonus: 0,
-    stadiumBonus: p.stadiumBonus || false,
-    boost: p.boost || 0,
-    job: p.job, job2: p.job2 || null,
-    _line: p._line || p.job, _col: p._col,
-    country_code: p.country_code,
-    club_id: p.club_id,
-    rarity: p.rarity,
-    clubName: p.clubName || p.clubs?.encoded_name || null,
-    clubLogo: p.clubLogo || p.clubs?.logo_url || null,
-    face: p.face || null,
-    portrait: getPortrait(p),
+    name:      p.name,
+    firstname: p.firstname || '',
+    note:      noteVal + (p.boost || 0) + stadB,
+    note_g:    p.note_g  || 0,
+    note_d:    p.note_d  || 0,
+    note_m:    p.note_m  || 0,
+    note_a:    p.note_a  || 0,
+    _evolution_bonus: 0,   // evo déjà intégré dans les notes par playerFromCard
+    stadiumBonus:  p.stadiumBonus  || false,
+    boost:         p.boost         || 0,
+    job:           p.job,
+    job2:          p.job2          || null,
+    _line:         p._line         || p.job,
+    _col:          p._col,
+    country_code:  p.country_code,
+    club_id:       p.club_id,
+    rarity:        p.rarity,
+    clubName:      p.clubName      || p.clubs?.encoded_name || null,
+    clubLogo:      p.clubLogo      || p.clubs?.logo_url     || null,
+    face:          p.face          || null,
+    portrait:      getPortrait(p),
   }
 }
 
-// ── Recalcul stadiumBonus depuis stadiumDef ───────────────────────────────────
+// Recalcule stadiumBonus depuis stadiumDef (robuste aux pertes de flag)
 export function withStadBonus(player, stadiumDef) {
-  if (!stadiumDef) return player
-  const stadB = player.stadiumBonus || (
-    (stadiumDef.club_id && String(player.club_id) === String(stadiumDef.club_id)) ||
-    (stadiumDef.country_code && player.country_code === stadiumDef.country_code)
+  if (!stadiumDef || !player) return player
+  const match = (
+    (stadiumDef.club_id      && String(player.club_id)      === String(stadiumDef.club_id)) ||
+    (stadiumDef.country_code && player.country_code          === stadiumDef.country_code)
   )
-  return { ...player, stadiumBonus: !!stadB }
+  return { ...player, stadiumBonus: match }
 }
 
-// ── renderLogEntry ────────────────────────────────────────────────────────────
+// ── Rendu terrain de match ─────────────────────────────────
+
+export function renderMatchField(game, selectedIds = [], extraSelectableIds = []) {
+  const W = svgW(), H = svgH()
+  return renderTeam(
+    game.homeTeam,
+    game.formation,
+    game.phase,
+    selectedIds,
+    W, H,
+    extraSelectableIds
+  )
+}
+
+// ── Révélation équipe adverse ──────────────────────────────
+
+export function renderOpponentReveal(team, formation, stadiumDef, label = 'Adversaire') {
+  const W = svgW(), H = svgH()
+  const stadLabel = stadiumDef
+    ? `<div style="font-size:12px;color:#D4A017;margin-bottom:8px">
+        🏟️ ${stadiumDef.name || 'Stade'} · <span style="color:#D4A017">+10 aux joueurs ${stadiumDef.club?.encoded_name || stadiumDef.country_code || ''}</span>
+       </div>`
+    : ''
+  return `
+    <div style="text-align:center;padding:16px 8px 0">
+      <div style="font-size:11px;letter-spacing:2px;color:rgba(255,255,255,0.5);text-transform:uppercase;margin-bottom:4px">Équipe adverse</div>
+      <div style="font-size:22px;font-weight:900;color:#e03030;margin-bottom:8px">${label}</div>
+      ${stadLabel}
+      <div style="width:100%;max-width:${W}px;margin:0 auto">
+        ${buildTeamSVG(team, formation, null, [], W, H)}
+      </div>
+    </div>`
+}
+
+// ── Duel du milieu de terrain ──────────────────────────────
+
+export function renderMidfieldDuel(homeMils, aiMils, homeLabel, aiLabel, homeTotal, aiTotal, homeStad, aiStad) {
+  const renderMilCard = (p, stadDef) => renderPlayerCard(
+    { ...p, _evolution_bonus: 0 },
+    {
+      width: window.innerWidth >= 900 ? 90 : 58,
+      showStad: true,
+      stadDef,
+      role: 'MIL',
+      extraNote: p.boost || 0,
+    }
+  )
+
+  const homeScore = `${homeMils.reduce((s, p) => {
+    const base = p.note_m || 0
+    const stadB = homeStad && (
+      (homeStad.club_id     && String(p.club_id)     === String(homeStad.club_id)) ||
+      (homeStad.country_code && p.country_code        === homeStad.country_code)
+    ) ? 10 : 0
+    return s + base + (p.boost || 0) + stadB
+  }, 0)}`
+
+  return `
+    <div style="text-align:center;padding:16px">
+      <div style="font-size:11px;letter-spacing:2px;color:rgba(255,255,255,0.5);text-transform:uppercase;margin-bottom:12px">Duel du Milieu de Terrain</div>
+
+      <div style="font-size:13px;font-weight:700;color:#fff;margin-bottom:8px">${homeLabel}</div>
+      <div style="display:flex;gap:4px;justify-content:center;flex-wrap:wrap;margin-bottom:8px">
+        ${homeMils.slice(0,5).map(p => renderMilCard(p, homeStad)).join('')}
+      </div>
+      <div style="font-size:12px;color:rgba(255,255,255,0.6);margin-bottom:16px">Score: ${homeTotal} + liens = <b style="color:#fff">${homeTotal}</b></div>
+
+      <div style="font-size:36px;font-weight:900;color:#D4A017">${homeTotal}</div>
+      <div style="font-size:13px;color:rgba(255,255,255,0.4);margin:4px 0">VS</div>
+      <div style="font-size:36px;font-weight:900;color:rgba(255,255,255,0.5)">${aiTotal}</div>
+
+      <div style="font-size:13px;font-weight:700;color:#fff;margin-top:16px;margin-bottom:8px">${aiLabel}</div>
+      <div style="display:flex;gap:4px;justify-content:center;flex-wrap:wrap;margin-bottom:8px">
+        ${aiMils.slice(0,5).map(p => renderMilCard(p, aiStad)).join('')}
+      </div>
+    </div>`
+}
+
+// ── Résultat d'un duel attaque/défense ─────────────────────
+
+export function renderDuelResult(attPlayers, defPlayers, attTotal, defTotal, attName, defName, attWon) {
+  const renderCard = (p) => renderPlayerCard(
+    { ...p, _evolution_bonus: 0 },
+    { width: window.innerWidth >= 900 ? 90 : 58, showStad: true, role: p._line || p.job }
+  )
+
+  return `
+    <div style="text-align:center;padding:16px">
+      <div style="font-size:11px;letter-spacing:2px;color:rgba(255,255,255,0.5);text-transform:uppercase;margin-bottom:12px">Duel</div>
+      <div style="display:flex;justify-content:center;gap:4px;margin-bottom:8px">
+        ${(attPlayers||[]).slice(0,5).map(renderCard).join('')}
+      </div>
+      <div style="font-size:13px;color:rgba(255,255,255,0.6)">${attName}</div>
+      <div style="display:flex;align-items:center;justify-content:center;gap:24px;margin:16px 0">
+        <div style="font-size:42px;font-weight:900;color:${attWon?'#22c55e':'#e03030'}">${attTotal}</div>
+        <div style="font-size:16px;color:rgba(255,255,255,0.4)">VS</div>
+        <div style="font-size:42px;font-weight:900;color:${attWon?'#e03030':'#22c55e'}">${defTotal}</div>
+      </div>
+      <div style="font-size:13px;color:rgba(255,255,255,0.6)">${defName}</div>
+      <div style="display:flex;justify-content:center;gap:4px;margin-top:8px">
+        ${(defPlayers||[]).slice(0,5).map(renderCard).join('')}
+      </div>
+    </div>`
+}
+
+// ── Entrée de log (historique des actions) ─────────────────
+
 export function renderLogEntry(entry) {
-  const cardW = Math.min(52, Math.round(svgW() * 0.08))
+  if (!entry) return ''
 
-  if (entry.type === 'duel') {
-    const homeCards = (entry.homePlayers||[]).map(p =>
-      renderPlayerCard(p, { width: cardW, role: p._line || p.job, extraNote: p.boost||0 })
-    ).join('')
-    const aiCards = (entry.aiPlayers||[]).map(p =>
-      renderPlayerCard(p, { width: cardW, role: p._line || p.job, extraNote: p.boost||0 })
-    ).join('')
-    return `
-      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,0.5);margin-bottom:4px">
-        ${entry.title||'Duel'}
-      </div>
-      <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:4px">${homeCards}</div>
-      <div style="font-size:11px;color:rgba(255,255,255,0.6)">
-        ${entry.homeLabel||''} : ${entry.homeBase||0} + ${entry.homeLinks||0} liens = <b>${entry.homeTotal||0}</b>
-      </div>
-      <div style="display:flex;gap:4px;flex-wrap:wrap;margin:4px 0">${aiCards}</div>
-      <div style="font-size:11px;color:rgba(255,255,255,0.6)">
-        ${entry.aiLabel||'IA'} : ${entry.aiBase||0} + ${entry.aiLinks||0} liens = <b>${entry.aiTotal||0}</b>
-      </div>`
-  }
-
-  if (entry.type === 'attack' || entry.type === 'defense') {
-    const myCards = (entry.homePlayers||[]).map(p =>
-      renderPlayerCard(p, { width: cardW, role: p._line || p.job, extraNote: p.boost||0 })
-    ).join('')
-    const oppCards = (entry.aiPlayers||[]).map(p =>
-      renderPlayerCard(p, { width: cardW, role: p._line || p.job, extraNote: p.boost||0 })
-    ).join('')
-    return `
-      <div style="font-size:11px;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">
-        ${entry.type === 'attack' ? '⚔️ Attaque' : '🛡️ Défense'}
-      </div>
-      <div style="display:flex;gap:4px;flex-wrap:wrap">${myCards}</div>
-      <div style="font-size:13px;font-weight:900;margin:6px 0;color:${entry.win?'#22c55e':'#ef4444'}">
-        ${entry.homeTotal} vs ${entry.aiTotal} → ${entry.win ? '✅ Gagné' : '❌ Perdu'}
-      </div>
-      ${oppCards ? `<div style="display:flex;gap:4px;flex-wrap:wrap">${oppCards}</div>` : ''}`
-  }
-
-  if (entry.type === 'sub') {
-    return `
-      <div style="font-size:11px;color:rgba(255,255,255,0.5);text-transform:uppercase">🔄 Remplacement</div>
-      <div style="display:flex;align-items:center;gap:8px;margin-top:4px">
-        ${entry.outPlayer ? renderPlayerCard(entry.outPlayer, { width: cardW }) : ''}
-        <span style="font-size:18px;color:rgba(255,255,255,0.4)">→</span>
-        ${entry.inPlayer ? renderPlayerCard(entry.inPlayer, { width: cardW }) : ''}
-      </div>`
-  }
-
-  if (entry.type === 'gc') {
-    return `
-      <div style="font-size:11px;color:#7a28b8;text-transform:uppercase">⚡ Game Changer</div>
-      <div style="font-size:13px;font-weight:700;margin-top:2px">${entry.text||''}</div>`
-  }
-
-  return `<div style="font-size:12px;color:rgba(255,255,255,0.6)">${entry.text||''}</div>`
-}
-
-// ── Rendu terrain responsive ──────────────────────────────────────────────────
-export function renderMatchField(team, formation, phase, selectedIds, extraSelectableIds = []) {
-  const W = svgW()
-  const H = svgH()
-  return renderTeam(team, formation, phase, selectedIds, W, H, extraSelectableIds)
-}
-
-// ── showGoalAnimation ─────────────────────────────────────────────────────────
-export function showGoalAnimation(players, homeScore, aiScore, isHome, callback) {
-  const cardW = Math.min(80, Math.round(svgW() * 0.12))
-  const overlay = document.createElement('div')
-  overlay.style.cssText = `
-    position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:3000;
-    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px`
-
-  const cards = (players||[]).map(p =>
-    renderPlayerCard(p, { width: cardW, role: p._line || p.job, extraNote: p.boost||0 })
-  ).join('')
-
-  overlay.innerHTML = `
-    <div style="font-size:60px;animation:goalPulse 0.5s ease-in-out 3">${isHome ? '⚽' : '😞'}</div>
-    <div style="font-size:28px;font-weight:900;color:${isHome?'#22c55e':'#ef4444'}">
-      ${isHome ? 'BUT !' : 'BUT ENCAISSÉ'}
-    </div>
-    <div style="font-size:48px;font-weight:900;color:#fff">${homeScore} — ${aiScore}</div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center">${cards}</div>`
-
-  document.body.appendChild(overlay)
-  setTimeout(() => { overlay.remove(); callback?.() }, 2200)
-}
-
-// ── showSubAnimation ──────────────────────────────────────────────────────────
-export function showSubAnimation(outPlayer, inPlayer, callback) {
-  const cardW = Math.min(80, Math.round(svgW() * 0.12))
-  const overlay = document.createElement('div')
-  overlay.style.cssText = `
-    position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:3000;
-    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px`
-  overlay.innerHTML = `
-    <div style="font-size:24px;font-weight:900;color:#fff">🔄 REMPLACEMENT</div>
-    <div style="display:flex;align-items:center;gap:20px">
-      <div style="text-align:center;opacity:0.6">
-        ${renderPlayerCard(outPlayer, { width: cardW })}
-        <div style="font-size:12px;color:#ef4444;margin-top:4px">Sort</div>
-      </div>
-      <div style="font-size:32px;color:rgba(255,255,255,0.4)">→</div>
-      <div style="text-align:center">
-        ${renderPlayerCard(inPlayer, { width: cardW })}
-        <div style="font-size:12px;color:#22c55e;margin-top:4px">Entre</div>
-      </div>
-    </div>`
-  document.body.appendChild(overlay)
-  setTimeout(() => { overlay.remove(); callback?.() }, 1800)
-}
-
-// ── showGameToast ─────────────────────────────────────────────────────────────
-export function showGameToast(msg, color = 'rgba(0,0,0,0.85)') {
-  const el = document.createElement('div')
-  el.style.cssText = `
-    position:fixed;top:80px;left:50%;transform:translateX(-50%) translateY(-20px);
-    background:${color};color:#fff;padding:10px 20px;border-radius:12px;
-    font-size:15px;font-weight:700;z-index:4000;pointer-events:none;
-    transition:opacity 0.4s,transform 0.4s;opacity:0`
-  el.textContent = msg
-  document.body.appendChild(el)
-  requestAnimationFrame(() => {
-    el.style.opacity = '1'
-    el.style.transform = 'translateX(-50%) translateY(0)'
-  })
-  setTimeout(() => {
-    el.style.opacity = '0'
-    setTimeout(() => el.remove(), 400)
-  }, 2000)
-}
-
-// ── Affichage équipe adverse ──────────────────────────────────────────────────
-export function renderOpponentReveal(container, game, ctx) {
-  const W = svgW()
-  const H = svgH()
-  _hideBottomNav(container)
-  container.innerHTML = `
-    <div style="min-height:100vh;background:var(--page-bg);background-image:var(--page-gradient);
-      display:flex;flex-direction:column;align-items:center;padding:20px 16px 80px">
-      <div style="font-size:11px;letter-spacing:2px;color:rgba(255,255,255,0.5);text-transform:uppercase;margin-bottom:4px">
-        Équipe Adverse
-      </div>
-      <div style="font-size:24px;font-weight:900;color:#ef4444;margin-bottom:8px">
-        ${game.aiName || 'IA'}
-      </div>
-      ${game.aiStadiumDef ? `
-        <div style="display:flex;align-items:center;gap:8px;font-size:12px;color:#D4A017;margin-bottom:12px">
-          ${game.aiStadiumDef.club?.logo_url
-            ? `<img src="${game.aiStadiumDef.club.logo_url}" style="width:20px;height:20px;object-fit:contain">`
-            : '🏟️'}
-          <span>${game.aiStadiumDef.name} · +10 aux joueurs ${game.aiStadiumDef.club?.encoded_name||game.aiStadiumDef.country_code||''}</span>
-        </div>` : ''}
-      <div style="width:100%;max-width:${W}px">
-        ${buildTeamSVG(game.aiTeam, game.formation, null, [], W, H)}
-      </div>
-      <div id="reveal-loading" style="margin-top:20px;color:rgba(255,255,255,0.5);font-size:14px">
-        Chargement...
-      </div>
-    </div>`
-}
-
-// ── Duel milieu de terrain ────────────────────────────────────────────────────
-export function renderMidfieldDuel(container, game, homeName, homeTotal, aiTotal, homeBase, aiBase, homeLinks, aiLinks, homeMils, aiMils, homeWins, stadDef, callback) {
-  const cardW = Math.min(90, Math.round(svgW() * 0.10))
-  _hideBottomNav(container)
-
-  function milCard(p) {
+  const renderCard = (p) => {
+    if (!p) return ''
     return renderPlayerCard(
       { ...p, _evolution_bonus: 0 },
-      { width: cardW, showStad: true, stadDef, role: 'MIL', extraNote: p.boost||0 }
+      { width: 52, role: p._line || p.job, showStad: !!p.stadiumBonus, extraNote: p.boost || 0 }
     )
   }
 
-  container.innerHTML = `
-    <div style="min-height:100vh;background:var(--page-bg);background-image:var(--page-gradient);
-      display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;gap:20px">
-      <div style="font-size:12px;letter-spacing:2px;color:rgba(255,255,255,0.5);text-transform:uppercase">
-        Duel du Milieu de Terrain
-      </div>
+  const icons = {
+    'goal':         '⚽',
+    'goal-home':    '⚽',
+    'goal-ai':      '⚽',
+    'duel':         '⚔️',
+    'midfield':     '🎯',
+    'sub':          '🔄',
+    'gc':           '⚡',
+    'boost':        '💥',
+    'defense-won':  '🛡️',
+    'attack-won':   '⚔️',
+    'defense-lost': '😓',
+    'attack-lost':  '😓',
+  }
 
-      <div style="width:100%;max-width:700px">
-        <div style="font-size:13px;font-weight:700;color:#D4A017;text-align:center;margin-bottom:8px">
-          ${homeName}
-        </div>
-        <div style="display:flex;gap:6px;justify-content:center;flex-wrap:wrap">
-          ${homeMils.map(milCard).join('')}
-        </div>
-        <div style="font-size:12px;color:rgba(255,255,255,0.5);text-align:center;margin-top:6px">
-          Score: ${homeBase} + ${homeLinks} liens = <b style="color:#fff">${homeTotal}</b>
-        </div>
-      </div>
+  const icon = icons[entry.type] || '📋'
+  const isGoal = entry.type?.includes('goal')
 
-      <div style="display:flex;flex-direction:column;align-items:center;gap:4px">
-        <div style="font-size:64px;font-weight:900;color:${homeWins?'#22c55e':'#ef4444'}">${homeTotal}</div>
-        <div style="font-size:14px;color:rgba(255,255,255,0.4)">VS</div>
-        <div style="font-size:64px;font-weight:900;color:${!homeWins?'#22c55e':'#ef4444'}">${aiTotal}</div>
-      </div>
+  return `
+    <div style="padding:8px 12px;border-left:3px solid ${isGoal?'#22c55e':'rgba(255,255,255,0.15)'};margin-bottom:4px">
+      <div style="font-size:11px;color:rgba(255,255,255,0.5);margin-bottom:4px">${icon} ${entry.title||entry.text||''}</div>
+      ${entry.homePlayers?.length ? `
+        <div style="display:flex;gap:3px;flex-wrap:wrap;margin-bottom:4px">
+          ${entry.homePlayers.map(renderCard).join('')}
+        </div>` : ''}
+      ${entry.aiPlayers?.length ? `
+        <div style="display:flex;gap:3px;flex-wrap:wrap">
+          ${entry.aiPlayers.map(renderCard).join('')}
+        </div>` : ''}
+      ${entry.text && entry.title ? `<div style="font-size:10px;color:rgba(255,255,255,0.4);margin-top:4px">${entry.text}</div>` : ''}
+    </div>`
+}
 
-      <div style="width:100%;max-width:700px">
-        <div style="font-size:13px;font-weight:700;color:rgba(255,255,255,0.7);text-align:center;margin-bottom:8px">
-          IA
+// ── Animation but ──────────────────────────────────────────
+
+export function showGoalAnimation(scoringPlayers, homeScore, aiScore, homeScored, onDone) {
+  const existing = document.getElementById('goal-anim-overlay')
+  if (existing) existing.remove()
+
+  const overlay = document.createElement('div')
+  overlay.id = 'goal-anim-overlay'
+  overlay.style.cssText = `
+    position:fixed;inset:0;z-index:3000;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    background:rgba(0,0,0,0.85);pointer-events:none`
+
+  const cards = (scoringPlayers || []).slice(0, 3).map(p =>
+    renderPlayerCard({ ...p, _evolution_bonus: 0 }, {
+      width: Math.min(140, Math.round(window.innerWidth / 4)),
+      role: p._line || p.job,
+      showStad: !!p.stadiumBonus,
+    })
+  ).join('')
+
+  overlay.innerHTML = `
+    <div style="animation:goalPop 0.4s ease-out;text-align:center">
+      <div style="font-size:clamp(48px,10vw,80px);margin-bottom:8px">⚽</div>
+      <div style="font-size:clamp(28px,6vw,48px);font-weight:900;color:#22c55e;letter-spacing:2px;text-shadow:0 0 20px #22c55e">BUT !</div>
+      <div style="display:flex;gap:8px;justify-content:center;margin:16px 0">${cards}</div>
+      <div style="font-size:clamp(32px,7vw,56px);font-weight:900;color:#fff;margin-top:8px">
+        ${homeScored ? `<span style="color:#22c55e">${homeScore}</span>` : homeScore}
+        <span style="color:rgba(255,255,255,0.4);margin:0 12px">—</span>
+        ${!homeScored ? `<span style="color:#22c55e">${aiScore}</span>` : aiScore}
+      </div>
+    </div>`
+
+  document.body.appendChild(overlay)
+
+  // Animation CSS
+  if (!document.getElementById('goal-anim-style')) {
+    const style = document.createElement('style')
+    style.id = 'goal-anim-style'
+    style.textContent = `
+      @keyframes goalPop {
+        from { transform: scale(0.5); opacity: 0; }
+        to   { transform: scale(1);   opacity: 1; }
+      }`
+    document.head.appendChild(style)
+  }
+
+  setTimeout(() => {
+    overlay.style.opacity = '0'
+    overlay.style.transition = 'opacity 0.4s'
+    setTimeout(() => { overlay.remove(); onDone?.() }, 400)
+  }, 1800)
+}
+
+// ── Animation remplacement ─────────────────────────────────
+
+export function showSubAnimation(outPlayer, inPlayer, onDone) {
+  const existing = document.getElementById('sub-anim-overlay')
+  if (existing) existing.remove()
+
+  const overlay = document.createElement('div')
+  overlay.id = 'sub-anim-overlay'
+  overlay.style.cssText = `
+    position:fixed;inset:0;z-index:3000;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    background:rgba(0,0,0,0.8);pointer-events:none`
+
+  const W = Math.min(120, Math.round(window.innerWidth / 4))
+  const outCard = outPlayer ? renderPlayerCard({ ...outPlayer, _evolution_bonus: 0 }, { width: W, role: outPlayer._line || outPlayer.job }) : ''
+  const inCard  = inPlayer  ? renderPlayerCard({ ...inPlayer,  _evolution_bonus: 0 }, { width: W, role: inPlayer._line  || inPlayer.job  }) : ''
+
+  overlay.innerHTML = `
+    <div style="text-align:center">
+      <div style="font-size:32px;margin-bottom:8px">🔄</div>
+      <div style="font-size:18px;font-weight:700;color:#fff;margin-bottom:16px">Remplacement</div>
+      <div style="display:flex;align-items:center;gap:16px;justify-content:center">
+        <div style="text-align:center">
+          ${outCard}
+          <div style="font-size:10px;color:#e03030;margin-top:4px">SORT ▼</div>
         </div>
-        <div style="display:flex;gap:6px;justify-content:center;flex-wrap:wrap">
-          ${aiMils.map(milCard).join('')}
-        </div>
-        <div style="font-size:12px;color:rgba(255,255,255,0.5);text-align:center;margin-top:6px">
-          Score: ${aiBase} + ${aiLinks} liens = <b style="color:#fff">${aiTotal}</b>
+        <div style="font-size:28px;color:rgba(255,255,255,0.4)">→</div>
+        <div style="text-align:center">
+          ${inCard}
+          <div style="font-size:10px;color:#22c55e;margin-top:4px">ENTRE ▲</div>
         </div>
       </div>
     </div>`
 
-  setTimeout(callback, 3500)
+  document.body.appendChild(overlay)
+  setTimeout(() => {
+    overlay.style.opacity = '0'
+    overlay.style.transition = 'opacity 0.4s'
+    setTimeout(() => { overlay.remove(); onDone?.() }, 400)
+  }, 1600)
 }
 
-// ── Résultat attaque/défense ──────────────────────────────────────────────────
-export function renderDuelResult(container, homeScore, aiScore, homeTotal, aiTotal, homePlayers, aiPlayers, win, isAttack, callback) {
-  const cardW = Math.min(80, Math.round(svgW() * 0.10))
+// ── Toast de match ─────────────────────────────────────────
 
-  const makeCards = (players) => (players||[]).map(p =>
-    renderPlayerCard(p, { width: cardW, role: p._line || p.job, extraNote: p.boost||0 })
-  ).join('')
+export function showGameToast(msg, bg = 'rgba(0,0,0,0.85)', duration = 2200) {
+  const existing = document.getElementById('game-toast')
+  if (existing) existing.remove()
 
-  const overlay = document.createElement('div')
-  overlay.style.cssText = `
-    position:fixed;inset:0;background:rgba(0,0,0,0.9);z-index:2500;
-    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:20px`
+  const el = document.createElement('div')
+  el.id = 'game-toast'
+  el.style.cssText = `
+    position:fixed;top:80px;left:50%;transform:translateX(-50%);
+    background:${bg};color:#fff;padding:10px 20px;border-radius:24px;
+    font-size:14px;font-weight:700;z-index:4000;
+    box-shadow:0 4px 20px rgba(0,0,0,0.4);
+    animation:toastIn 0.3s ease-out;
+    pointer-events:none;white-space:nowrap;max-width:90vw;text-align:center`
+  el.textContent = msg
 
-  overlay.innerHTML = `
-    <div style="font-size:13px;letter-spacing:2px;color:rgba(255,255,255,0.5);text-transform:uppercase">
-      ${isAttack ? 'Attaque' : 'Défense'}
-    </div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center">
-      ${makeCards(homePlayers)}
-    </div>
-    <div style="display:flex;align-items:center;gap:24px">
-      <div style="text-align:center">
-        <div style="font-size:48px;font-weight:900;color:#fff">${homeTotal}</div>
-        <div style="font-size:11px;color:rgba(255,255,255,0.4)">Vous</div>
-      </div>
-      <div style="font-size:20px;color:rgba(255,255,255,0.3)">VS</div>
-      <div style="text-align:center">
-        <div style="font-size:48px;font-weight:900;color:#fff">${aiTotal}</div>
-        <div style="font-size:11px;color:rgba(255,255,255,0.4)">IA</div>
-      </div>
-    </div>
-    ${aiPlayers?.length ? `<div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center">${makeCards(aiPlayers)}</div>` : ''}
-    <div style="font-size:28px;font-weight:900;color:${win?'#22c55e':'#ef4444'}">
-      ${win ? '✅ Réussi !' : '❌ Raté !'}
-    </div>
-    <div style="font-size:24px;font-weight:900;color:#D4A017">${homeScore} — ${aiScore}</div>`
+  if (!document.getElementById('game-toast-style')) {
+    const style = document.createElement('style')
+    style.id = 'game-toast-style'
+    style.textContent = `
+      @keyframes toastIn {
+        from { opacity:0; transform:translateX(-50%) translateY(-10px); }
+        to   { opacity:1; transform:translateX(-50%) translateY(0); }
+      }`
+    document.head.appendChild(style)
+  }
 
-  document.body.appendChild(overlay)
-  setTimeout(() => { overlay.remove(); callback?.() }, 2500)
+  document.body.appendChild(el)
+  setTimeout(() => {
+    el.style.opacity = '0'
+    el.style.transition = 'opacity 0.3s'
+    setTimeout(() => el.remove(), 300)
+  }, duration)
 }

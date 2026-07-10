@@ -7,7 +7,7 @@ import { updateFriendMatchStats } from '../friends/friends.js'
 import { updateEvolutiveCards } from './evolutive-cards.js'
 import {
   GC_DEFS, getNoteForRole, calcAttack, calcDefense,
-  calcMidfieldDuel, resolveDuel, aiSelectPlayers, getRewards, rollBoost as rollBoostFn,
+  calcMidfieldDuel, resolveDuel, aiSelectPlayers, getRewards,
 } from './game-logic.js'
 import { FORMATION_LINKS, FORMATION_POSITIONS, linkColor, getActiveLinks } from './formation-links.js'
 import {

@@ -1,6 +1,12 @@
 import { supabase } from '../lib/supabase.js'
 import { renderPlayerCard } from '../components/player-card.js'
 import {
+  histPlayer as _histPlayer, withStadBonus, renderLogEntry,
+  renderMatchField, showGoalAnimation, showSubAnimation, showGameToast,
+  renderOpponentReveal, renderMidfieldDuel, renderDuelResult,
+  svgW, svgH
+} from './match-engine.js'
+import {
   GC_DEFS, getNoteForRole, calcAttack, calcDefense,
   calcMidfieldDuel, resolveDuel, aiSelectPlayers, getRewards
 } from './game-logic.js'
@@ -196,8 +202,7 @@ function showOpponentReveal(container, game, ctx) {
     ${game.aiStadiumDef ? `<div style="font-size:11px;color:#FFD700;margin-top:2px">🏟️ ${game.aiStadiumDef.name} · +10 aux joueurs ${game.aiStadiumDef.club?.encoded_name||''}</div>` : ''}
     <div style="width:100%;max-width:900px;margin:0 auto">${buildTeamSVG(
       game.aiTeam, game.formation, null, [],
-      Math.min(window.innerWidth - 40, 860),
-      Math.round(Math.min(window.innerWidth - 40, 860) * 1.1)
+      svgW(), svgH()
     )}</div>
     <div style="font-size:15px;color:rgba(255,255,255,0.7)">
       <span class="loading-dots">Chargement</span>
@@ -208,29 +213,8 @@ function showOpponentReveal(container, game, ctx) {
 }
 
 
-// ── Helper : construire un objet player complet pour l'historique ─────────
-// Préserve notes (evo déjà intégré), stadiumBonus, boost, face, _line
-function histPlayer(p) {
-  const role = p._line || p.job || 'MIL'
-  const noteVal = role==='GK' ? (p.note_g||0) : role==='DEF' ? (p.note_d||0) : role==='MIL' ? (p.note_m||0) : (p.note_a||0)
-  return {
-    name: p.name, firstname: p.firstname || '',
-    note: noteVal + (p.boost||0) + (p.stadiumBonus ? 10 : 0),  // pour renderMiniPlayer
-    note_g: p.note_g||0, note_d: p.note_d||0, note_m: p.note_m||0, note_a: p.note_a||0,
-    _evolution_bonus: 0,  // evo déjà dans les notes
-    stadiumBonus: p.stadiumBonus || false,
-    boost: p.boost || 0,
-    job: p.job, job2: p.job2 || null,
-    _line: p._line || p.job, _col: p._col,
-    country_code: p.country_code,
-    club_id: p.club_id,
-    rarity: p.rarity,
-    clubName: p.clubName || p.clubs?.encoded_name || null,
-    clubLogo: p.clubLogo || p.clubs?.logo_url || null,
-    face: p.face || null,
-    portrait: getPortrait(p),
-  }
-}
+// histPlayer importé depuis match-engine.js
+const histPlayer = (p) => _histPlayer(p)
 
 function showMidfieldAnimation(container, game, ctx) {
   const homeMils = game.homeTeam.MIL || []
@@ -450,46 +434,7 @@ function showMidfieldAnimation(container, game, ctx) {
   }, 2800)
 }
 
-function renderLogEntry(entry) {
-  if (entry.type === 'duel' && (entry.homeTotal != null || entry.aiTotal != null)) {
-    const hw = (entry.homeTotal||0) >= (entry.aiTotal||0)
-    return `
-    <div style="background:rgba(255,255,255,0.05);border-radius:8px;padding:5px 6px;border:1px solid rgba(255,255,255,0.08)">
-      <div style="text-align:center;font-size:9px;font-weight:700;letter-spacing:1px;color:rgba(255,255,255,0.5);margin-bottom:4px">${(entry.title||'DUEL').toUpperCase()}</div>
-      <div style="display:flex;align-items:center;gap:3px;max-height:46px;overflow:hidden">
-        <!-- Joueurs domicile -->
-        <div style="flex:1;display:flex;gap:2px;justify-content:flex-end;flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden">
-          ${(entry.homePlayers||[]).map(p=>renderMiniPlayer(p)).join('')}
-        </div>
-        <!-- Score -->
-        <div style="text-align:center;padding:0 6px;flex-shrink:0">
-          <div style="font-size:${hw?20:14}px;font-weight:900;color:${hw?'#FFD700':'rgba(255,255,255,0.4)'};line-height:1">${entry.homeTotal}</div>
-          <div style="font-size:8px;color:rgba(255,255,255,0.3);margin:1px 0">VS</div>
-          <div style="font-size:${!hw?20:14}px;font-weight:900;color:${!hw?'#ff6b6b':'rgba(255,255,255,0.4)'};line-height:1">${entry.aiTotal}</div>
-        </div>
-        <!-- Joueurs IA -->
-        <div style="flex:1;display:flex;gap:2px;justify-content:flex-start;flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden">
-          ${(entry.aiPlayers||[]).map(p=>renderMiniPlayer(p)).join('')}
-        </div>
-      </div>
-      ${entry.isGoal ? `<div style="text-align:center;font-size:11px;color:#FFD700;font-weight:900;margin-top:3px">${entry.homeScored?'⚽ BUT !':'⚽ BUT IA !'}</div>` : ''}
-    </div>`
-  }
-
-  if (entry.type === 'sub') {
-    const isHome = entry.subSide === 'home'
-    return `
-    <div style="display:flex;align-items:center;gap:4px;${isHome?'flex-direction:row-reverse':''};background:rgba(255,255,255,0.04);border-radius:8px;padding:5px 8px;border:1px solid rgba(255,255,255,0.07)">
-      <div style="font-size:9px;color:rgba(255,255,255,0.4);flex-shrink:0">${isHome?entry.clubName||'Vous':'IA'}</div>
-      ${renderMiniPlayer(entry.outPlayer||{}, true)}
-      <div style="font-size:16px;flex-shrink:0">🔄</div>
-      ${renderMiniPlayer(entry.inPlayer||{})}
-    </div>`
-  }
-
-  // Info / goal simple
-  return `<div style="font-size:11px;color:${entry.type==='goal'?'#FFD700':'rgba(255,255,255,0.65)'};font-weight:${entry.type==='goal'?700:400};padding:3px 2px">${entry.text||''}</div>`
-}
+// renderLogEntry importé depuis match-engine.js
 
 function renderGame(container, game, ctx) {
   const selectedIds = game.selected.map(s => s.cardId)
@@ -655,7 +600,7 @@ function renderGame(container, game, ctx) {
       // ─── Terrain ──────────────────────────────────────────
       const terrainHTML = `<div style="overflow:hidden;min-width:0;flex:1;min-height:0;display:flex;flex-direction:column" id="match-field">
         <div class="terrain-wrapper" style="overflow:hidden;width:100%;flex:1;min-height:0;display:flex;align-items:center;justify-content:center">
-          ${renderTeam(game.homeTeam,game.formation,game.phase,selectedIds,Math.min(window.innerWidth-40,860),Math.round(Math.min(window.innerWidth-40,860)*1.05),extraSelectableIds)}
+          ${renderTeam(game.homeTeam,game.formation,game.phase,selectedIds,svgW(),svgH(),extraSelectableIds)}
         </div>
       </div>`
 
@@ -685,7 +630,7 @@ function renderGame(container, game, ctx) {
         <div id="mobile-play-area" style="flex:1;min-height:0;display:flex;overflow:hidden">
           <div id="match-field" style="flex:1;min-width:0;min-height:0;overflow:hidden">
             <div class="terrain-wrapper" style="width:100%;height:100%;overflow:hidden">
-              ${renderTeam(game.homeTeam,game.formation,game.phase,selectedIds,Math.min(window.innerWidth-40,860),Math.round(Math.min(window.innerWidth-40,860)*1.05),extraSelectableIds)}
+              ${renderTeam(game.homeTeam,game.formation,game.phase,selectedIds,svgW(),svgH(),extraSelectableIds)}
             </div>
           </div>
         </div>
@@ -1186,67 +1131,9 @@ function checkEnd(container, game, ctx) {
   else { game.phase = 'attack'; renderGame(container, game, ctx) }
 }
 
-function showSubAnimation(outPlayer, inPlayer, callback) {
-  const overlay = document.createElement('div')
-  overlay.style.cssText = `
-    position:fixed;inset:0;background:rgba(0,0,0,0.88);z-index:800;
-    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;
-    animation:subFadeIn 0.2s ease;
-  `
-  const outPortrait  = getPortrait(outPlayer)
-  const inPortrait   = getPortrait(inPlayer)
-  const outColor     = JOB_COLORS[outPlayer.job] || '#555'
-  const inColor      = JOB_COLORS[inPlayer.job]  || '#555'
+// showSubAnimation importé depuis match-engine.js
 
-  const outNote = outPlayer.job==='GK'?outPlayer.note_g:outPlayer.job==='DEF'?outPlayer.note_d:outPlayer.job==='MIL'?outPlayer.note_m:outPlayer.note_a
-  const inNote  = inPlayer.job==='GK'?inPlayer.note_g:inPlayer.job==='DEF'?inPlayer.note_d:inPlayer.job==='MIL'?inPlayer.note_m:inPlayer.note_a
-  overlay.innerHTML = `
-    <style>
-      @keyframes subFadeIn{from{opacity:0;transform:scale(0.95)}to{opacity:1;transform:scale(1)}}
-      @keyframes subCardIn{from{transform:translateY(14px);opacity:0}to{transform:translateY(0);opacity:1}}
-    </style>
-    <div style="font-size:11px;letter-spacing:3px;color:rgba(255,255,255,0.5);text-transform:uppercase">🔄 Remplacement</div>
-    <div style="display:flex;align-items:center;gap:18px;animation:subCardIn 0.35s ease">
-      <div style="text-align:center">
-        <div style="font-size:9px;color:#ff6b6b;letter-spacing:1px;margin-bottom:6px;text-transform:uppercase">SORT</div>
-        <div style="width:80px;height:80px;border-radius:12px;background:${outColor};border:3px solid #ff6b6b;position:relative;overflow:hidden;margin:0 auto">
-          ${outPortrait?`<img src="${outPortrait}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover">`:``}
-          <div style="position:absolute;top:4px;left:0;right:0;text-align:center;font-size:16px;font-weight:900;color:#fff;text-shadow:0 1px 4px #000">${outNote}</div>
-        </div>
-        <div style="font-size:10px;color:rgba(255,255,255,0.6);margin-top:5px">${outPlayer.firstname}</div>
-        <div style="font-size:12px;color:#ff6b6b;font-weight:700">${outPlayer.name}</div>
-      </div>
-      <div style="font-size:32px;color:rgba(255,255,255,0.35)">→</div>
-      <div style="text-align:center">
-        <div style="font-size:9px;color:#00ff88;letter-spacing:1px;margin-bottom:6px;text-transform:uppercase">ENTRE</div>
-        <div style="width:80px;height:80px;border-radius:12px;background:${inColor};border:3px solid #00ff88;position:relative;overflow:hidden;margin:0 auto">
-          ${inPortrait?`<img src="${inPortrait}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover">`:``}
-          <div style="position:absolute;top:4px;left:0;right:0;text-align:center;font-size:16px;font-weight:900;color:#fff;text-shadow:0 1px 4px #000">${inNote}</div>
-        </div>
-        <div style="font-size:10px;color:rgba(255,255,255,0.6);margin-top:5px">${inPlayer.firstname}</div>
-        <div style="font-size:12px;color:#00ff88;font-weight:700">${inPlayer.name}</div>
-      </div>
-    </div>
-  `
-  document.body.appendChild(overlay)
-  let subDismissed = false
-  const subDismiss = () => {
-    if (subDismissed) return
-    subDismissed = true
-    overlay.remove()
-    callback()
-  }
-  overlay.addEventListener('click', subDismiss)
-  setTimeout(subDismiss, 2000)
-}
-
-function showGameToast(msg, color='rgba(0,0,0,0.8)') {
-  const el = document.createElement('div')
-  el.style.cssText = `position:fixed;bottom:110px;left:50%;transform:translateX(-50%);background:${color};color:#fff;padding:8px 18px;border-radius:20px;font-size:13px;z-index:1200;pointer-events:none;text-align:center;max-width:80vw;white-space:nowrap`
-  el.textContent = msg
-  document.body.appendChild(el)
-  setTimeout(() => el.remove(), 2200)
-}
+// showGameToast importé depuis match-engine.js
 
 function renderSubCard(p) {
   const portrait = getPortrait(p)
@@ -1662,56 +1549,7 @@ function useBoost(container, game, ctx) {
   })
 }
 
-function showGoalAnimation(miniPlayers, homeScore, aiScore, isHome, callback) {
-  const overlay = document.createElement('div')
-  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.93);z-index:900;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;overflow:hidden;cursor:pointer'
-  const fireworks = Array.from({length:10},(_,i)=>`
-    <div style="position:absolute;font-size:${16+Math.floor(Math.random()*24)}px;
-      top:${5+Math.floor(Math.random()*65)}%;left:${3+Math.floor(Math.random()*94)}%;
-      animation:fw${i%2===0?'A':'B'} ${0.7+Math.random()*0.7}s ease ${Math.random()*0.9}s both;opacity:0">
-      ${['✨','🌟','⭐','💥','🎇','🎆','🔥','🌈'][i%8]}
-    </div>`).join('')
-  overlay.innerHTML = `
-  <style>
-    @keyframes butPop  {0%{transform:scale(0) rotate(-8deg);opacity:0}55%{transform:scale(1.25) rotate(2deg)}85%{transform:scale(0.92) rotate(-1deg)}100%{transform:scale(1);opacity:1}}
-    @keyframes ballIn  {0%{transform:translate(-70px,18px);opacity:0}65%{opacity:1}100%{transform:translate(26px,-8px);opacity:1}}
-    @keyframes scoreIn {from{opacity:0;transform:translateY(-12px)}to{opacity:1;transform:translateY(0)}}
-    @keyframes fwA     {0%{opacity:1;transform:scale(0)}100%{opacity:0;transform:scale(3.5)}}
-    @keyframes fwB     {0%{opacity:1;transform:scale(0) rotate(45deg)}100%{opacity:0;transform:scale(2.8) rotate(45deg)}}
-  </style>
-  <div style="position:absolute;inset:0;pointer-events:none">${fireworks}</div>
-  <div style="font-size:68px;font-weight:900;color:#FFD700;text-shadow:0 0 50px rgba(255,215,0,0.9);animation:butPop 0.55s cubic-bezier(0.36,0.07,0.19,0.97) both;letter-spacing:6px;position:relative;z-index:1">
-    ${isHome ? 'BUT !' : 'BUT IA !'}
-  </div>
-  <div style="display:flex;align-items:center;gap:10px;font-size:26px;position:relative;z-index:1">
-    <span style="animation:ballIn 0.8s ease 0.35s both">⚽</span>
-    <span style="font-size:36px">🥅</span>
-  </div>
-  <div style="font-size:38px;font-weight:900;color:#fff;animation:scoreIn 0.4s ease 0.75s both;letter-spacing:4px;position:relative;z-index:1">
-    ${homeScore} – ${aiScore}
-  </div>
-  ${miniPlayers?.length ? `
-  <div style="display:flex;gap:10px;animation:scoreIn 0.4s ease 1s both;position:relative;z-index:1">
-    ${miniPlayers.map(p=>`
-    <div style="text-align:center">
-      <div style="width:50px;height:50px;border-radius:50%;background:${JOB_COLORS[p.job]||'#555'};border:2px solid #FFD700;position:relative;overflow:hidden;margin:0 auto">
-        ${p.portrait?`<img src="${p.portrait}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover">`:''}
-      </div>
-      <div style="font-size:8px;color:rgba(255,255,255,0.7);margin-top:3px">${(p.name||'').slice(0,8)}</div>
-    </div>`).join('')}
-  </div>` : ''}
-  <div style="font-size:11px;color:rgba(255,255,255,0.3);margin-top:8px;animation:scoreIn 0.3s ease 1.4s both;position:relative;z-index:1">Appuyer pour continuer</div>`
-  document.body.appendChild(overlay)
-  let goalDismissed = false
-  const goalDismiss = () => {
-    if (goalDismissed) return
-    goalDismissed = true
-    overlay.remove()
-    setTimeout(() => callback(), 50)
-  }
-  overlay.addEventListener('click', goalDismiss)
-  setTimeout(goalDismiss, 3500)
-}
+// showGoalAnimation importé depuis match-engine.js
 
 async function finishMatch(container, game, ctx) {
   if (game._timerInt) { clearInterval(game._timerInt); game._timerInt = null }

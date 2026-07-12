@@ -14,7 +14,8 @@
 
 import {
   histPlayer as _histPlayer, withStadBonus,
-  svgW, svgH
+  svgW, svgH,
+  showGoalAnimation, renderLogEntry, showSubAnimation, showGameToast,
 } from './match-engine.js'
 import { supabase } from '../lib/supabase.js'
 import { applyOwnEvolution } from './evolutive-cards.js'
@@ -615,30 +616,6 @@ async function _renderPvpMatchCore(container, ctx, matchId, amIHome, myGC = [], 
       </div>
     </div>`
 
-    // ── renderLogEntry identique à match-ia ──
-    function renderLogEntry(entry) {
-      if (entry.type === 'duel' && (entry.homeTotal != null || entry.aiTotal != null)) {
-        const hw = (entry.homeTotal||0) >= (entry.aiTotal||0)
-        return `<div style="background:rgba(255,255,255,0.05);border-radius:8px;padding:5px 6px;border:1px solid rgba(255,255,255,0.08)">
-          <div style="text-align:center;font-size:9px;font-weight:700;letter-spacing:1px;color:rgba(255,255,255,0.5);margin-bottom:4px">${(entry.title||'DUEL').toUpperCase()}</div>
-          <div style="display:flex;align-items:center;gap:3px;max-height:46px;overflow:hidden">
-            <div style="flex:1;display:flex;gap:2px;justify-content:flex-end;flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden">
-              ${(entry.homePlayers||[]).map(p=>renderMiniPlayer(p)).join('')}
-            </div>
-            <div style="text-align:center;padding:0 6px;flex-shrink:0">
-              <div style="font-size:${hw?20:14}px;font-weight:900;color:${hw?'#FFD700':'rgba(255,255,255,0.4)'};line-height:1">${entry.homeTotal}</div>
-              <div style="font-size:8px;color:rgba(255,255,255,0.3);margin:1px 0">VS</div>
-              <div style="font-size:${!hw?20:14}px;font-weight:900;color:${!hw?'#ff6b6b':'rgba(255,255,255,0.4)'};line-height:1">${entry.aiTotal}</div>
-            </div>
-            <div style="flex:1;display:flex;gap:2px;justify-content:flex-start;flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden">
-              ${(entry.aiPlayers||[]).map(p=>renderMiniPlayer(p)).join('')}
-            </div>
-          </div>
-          ${entry.isGoal?`<div style="text-align:center;font-size:11px;color:#FFD700;font-weight:900;margin-top:3px">${entry.homeScored?'⚽ BUT !':'⚽ BUT !'}</div>`:''}
-        </div>`
-      }
-      return `<div style="font-size:11px;color:${entry.type==='goal'?'#FFD700':'rgba(255,255,255,0.65)'};font-weight:${entry.type==='goal'?700:400};padding:3px 2px">${entry.text||''}</div>`
-    }
 
     // ── Zone action (haut) — identique match-ia ──
     const logHTML = (() => {
@@ -850,8 +827,6 @@ async function _renderPvpMatchCore(container, ctx, matchId, amIHome, myGC = [], 
 
     const myMils  = gameState[myRole+'Team'].MIL||[]
     const oppMils = gameState[oppRole+'Team'].MIL||[]
-    function milScore(mils){return mils.reduce((s,p)=>s+getNoteForRole(p,'MIL'),0)}
-    function milLinks(mils){let b=0;for(let i=0;i<mils.length-1;i++){const c=linkColor(mils[i],mils[i+1]);if(c==='#00ff88')b+=2;else if(c==='#FFD700')b+=1};return b}
     const myTotal=milScore(myMils)+milLinks(myMils), oppTotal=milScore(oppMils)+milLinks(oppMils)
     const myWins=myTotal>=oppTotal
 
@@ -960,45 +935,6 @@ async function _renderPvpMatchCore(container, ctx, matchId, amIHome, myGC = [], 
     },2800)
   }
 
-  function showGoalAnimation(players, myScore, oppScore, isMyGoal, callback) {
-    const overlay = document.createElement('div')
-    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.93);z-index:900;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;overflow:hidden;cursor:pointer'
-    const fw = Array.from({length:10},(_,i)=>`<div style="position:absolute;font-size:${16+Math.floor(Math.random()*24)}px;top:${5+Math.floor(Math.random()*65)}%;left:${3+Math.floor(Math.random()*94)}%;animation:fw${i%2===0?'A':'B'} ${0.7+Math.random()*0.7}s ease ${Math.random()*0.9}s both;opacity:0">${['✨','🌟','⭐','💥','🎇','🎆','🔥','🌈'][i%8]}</div>`).join('')
-    const JC = {GK:'#111',DEF:'#bb2020',MIL:'#D4A017',ATT:'#1A6B3C'}
-    overlay.innerHTML = `
-      <style>
-        @keyframes butPop{0%{transform:scale(0) rotate(-8deg);opacity:0}55%{transform:scale(1.25) rotate(2deg)}85%{transform:scale(0.92) rotate(-1deg)}100%{transform:scale(1);opacity:1}}
-        @keyframes ballIn{0%{transform:translate(-70px,18px);opacity:0}65%{opacity:1}100%{transform:translate(26px,-8px);opacity:1}}
-        @keyframes scoreIn{from{opacity:0;transform:translateY(-12px)}to{opacity:1;transform:translateY(0)}}
-        @keyframes fwA{0%{opacity:1;transform:scale(0)}100%{opacity:0;transform:scale(3.5)}}
-        @keyframes fwB{0%{opacity:1;transform:scale(0) rotate(45deg)}100%{opacity:0;transform:scale(2.8) rotate(45deg)}}
-      </style>
-      <div style="position:absolute;inset:0;pointer-events:none">${fw}</div>
-      <div style="font-size:68px;font-weight:900;color:#FFD700;text-shadow:0 0 50px rgba(255,215,0,0.9);animation:butPop .55s cubic-bezier(.36,.07,.19,.97) both;letter-spacing:6px;position:relative;z-index:1">
-        ${isMyGoal ? 'BUT !' : 'BUT ADV !'}
-      </div>
-      <div style="display:flex;align-items:center;gap:10px;font-size:26px;position:relative;z-index:1">
-        <span style="animation:ballIn .8s ease .35s both">⚽</span>
-        <span style="font-size:36px">🥅</span>
-      </div>
-      <div style="font-size:38px;font-weight:900;color:#fff;animation:scoreIn .4s ease .75s both;letter-spacing:4px;position:relative;z-index:1">
-        ${myScore} – ${oppScore}
-      </div>
-      ${players?.length ? `<div style="display:flex;gap:10px;animation:scoreIn .4s ease 1s both;position:relative;z-index:1">
-        ${players.map(p=>`<div style="text-align:center">
-          <div style="width:50px;height:50px;border-radius:50%;background:${JC[p.job]||'#555'};border:2px solid #FFD700;position:relative;overflow:hidden;margin:0 auto">
-            ${p.portrait?`<img src="${p.portrait}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover">`:''}
-          </div>
-          <div style="font-size:8px;color:rgba(255,255,255,0.7);margin-top:3px">${(p.name||'').slice(0,8)}</div>
-        </div>`).join('')}
-      </div>` : ''}
-      <div style="font-size:11px;color:rgba(255,255,255,0.3);margin-top:8px;animation:scoreIn .3s ease 1.4s both;position:relative;z-index:1">Appuyer pour continuer</div>`
-    document.body.appendChild(overlay)
-    let dismissed = false
-    const dismiss = () => { if(dismissed)return; dismissed=true; overlay.remove(); setTimeout(()=>callback(),50) }
-    overlay.addEventListener('click', dismiss)
-    setTimeout(dismiss, 3500)
-  }
 
   // Animation d'une carte Game Changer (visible par les 2 joueurs)
   function pvpShowGCAnimation(gcType, byRole, callback) {

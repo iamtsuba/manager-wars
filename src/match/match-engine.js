@@ -16,7 +16,9 @@
  */
 
 import { renderPlayerCard } from '../components/player-card.js'
-import { buildTeamSVG, renderTeam, getPortrait } from './match-shared.js'
+import { buildTeamSVG, renderTeam, getPortrait, renderMiniCardHTML } from './match-shared.js'
+import { getNoteForRole } from './game-logic.js'
+import { linkColor } from './formation-links.js'
 
 const BASE = import.meta.env.BASE_URL
 
@@ -359,3 +361,54 @@ export function showGameToast(msg, bg = 'rgba(0,0,0,0.85)', duration = 2200) {
     setTimeout(() => el.remove(), 300)
   }, duration)
 }
+
+
+// ── Duel milieu : calculs et rendu ──────────────────────────
+// Source unique partagée par match-ia.js et match-pvp.js
+
+export function milScore(mils, stadDef) {
+    return mils.reduce((s,p) => s + milNoteWithBonus(p, stadDef), 0)
+  }
+
+export function milLinks(mils) {
+    let bonus = 0
+    for (let i = 0; i < mils.length-1; i++) {
+      const c = linkColor(mils[i], mils[i+1])
+      if (c === '#00ff88') bonus += 2
+      else if (c === '#FFD700') bonus += 1
+    }
+    return bonus
+  }
+
+export function renderMilRow(mils, label, color, side, stadDef) {
+    return `<div id="duel-row-${side}" style="text-align:center;width:100%;transition:transform .5s cubic-bezier(.5,0,.75,0), opacity .5s ease;transform-origin:center">
+      <div style="font-size:11px;color:rgba(255,255,255,0.55);letter-spacing:2px;margin-bottom:10px;text-transform:uppercase;font-weight:700">${label}</div>
+      <div style="display:flex;align-items:center;justify-content:center;gap:0">
+        ${mils.map((p, i) => {
+          const lc = i < mils.length-1 ? linkColor(p, mils[i+1]) : null
+          const noLink = !lc || lc === '#ff3333' || lc === '#cc2222'
+          const linkVal = lc === '#00ff88' ? '+2' : lc === '#FFD700' ? '+1' : ''
+          const noteDisplay = milNoteWithBonus(p, stadDef)
+          const hasStad = p.stadiumBonus || (stadDef && (
+            (stadDef.club_id && String(p.club_id) === String(stadDef.club_id)) ||
+            (stadDef.country_code && p.country_code === stadDef.country_code)
+          ))
+          return `
+          <div class="duel-card duel-card-${side}" data-idx="${i}" style="opacity:0;transform:translateY(18px) scale(0.7);transition:opacity .35s ease, transform .35s cubic-bezier(.34,1.56,.64,1);flex-shrink:0">
+            ${renderPlayerCard({ ...p, _evolution_bonus: 0 }, {
+              width: window.innerWidth >= 900 ? 90 : 58,
+              showStad: true, stadDef, role: 'MIL', extraNote: p.boost||0
+            })}
+          </div>
+          ${i < mils.length-1 ? `<div class="duel-link duel-link-${side}" data-idx="${i}" style="position:relative;width:18px;height:5px;border-radius:3px;background:${noLink?'rgba(255,255,255,0.12)':lc};flex-shrink:0;opacity:0;transition:opacity .3s ease;box-shadow:${noLink?'none':`0 0 8px ${lc}`}">
+            ${linkVal?`<span style="position:absolute;top:-13px;left:50%;transform:translateX(-50%);font-size:8px;font-weight:900;color:${lc}">${linkVal}</span>`:''}
+          </div>` : ''}
+          `
+        }).join('')}
+      </div>
+      <div class="duel-score-line duel-score-line-${side}" style="margin-top:10px;font-size:12px;color:rgba(255,255,255,0.55);opacity:0;transition:opacity .4s ease">
+        Score: ${milScore(mils, stadDef)} + ${milLinks(mils)} liens = <b style="color:#fff">${milScore(mils, stadDef)+milLinks(mils)}</b>
+      </div>
+    </div>`
+  }
+

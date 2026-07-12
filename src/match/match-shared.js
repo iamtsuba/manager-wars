@@ -417,17 +417,11 @@ export async function renderDeckSelect(container, ctx, matchMode) {
         <div style="font-size:11px;font-weight:900;color:#FFD700">+10 aux joueurs ${stadiumDef.club?.encoded_name || stadiumDef.country_code || ''}</div>
       </div>` : ''}
 
-      <!-- Terrain preview -->
-      <div id="deck-swipe-zone" style="flex:1;min-height:0;overflow:hidden;position:relative;touch-action:pan-y;display:flex;align-items:center;justify-content:center;padding:4px">
-        ${team ? (() => {
-          const isPC = window.innerWidth >= 900
-          const availH = window.innerHeight - 220  // header + nav + boutons (plus compact)
-          const availW = window.innerWidth - (isPC ? 260 : 8)  // colonne droite sur PC
-          const svgSize = isPC ? Math.min(availW, Math.round(availH * 0.9)) : Math.min(availW * 0.98, availH * 1.5)
-          return `<div class="deck-preview-wrap" style="width:${svgSize}px;height:${Math.round(svgSize*1.25)}px;overflow:visible;${isPC?"margin-top:50px":""}">
-            ${renderTeam(team, formation, null, [], svgSize, Math.round(svgSize * 1.0))}
+      <!-- Terrain preview : zone flexible, SVG toujours entièrement visible -->
+      <div id="deck-swipe-zone" style="flex:1;min-height:0;overflow:visible;position:relative;touch-action:pan-y;display:flex;align-items:flex-start;justify-content:center;padding:0">
+        ${team ? `<div class="deck-preview-wrap" style="width:100%;height:100%;overflow:visible">
+            ${renderTeam(team, formation, null, [], 300, 300)}
           </div>`
-        })()
           : `<div style="display:flex;align-items:center;justify-content:center;height:100%;opacity:.4;flex-direction:column;gap:8px">
               <div style="font-size:32px">⚠️</div>
               <div>Deck incomplet (${starters.length}/11)</div>
@@ -480,20 +474,37 @@ export async function renderDeckSelect(container, ctx, matchMode) {
     </div>`
 
     // Retirer le cap max-width:440px du SVG pour qu'il remplisse le wrapper
-    ;(function fixDeckSVG() {
-      const svg = container.querySelector('.deck-preview-wrap svg')
-      if (!svg) return
+    requestAnimationFrame(function fixDeckSVG() {
+      const svg  = container.querySelector('.deck-preview-wrap svg')
+      const wrap = container.querySelector('.deck-preview-wrap')
+      const zone = container.querySelector('#deck-swipe-zone')
+      const validateBtn = document.getElementById('validate-deck')
+      if (!svg || !wrap || !zone) return
+
+      const isPC = window.innerWidth >= 900
+      const marginTop = isPC ? 50 : 8
+
+      // Hauteur réellement disponible = du haut de la zone jusqu'au bouton Valider
+      const zoneTop = zone.getBoundingClientRect().top
+      const btnTop  = validateBtn ? validateBtn.getBoundingClientRect().top : window.innerHeight - 90
+      const availH  = Math.max(150, btnTop - zoneTop - marginTop - 8)
+      const availW  = zone.clientWidth - (isPC ? 16 : 4)
+
+      // viewBox du SVG donne son ratio naturel (W+2*PAD x H+2*PAD)
+      const vb = svg.getAttribute('viewBox')?.split(' ').map(Number)
+      const ratio = vb ? vb[3] / vb[2] : 1.1  // height/width
+
+      // Calculer la taille qui tient dans l'espace SANS dépasser ni en largeur ni en hauteur
+      let finalW = availW
+      let finalH = finalW * ratio
+      if (finalH > availH) { finalH = availH; finalW = finalH / ratio }
+
       svg.removeAttribute('width'); svg.removeAttribute('height')
-      svg.style.cssText = 'width:100%;height:auto;display:block;max-width:none;margin:0;overflow:visible'
+      svg.style.cssText = `width:${finalW}px;height:${finalH}px;display:block;overflow:visible`
       svg.setAttribute('preserveAspectRatio', 'xMidYMid meet')
 
-      // margin-top : 50px fixe sur PC, dynamique sur mobile
-      const wrap = container.querySelector('.deck-preview-wrap')
-      if (wrap) {
-        // margin-top sur le wrapper directement
-        wrap.style.setProperty('margin-top', window.innerWidth >= 900 ? '50px' : '0px', 'important')
-      }
-    })()
+      wrap.style.cssText = `width:${finalW}px;height:${finalH}px;overflow:visible;margin:${marginTop}px auto 0`
+    })
 
     document.getElementById('prev-deck')?.addEventListener('click', () => {
       if (currentIdx > 0) { currentIdx--; renderPreview() }

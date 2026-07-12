@@ -449,6 +449,7 @@ export async function renderDeckSelect(container, ctx, matchMode) {
       // Mesurer l'espace réel disponible dans la zone
       const availH = zone.clientHeight - 8
       const availW = zone.clientWidth  - 8
+      const topOffset = 30  // décalage vers le bas
 
       // Ratio naturel du SVG depuis son viewBox
       const vb = svg.getAttribute('viewBox')?.split(' ').map(Number)
@@ -465,7 +466,7 @@ export async function renderDeckSelect(container, ctx, matchMode) {
       svg.setAttribute('width', finalW)
       svg.setAttribute('height', finalH)
 
-      wrap.style.cssText = `width:${finalW}px;height:${finalH}px;overflow:visible`
+      wrap.style.cssText = `width:${finalW}px;height:${finalH}px;overflow:visible;margin-top:${topOffset}px`
     })
 
     document.getElementById('prev-deck')?.addEventListener('click', () => {

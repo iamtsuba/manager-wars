@@ -464,7 +464,7 @@ export async function renderDeckSelect(container, ctx, matchMode) {
       // Mobile : PAD réduit pour que GK touche le bas et ATT touche le haut
       const mobilePad = isPC ? null : Math.round(CW * 0.55)
       wrap.innerHTML = renderTeam(team, formation, null, [], availW, availH, [], mobilePad)
-      wrap.style.cssText = `width:${availW}px;height:${availH}px;overflow:visible;margin:${isPC?0:30}px auto 0`
+      wrap.style.cssText = `width:${availW}px;height:${availH}px;overflow:visible;margin:${isPC?0:60}px auto 0`
 
       const svg = wrap.querySelector('svg')
       if (svg) {

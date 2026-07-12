@@ -486,6 +486,14 @@ export async function renderDeckSelect(container, ctx, matchMode) {
       svg.removeAttribute('width'); svg.removeAttribute('height')
       svg.style.cssText = 'width:100%;height:auto;display:block;max-width:none;margin:0;overflow:visible'
       svg.setAttribute('preserveAspectRatio', 'xMidYMid meet')
+
+      // Calculer le margin-top = hauteur des divs au-dessus (header + nav deck + stade)
+      const headerEl = container.querySelector('#deck-select-screen > div:nth-child(1)')
+      const navEl    = container.querySelector('#deck-select-screen > div:nth-child(2)')
+      const stadEl   = container.querySelector('#deck-select-screen > div:nth-child(3)')
+      const topH = (headerEl?.offsetHeight || 0) + (navEl?.offsetHeight || 0) + (stadEl?.offsetHeight || 0)
+      const wrap = container.querySelector('.deck-preview-wrap')
+      if (wrap && topH > 0) wrap.style.marginTop = topH + 'px'
     })()
 
     document.getElementById('prev-deck')?.addEventListener('click', () => {

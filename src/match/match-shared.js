@@ -450,6 +450,8 @@ export async function renderDeckSelect(container, ctx, matchMode) {
       const isPC = zone.clientWidth >= 900
       // PC : plafonner la largeur (zone très large) ; Mobile : utiliser toute la largeur
       const availW = isPC ? Math.min(availWraw, Math.round(availH * 0.95)) : availWraw
+      // Recalculer CW comme dans buildTeamSVG pour connaître la taille des cartes
+      const CW = Math.max(52, Math.round(availW * 0.18))
 
       if (availH < 220 || availW < 220) {
         // Le layout n'est pas encore stable → réessayer au prochain frame
@@ -459,7 +461,9 @@ export async function renderDeckSelect(container, ctx, matchMode) {
 
       // Générer le SVG avec EXACTEMENT ce ratio (W, H passés à renderTeam)
       // → le viewBox interne colle à la zone, pas de vert vide
-      wrap.innerHTML = renderTeam(team, formation, null, [], availW, availH)
+      // Mobile : PAD réduit pour que GK touche le bas et ATT touche le haut
+      const mobilePad = isPC ? null : Math.round(CW * 0.55)
+      wrap.innerHTML = renderTeam(team, formation, null, [], availW, availH, [], mobilePad)
       wrap.style.cssText = `width:${availW}px;height:${availH}px;overflow:visible;margin:0 auto`
 
       const svg = wrap.querySelector('svg')
@@ -557,7 +561,7 @@ export function countryFlag(code) {
   } catch { return '🌍' }
 }
 
-export function buildTeamSVG(team, formation, phase, selectedIds, W=310, H=310, extraSelectableIds=[]) {
+export function buildTeamSVG(team, formation, phase, selectedIds, W=310, H=310, extraSelectableIds=[], padOverride=null) {
   const FPOS   = FORMATION_POSITIONS[formation] || {}
   const FLINKS = getActiveLinks(formation) || FORMATION_LINKS[formation] || []
   const R      = 26
@@ -643,7 +647,7 @@ export function buildTeamSVG(team, formation, phase, selectedIds, W=310, H=310, 
     }
   }
 
-  const PAD = Math.round(Math.max(CW * 0.7, 80))  // PAD proportionnel à la taille des cartes
+  const PAD = padOverride !== null ? padOverride : Math.round(Math.max(CW * 0.7, 80))
   return `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="${-PAD} ${-PAD} ${W+PAD*2} ${H+PAD*2}" width="100%" style="display:block;width:100%;margin:0 auto">
     ${svg}
   </svg>`
@@ -653,9 +657,9 @@ export function buildTeamSVG(team, formation, phase, selectedIds, W=310, H=310, 
 }
 
 
-export function renderTeam(team, formation, phase, selectedIds, W=300, H=300, extraSelectableIds=[]) {
+export function renderTeam(team, formation, phase, selectedIds, W=300, H=300, extraSelectableIds=[], padOverride=null) {
   return `<div id="match-terrain-wrap" style="position:relative;padding:0 4px">
-    ${buildTeamSVG(team, formation, phase, selectedIds, W, H, extraSelectableIds)}
+    ${buildTeamSVG(team, formation, phase, selectedIds, W, H, extraSelectableIds, padOverride)}
   </div>`
 }
 

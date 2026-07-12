@@ -438,7 +438,8 @@ export async function renderDeckSelect(container, ctx, matchMode) {
     </div>`
 
     // Retirer le cap max-width:440px du SVG pour qu'il remplisse le wrapper
-    requestAnimationFrame(function fixDeckSVG() {
+    // Double rAF : garantit que le layout flex est stabilisé (surtout sur mobile)
+    requestAnimationFrame(() => requestAnimationFrame(function fixDeckSVG() {
       const wrap = container.querySelector('.deck-preview-wrap')
       const zone = container.querySelector('#deck-swipe-zone')
       if (!wrap || !zone || !team) return
@@ -446,6 +447,12 @@ export async function renderDeckSelect(container, ctx, matchMode) {
       // Mesurer l'espace réel disponible : quasi toute la hauteur, marge 20px haut/bas
       const availH = Math.max(200, zone.clientHeight - 40)
       const availW = Math.max(200, zone.clientWidth  - 16)
+
+      if (availH < 220 || availW < 220) {
+        // Le layout n'est pas encore stable → réessayer au prochain frame
+        requestAnimationFrame(fixDeckSVG)
+        return
+      }
 
       // Générer le SVG avec EXACTEMENT ce ratio (W, H passés à renderTeam)
       // → le viewBox interne colle à la zone, pas de vert vide
@@ -457,7 +464,7 @@ export async function renderDeckSelect(container, ctx, matchMode) {
         svg.style.cssText = 'display:block;width:100%;height:100%'
         svg.setAttribute('preserveAspectRatio', 'none')
       }
-    })
+    }))
 
     document.getElementById('prev-deck')?.addEventListener('click', () => {
       if (currentIdx > 0) { currentIdx--; renderPreview() }

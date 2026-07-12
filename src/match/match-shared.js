@@ -391,7 +391,7 @@ export async function renderDeckSelect(container, ctx, matchMode) {
     container.style.height = '100%'
     container.style.overflow = 'hidden'
     container.innerHTML = `
-    <div id="deck-select-screen" style="display:flex;flex-direction:column;height:100%;overflow:hidden;background:#0a3d1e;color:#fff">
+    <div id="deck-select-screen" style="display:flex;flex-direction:${window.innerWidth>=900?'row':'column'};height:100%;overflow:hidden;background:#0a3d1e;color:#fff">
 
       <!-- Header -->
       <div style="padding:10px 16px;background:rgba(0,0,0,0.4);text-align:center;flex-shrink:0">
@@ -417,10 +417,17 @@ export async function renderDeckSelect(container, ctx, matchMode) {
         <div style="font-size:11px;font-weight:900;color:#FFD700">+10 aux joueurs ${stadiumDef.club?.encoded_name || stadiumDef.country_code || ''}</div>
       </div>` : ''}
 
-      <!-- Terrain preview : SVG occupe toute la zone disponible (carré max) -->
+      <!-- Terrain preview -->
       <div id="deck-swipe-zone" style="flex:1;min-height:0;overflow:hidden;position:relative;touch-action:pan-y;display:flex;align-items:center;justify-content:center;padding:4px">
-        ${team
-          ? `<div class="deck-preview-wrap" style="aspect-ratio:1/1;max-width:100%;max-height:100%;width:auto;height:100%;overflow:hidden">${renderTeam(team, formation, null, [], 285, 285)}</div>`
+        ${team ? (() => {
+          const isPC = window.innerWidth >= 900
+          const availH = window.innerHeight - 280  // header + nav + stade + boutons
+          const availW = window.innerWidth - (isPC ? 260 : 8)  // colonne droite sur PC
+          const svgSize = isPC ? Math.min(availW, Math.round(availH * 0.9)) : Math.min(availW, availH)
+          return `<div class="deck-preview-wrap" style="width:${svgSize}px;height:${Math.round(svgSize*1.1)}px;overflow:hidden">
+            ${renderTeam(team, formation, null, [], svgSize, Math.round(svgSize * 1.1))}
+          </div>`
+        })()
           : `<div style="display:flex;align-items:center;justify-content:center;height:100%;opacity:.4;flex-direction:column;gap:8px">
               <div style="font-size:32px">⚠️</div>
               <div>Deck incomplet (${starters.length}/11)</div>
@@ -434,7 +441,8 @@ export async function renderDeckSelect(container, ctx, matchMode) {
         ${decks.map((_,i)=>`<div style="width:7px;height:7px;border-radius:50%;background:${i===currentIdx?'#FFD700':'rgba(255,255,255,0.25)'}"></div>`).join('')}
       </div>` : ''}
 
-      <!-- Boutons TOUJOURS VISIBLES -->
+      <!-- Boutons : en bas sur mobile, colonne droite sur PC -->
+      ${window.innerWidth < 900 ? `
       <div style="padding:10px 14px 16px;flex-shrink:0;display:flex;flex-direction:column;gap:8px;background:rgba(0,0,0,0.2)">
         <button id="validate-deck" style="width:100%;padding:15px;border-radius:12px;border:none;
           background:${complete?'#1A6B3C':'rgba(255,255,255,0.08)'};
@@ -444,7 +452,31 @@ export async function renderDeckSelect(container, ctx, matchMode) {
         <button id="cancel-deck-select" style="width:100%;padding:11px;border-radius:12px;border:1px solid rgba(255,255,255,0.2);background:transparent;color:rgba(255,255,255,.5);font-size:14px;cursor:pointer">
           Annuler
         </button>
-      </div>
+      </div>` : `
+      <!-- Colonne droite PC -->
+      <div style="width:240px;flex-shrink:0;background:rgba(0,0,0,0.3);display:flex;flex-direction:column;gap:16px;padding:24px 16px;border-left:1px solid rgba(255,255,255,0.08)">
+        <div>
+          <div style="font-size:11px;opacity:.5;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Deck</div>
+          <div style="font-size:20px;font-weight:900">${deck.name}</div>
+          <div style="font-size:12px;opacity:.6;margin-top:2px">${formation} · ${starters.length}/11 ${deck.is_active?'· ⭐ Actif':''}</div>
+        </div>
+        ${stadiumDef ? `
+        <div style="padding:10px;background:rgba(232,119,34,0.15);border-radius:8px;border:1px solid rgba(232,119,34,0.3)">
+          <div style="font-size:11px;opacity:.6;margin-bottom:4px">🏟️ Stade</div>
+          <div style="font-size:13px;font-weight:700">${stadiumDef.name}</div>
+          <div style="font-size:11px;color:#FFD700;margin-top:2px">+10 aux joueurs ${stadiumDef.club?.encoded_name||stadiumDef.country_code||''}</div>
+        </div>` : ''}
+        <div style="margin-top:auto;display:flex;flex-direction:column;gap:10px">
+          <button id="validate-deck" style="width:100%;padding:16px;border-radius:12px;border:none;
+            background:${complete?'#1A6B3C':'rgba(255,255,255,0.08)'};
+            color:${complete?'#fff':'rgba(255,255,255,0.3)'};font-size:16px;font-weight:900;cursor:${complete?'pointer':'default'}">
+            ${complete?'✅ Valider ce deck':'⚠️ Deck incomplet'}
+          </button>
+          <button id="cancel-deck-select" style="width:100%;padding:12px;border-radius:12px;border:1px solid rgba(255,255,255,0.2);background:transparent;color:rgba(255,255,255,.5);font-size:14px;cursor:pointer">
+            Annuler
+          </button>
+        </div>
+      </div>`}
     </div>`
 
     // Retirer le cap max-width:440px du SVG pour qu'il remplisse le wrapper

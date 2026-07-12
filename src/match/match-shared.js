@@ -415,12 +415,10 @@ export async function renderDeckSelect(container, ctx, matchMode) {
         </div>` : ''}
       </div>
 
-      <!-- Terrain : prend tout l'espace restant -->
+      <!-- Terrain : prend tout l'espace restant, SVG injecté après mesure -->
       <div id="deck-swipe-zone" style="flex:1;min-height:0;overflow:visible;position:relative;touch-action:pan-y;display:flex;align-items:center;justify-content:center">
         ${team
-          ? `<div class="deck-preview-wrap" style="overflow:visible">
-               ${renderTeam(team, formation, null, [], 300, 300)}
-             </div>`
+          ? `<div class="deck-preview-wrap" style="overflow:visible;width:100%;height:100%;display:flex;align-items:center;justify-content:center"></div>`
           : `<div style="opacity:.4;text-align:center"><div style="font-size:32px">⚠️</div><div>Deck incomplet (${starters.length}/11)</div></div>`
         }
       </div>
@@ -441,32 +439,24 @@ export async function renderDeckSelect(container, ctx, matchMode) {
 
     // Retirer le cap max-width:440px du SVG pour qu'il remplisse le wrapper
     requestAnimationFrame(function fixDeckSVG() {
-      const svg  = container.querySelector('.deck-preview-wrap svg')
       const wrap = container.querySelector('.deck-preview-wrap')
       const zone = container.querySelector('#deck-swipe-zone')
-      if (!svg || !wrap || !zone) return
+      if (!wrap || !zone || !team) return
 
-      // Mesurer l'espace réel disponible dans la zone
-      const availH = zone.clientHeight - 8
-      const availW = zone.clientWidth  - 8
-      const topOffset = 30  // décalage vers le bas
+      // Mesurer l'espace réel disponible : quasi toute la hauteur, marge 20px haut/bas
+      const availH = Math.max(200, zone.clientHeight - 40)
+      const availW = Math.max(200, zone.clientWidth  - 16)
 
-      // Ratio naturel du SVG depuis son viewBox
-      const vb = svg.getAttribute('viewBox')?.split(' ').map(Number)
-      const ratio = vb ? vb[3] / vb[2] : 1.1
+      // Générer le SVG avec EXACTEMENT ce ratio (W, H passés à renderTeam)
+      // → le viewBox interne colle à la zone, pas de vert vide
+      wrap.innerHTML = renderTeam(team, formation, null, [], availW, availH)
+      wrap.style.cssText = `width:${availW}px;height:${availH}px;overflow:visible`
 
-      // Taille max qui tient en largeur ET en hauteur
-      let finalW = availW
-      let finalH = finalW * ratio
-      if (finalH > availH) { finalH = availH; finalW = finalH / ratio }
-
-      svg.removeAttribute('width'); svg.removeAttribute('height')
-      svg.style.cssText = `display:block;overflow:visible`
-      svg.setAttribute('preserveAspectRatio', 'xMidYMid meet')
-      svg.setAttribute('width', finalW)
-      svg.setAttribute('height', finalH)
-
-      wrap.style.cssText = `width:${finalW}px;height:${finalH}px;overflow:visible;margin-top:${topOffset}px`
+      const svg = wrap.querySelector('svg')
+      if (svg) {
+        svg.style.cssText = 'display:block;width:100%;height:100%'
+        svg.setAttribute('preserveAspectRatio', 'none')
+      }
     })
 
     document.getElementById('prev-deck')?.addEventListener('click', () => {

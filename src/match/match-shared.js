@@ -447,8 +447,9 @@ export async function renderDeckSelect(container, ctx, matchMode) {
       // Mesurer l'espace réel disponible : quasi toute la hauteur, marge 20px haut/bas
       const availH = Math.max(200, zone.clientHeight - 40)
       const availWraw = Math.max(200, zone.clientWidth - 16)
-      // Sur PC, la zone est très large : plafonner la largeur utilisée pour éviter des cartes énormes
-      const availW = Math.min(availWraw, Math.round(availH * 0.95))
+      const isPC = zone.clientWidth >= 900
+      // PC : plafonner la largeur (zone très large) ; Mobile : utiliser toute la largeur
+      const availW = isPC ? Math.min(availWraw, Math.round(availH * 0.95)) : availWraw
 
       if (availH < 220 || availW < 220) {
         // Le layout n'est pas encore stable → réessayer au prochain frame
@@ -464,7 +465,9 @@ export async function renderDeckSelect(container, ctx, matchMode) {
       const svg = wrap.querySelector('svg')
       if (svg) {
         svg.style.cssText = 'display:block;width:100%;height:100%'
-        svg.setAttribute('preserveAspectRatio', 'xMidYMid meet')
+        // Mobile : étirer pour remplir exactement la zone (pas de bandes vertes)
+        // PC : conserver les proportions
+        svg.setAttribute('preserveAspectRatio', isPC ? 'xMidYMid meet' : 'none')
       }
     }))
 

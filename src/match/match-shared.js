@@ -446,7 +446,9 @@ export async function renderDeckSelect(container, ctx, matchMode) {
 
       // Mesurer l'espace réel disponible : quasi toute la hauteur, marge 20px haut/bas
       const availH = Math.max(200, zone.clientHeight - 40)
-      const availW = Math.max(200, zone.clientWidth  - 16)
+      const availWraw = Math.max(200, zone.clientWidth - 16)
+      // Sur PC, la zone est très large : plafonner la largeur utilisée pour éviter des cartes énormes
+      const availW = Math.min(availWraw, Math.round(availH * 0.95))
 
       if (availH < 220 || availW < 220) {
         // Le layout n'est pas encore stable → réessayer au prochain frame
@@ -457,12 +459,12 @@ export async function renderDeckSelect(container, ctx, matchMode) {
       // Générer le SVG avec EXACTEMENT ce ratio (W, H passés à renderTeam)
       // → le viewBox interne colle à la zone, pas de vert vide
       wrap.innerHTML = renderTeam(team, formation, null, [], availW, availH)
-      wrap.style.cssText = `width:${availW}px;height:${availH}px;overflow:visible`
+      wrap.style.cssText = `width:${availW}px;height:${availH}px;overflow:visible;margin:0 auto`
 
       const svg = wrap.querySelector('svg')
       if (svg) {
         svg.style.cssText = 'display:block;width:100%;height:100%'
-        svg.setAttribute('preserveAspectRatio', 'none')
+        svg.setAttribute('preserveAspectRatio', 'xMidYMid meet')
       }
     }))
 

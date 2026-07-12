@@ -421,11 +421,11 @@ export async function renderDeckSelect(container, ctx, matchMode) {
       <div id="deck-swipe-zone" style="flex:1;min-height:0;overflow:hidden;position:relative;touch-action:pan-y;display:flex;align-items:center;justify-content:center;padding:4px">
         ${team ? (() => {
           const isPC = window.innerWidth >= 900
-          const availH = window.innerHeight - 280  // header + nav + stade + boutons
+          const availH = window.innerHeight - 220  // header + nav + boutons (plus compact)
           const availW = window.innerWidth - (isPC ? 260 : 8)  // colonne droite sur PC
           const svgSize = isPC ? Math.min(availW, Math.round(availH * 0.9)) : Math.min(availW, availH)
-          return `<div class="deck-preview-wrap" style="width:${svgSize}px;height:${Math.round(svgSize*1.1)}px;overflow:hidden">
-            ${renderTeam(team, formation, null, [], svgSize, Math.round(svgSize * 1.1))}
+          return `<div class="deck-preview-wrap" style="width:${svgSize}px;height:${Math.round(svgSize*1.25)}px;overflow:visible">
+            ${renderTeam(team, formation, null, [], svgSize, Math.round(svgSize * 1.0))}
           </div>`
         })()
           : `<div style="display:flex;align-items:center;justify-content:center;height:100%;opacity:.4;flex-direction:column;gap:8px">
@@ -484,7 +484,7 @@ export async function renderDeckSelect(container, ctx, matchMode) {
       const svg = container.querySelector('.deck-preview-wrap svg')
       if (!svg) return
       svg.removeAttribute('width'); svg.removeAttribute('height')
-      svg.style.cssText = 'width:100%;height:100%;display:block;max-width:none;margin:0'
+      svg.style.cssText = 'width:100%;height:auto;display:block;max-width:none;margin:0;overflow:visible'
       svg.setAttribute('preserveAspectRatio', 'xMidYMid meet')
     })()
 
@@ -660,7 +660,7 @@ export function buildTeamSVG(team, formation, phase, selectedIds, W=310, H=310, 
     }
   }
 
-  const PAD = 80  // espace extra pour les cartes hautes (template PNG) + icône stade
+  const PAD = Math.round(Math.max(CW * 0.7, 80))  // PAD proportionnel à la taille des cartes
   return `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="${-PAD} ${-PAD} ${W+PAD*2} ${H+PAD*2}" width="100%" style="display:block;width:100%;margin:0 auto">
     ${svg}
   </svg>`

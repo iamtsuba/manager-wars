@@ -423,8 +423,8 @@ export async function renderDeckSelect(container, ctx, matchMode) {
           const isPC = window.innerWidth >= 900
           const availH = window.innerHeight - 220  // header + nav + boutons (plus compact)
           const availW = window.innerWidth - (isPC ? 260 : 8)  // colonne droite sur PC
-          const svgSize = isPC ? Math.min(availW, Math.round(availH * 0.9)) : Math.min(availW * 0.98, availH * 1.2)
-          return `<div class="deck-preview-wrap" style="width:${svgSize}px;height:${Math.round(svgSize*1.25)}px;overflow:visible">
+          const svgSize = isPC ? Math.min(availW, Math.round(availH * 0.9)) : Math.min(availW * 0.98, availH * 1.5)
+          return `<div class="deck-preview-wrap" style="width:${svgSize}px;height:${Math.round(svgSize*1.25)}px;overflow:visible;${isPC?"margin-top:50px":""}">
             ${renderTeam(team, formation, null, [], svgSize, Math.round(svgSize * 1.0))}
           </div>`
         })()
@@ -490,15 +490,8 @@ export async function renderDeckSelect(container, ctx, matchMode) {
       // margin-top : 50px fixe sur PC, dynamique sur mobile
       const wrap = container.querySelector('.deck-preview-wrap')
       if (wrap) {
-        if (window.innerWidth >= 900) {
-          wrap.style.marginTop = '50px'
-        } else {
-          const headerEl = container.querySelector('#deck-select-screen > div:nth-child(1)')
-          const navEl    = container.querySelector('#deck-select-screen > div:nth-child(2)')
-          const stadEl   = container.querySelector('#deck-select-screen > div:nth-child(3)')
-          const topH = (headerEl?.offsetHeight||0) + (navEl?.offsetHeight||0) + (stadEl?.offsetHeight||0)
-          if (topH > 0) wrap.style.marginTop = topH + 'px'
-        }
+        // margin-top sur le wrapper directement
+        wrap.style.setProperty('margin-top', window.innerWidth >= 900 ? '50px' : '0px', 'important')
       }
     })()
 

@@ -391,86 +391,52 @@ export async function renderDeckSelect(container, ctx, matchMode) {
     container.style.height = '100%'
     container.style.overflow = 'hidden'
     container.innerHTML = `
-    <div id="deck-select-screen" style="display:flex;flex-direction:${window.innerWidth>=900?'row':'column'};height:100%;overflow:hidden;background:#0a3d1e;color:#fff">
+    <div id="deck-select-screen" style="display:flex;flex-direction:column;height:100%;overflow:hidden;background:#0a3d1e;color:#fff">
 
-      <!-- Header -->
-      <div style="padding:10px 16px;background:rgba(0,0,0,0.4);text-align:center;flex-shrink:0">
-        <div style="font-size:10px;opacity:.6;letter-spacing:2px;text-transform:uppercase">${matchTitleLabel(ctx)}</div>
-        <div style="font-size:17px;font-weight:900;margin-top:2px">Choisis ton deck</div>
-      </div>
-
-      <!-- Navigation deck -->
-      <div style="display:flex;align-items:center;gap:8px;padding:8px;flex-shrink:0">
-        <button id="prev-deck" style="width:46px;height:46px;border-radius:50%;background:rgba(255,255,255,${currentIdx===0?'0.05':'0.15'});border:2px solid rgba(255,255,255,${currentIdx===0?'0.1':'0.3'});color:${currentIdx===0?'rgba(255,255,255,0.2)':'#fff'};font-size:20px;cursor:${currentIdx===0?'default':'pointer'};flex-shrink:0">◀</button>
-        <div style="flex:1;text-align:center">
-          <div style="font-size:19px;font-weight:900">${deck.name}</div>
-          <div style="font-size:11px;opacity:.6;margin-top:2px">${formation} · ${starters.length}/11 ${deck.is_active?'· ⭐ Actif':''}</div>
+      <!-- Header : titre + nav deck + stade (flex-shrink:0) -->
+      <div id="deck-top-bar" style="flex-shrink:0">
+        <div style="padding:8px 16px;background:rgba(0,0,0,0.4);text-align:center">
+          <div style="font-size:10px;opacity:.6;letter-spacing:2px;text-transform:uppercase">${matchTitleLabel(ctx)}</div>
+          <div style="font-size:16px;font-weight:900">Choisis ton deck</div>
         </div>
-        <button id="next-deck" style="width:46px;height:46px;border-radius:50%;background:rgba(255,255,255,${currentIdx===decks.length-1?'0.05':'0.15'});border:2px solid rgba(255,255,255,${currentIdx===decks.length-1?'0.1':'0.3'});color:${currentIdx===decks.length-1?'rgba(255,255,255,0.2)':'#fff'};font-size:20px;cursor:${currentIdx===decks.length-1?'default':'pointer'};flex-shrink:0">▶</button>
+        <div style="display:flex;align-items:center;gap:8px;padding:6px 8px">
+          <button id="prev-deck" style="width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,${currentIdx===0?'0.05':'0.15'});border:2px solid rgba(255,255,255,${currentIdx===0?'0.1':'0.3'});color:${currentIdx===0?'rgba(255,255,255,0.2)':'#fff'};font-size:18px;cursor:${currentIdx===0?'default':'pointer'};flex-shrink:0">◀</button>
+          <div style="flex:1;text-align:center">
+            <div style="font-size:17px;font-weight:900">${deck.name}</div>
+            <div style="font-size:11px;opacity:.6">${formation} · ${starters.length}/11${deck.is_active?' · ⭐':''}</div>
+          </div>
+          <button id="next-deck" style="width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,${currentIdx===decks.length-1?'0.05':'0.15'});border:2px solid rgba(255,255,255,${currentIdx===decks.length-1?'0.1':'0.3'});color:${currentIdx===decks.length-1?'rgba(255,255,255,0.2)':'#fff'};font-size:18px;cursor:${currentIdx===decks.length-1?'default':'pointer'};flex-shrink:0">▶</button>
+        </div>
+        ${stadiumDef ? `
+        <div style="display:flex;align-items:center;gap:8px;padding:5px 14px;background:linear-gradient(90deg,rgba(232,119,34,0.3),transparent);border-top:1px solid rgba(232,119,34,0.3)">
+          <span>🏟️</span>
+          <span style="font-size:12px;font-weight:700">${stadiumDef.name}</span>
+          <span style="font-size:11px;color:#FFD700;margin-left:auto">+10 aux joueurs ${stadiumDef.club?.encoded_name||stadiumDef.country_code||''}</span>
+        </div>` : ''}
       </div>
 
-      <!-- Bandeau stade si présent -->
-      ${stadiumDef ? `
-      <div style="display:flex;align-items:center;gap:8px;padding:6px 14px;background:linear-gradient(90deg,rgba(232,119,34,0.3),rgba(196,90,0,0.2));border-top:1px solid rgba(232,119,34,0.4);flex-shrink:0">
-        <span style="font-size:16px">🏟️</span>
-        <div style="flex:1;font-size:12px;font-weight:700;color:rgba(255,255,255,0.9)">${stadiumDef.name}</div>
-        <div style="font-size:11px;font-weight:900;color:#FFD700">+10 aux joueurs ${stadiumDef.club?.encoded_name || stadiumDef.country_code || ''}</div>
-      </div>` : ''}
-
-      <!-- Terrain preview : zone flexible, SVG toujours entièrement visible -->
-      <div id="deck-swipe-zone" style="flex:1;min-height:0;overflow:visible;position:relative;touch-action:pan-y;display:flex;align-items:flex-start;justify-content:center;padding:0">
-        ${team ? `<div class="deck-preview-wrap" style="width:100%;height:100%;overflow:visible">
-            ${renderTeam(team, formation, null, [], 300, 300)}
-          </div>`
-          : `<div style="display:flex;align-items:center;justify-content:center;height:100%;opacity:.4;flex-direction:column;gap:8px">
-              <div style="font-size:32px">⚠️</div>
-              <div>Deck incomplet (${starters.length}/11)</div>
+      <!-- Terrain : prend tout l'espace restant -->
+      <div id="deck-swipe-zone" style="flex:1;min-height:0;overflow:visible;position:relative;touch-action:pan-y;display:flex;align-items:center;justify-content:center">
+        ${team
+          ? `<div class="deck-preview-wrap" style="overflow:visible">
+               ${renderTeam(team, formation, null, [], 300, 300)}
              </div>`
+          : `<div style="opacity:.4;text-align:center"><div style="font-size:32px">⚠️</div><div>Deck incomplet (${starters.length}/11)</div></div>`
         }
       </div>
 
-      <!-- Indicateurs pagination -->
-      ${decks.length > 1 ? `
-      <div style="display:flex;justify-content:center;gap:6px;padding:4px;flex-shrink:0">
-        ${decks.map((_,i)=>`<div style="width:7px;height:7px;border-radius:50%;background:${i===currentIdx?'#FFD700':'rgba(255,255,255,0.25)'}"></div>`).join('')}
-      </div>` : ''}
+      <!-- Pagination -->
+      ${decks.length > 1 ? `<div style="display:flex;justify-content:center;gap:6px;padding:4px;flex-shrink:0">${decks.map((_,i)=>`<div style="width:6px;height:6px;border-radius:50%;background:${i===currentIdx?'#FFD700':'rgba(255,255,255,0.25)'}"></div>`).join('')}</div>` : ''}
 
-      <!-- Boutons : en bas sur mobile, colonne droite sur PC -->
-      ${window.innerWidth < 900 ? `
-      <div style="padding:10px 14px 16px;flex-shrink:0;display:flex;flex-direction:column;gap:8px;background:rgba(0,0,0,0.2)">
-        <button id="validate-deck" style="width:100%;padding:15px;border-radius:12px;border:none;
+      <!-- Boutons bas -->
+      <div id="deck-bottom-bar" style="flex-shrink:0;padding:10px 14px 14px;display:flex;flex-direction:column;gap:8px;background:rgba(0,0,0,0.2)">
+        <button id="validate-deck" style="width:100%;padding:14px;border-radius:12px;border:none;
           background:${complete?'#1A6B3C':'rgba(255,255,255,0.08)'};
           color:${complete?'#fff':'rgba(255,255,255,0.3)'};font-size:16px;font-weight:900;cursor:${complete?'pointer':'default'}">
           ${complete?'✅ Valider ce deck':'⚠️ Deck incomplet'}
         </button>
-        <button id="cancel-deck-select" style="width:100%;padding:11px;border-radius:12px;border:1px solid rgba(255,255,255,0.2);background:transparent;color:rgba(255,255,255,.5);font-size:14px;cursor:pointer">
-          Annuler
-        </button>
-      </div>` : `
-      <!-- Colonne droite PC -->
-      <div style="width:240px;flex-shrink:0;background:rgba(0,0,0,0.3);display:flex;flex-direction:column;gap:16px;padding:24px 16px;border-left:1px solid rgba(255,255,255,0.08)">
-        <div>
-          <div style="font-size:11px;opacity:.5;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Deck</div>
-          <div style="font-size:20px;font-weight:900">${deck.name}</div>
-          <div style="font-size:12px;opacity:.6;margin-top:2px">${formation} · ${starters.length}/11 ${deck.is_active?'· ⭐ Actif':''}</div>
-        </div>
-        ${stadiumDef ? `
-        <div style="padding:10px;background:rgba(232,119,34,0.15);border-radius:8px;border:1px solid rgba(232,119,34,0.3)">
-          <div style="font-size:11px;opacity:.6;margin-bottom:4px">🏟️ Stade</div>
-          <div style="font-size:13px;font-weight:700">${stadiumDef.name}</div>
-          <div style="font-size:11px;color:#FFD700;margin-top:2px">+10 aux joueurs ${stadiumDef.club?.encoded_name||stadiumDef.country_code||''}</div>
-        </div>` : ''}
-        <div style="margin-top:auto;display:flex;flex-direction:column;gap:10px">
-          <button id="validate-deck" style="width:100%;padding:16px;border-radius:12px;border:none;
-            background:${complete?'#1A6B3C':'rgba(255,255,255,0.08)'};
-            color:${complete?'#fff':'rgba(255,255,255,0.3)'};font-size:16px;font-weight:900;cursor:${complete?'pointer':'default'}">
-            ${complete?'✅ Valider ce deck':'⚠️ Deck incomplet'}
-          </button>
-          <button id="cancel-deck-select" style="width:100%;padding:12px;border-radius:12px;border:1px solid rgba(255,255,255,0.2);background:transparent;color:rgba(255,255,255,.5);font-size:14px;cursor:pointer">
-            Annuler
-          </button>
-        </div>
-      </div>`}
+        <button id="cancel-deck-select" style="width:100%;padding:10px;border-radius:12px;border:1px solid rgba(255,255,255,0.2);background:transparent;color:rgba(255,255,255,.5);font-size:14px;cursor:pointer">Annuler</button>
+      </div>
     </div>`
 
     // Retirer le cap max-width:440px du SVG pour qu'il remplisse le wrapper
@@ -478,32 +444,28 @@ export async function renderDeckSelect(container, ctx, matchMode) {
       const svg  = container.querySelector('.deck-preview-wrap svg')
       const wrap = container.querySelector('.deck-preview-wrap')
       const zone = container.querySelector('#deck-swipe-zone')
-      const validateBtn = document.getElementById('validate-deck')
       if (!svg || !wrap || !zone) return
 
-      const isPC = window.innerWidth >= 900
-      const marginTop = isPC ? 50 : 8
+      // Mesurer l'espace réel disponible dans la zone
+      const availH = zone.clientHeight - 8
+      const availW = zone.clientWidth  - 8
 
-      // Hauteur réellement disponible = du haut de la zone jusqu'au bouton Valider
-      const zoneTop = zone.getBoundingClientRect().top
-      const btnTop  = validateBtn ? validateBtn.getBoundingClientRect().top : window.innerHeight - 90
-      const availH  = Math.max(150, btnTop - zoneTop - marginTop - 8)
-      const availW  = zone.clientWidth - (isPC ? 16 : 4)
-
-      // viewBox du SVG donne son ratio naturel (W+2*PAD x H+2*PAD)
+      // Ratio naturel du SVG depuis son viewBox
       const vb = svg.getAttribute('viewBox')?.split(' ').map(Number)
-      const ratio = vb ? vb[3] / vb[2] : 1.1  // height/width
+      const ratio = vb ? vb[3] / vb[2] : 1.1
 
-      // Calculer la taille qui tient dans l'espace SANS dépasser ni en largeur ni en hauteur
+      // Taille max qui tient en largeur ET en hauteur
       let finalW = availW
       let finalH = finalW * ratio
       if (finalH > availH) { finalH = availH; finalW = finalH / ratio }
 
       svg.removeAttribute('width'); svg.removeAttribute('height')
-      svg.style.cssText = `width:${finalW}px;height:${finalH}px;display:block;overflow:visible`
+      svg.style.cssText = `display:block;overflow:visible`
       svg.setAttribute('preserveAspectRatio', 'xMidYMid meet')
+      svg.setAttribute('width', finalW)
+      svg.setAttribute('height', finalH)
 
-      wrap.style.cssText = `width:${finalW}px;height:${finalH}px;overflow:visible;margin:${marginTop}px auto 0`
+      wrap.style.cssText = `width:${finalW}px;height:${finalH}px;overflow:visible`
     })
 
     document.getElementById('prev-deck')?.addEventListener('click', () => {

@@ -18,6 +18,7 @@ import { renderTutorialAdmin   } from './pages/tutorial-admin.js'
 import { renderStadiums        } from './pages/stadiums.js'
 import { renderGCCards }         from './pages/gc-cards.js'
 import { renderRankedSeasons }   from './pages/ranked-seasons.js'
+import { renderSvgEditor }       from './pages/svg-editor.js'
 
 // ── Toast helper ──────────────────────────────────────────
 export function toast(msg, type = 'info') {
@@ -56,6 +57,8 @@ const PAGES = {
   'stadiums':        { title: 'Stades',                fn: renderStadiums },
   'gc-cards':         { title: 'Game Changers',          fn: renderGCCards },
   'ranked-seasons':   { title: 'Saisons Ranked',         fn: renderRankedSeasons },
+  'svg-editor':        { title: '🎨 SVG Editor',           fn: renderSvgEditor },
+  'svg-editor':        { title: '🎨 SVG Editor',           fn: renderSvgEditor },
 }
 
 let currentPage = 'dashboard'

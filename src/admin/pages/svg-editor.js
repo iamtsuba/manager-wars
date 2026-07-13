@@ -1,459 +1,584 @@
 /**
- * svg-editor.js — Éditeur visuel SVG terrain de jeu
+ * svg-editor.js — Éditeur visuel SVG complet
  *
- * Permet d'ajuster en direct sur PC et mobile :
- *   - Positions X/Y de chaque joueur (drag & drop)
- *   - Taille des cartes (CW ratio)
- *   - PAD haut/bas/gauche/droite
- *   - margin-top du wrap
- *   - preserveAspectRatio
- *
- * Génère le code CSS/JS à copier-coller dans match-shared.js
+ * Previews : Choix deck / Match en cours / Équipe adverse / Deck builder
+ * Modes    : Cartes (drag indépendant) / Liens (largeur/opacité)
+ * Viewport : Mobile 375px / PC 1200px
+ * Sauvegarde directe en Supabase (svg_config)
  */
 
-import { supabase } from '../../lib/supabase.js'
-import { FORMATION_POSITIONS } from '../../match/formation-links.js'
-import { renderPlayerCard }    from '../../components/player-card.js'
-import { buildTeamSVG }        from '../../match/match-shared.js'
+import { supabase }                 from '../../lib/supabase.js'
+import { FORMATION_POSITIONS, FORMATION_LINKS, getActiveLinks, linkColor } from '../../match/formation-links.js'
+import { renderPlayerCard }         from '../../components/player-card.js'
+import { getSvgConfig, saveSvgConfig, SVG_DEFAULTS } from '../../lib/svg-config.js'
 
-// ── Valeurs par défaut (synchronisées avec match-shared.js) ──
-const DEFAULTS = {
-  CW_RATIO:    0.18,   // CW = W * CW_RATIO
-  PAD_RATIO:   0.70,   // PAD = max(CW * PAD_RATIO, 80)
-  PAD_MIN:     80,
-  MARGIN_PC:   30,
-  MARGIN_MOB:  10,
-  PRESRV_PC:  'xMidYMid meet',
-  PRESRV_MOB: 'none',
-  MOB_PAD_RATIO: 0.55, // PAD mobile = CW * MOB_PAD_RATIO
+// ── Équipe fictive pour la preview ───────────────────────
+function makeFakeTeam() {
+  const positions = { GK:['GK'], DEF:['DEF','DEF','DEF','DEF'], MIL:['MIL','MIL','MIL'], ATT:['ATT','ATT','ATT'] }
+  const names = { GK:['Neuer'], DEF:['Varane','Ramos','Hernandez','Meunier'], MIL:['Modric','Kante','Pedri'], ATT:['Messi','Ronaldo','Mbappe'] }
+  const team = { GK:[], DEF:[], MIL:[], ATT:[] }
+  Object.entries(positions).forEach(([role, arr]) => {
+    arr.forEach((r, i) => {
+      team[role].push({
+        cardId: `${role}${i}`, name: (names[role]||[])[i] || role,
+        firstname: '', note_g:14, note_d:14, note_m:14, note_a:14,
+        _evolution_bonus:0, job:role, _line:role, _col:i,
+        country_code:'FR', rarity: i===0 ? 'legende' : i===1 ? 'pepite' : 'normal',
+        used:false, boost:0, stadiumBonus: i===0,
+        clubName:'Club', clubLogo:null, face:null,
+      })
+    })
+  })
+  return team
 }
 
+const PAGES_PREVIEW = [
+  { id:'deck-select',  label:'📋 Choix deck' },
+  { id:'match',        label:'⚽ Match en cours' },
+  { id:'opponent',     label:'🔴 Équipe adverse' },
+  { id:'deck-builder', label:'🛠️ Deck builder' },
+]
+
 export async function renderSvgEditor(container) {
-  // Charger une équipe sample depuis la DB
-  const { data: cards } = await supabase
-    .from('deck_cards')
-    .select(`id, position, card_id, is_starter,
-      card:cards(id, card_type, evolution_bonus,
-        player:players(id, firstname, surname_real, country_code, club_id, job, job2,
-          note_g, note_d, note_m, note_a, skin, hair, hair_length, face, rarity,
-          clubs(encoded_name, logo_url)))`)
-    .eq('is_starter', true)
-    .limit(11)
-
-  const starters = (cards || []).filter(dc => dc.card?.player)
-  const sampleFormation = '4-3-3'
-
-  // Construire une team sample
-  const team = { GK: [], DEF: [], MIL: [], ATT: [] }
-  if (starters.length >= 11) {
-    starters.forEach(dc => {
-      const role = dc.position?.replace(/[0-9]/g, '') || 'MIL'
-      if (!team[role]) team[role] = []
-      const p = dc.card.player
-      team[role].push({
-        cardId: dc.card_id,
-        name: p.surname_real || p.firstname,
-        firstname: p.firstname,
-        note_g: (p.note_g || 0) + (dc.card.evolution_bonus || 0),
-        note_d: (p.note_d || 0) + (dc.card.evolution_bonus || 0),
-        note_m: (p.note_m || 0) + (dc.card.evolution_bonus || 0),
-        note_a: (p.note_a || 0) + (dc.card.evolution_bonus || 0),
-        _evolution_bonus: 0,
-        job: p.job, job2: p.job2,
-        _line: role, _col: 0,
-        country_code: p.country_code,
-        club_id: p.club_id,
-        rarity: p.rarity,
-        clubName: p.clubs?.encoded_name,
-        clubLogo: p.clubs?.logo_url,
-        face: p.face,
-        used: false, boost: 0, stadiumBonus: false,
-      })
-    })
-  } else {
-    // Équipe fictive si pas assez de joueurs
-    const roles = ['GK','DEF','DEF','DEF','DEF','MIL','MIL','MIL','ATT','ATT','ATT']
-    roles.forEach((role, i) => {
-      if (!team[role]) team[role] = []
-      team[role].push({
-        cardId: `fake-${i}`, name: role, firstname: '',
-        note_g:10, note_d:10, note_m:10, note_a:10, _evolution_bonus:0,
-        job: role, _line: role, _col: i,
-        country_code: 'FR', rarity: 'normal',
-        used: false, boost: 0, stadiumBonus: false,
-      })
-    })
-  }
-
-  // State de l'éditeur
+  const cfg = await getSvgConfig()
   const state = {
-    formation:    sampleFormation,
-    viewport:     'mobile',   // 'mobile' | 'pc'
-    CW_RATIO:     DEFAULTS.CW_RATIO,
-    PAD_RATIO:    DEFAULTS.PAD_RATIO,
-    PAD_MIN:      DEFAULTS.PAD_MIN,
-    MARGIN_PC:    DEFAULTS.MARGIN_PC,
-    MARGIN_MOB:   DEFAULTS.MARGIN_MOB,
-    MOB_PAD_RATIO: DEFAULTS.MOB_PAD_RATIO,
-    // Overrides de positions par formation
-    posOverrides: {},  // { formation: { pos: { x, y } } }
-    team,
+    cfg: { ...cfg },
+    viewport:    'mobile',
+    page:        'deck-select',
+    editMode:    'cards',    // 'cards' | 'links'
+    formation:   '4-3-3',
+    team:        makeFakeTeam(),
+    dragging:    null,       // { pos, startX, startY, origX, origY }
+    saved:       false,
   }
 
   container.innerHTML = `
-  <div style="display:flex;flex-direction:column;height:100%;background:#0a1a0f;color:#fff;font-family:monospace;overflow:hidden">
+  <div id="sve" style="display:flex;flex-direction:column;height:100%;background:#060d07;color:#fff;overflow:hidden;font-family:system-ui,sans-serif">
 
-    <!-- Toolbar -->
-    <div style="flex-shrink:0;background:#0d2a12;border-bottom:1px solid rgba(255,255,255,0.1);padding:8px 12px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-      <span style="font-weight:900;color:#D4A017;font-size:14px">🎨 SVG Editor</span>
+    <!-- ── Toolbar ── -->
+    <div style="flex-shrink:0;background:#0d1f0e;border-bottom:1px solid rgba(255,255,255,0.1);padding:8px 12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+      <span style="font-weight:900;color:#D4A017;font-size:15px">🎨 SVG Editor</span>
 
-      <!-- Viewport switch -->
-      <div style="display:flex;background:rgba(0,0,0,0.3);border-radius:8px;overflow:hidden">
-        <button id="vp-mobile" style="padding:5px 12px;border:none;background:#1A6B3C;color:#fff;font-size:12px;cursor:pointer;font-weight:700">📱 Mobile</button>
-        <button id="vp-pc"     style="padding:5px 12px;border:none;background:transparent;color:rgba(255,255,255,0.5);font-size:12px;cursor:pointer">🖥️ PC</button>
+      <!-- Pages -->
+      <div style="display:flex;background:rgba(0,0,0,0.4);border-radius:8px;overflow:hidden;flex-wrap:wrap">
+        ${PAGES_PREVIEW.map(p => `
+        <button class="pg-btn" data-pg="${p.id}" style="padding:5px 10px;border:none;background:${p.id===state.page?'#1A6B3C':'transparent'};color:${p.id===state.page?'#fff':'rgba(255,255,255,0.5)'};font-size:11px;cursor:pointer;white-space:nowrap">${p.label}</button>`).join('')}
+      </div>
+
+      <!-- Viewport -->
+      <div style="display:flex;background:rgba(0,0,0,0.4);border-radius:8px;overflow:hidden">
+        <button id="vp-mob" style="padding:5px 12px;border:none;background:#1A6B3C;color:#fff;font-size:11px;cursor:pointer;font-weight:700">📱 Mobile</button>
+        <button id="vp-pc"  style="padding:5px 12px;border:none;background:transparent;color:rgba(255,255,255,0.5);font-size:11px;cursor:pointer">🖥️ PC</button>
+      </div>
+
+      <!-- Mode édition -->
+      <div style="display:flex;background:rgba(0,0,0,0.4);border-radius:8px;overflow:hidden">
+        <button id="mode-cards" style="padding:5px 12px;border:none;background:#7a28b8;color:#fff;font-size:11px;cursor:pointer;font-weight:700">🃏 Cartes</button>
+        <button id="mode-links" style="padding:5px 12px;border:none;background:transparent;color:rgba(255,255,255,0.5);font-size:11px;cursor:pointer">🔗 Liens</button>
       </div>
 
       <!-- Formation -->
-      <select id="ed-formation" style="padding:4px 8px;border-radius:6px;background:#1a3a1a;border:1px solid rgba(255,255,255,0.2);color:#fff;font-size:12px">
-        ${Object.keys(FORMATION_POSITIONS).map(f =>
-          `<option value="${f}" ${f===sampleFormation?'selected':''}>${f}</option>`
-        ).join('')}
+      <select id="ed-form" style="padding:4px 8px;border-radius:6px;background:#1a3a1a;border:1px solid rgba(255,255,255,0.2);color:#fff;font-size:11px">
+        ${Object.keys(FORMATION_POSITIONS).map(f => `<option value="${f}" ${f===state.formation?'selected':''}>${f}</option>`).join('')}
       </select>
 
-      <button id="gen-code" style="padding:5px 14px;border:none;border-radius:6px;background:#D4A017;color:#111;font-size:12px;font-weight:900;cursor:pointer">⚙️ Générer le code</button>
-      <button id="reset-vals" style="padding:5px 10px;border:1px solid rgba(255,255,255,0.2);border-radius:6px;background:transparent;color:rgba(255,255,255,0.6);font-size:11px;cursor:pointer">↺ Reset</button>
+      <!-- Actions -->
+      <div style="margin-left:auto;display:flex;gap:6px">
+        <button id="reset-btn" style="padding:5px 10px;border:1px solid rgba(255,255,255,0.2);border-radius:6px;background:transparent;color:rgba(255,255,255,0.6);font-size:11px;cursor:pointer">↺ Reset</button>
+        <button id="save-btn" style="padding:5px 14px;border:none;border-radius:6px;background:#1A6B3C;color:#fff;font-size:11px;font-weight:900;cursor:pointer">💾 Sauvegarder</button>
+      </div>
     </div>
 
-    <!-- Main : preview + controls -->
+    <!-- ── Main ── -->
     <div style="flex:1;min-height:0;display:flex;gap:0;overflow:hidden">
 
-      <!-- Preview SVG -->
-      <div id="preview-wrap" style="flex:1;min-width:0;display:flex;align-items:center;justify-content:center;background:#0a3d1e;overflow:hidden;position:relative">
-        <div id="preview-inner" style="position:relative;border:2px solid rgba(255,255,255,0.15);border-radius:8px;overflow:visible">
-          <div id="svg-mount" style="overflow:visible"></div>
-          <!-- Overlays drag cliquables -->
-          <div id="drag-layer" style="position:absolute;inset:0;pointer-events:none"></div>
+      <!-- Preview -->
+      <div id="preview-area" style="flex:1;min-width:0;background:#0a1f0c;overflow:auto;display:flex;align-items:flex-start;justify-content:center;padding:16px;position:relative">
+        <div id="preview-frame" style="position:relative;border:1px solid rgba(255,255,255,0.15);border-radius:8px;overflow:visible;background:#0a3d1e">
+          <div id="preview-label" style="position:absolute;top:-20px;left:0;font-size:10px;color:rgba(255,255,255,0.4);letter-spacing:1px">MOBILE — 375px</div>
+          <div id="preview-content" style="overflow:visible"></div>
+          <div id="card-drag-layer" style="position:absolute;inset:0;pointer-events:none;overflow:visible"></div>
         </div>
-        <div id="viewport-label" style="position:absolute;top:8px;left:50%;transform:translateX(-50%);font-size:10px;color:rgba(255,255,255,0.4);letter-spacing:1px">MOBILE — 375px</div>
       </div>
 
-      <!-- Contrôles -->
-      <div style="width:260px;flex-shrink:0;background:#0d2a12;border-left:1px solid rgba(255,255,255,0.08);overflow-y:auto;padding:12px">
+      <!-- Panneau contrôles -->
+      <div style="width:240px;flex-shrink:0;background:#0d1f0e;border-left:1px solid rgba(255,255,255,0.08);overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:0">
 
-        <div style="font-size:10px;color:rgba(255,255,255,0.4);letter-spacing:2px;text-transform:uppercase;margin-bottom:12px">Paramètres</div>
-
-        <!-- CW Ratio -->
-        ${slider('CW_RATIO', 'Taille cartes (CW = W × ratio)', 0.08, 0.30, 0.01, state.CW_RATIO)}
-        <!-- PAD Ratio -->
-        ${slider('PAD_RATIO', 'PAD normal (CW × ratio)', 0.20, 1.50, 0.05, state.PAD_RATIO)}
-        <!-- PAD Min -->
-        ${slider('PAD_MIN', 'PAD minimum (px)', 20, 120, 5, state.PAD_MIN)}
-        <!-- Mobile PAD Ratio -->
-        ${slider('MOB_PAD_RATIO', 'PAD mobile (CW × ratio)', 0.10, 1.00, 0.05, state.MOB_PAD_RATIO)}
-        <!-- Margin PC -->
-        ${slider('MARGIN_PC', 'Margin-top PC (px)', 0, 80, 2, state.MARGIN_PC)}
-        <!-- Margin Mobile -->
-        ${slider('MARGIN_MOB', 'Margin-top Mobile (px)', 0, 80, 2, state.MARGIN_MOB)}
-
-        <div style="margin-top:16px;border-top:1px solid rgba(255,255,255,0.1);padding-top:12px">
-          <div style="font-size:10px;color:rgba(255,255,255,0.4);letter-spacing:2px;text-transform:uppercase;margin-bottom:8px">Positions joueurs</div>
-          <div style="font-size:10px;color:rgba(255,255,255,0.6);margin-bottom:8px">Glisse les cartes dans le SVG pour les repositionner</div>
-          <button id="reset-pos" style="width:100%;padding:6px;border:1px solid rgba(255,100,100,0.4);border-radius:6px;background:transparent;color:rgba(255,150,150,0.8);font-size:11px;cursor:pointer">↺ Réinitialiser les positions</button>
+        <!-- Cartes -->
+        <div id="panel-cards">
+          <div style="font-size:10px;color:#D4A017;letter-spacing:2px;text-transform:uppercase;margin-bottom:10px">🃏 Cartes</div>
+          ${mkSlider('cw_ratio',       'Taille (CW = W × ratio)', 0.08, 0.30, 0.01)}
+          ${mkSlider('card_offset_pc', 'Offset PC (px)',           0,    60,   1)}
+          ${mkSlider('card_offset_mob','Offset Mobile (px)',       0,    60,   1)}
+          ${mkSlider('margin_pc',      'Margin-top PC (px)',       0,    80,   1)}
+          ${mkSlider('margin_mob',     'Margin-top Mobile (px)',   0,    80,   1)}
         </div>
 
-        <!-- Valeurs courantes -->
-        <div style="margin-top:16px;border-top:1px solid rgba(255,255,255,0.1);padding-top:12px">
-          <div style="font-size:10px;color:rgba(255,255,255,0.4);letter-spacing:2px;text-transform:uppercase;margin-bottom:8px">Valeurs calculées</div>
-          <div id="calc-vals" style="font-size:10px;color:#4fc3f7;line-height:1.8"></div>
+        <!-- Liens -->
+        <div id="panel-links" style="display:none">
+          <div style="font-size:10px;color:#D4A017;letter-spacing:2px;text-transform:uppercase;margin-bottom:10px">🔗 Liens</div>
+          ${mkSlider('link_width_green', 'Épaisseur lien vert',   0.5, 6, 0.5)}
+          ${mkSlider('link_width_yellow','Épaisseur lien jaune',  0.5, 6, 0.5)}
+          ${mkSlider('link_width_red',   'Épaisseur lien rouge',  0.5, 6, 0.5)}
+          ${mkSlider('link_opacity',     'Opacité liens',         0.1, 1, 0.05)}
+          ${mkSlider('pad_ratio',        'PAD normal (CW × ratio)',   0.20, 1.50, 0.05)}
+          ${mkSlider('mob_pad_ratio',    'PAD mobile (CW × ratio)',   0.10, 1.00, 0.05)}
+          ${mkSlider('pad_min',          'PAD minimum (px)',           20,   150,  5)}
         </div>
 
+        <!-- Positions reset -->
+        <div style="margin-top:12px;border-top:1px solid rgba(255,255,255,0.08);padding-top:12px">
+          <div style="font-size:10px;color:rgba(255,255,255,0.4);margin-bottom:8px">Positions joueurs</div>
+          <div style="font-size:10px;color:rgba(255,255,255,0.55);margin-bottom:6px">Glisse les ronds dorés pour repositionner les joueurs indépendamment des liens.</div>
+          <button id="reset-pos-btn" style="width:100%;padding:6px;border:1px solid rgba(255,100,100,0.3);border-radius:6px;background:transparent;color:rgba(255,130,130,0.7);font-size:11px;cursor:pointer">↺ Reset positions (${state.formation})</button>
+        </div>
+
+        <!-- Valeurs calculées -->
+        <div style="margin-top:12px;border-top:1px solid rgba(255,255,255,0.08);padding-top:12px">
+          <div style="font-size:10px;color:rgba(255,255,255,0.4);margin-bottom:6px">Valeurs calculées</div>
+          <div id="calc-vals" style="font-size:10px;color:#4fc3f7;line-height:1.9"></div>
+        </div>
+
+        <!-- Status save -->
+        <div id="save-status" style="margin-top:auto;padding-top:12px;font-size:11px;text-align:center;color:rgba(255,255,255,0.4)"></div>
       </div>
     </div>
-
-    <!-- Code généré -->
-    <div id="code-panel" style="display:none;flex-shrink:0;max-height:220px;background:#000;border-top:2px solid #D4A017;padding:12px;overflow-y:auto">
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
-        <span style="font-size:12px;color:#D4A017;font-weight:700">Code à copier dans match-shared.js</span>
-        <button id="copy-code" style="padding:3px 10px;border:1px solid #D4A017;border-radius:4px;background:transparent;color:#D4A017;font-size:11px;cursor:pointer">📋 Copier</button>
-        <button id="close-code" style="margin-left:auto;padding:3px 8px;border:none;background:rgba(255,255,255,0.1);color:#fff;border-radius:4px;cursor:pointer">✕</button>
-      </div>
-      <pre id="code-content" style="font-size:11px;color:#a8ff78;margin:0;white-space:pre-wrap"></pre>
-    </div>
-
   </div>`
 
-  // ── Init ────────────────────────────────────────────────
+  // Init sliders avec les valeurs actuelles
+  syncSlidersFromCfg(container, state.cfg)
   render(container, state)
-  bindControls(container, state)
+  bindAll(container, state)
 }
 
-// ── Slider helper ────────────────────────────────────────
-function slider(key, label, min, max, step, val) {
-  return `
-  <div style="margin-bottom:12px">
+// ── Slider helper ─────────────────────────────────────────
+function mkSlider(key, label, min, max, step) {
+  return `<div style="margin-bottom:11px">
     <div style="display:flex;justify-content:space-between;margin-bottom:3px">
       <span style="font-size:10px;color:rgba(255,255,255,0.6)">${label}</span>
-      <span id="val-${key}" style="font-size:10px;color:#D4A017;font-weight:700">${val}</span>
+      <span id="vl-${key}" style="font-size:10px;color:#D4A017;font-weight:700">—</span>
     </div>
-    <input type="range" id="sl-${key}" min="${min}" max="${max}" step="${step}" value="${val}"
-      style="width:100%;accent-color:#D4A017">
+    <input type="range" id="sl-${key}" min="${min}" max="${max}" step="${step}" value="0"
+      style="width:100%;accent-color:#D4A017;cursor:pointer">
   </div>`
 }
 
-// ── Rendu principal ──────────────────────────────────────
-function render(container, state) {
-  const isMobile = state.viewport === 'mobile'
-  const viewW    = isMobile ? 375 : 860
-
-  // Dimensions preview
-  const previewInner = container.querySelector('#preview-inner')
-  const svgMount     = container.querySelector('#svg-mount')
-  const dragLayer    = container.querySelector('#drag-layer')
-  const vpLabel      = container.querySelector('#viewport-label')
-  if (!previewInner || !svgMount) return
-
-  // Appliquer la largeur du viewport
-  previewInner.style.width  = viewW + 'px'
-
-  // Calculer les paramètres
-  const W   = viewW - 40
-  const H   = Math.round(W * 1.1)
-  const CW  = Math.max(52, Math.round(W * state.CW_RATIO))
-  const PAD = isMobile
-    ? Math.round(CW * state.MOB_PAD_RATIO)
-    : Math.round(Math.max(CW * state.PAD_RATIO, state.PAD_MIN))
-  const marginTop = isMobile ? state.MARGIN_MOB : state.MARGIN_PC
-
-  // Mettre à jour les valeurs calculées
-  const calcDiv = container.querySelector('#calc-vals')
-  if (calcDiv) calcDiv.innerHTML =
-    `W terrain: ${W}px<br>H terrain: ${H}px<br>CW (carte): ${CW}px<br>CH (carte): ${Math.round(CW * 657/507)}px<br>PAD: ${PAD}px<br>margin-top: ${marginTop}px`
-
-  vpLabel.textContent = isMobile ? `MOBILE — ${viewW}px` : `PC — ${viewW}px`
-
-  // Construire le SVG avec les overrides de positions
-  const formation = state.formation
-  const overrides = state.posOverrides[formation] || {}
-
-  // Patcher FORMATION_POSITIONS temporairement avec les overrides
-  const origPos = FORMATION_POSITIONS[formation] || {}
-  const patchedPos = { ...origPos }
-  Object.entries(overrides).forEach(([pos, {x, y}]) => {
-    patchedPos[pos] = { ...patchedPos[pos], x, y }
+function syncSlidersFromCfg(container, cfg) {
+  const keys = ['cw_ratio','card_offset_pc','card_offset_mob','margin_pc','margin_mob',
+                 'link_width_green','link_width_yellow','link_width_red','link_opacity',
+                 'pad_ratio','mob_pad_ratio','pad_min']
+  keys.forEach(k => {
+    const sl = container.querySelector(`#sl-${k}`)
+    const vl = container.querySelector(`#vl-${k}`)
+    if (sl && cfg[k] !== undefined) { sl.value = cfg[k]; if(vl) vl.textContent = cfg[k] }
   })
+}
 
-  // Sauvegarder et patcher
-  const _orig = FORMATION_POSITIONS[formation]
-  FORMATION_POSITIONS[formation] = patchedPos
+// ── Rendu principal ───────────────────────────────────────
+function render(container, state) {
+  const isMob   = state.viewport === 'mobile'
+  const viewW   = isMob ? 375 : 1100
+  const frame   = container.querySelector('#preview-frame')
+  const content = container.querySelector('#preview-content')
+  const dragL   = container.querySelector('#card-drag-layer')
+  const label   = container.querySelector('#preview-label')
+  const calcDiv = container.querySelector('#calc-vals')
+  if (!frame || !content) return
 
-  const svgHtml = buildTeamSVG(state.team, formation, null, [], W, H, [])
+  frame.style.width = viewW + 'px'
+  label.textContent = isMob ? `MOBILE — ${viewW}px` : `PC — ${viewW}px`
 
-  // Restaurer
-  FORMATION_POSITIONS[formation] = _orig
+  const cfg = state.cfg
+  const W   = viewW - 40
+  const H   = Math.round(W * 1.05)
+  const CW  = Math.max(52, Math.round(W * cfg.cw_ratio))
+  const PAD = isMob
+    ? Math.round(CW * cfg.mob_pad_ratio)
+    : Math.round(Math.max(CW * cfg.pad_ratio, cfg.pad_min))
+  const marginTop = isMob ? cfg.margin_mob : cfg.margin_pc
+  const cardOffset = isMob ? cfg.card_offset_mob : cfg.card_offset_pc
 
-  svgMount.innerHTML = `<div style="margin-top:${marginTop}px;overflow:visible">${svgHtml}</div>`
+  if (calcDiv) calcDiv.innerHTML =
+    `W: ${W}px · H: ${H}px<br>CW (carte): ${CW}px<br>CH (carte): ${Math.round(CW*657/507)}px<br>PAD: ${PAD}px<br>margin-top: ${marginTop}px<br>card-offset: ${cardOffset}px`
 
-  // Ajuster la hauteur preview
-  const svgEl = svgMount.querySelector('svg')
-  if (svgEl) {
-    svgEl.style.width  = '100%'
-    svgEl.style.height = 'auto'
-    svgEl.setAttribute('preserveAspectRatio', isMobile ? 'none' : 'xMidYMid meet')
+  // Patcher les positions avec overrides
+  const overrides = cfg.position_overrides?.[state.formation] || {}
+  const origPos   = FORMATION_POSITIONS[state.formation] || {}
+  const patchedPos = { ...origPos }
+  Object.entries(overrides).forEach(([pos, coords]) => {
+    patchedPos[pos] = { ...origPos[pos], ...coords }
+  })
+  FORMATION_POSITIONS[state.formation] = patchedPos
+
+  // Construire le SVG
+  const svgHtml = buildCustomSVG(state.team, state.formation, W, H, CW, PAD, cfg)
+
+  FORMATION_POSITIONS[state.formation] = origPos
+
+  // Rendu de la page choisie
+  content.innerHTML = renderPagePreview(state, svgHtml, marginTop, viewW, cfg)
+  frame.style.minHeight = (H + marginTop + 100) + 'px'
+
+  // Overlays drag cartes
+  buildDragOverlays(container, state, W, H, CW, PAD, marginTop, patchedPos)
+}
+
+// ── SVG custom (cartes + liens séparés) ───────────────────
+function buildCustomSVG(team, formation, W, H, CW, PAD, cfg) {
+  const CH      = Math.round(CW * 657 / 507)
+  const FPOS    = FORMATION_POSITIONS[formation] || {}
+  const FLINKS  = getActiveLinks(formation) || FORMATION_LINKS[formation] || []
+
+  const vbX = -PAD, vbY = -PAD, vbW = W + PAD*2, vbH = H + PAD*2
+
+  let linksSvg = ''
+  let cardsSvg = ''
+
+  // ── Liens ──────────────────────────────────────────────
+  for (const [posA, posB] of FLINKS) {
+    const pA = FPOS[posA], pB = FPOS[posB]
+    if (!pA || !pB) continue
+    const x1 = pA.x * W, y1 = pA.y * H
+    const x2 = pB.x * W, y2 = pB.y * H
+
+    // Couleur basée sur les joueurs réels
+    const roleA = posA.replace(/[0-9]/g,'')
+    const roleB = posB.replace(/[0-9]/g,'')
+    const pAp = (team[roleA]||[])[0]
+    const pBp = (team[roleB]||[])[0]
+    const lc  = pAp && pBp ? linkColor(pAp, pBp) : '#FFD700'
+
+    const lw = lc === '#00ff88' ? cfg.link_width_green
+             : lc === '#FFD700' ? cfg.link_width_yellow
+             : cfg.link_width_red
+    const op = cfg.link_opacity
+
+    linksSvg += `<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}"
+      stroke="${lc}" stroke-width="${lw}" opacity="${op}" stroke-linecap="round"/>`
   }
 
-  previewInner.style.height = (H + marginTop + 20) + 'px'
+  // ── Cartes ─────────────────────────────────────────────
+  const slots = {}
+  const LINES = ['ATT','MIL','DEF','GK']
+  for (const role of LINES) {
+    ;(team[role]||[]).forEach((p,i) => { slots[`${role}${i+1}`] = p })
+  }
 
-  // ── Drag layer : overlays sur chaque joueur ──────────────
-  dragLayer.innerHTML = ''
-  dragLayer.style.pointerEvents = 'auto'
+  for (const [pos, p] of Object.entries(slots)) {
+    const coord = FPOS[pos]
+    if (!coord || !p) continue
+    const role = pos.replace(/[0-9]/g,'')
+    const fx = Math.round(coord.x * W - CW/2)
+    const fy = Math.round(coord.y * H - CH/2)
+    const cardHtml = renderPlayerCard(
+      { ...p, _evolution_bonus: 0 },
+      { width: CW, showStad: !!p.stadiumBonus, role, extraNote: 0, _cardOffset: 0 }
+    )
+    cardsSvg += `<foreignObject x="${fx}" y="${fy - 26}" width="${CW+8}" height="${CH+60}" style="overflow:visible">
+      <div xmlns="http://www.w3.org/1999/xhtml" style="position:relative">${cardHtml}</div>
+    </foreignObject>`
+  }
 
-  const vb   = svgEl?.getAttribute('viewBox')?.split(' ').map(Number)
-  const svgW = vb ? vb[2] : W + PAD * 2
-  const svgH = vb ? vb[3] : H + PAD * 2
+  return `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
+    viewBox="${vbX} ${vbY} ${vbW} ${vbH}"
+    width="100%" style="display:block;overflow:visible">
+    <g id="links-group">${linksSvg}</g>
+    <g id="cards-group">${cardsSvg}</g>
+  </svg>`
+}
 
-  // Créer un overlay draggable pour chaque position
+// ── Preview des différentes pages ─────────────────────────
+function renderPagePreview(state, svgHtml, marginTop, viewW, cfg) {
+  const isMob = state.viewport === 'mobile'
+  const pg    = state.page
+
+  const terrain = `<div style="margin-top:${marginTop}px;overflow:visible">${svgHtml}</div>`
+
+  if (pg === 'deck-select') return `
+    <div style="background:#0a3d1e;color:#fff;width:${viewW}px">
+      <div style="padding:8px 12px;background:rgba(0,0,0,0.4);text-align:center">
+        <div style="font-size:10px;opacity:.5;letter-spacing:2px">MATCH VS IA — EASY</div>
+        <div style="font-size:15px;font-weight:900">Choisis ton deck</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;padding:6px 8px">
+        <div style="width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,0.1);display:flex;align-items:center;justify-content:center;font-size:16px">◀</div>
+        <div style="flex:1;text-align:center">
+          <div style="font-size:16px;font-weight:900">3-5-2 : TEAM OM</div>
+          <div style="font-size:11px;opacity:.6">${state.formation} · 11/11</div>
+        </div>
+        <div style="width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,0.1);display:flex;align-items:center;justify-content:center;font-size:16px">▶</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;padding:5px 14px;background:linear-gradient(90deg,rgba(232,119,34,0.3),transparent)">
+        <span>🏟️</span><span style="font-size:12px;font-weight:700">Stade de Marseille</span>
+        <span style="font-size:11px;color:#FFD700;margin-left:auto">+10 aux joueurs OM</span>
+      </div>
+      <div style="overflow:visible">${terrain}</div>
+      <div style="padding:10px 14px 14px;display:flex;flex-direction:column;gap:8px;background:rgba(0,0,0,0.2);margin-top:8px">
+        <div style="width:100%;padding:14px;border-radius:12px;background:#1A6B3C;color:#fff;font-size:15px;font-weight:900;text-align:center">✅ Valider ce deck</div>
+        <div style="width:100%;padding:10px;border-radius:12px;border:1px solid rgba(255,255,255,0.2);color:rgba(255,255,255,0.5);font-size:13px;text-align:center">Annuler</div>
+      </div>
+    </div>`
+
+  if (pg === 'match') return `
+    <div style="background:#0a3d1e;color:#fff;width:${viewW}px">
+      <div style="padding:8px 12px;background:rgba(0,0,0,0.5);display:flex;align-items:center;gap:8px">
+        <div style="width:30px;height:30px;border-radius:50%;background:#c0392b;display:flex;align-items:center;justify-content:center;font-size:12px">✕</div>
+        <div style="flex:1;text-align:center;font-size:13px;font-weight:900">LEGENDARY TEAM <span style="color:#D4A017">2</span> — <span style="color:#D4A017">1</span> IA EASY</div>
+        <div style="width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,0.1);display:flex;align-items:center;justify-content:center;font-size:14px">👁️</div>
+      </div>
+      <div style="overflow:visible">${terrain}</div>
+      <div style="padding:8px 10px;background:rgba(0,0,0,0.3);border-top:1px solid rgba(255,255,255,0.08)">
+        <div style="display:flex;gap:6px">
+          <div style="flex:1;padding:10px;border-radius:8px;background:rgba(255,255,255,0.06);font-size:11px;text-align:center">GC 1</div>
+          <div style="flex:1;padding:10px;border-radius:8px;background:rgba(122,40,184,0.3);font-size:11px;text-align:center">GC 2</div>
+          <div style="flex:1;padding:10px;border-radius:8px;background:rgba(255,255,255,0.06);font-size:11px;text-align:center">+1</div>
+          <div style="flex:1;padding:10px;border-radius:8px;background:rgba(255,255,255,0.06);font-size:11px;text-align:center">IN/OUT</div>
+        </div>
+      </div>
+      <div style="margin:8px;padding:14px;border-radius:12px;background:#D4A017;color:#111;font-size:15px;font-weight:900;text-align:center">⚔️ ATTAQUEZ</div>
+    </div>`
+
+  if (pg === 'opponent') return `
+    <div style="background:#0a3d1e;color:#fff;width:${viewW}px;text-align:center;padding-top:12px">
+      <div style="font-size:10px;opacity:.5;letter-spacing:2px">ÉQUIPE ADVERSE</div>
+      <div style="font-size:20px;font-weight:900;color:#e03030;margin:4px 0 8px">IA (EASY)</div>
+      <div style="display:flex;align-items:center;gap:8px;padding:5px 14px;background:linear-gradient(90deg,rgba(232,119,34,0.3),transparent);margin-bottom:4px;text-align:left">
+        <span>🏟️</span><span style="font-size:12px;font-weight:700">DOGUES OLYMPIC Stadium</span>
+        <span style="font-size:11px;color:#FFD700;margin-left:auto">+10 DOGUES OLYMPIC</span>
+      </div>
+      ${terrain}
+      <div style="padding:16px;font-size:12px;opacity:0.5;font-style:italic">Chargement...</div>
+    </div>`
+
+  if (pg === 'deck-builder') return `
+    <div style="background:#0a3d1e;color:#fff;width:${viewW}px">
+      <div style="display:flex;align-items:center;gap:8px;padding:6px 12px;background:rgba(0,0,0,0.4)">
+        <div style="font-size:18px;cursor:pointer;opacity:0.7">←</div>
+        <div style="flex:1"><div style="font-size:14px;font-weight:900">Mon Deck</div><div style="font-size:11px;opacity:0.6">11/11 · 3/5 rempl.</div></div>
+        <div style="padding:6px 12px;border-radius:8px;background:#1A6B3C;font-size:12px;font-weight:700">💾 Sauvegarder</div>
+      </div>
+      <div style="overflow:visible">${terrain}</div>
+      <div style="padding:8px 10px;background:rgba(0,0,0,0.35);border-top:1px solid rgba(255,255,255,0.08)">
+        <div style="display:flex;gap:8px;align-items:center">
+          <div style="flex:1">
+            <div style="font-size:9px;opacity:0.5;letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">Remplaçants (3/5)</div>
+            <div style="display:flex;gap:4px">
+              ${[1,2,3].map(() => `<div style="width:34px;height:44px;background:rgba(255,255,255,0.06);border-radius:5px;border:1px solid rgba(255,255,255,0.1)"></div>`).join('')}
+              <div style="width:34px;height:44px;border:2px dashed rgba(255,255,255,0.3);border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:16px;color:rgba(255,255,255,0.4)">+</div>
+            </div>
+          </div>
+          <div style="text-align:center"><div style="font-size:9px;opacity:0.5;margin-bottom:4px">🏟️</div><div style="width:44px;height:56px;border:2px dashed rgba(255,165,0,0.4);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:18px">🏟️</div></div>
+          <div style="text-align:center"><div style="font-size:9px;opacity:0.5;margin-bottom:4px">⚽</div><div style="width:50px;height:56px;border-radius:6px;background:#1a3a6b;border:2px solid #555;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:900">${state.formation}</div></div>
+        </div>
+      </div>
+    </div>`
+
+  return `<div>${terrain}</div>`
+}
+
+// ── Overlays drag pour les cartes ─────────────────────────
+function buildDragOverlays(container, state, W, H, CW, PAD, marginTop, patchedPos) {
+  const dragL  = container.querySelector('#card-drag-layer')
+  const frame  = container.querySelector('#preview-frame')
+  if (!dragL || !frame) return
+
+  if (state.editMode !== 'cards') { dragL.innerHTML = ''; dragL.style.pointerEvents = 'none'; return }
+  dragL.innerHTML = ''
+  dragL.style.pointerEvents = 'auto'
+
+  const frameW  = frame.clientWidth  || (state.viewport==='mobile' ? 375 : 1100)
+  const frameH  = frame.clientHeight || H + marginTop + 200
+
+  // Décalage du terrain dans la frame (centré horizontalement, margin-top verticalement)
+  const terrainOffX = (frameW - (W + PAD*2)) / 2  // le SVG est width:100% donc 0 ici
+  const terrainOffY = marginTop
+
+  // Ratio SVG viewBox → pixels display
+  const svgEl  = frame.querySelector('svg')
+  const vb     = svgEl?.getAttribute('viewBox')?.split(' ').map(Number)
+  const svgVbW = vb ? vb[2] : W + PAD*2
+  const svgVbH = vb ? vb[3] : H + PAD*2
+  const dispW  = svgEl?.clientWidth  || frameW
+  const dispH  = svgEl?.clientHeight || H
+  const scaleX = dispW / svgVbW
+  const scaleY = dispH / svgVbH
+
+  const formation = state.formation
+  const origPos   = FORMATION_POSITIONS[formation] || {}
+
   Object.entries(patchedPos).forEach(([pos, coord]) => {
-    const role = pos.replace(/[0-9]/g, '')
+    const role = pos.replace(/[0-9]/g,'')
     if (!state.team[role]?.length) return
 
-    // Convertir coordonnées SVG → pixels display
-    const displayW = previewInner.clientWidth || viewW
-    const displayH = previewInner.clientHeight || H + marginTop + 20
-    const scaleX = displayW / svgW
-    const scaleY = (displayH - marginTop) / svgH
-
-    const px = (coord.x * W + PAD) * scaleX
-    const py = (coord.y * H + PAD) * scaleY + marginTop
+    // Position en pixels dans le display (SVG space → display space)
+    const svgX = (coord.x * W + PAD) * scaleX
+    const svgY = (coord.y * H + PAD) * scaleY + terrainOffY
 
     const dot = document.createElement('div')
     dot.dataset.pos = pos
-    dot.title = pos
     dot.style.cssText = `
       position:absolute;
-      left:${px - 10}px;top:${py - 10}px;
-      width:20px;height:20px;
+      left:${svgX - 12}px;top:${svgY - 12}px;
+      width:24px;height:24px;
       border-radius:50%;
-      border:2px solid #D4A017;
-      background:rgba(212,160,23,0.3);
-      cursor:grab;
-      z-index:10;
+      border:2.5px solid #D4A017;
+      background:rgba(212,160,23,0.35);
+      cursor:grab;z-index:20;
       display:flex;align-items:center;justify-content:center;
-      font-size:7px;color:#D4A017;font-weight:700;
-      user-select:none`
-    dot.textContent = pos.slice(0, 3)
-    dragLayer.appendChild(dot)
+      font-size:7px;color:#D4A017;font-weight:900;
+      user-select:none;touch-action:none;
+      box-shadow:0 0 8px rgba(212,160,23,0.5)`
+    dot.textContent = pos.slice(0,4)
+    dragL.appendChild(dot)
 
-    // Drag & drop
-    let dragging = false, startX, startY, startLeft, startTop
+    let dragging = false, sX, sY, sL, sT
 
-    dot.addEventListener('mousedown', e => {
-      dragging = true
-      startX = e.clientX; startY = e.clientY
-      startLeft = parseFloat(dot.style.left)
-      startTop  = parseFloat(dot.style.top)
-      dot.style.cursor = 'grabbing'
+    const onDown = e => {
       e.preventDefault()
-    })
-
-    document.addEventListener('mousemove', e => {
-      if (!dragging || dot.dataset.pos !== pos) return
-      const dx = e.clientX - startX
-      const dy = e.clientY - startY
-      dot.style.left = (startLeft + dx) + 'px'
-      dot.style.top  = (startTop  + dy) + 'px'
-    })
-
-    document.addEventListener('mouseup', e => {
-      if (!dragging || dot.dataset.pos !== pos) return
+      dragging = true
+      const pt = e.touches ? e.touches[0] : e
+      sX = pt.clientX; sY = pt.clientY
+      sL = parseFloat(dot.style.left); sT = parseFloat(dot.style.top)
+      dot.style.cursor = 'grabbing'
+      dot.style.zIndex = '30'
+      dot.style.background = 'rgba(212,160,23,0.7)'
+    }
+    const onMove = e => {
+      if (!dragging) return
+      e.preventDefault()
+      const pt = e.touches ? e.touches[0] : e
+      dot.style.left = (sL + pt.clientX - sX) + 'px'
+      dot.style.top  = (sT + pt.clientY - sY) + 'px'
+    }
+    const onUp = e => {
+      if (!dragging) return
       dragging = false
       dot.style.cursor = 'grab'
+      dot.style.zIndex = '20'
+      dot.style.background = 'rgba(212,160,23,0.35)'
 
-      // Convertir pixels finaux → coordonnées normalisées SVG
-      const newPx = parseFloat(dot.style.left) + 10
-      const newPy = parseFloat(dot.style.top)  + 10 - marginTop
-      const newX  = Math.max(0, Math.min(1, (newPx / scaleX - PAD) / W))
-      const newY  = Math.max(0, Math.min(1, (newPy / scaleY - PAD) / H))
+      // Convertir pixels finaux → coords normalisées
+      const newPxX = parseFloat(dot.style.left) + 12
+      const newPxY = parseFloat(dot.style.top)  + 12 - terrainOffY
+      const newX = Math.max(0.01, Math.min(0.99, (newPxX / scaleX - PAD) / W))
+      const newY = Math.max(0.01, Math.min(0.99, (newPxY / scaleY - PAD) / H))
 
-      if (!state.posOverrides[formation]) state.posOverrides[formation] = {}
-      state.posOverrides[formation][pos] = {
-        x: +newX.toFixed(3),
-        y: +newY.toFixed(3),
-        ...((origPos[pos]?.link) ? { link: origPos[pos].link } : {})
+      if (!state.cfg.position_overrides) state.cfg.position_overrides = {}
+      if (!state.cfg.position_overrides[formation]) state.cfg.position_overrides[formation] = {}
+      state.cfg.position_overrides[formation][pos] = {
+        x: +newX.toFixed(4), y: +newY.toFixed(4)
       }
 
-      // Re-render sans recréer les overlays (juste le SVG)
       render(container, state)
-    })
+    }
+
+    dot.addEventListener('mousedown',  onDown)
+    dot.addEventListener('touchstart', onDown, { passive: false })
+    document.addEventListener('mousemove', onMove)
+    document.addEventListener('touchmove', onMove, { passive: false })
+    document.addEventListener('mouseup',   onUp)
+    document.addEventListener('touchend',  onUp)
   })
 }
 
-// ── Listeners contrôles ──────────────────────────────────
-function bindControls(container, state) {
+// ── Listeners ─────────────────────────────────────────────
+function bindAll(container, state) {
 
-  // Sliders
-  ;['CW_RATIO','PAD_RATIO','PAD_MIN','MOB_PAD_RATIO','MARGIN_PC','MARGIN_MOB'].forEach(key => {
-    const sl = container.querySelector(`#sl-${key}`)
-    const vl = container.querySelector(`#val-${key}`)
-    sl?.addEventListener('input', () => {
-      state[key] = parseFloat(sl.value)
-      vl.textContent = sl.value
+  // Pages
+  container.querySelectorAll('.pg-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      state.page = btn.dataset.pg
+      container.querySelectorAll('.pg-btn').forEach(b => {
+        b.style.background = b.dataset.pg === state.page ? '#1A6B3C' : 'transparent'
+        b.style.color      = b.dataset.pg === state.page ? '#fff' : 'rgba(255,255,255,0.5)'
+      })
       render(container, state)
     })
   })
 
-  // Viewport switch
-  container.querySelector('#vp-mobile')?.addEventListener('click', () => {
-    state.viewport = 'mobile'
-    container.querySelector('#vp-mobile').style.background = '#1A6B3C'
-    container.querySelector('#vp-mobile').style.color = '#fff'
-    container.querySelector('#vp-pc').style.background = 'transparent'
-    container.querySelector('#vp-pc').style.color = 'rgba(255,255,255,0.5)'
+  // Viewport
+  const activateVP = (vp) => {
+    state.viewport = vp
+    const mob = container.querySelector('#vp-mob')
+    const pc  = container.querySelector('#vp-pc')
+    mob.style.background = vp==='mobile' ? '#1A6B3C' : 'transparent'
+    mob.style.color      = vp==='mobile' ? '#fff' : 'rgba(255,255,255,0.5)'
+    pc.style.background  = vp==='pc'     ? '#1A6B3C' : 'transparent'
+    pc.style.color       = vp==='pc'     ? '#fff' : 'rgba(255,255,255,0.5)'
     render(container, state)
-  })
-  container.querySelector('#vp-pc')?.addEventListener('click', () => {
-    state.viewport = 'pc'
-    container.querySelector('#vp-pc').style.background = '#1A6B3C'
-    container.querySelector('#vp-pc').style.color = '#fff'
-    container.querySelector('#vp-mobile').style.background = 'transparent'
-    container.querySelector('#vp-mobile').style.color = 'rgba(255,255,255,0.5)'
+  }
+  container.querySelector('#vp-mob')?.addEventListener('click', () => activateVP('mobile'))
+  container.querySelector('#vp-pc') ?.addEventListener('click', () => activateVP('pc'))
+
+  // Mode édition
+  const activateMode = (mode) => {
+    state.editMode = mode
+    const mc = container.querySelector('#mode-cards')
+    const ml = container.querySelector('#mode-links')
+    const pc = container.querySelector('#panel-cards')
+    const pl = container.querySelector('#panel-links')
+    mc.style.background = mode==='cards' ? '#7a28b8' : 'transparent'
+    mc.style.color      = mode==='cards' ? '#fff' : 'rgba(255,255,255,0.5)'
+    ml.style.background = mode==='links' ? '#7a28b8' : 'transparent'
+    ml.style.color      = mode==='links' ? '#fff' : 'rgba(255,255,255,0.5)'
+    pc.style.display    = mode==='cards' ? 'block' : 'none'
+    pl.style.display    = mode==='links' ? 'block' : 'none'
+    render(container, state)
+  }
+  container.querySelector('#mode-cards')?.addEventListener('click', () => activateMode('cards'))
+  container.querySelector('#mode-links')?.addEventListener('click', () => activateMode('links'))
+
+  // Formation
+  container.querySelector('#ed-form')?.addEventListener('change', e => {
+    state.formation = e.target.value
+    const resetBtn = container.querySelector('#reset-pos-btn')
+    if (resetBtn) resetBtn.textContent = `↺ Reset positions (${state.formation})`
     render(container, state)
   })
 
-  // Formation
-  container.querySelector('#ed-formation')?.addEventListener('change', e => {
-    state.formation = e.target.value
-    render(container, state)
+  // Sliders
+  const sliderKeys = ['cw_ratio','card_offset_pc','card_offset_mob','margin_pc','margin_mob',
+                       'link_width_green','link_width_yellow','link_width_red','link_opacity',
+                       'pad_ratio','mob_pad_ratio','pad_min']
+  sliderKeys.forEach(k => {
+    const sl = container.querySelector(`#sl-${k}`)
+    const vl = container.querySelector(`#vl-${k}`)
+    if (sl) sl.addEventListener('input', () => {
+      state.cfg[k] = parseFloat(sl.value)
+      if (vl) vl.textContent = sl.value
+      render(container, state)
+    })
   })
 
   // Reset positions
-  container.querySelector('#reset-pos')?.addEventListener('click', () => {
-    delete state.posOverrides[state.formation]
+  container.querySelector('#reset-pos-btn')?.addEventListener('click', () => {
+    if (state.cfg.position_overrides) delete state.cfg.position_overrides[state.formation]
     render(container, state)
   })
 
   // Reset tout
-  container.querySelector('#reset-vals')?.addEventListener('click', () => {
-    Object.assign(state, { ...DEFAULTS })
-    state.posOverrides = {}
-    ;['CW_RATIO','PAD_RATIO','PAD_MIN','MOB_PAD_RATIO','MARGIN_PC','MARGIN_MOB'].forEach(key => {
-      const sl = container.querySelector(`#sl-${key}`)
-      const vl = container.querySelector(`#val-${key}`)
-      if (sl) sl.value = DEFAULTS[key]
-      if (vl) vl.textContent = DEFAULTS[key]
-    })
+  container.querySelector('#reset-btn')?.addEventListener('click', () => {
+    Object.assign(state.cfg, { ...SVG_DEFAULTS, position_overrides: {} })
+    syncSlidersFromCfg(container, state.cfg)
     render(container, state)
   })
 
-  // Générer le code
-  container.querySelector('#gen-code')?.addEventListener('click', () => {
-    const code = generateCode(state)
-    container.querySelector('#code-content').textContent = code
-    container.querySelector('#code-panel').style.display = 'block'
+  // Sauvegarder
+  container.querySelector('#save-btn')?.addEventListener('click', async () => {
+    const saveBtn = container.querySelector('#save-btn')
+    const status  = container.querySelector('#save-status')
+    saveBtn.disabled = true
+    saveBtn.textContent = '⏳ Sauvegarde...'
+    const ok = await saveSvgConfig(state.cfg)
+    saveBtn.disabled = false
+    saveBtn.textContent = '💾 Sauvegarder'
+    if (ok) {
+      status.textContent = '✅ Sauvegardé !'
+      status.style.color = '#22c55e'
+    } else {
+      status.textContent = '❌ Erreur Supabase'
+      status.style.color = '#e03030'
+    }
+    setTimeout(() => { status.textContent = '' }, 3000)
   })
-
-  container.querySelector('#close-code')?.addEventListener('click', () => {
-    container.querySelector('#code-panel').style.display = 'none'
-  })
-
-  container.querySelector('#copy-code')?.addEventListener('click', () => {
-    const text = container.querySelector('#code-content').textContent
-    navigator.clipboard.writeText(text).then(() => {
-      const btn = container.querySelector('#copy-code')
-      btn.textContent = '✅ Copié !'
-      setTimeout(() => btn.textContent = '📋 Copier', 2000)
-    })
-  })
-}
-
-// ── Génération du code ───────────────────────────────────
-function generateCode(state) {
-  const overrideEntries = Object.entries(state.posOverrides)
-  const posCode = overrideEntries.length
-    ? overrideEntries.map(([formation, positions]) =>
-        `  // ${formation}\n` +
-        Object.entries(positions).map(([pos, {x,y}]) =>
-          `  FORMATION_POSITIONS['${formation}']['${pos}'] = { ...FORMATION_POSITIONS['${formation}']['${pos}'], x:${x}, y:${y} }`
-        ).join('\n')
-      ).join('\n')
-    : '  // Aucun override de position'
-
-  return `// ── Paramètres SVG (générés par SVG Editor) ──────────────
-// À coller dans buildTeamSVG() dans match-shared.js
-
-// Taille des cartes
-const CW = Math.max(52, Math.round(W * ${state.CW_RATIO}))
-
-// PAD
-const isPC_ctx = typeof window !== 'undefined' && window.innerWidth >= 900
-const PAD = padOverride !== null ? padOverride
-  : isPC_ctx
-    ? Math.round(Math.max(CW * ${state.PAD_RATIO}, ${state.PAD_MIN}))
-    : Math.round(CW * ${state.MOB_PAD_RATIO})
-
-// Dans fixDeckSVG / fixDeckField :
-const marginTop = isPC ? ${state.MARGIN_PC} : ${state.MARGIN_MOB}
-
-// Overrides de positions (à coller dans formation-links.js ou au début de buildTeamSVG)
-${posCode}
-`
 }

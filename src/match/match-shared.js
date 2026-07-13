@@ -577,16 +577,6 @@ function applyPositionOverrides(formation) {
 }
 
 // Applique les overrides de position depuis svg_config sur FORMATION_POSITIONS
-function applyPositionOverrides(formation) {
-  const cfg = getSvgConfigSync()
-  const overrides = cfg.position_overrides?.[formation]
-  if (!overrides) return
-  const orig = FORMATION_POSITIONS[formation]
-  if (!orig) return
-  Object.entries(overrides).forEach(([pos, coords]) => {
-    if (orig[pos]) orig[pos] = { ...orig[pos], ...coords }
-  })
-}
 
 export function buildTeamSVG(team, formation, phase, selectedIds, W=310, H=310, extraSelectableIds=[], padOverride=null) {
   applyPositionOverrides(formation)

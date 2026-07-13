@@ -158,8 +158,8 @@ async function openDeckBuilder(deckId, container, ctx) {
   const { data: cards } = await supabase
     .from('cards')
     .select(`id, card_type, formation, stadium_id, evolution_bonus,
-      player:players(id, firstname, surname_encoded, country_code, club_id, job, job2,
-        note_g, note_d, note_m, note_a, rarity, skin, hair, hair_length,
+      player:players(id, firstname, surname_encoded, surname_real, country_code, club_id, job, job2,
+        note_g, note_d, note_m, note_a, rarity, skin, hair, hair_length, face,
         clubs(encoded_name, logo_url)),
       stadium_def:stadium_definitions(id, name, club_id, country_code, image_url,
         club:clubs(encoded_name, logo_url))`)
@@ -326,7 +326,7 @@ function renderBuilder(container, builder, ctx) {
       const cardId = builder.slots[pos]
       if (!cardId) return
       const card = builder.playerCards?.find(c => c.id === cardId)
-      if (!card?.player) return
+      if (!card?.player) { console.warn('[deck builder] card not found:', cardId, 'playerCards:', builder.playerCards?.length); return }
       const role = pos.replace(/[0-9]/g, '')
       if (!team[role]) team[role] = []
       const p = playerFromCard(card, role)

@@ -58,7 +58,6 @@ const PAGES = {
   'gc-cards':         { title: 'Game Changers',          fn: renderGCCards },
   'ranked-seasons':   { title: 'Saisons Ranked',         fn: renderRankedSeasons },
   'svg-editor':        { title: '🎨 SVG Editor',           fn: renderSvgEditor },
-  'svg-editor':        { title: '🎨 SVG Editor',           fn: renderSvgEditor },
 }
 
 let currentPage = 'dashboard'

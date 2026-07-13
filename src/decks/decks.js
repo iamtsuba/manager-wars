@@ -323,8 +323,10 @@ function renderBuilder(container, builder, ctx) {
     // Construire l'équipe depuis les slots du builder
     const team = { GK: [], DEF: [], MIL: [], ATT: [] }
     positions.forEach(pos => {
-      const card = builder.slots[pos]
-      if (!card) return
+      const cardId = builder.slots[pos]
+      if (!cardId) return
+      const card = builder.playerCards?.find(c => c.id === cardId)
+      if (!card?.player) return
       const role = pos.replace(/[0-9]/g, '')
       if (!team[role]) team[role] = []
       const p = playerFromCard(card, role)

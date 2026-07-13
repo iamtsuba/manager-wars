@@ -158,7 +158,7 @@ async function openDeckBuilder(deckId, container, ctx) {
   const { data: cards } = await supabase
     .from('cards')
     .select(`id, card_type, formation, stadium_id, evolution_bonus,
-      player:players(id, firstname, surname_encoded, surname_real, country_code, club_id, job, job2,
+      player:players(id, firstname, surname_encoded, country_code, club_id, job, job2,
         note_g, note_d, note_m, note_a, rarity, skin, hair, hair_length, face,
         clubs(encoded_name, logo_url)),
       stadium_def:stadium_definitions(id, name, club_id, country_code, image_url,

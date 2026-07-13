@@ -78,7 +78,7 @@ export function playerFromCard(card, position) {
     position: position || null,
     id: p.id,
     firstname: p.firstname,
-    name: p.surname_real,
+    name: p.surname_real || p.surname_encoded || p.firstname || '?',
     country_code: p.country_code,
     club_id: p.club_id,
     job: p.job, job2: p.job2,

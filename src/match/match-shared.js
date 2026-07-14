@@ -1,5 +1,4 @@
 import { supabase } from '../lib/supabase.js'
-import { getSvgConfigSync } from '../lib/svg-config.js'
 import { renderPlayerCard } from '../components/player-card.js'
 import {
   GC_DEFS, getNoteForRole, calcAttack, calcDefense,
@@ -79,7 +78,7 @@ export function playerFromCard(card, position) {
     position: position || null,
     id: p.id,
     firstname: p.firstname,
-    name: p.surname_real || p.surname_encoded || p.firstname || '?',
+    name: p.surname_real,
     country_code: p.country_code,
     club_id: p.club_id,
     job: p.job, job2: p.job2,
@@ -451,9 +450,8 @@ export async function renderDeckSelect(container, ctx, matchMode) {
       const isPC = zone.clientWidth >= 900
       // PC : plafonner la largeur (zone très large) ; Mobile : utiliser toute la largeur
       const availW = isPC ? Math.min(availWraw, Math.round(availH * 0.95)) : availWraw
-      // Config depuis Supabase
-      const _cfg = getSvgConfigSync()
-      const CW = Math.max(52, Math.round(availW * (_cfg.cw_ratio || 0.18)))
+      // Recalculer CW comme dans buildTeamSVG pour connaître la taille des cartes
+      const CW = Math.max(52, Math.round(availW * 0.18))
 
       if (availH < 220 || availW < 220) {
         // Le layout n'est pas encore stable → réessayer au prochain frame
@@ -464,10 +462,9 @@ export async function renderDeckSelect(container, ctx, matchMode) {
       // Générer le SVG avec EXACTEMENT ce ratio (W, H passés à renderTeam)
       // → le viewBox interne colle à la zone, pas de vert vide
       // Mobile : PAD réduit pour que GK touche le bas et ATT touche le haut
-      const mobilePad = isPC ? null : Math.round(CW * (_cfg.mob_pad_ratio || 0.55))
-      const _marginTop = isPC ? (_cfg.margin_pc || 0) : (_cfg.margin_mob || 0)
+      const mobilePad = isPC ? null : Math.round(CW * 0.55)
       wrap.innerHTML = renderTeam(team, formation, null, [], availW, availH, [], mobilePad)
-      wrap.style.cssText = `width:${availW}px;height:${availH}px;overflow:visible;margin:${_marginTop}px auto 0`
+      wrap.style.cssText = `width:${availW}px;height:${availH}px;overflow:visible;margin:${isPC?0:60}px auto 0`
 
       const svg = wrap.querySelector('svg')
       if (svg) {
@@ -564,23 +561,7 @@ export function countryFlag(code) {
   } catch { return '🌍' }
 }
 
-// Applique les overrides de position depuis svg_config
-function applyPositionOverrides(formation) {
-  const cfg = getSvgConfigSync()
-  const overrides = cfg.position_overrides?.[formation]
-  if (!overrides) return
-  const orig = FORMATION_POSITIONS[formation]
-  if (!orig) return
-  Object.entries(overrides).forEach(([pos, coords]) => {
-    if (orig[pos]) orig[pos] = { ...orig[pos], ...coords }
-  })
-}
-
-// Applique les overrides de position depuis svg_config sur FORMATION_POSITIONS
-
 export function buildTeamSVG(team, formation, phase, selectedIds, W=310, H=310, extraSelectableIds=[], padOverride=null) {
-  applyPositionOverrides(formation)
-  applyPositionOverrides(formation)
   const FPOS   = FORMATION_POSITIONS[formation] || {}
   const FLINKS = getActiveLinks(formation) || FORMATION_LINKS[formation] || []
   const R      = 26
@@ -605,18 +586,14 @@ export function buildTeamSVG(team, formation, phase, selectedIds, W=310, H=310, 
     const pA = slots[posA], pB = slots[posB]
     const lc = linkColor(pA, pB)
     const hasGlow = lc === '#00ff88' || lc === '#FFD700'
-    const _lw = lc === '#00ff88' ? (_svgCfg.link_width_green  || 3.5)
-              : lc === '#FFD700' ? (_svgCfg.link_width_yellow || 3.5)
-              :                    (_svgCfg.link_width_red    || 3.5)
-    const _op = _svgCfg.link_opacity || 0.85
     if (hasGlow) {
       svg += `<line x1="${a.x.toFixed(1)}" y1="${a.y.toFixed(1)}" x2="${b.x.toFixed(1)}" y2="${b.y.toFixed(1)}"
-        stroke="${lc}" stroke-width="${_lw * 3}" stroke-linecap="round" opacity="0.22"/>`
+        stroke="${lc}" stroke-width="10" stroke-linecap="round" opacity="0.22"/>`
       svg += `<line x1="${a.x.toFixed(1)}" y1="${a.y.toFixed(1)}" x2="${b.x.toFixed(1)}" y2="${b.y.toFixed(1)}"
-        stroke="${lc}" stroke-width="${_lw}" stroke-linecap="round" opacity="${_op}"/>`
+        stroke="${lc}" stroke-width="3.5" stroke-linecap="round" opacity="0.95"/>`
     } else {
       svg += `<line x1="${a.x.toFixed(1)}" y1="${a.y.toFixed(1)}" x2="${b.x.toFixed(1)}" y2="${b.y.toFixed(1)}"
-        stroke="${lc}" stroke-width="${_lw}" stroke-linecap="round" opacity="${_op * 0.8}"/>`
+        stroke="${lc}" stroke-width="3.5" stroke-linecap="round" opacity="0.7"/>`
     }
   }
 
@@ -670,11 +647,7 @@ export function buildTeamSVG(team, formation, phase, selectedIds, W=310, H=310, 
     }
   }
 
-  const _isMobCtx = typeof window !== 'undefined' && window.innerWidth < 900
-  const PAD = padOverride !== null ? padOverride
-    : _isMobCtx
-      ? Math.round(CW * (_svgCfg.mob_pad_ratio || 0.55))
-      : Math.round(Math.max(CW * (_svgCfg.pad_ratio || 0.70), _svgCfg.pad_min || 80))
+  const PAD = padOverride !== null ? padOverride : Math.round(Math.max(CW * 0.7, 80))
   return `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="${-PAD} ${-PAD} ${W+PAD*2} ${H+PAD*2}" width="100%" style="display:block;width:100%;margin:0 auto">
     ${svg}
   </svg>`

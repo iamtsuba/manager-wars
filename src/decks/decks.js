@@ -155,34 +155,24 @@ async function openDeckBuilder(deckId, container, ctx) {
 
   const { data: deck } = await supabase.from('decks').select('*').eq('id', deckId).single()
 
-  // Séparer les queries pour éviter le 400 sur stadium_def
-  const { data: cards, error: cardsErr } = await supabase
+  const { data: cards } = await supabase
     .from('cards')
     .select(`id, card_type, formation, stadium_id, evolution_bonus,
       player:players(id, firstname, surname_encoded, country_code, club_id, job, job2,
-        note_g, note_d, note_m, note_a, rarity, skin, hair, hair_length, face,
-        clubs(encoded_name, logo_url))`)
+        note_g, note_d, note_m, note_a, rarity, skin, hair, hair_length,
+        clubs(encoded_name, logo_url)),
+      stadium_def:stadium_definitions(id, name, club_id, country_code, image_url,
+        club:clubs(encoded_name, logo_url))`)
     .eq('owner_id', state.profile.id)
-  if (cardsErr) console.error('[deck] cards query error:', cardsErr.message)
-
-  // Charger les stades séparément
-  const stadIds = [...new Set((cards||[]).filter(c=>c.card_type==='stadium'&&c.stadium_id).map(c=>c.stadium_id))]
-  let _stadRaw = []
-  if (stadIds.length) {
-    const { data: sd } = await supabase
-      .from('stadium_definitions')
-      .select('id, name, club_id, country_code, image_url, club:clubs(encoded_name, logo_url)')
-      .in('id', stadIds)
-    _stadRaw = sd || []
-  }
 
   const playerCards    = (cards||[]).filter(c => c.card_type === 'player' && c.player)
   const formationCards = (cards||[]).filter(c => c.card_type === 'formation')
   const stadiumCards   = (cards||[]).filter(c => c.card_type === 'stadium')
 
-  // Construire stadDefMap depuis la query séparée
+  // Construire stadDefMap depuis les cartes déjà jointes
+  const stadIds = [...new Set(stadiumCards.map(c=>c.stadium_id).filter(Boolean))]
   let stadDefMap = {}
-  _stadRaw.forEach(s => { stadDefMap[s.id] = s })
+  stadiumCards.forEach(c => { if (c.stadium_def && c.stadium_id) stadDefMap[c.stadium_id] = c.stadium_def })
   // Compléter si des defs manquent
   if (stadIds.length && Object.keys(stadDefMap).length < stadIds.length) {
     const { data: stadDefs } = await supabase
@@ -336,7 +326,7 @@ function renderBuilder(container, builder, ctx) {
       const cardId = builder.slots[pos]
       if (!cardId) return
       const card = builder.playerCards?.find(c => c.id === cardId)
-      if (!card?.player) { console.warn('[deck builder] card not found:', cardId, 'playerCards:', builder.playerCards?.length); return }
+      if (!card?.player) return
       const role = pos.replace(/[0-9]/g, '')
       if (!team[role]) team[role] = []
       const p = playerFromCard(card, role)

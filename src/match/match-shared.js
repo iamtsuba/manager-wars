@@ -610,6 +610,7 @@ export function buildTeamSVG(team, formation, phase, selectedIds, W=310, H=310, 
     const c = px(pos)
     if (!c || !p) continue
     const role = pos.replace(/[0-9]/g,'')
+    if (p.stadiumBonus) console.log('[buildTeamSVG] stadiumBonus=true sur', p.name, pos)
 
     const isExtraSelectable = extraSelectableIds.includes(p.cardId)
     const selectable = (phase==='attack' && (['MIL','ATT'].includes(role) || isExtraSelectable) && !p.used)

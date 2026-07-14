@@ -621,7 +621,7 @@ export function buildTeamSVG(team, formation, phase, selectedIds, W=310, H=310, 
   // 2. Cartes joueurs : renderPlayerCard via foreignObject
   // Cartes grandes : ~18% de la largeur du terrain
   const CW = typeof window !== "undefined" && window.innerWidth >= 900
-    ? Math.max(80, Math.round(W * 0.22))
+    ? Math.min(Math.max(36, Math.round(W * 0.10)), 52)
     : Math.max(44, Math.round(W * 0.168))
   const CH = Math.round(CW * 657/507)
 

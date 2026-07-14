@@ -119,7 +119,7 @@ export function renderMidfieldDuel(homeMils, aiMils, homeLabel, aiLabel, homeTot
   const renderMilCard = (p, stadDef) => renderPlayerCard(
     { ...p, _evolution_bonus: 0 },
     {
-      width: window.innerWidth >= 900 ? Math.min(150, Math.max(90, Math.round(window.innerWidth * 0.22 / 3))) : 58,
+      width: window.innerWidth >= 900 ? Math.min(200, Math.max(130, Math.round(window.innerWidth * 0.13))) : 58,
       showStad: true,
       stadDef,
       role: 'MIL',
@@ -162,7 +162,7 @@ export function renderMidfieldDuel(homeMils, aiMils, homeLabel, aiLabel, homeTot
 export function renderDuelResult(attPlayers, defPlayers, attTotal, defTotal, attName, defName, attWon) {
   const renderCard = (p) => renderPlayerCard(
     { ...p, _evolution_bonus: 0 },
-    { width: window.innerWidth >= 900 ? Math.min(150, Math.max(90, Math.round(window.innerWidth * 0.22 / 3))) : 58, showStad: true, role: p._line || p.job }
+    { width: window.innerWidth >= 900 ? Math.min(200, Math.max(130, Math.round(window.innerWidth * 0.13))) : 58, showStad: true, role: p._line || p.job }
   )
 
   return `
@@ -405,7 +405,7 @@ export function renderMilRow(mils, label, color, side, stadDef) {
           return `
           <div class="duel-card duel-card-${side}" data-idx="${i}" style="opacity:0;transform:translateY(18px) scale(0.7);transition:opacity .35s ease, transform .35s cubic-bezier(.34,1.56,.64,1);flex-shrink:0">
             ${renderPlayerCard({ ...p, _evolution_bonus: 0 }, {
-              width: window.innerWidth >= 900 ? Math.min(150, Math.max(90, Math.round(window.innerWidth * 0.22 / 3))) : 58,
+              width: window.innerWidth >= 900 ? Math.min(200, Math.max(130, Math.round(window.innerWidth * 0.13))) : 58,
               showStad: true, stadDef, role: 'MIL', extraNote: p.boost||0
             })}
           </div>

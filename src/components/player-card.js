@@ -137,7 +137,7 @@ export function renderPlayerCard(p, opts = {}) {
   const rectR    = ax(6)
 
   return `<div style="position:relative;width:${width}px;height:${height + (stadB>0 ? ax(22) : 0)}px;flex-shrink:0;${opacity}user-select:none;${glowStyle}">
-  ${stadB > 0 ? `<div style="position:absolute;top:${ax(22) - rectH - 2}px;left:0;width:${width}px;text-align:center;z-index:5;font-size:${px(rectH)};line-height:1">🏟️</div>` : ''}
+  ${stadB > 0 ? `<div style="position:absolute;left:${rectLX}px;top:${ax(575)}px;width:${rectH}px;height:${rectH}px;z-index:5;font-size:${px(rectH * 0.85)};line-height:1;display:flex;align-items:center;justify-content:center">🏟️</div>` : ''}
   <div style="position:absolute;top:${opts._cardOffset||0}px;left:0;width:${width}px;height:${height}px">
 
   <img src="${tmpl}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:fill" draggable="false">

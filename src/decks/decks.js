@@ -1,7 +1,6 @@
 import { supabase } from '../lib/supabase.js'
-import { FORMATION_LINKS, FORMATION_POSITIONS, computeLinks, linkColor, getActiveLinks } from '../match/formation-links.js'
 import { renderPlayerCard } from '../components/player-card.js'
-import { renderTeam, playerFromCard } from '../match/match-shared.js'
+import { FORMATION_LINKS, FORMATION_POSITIONS, computeLinks, linkColor, getActiveLinks } from '../match/formation-links.js'
 
 const FORMATIONS = {
   '4-3-3 (3)': { GK:1, DEF:4, MIL:3, ATT:3 },
@@ -41,7 +40,7 @@ function getPortrait(p) {
 
 function flagImgUrl(code) {
   if (!code || code.length < 2) return null
-  return `https://flagcdn.com/24x18/${code.slice(0,2).toLowerCase()}.png`
+  return `https://flagsapi.com/${code.slice(0,2).toUpperCase()}/flat/64.png`
 }
 function getClubLogo(p) {
   const url = import.meta?.env?.VITE_SUPABASE_URL || ''
@@ -56,14 +55,16 @@ function renderMiniCardHTML(p, w=44, h=58) {
   const role     = p?.job || 'MIL'
   const jobColor = JOB_COLORS[role] || '#555'
   const rarityBorder = { normal:'#aaa', pepite:'#D4A017', pépite:'#D4A017', papyte:'#222', legende:'#7a28b8', légende:'#7a28b8' }[p?.rarity] || '#aaa'
-  const evo57 = p?.evolution_bonus || 0
+  const GLOW_C = { legende:'#7a28b8', pepite:'#D4A017', pépite:'#D4A017', papyte:'#909090' }
+  const glowMini = GLOW_C[p?.rarity] ? `filter:drop-shadow(0 0 4px ${GLOW_C[p.rarity]}) drop-shadow(0 0 10px ${GLOW_C[p.rarity]});` : ''
+  const evo57 = p?._evolution_bonus ?? p?.evolution_bonus ?? 0
   const noteBase57 = Number(role==='GK'?p?.note_g:role==='DEF'?p?.note_d:role==='MIL'?p?.note_m:p?.note_a)||0
   const note = noteBase57 + (role===p?.job||role===p?.job2 ? evo57 : 0)
   const nameH = Math.round(h*0.19), botH = Math.round(h*0.25), portH = h-nameH-botH
   if (!p) return `<div style="width:${w}px;height:${h}px;border:2px dashed rgba(255,255,255,0.3);border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:20px;color:rgba(255,255,255,0.3)">+</div>`
-  return `<div style="width:${w}px;height:${h}px;border-radius:5px;border:2px solid ${rarityBorder};background:${jobColor};position:relative;overflow:hidden;flex-shrink:0">
+  return `<div style="width:${w}px;height:${h}px;border-radius:5px;border:2px solid ${rarityBorder};background:${jobColor};position:relative;overflow:hidden;flex-shrink:0;${glowMini}">
     <div style="position:absolute;top:0;left:0;right:0;height:${nameH}px;background:rgba(255,255,255,0.93);display:flex;align-items:center;justify-content:center;z-index:2">
-      <span style="font-size:${Math.max(5,Math.round(w/9))}px;font-weight:900;color:#111;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:${w-4}px">${(p?.surname_encoded||'').slice(0,9)}</span>
+      <span style="font-size:${Math.max(5,Math.round(w/9))}px;font-weight:900;color:#111;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:${w-4}px">${(p?.surname_real||'').slice(0,9)}</span>
     </div>
     ${portrait?`<img src="${portrait}" style="position:absolute;top:${nameH}px;left:0;width:${w}px;height:${portH}px;object-fit:cover;object-position:top center">`:''}
     <div style="position:absolute;bottom:0;left:0;right:0;height:${botH}px;background:rgba(255,255,255,0.93);display:flex;align-items:center;justify-content:space-between;padding:0 3px;z-index:2">
@@ -83,7 +84,7 @@ export async function renderDecks(container, ctx) {
     .eq('owner_id', state.profile.id).order('created_at', { ascending: false })
 
   container.innerHTML = `
-  <div style="height:100%;overflow-y:auto;padding-bottom:80px;background:var(--page-bg)">
+  <div style="height:100%;overflow:hidden;background:var(--page-bg)">
     <div class="page-header">
       <h2>Mes decks</h2>
       <p>${decks?.length || 0} deck(s) · 11 titulaires + 5 remplaçants max</p>
@@ -155,19 +156,26 @@ async function openDeckBuilder(deckId, container, ctx) {
 
   const { data: deck } = await supabase.from('decks').select('*').eq('id', deckId).single()
 
+  // Query séparée pour éviter qu'une erreur stade casse toutes les cartes
   const { data: cards } = await supabase
     .from('cards')
     .select(`id, card_type, formation, stadium_id, evolution_bonus,
-      player:players(id, firstname, surname_encoded, country_code, club_id, job, job2,
-        note_g, note_d, note_m, note_a, rarity, skin, hair, hair_length,
-        clubs(encoded_name, logo_url)),
+      player:players(id, firstname, surname_real, country_code, club_id, job, job2,
+        note_g, note_d, note_m, note_a, rarity, skin, hair, hair_length, face,
+        clubs(encoded_name, logo_url))`)
+    .eq('owner_id', state.profile.id)
+
+  const { data: stadiumCards2 } = await supabase
+    .from('cards')
+    .select(`id, card_type, stadium_id,
       stadium_def:stadium_definitions(id, name, club_id, country_code, image_url,
         club:clubs(encoded_name, logo_url))`)
     .eq('owner_id', state.profile.id)
+    .eq('card_type', 'stadium')
 
   const playerCards    = (cards||[]).filter(c => c.card_type === 'player' && c.player)
   const formationCards = (cards||[]).filter(c => c.card_type === 'formation')
-  const stadiumCards   = (cards||[]).filter(c => c.card_type === 'stadium')
+  const stadiumCards   = (stadiumCards2||[]).filter(c => c.card_type === 'stadium')
 
   // Construire stadDefMap depuis les cartes déjà jointes
   const stadIds = [...new Set(stadiumCards.map(c=>c.stadium_id).filter(Boolean))]
@@ -223,152 +231,190 @@ function renderBuilder(container, builder, ctx) {
     ? builder.availableFormations
     : Object.keys(FORMATIONS) // fallback si aucune carte formation
 
+  // Stade sélectionné pour bonus +10
+  const _selStadCard = builder.stadiumCards?.find(c => c.id === builder.stadiumCardId)
+  const _stadDef = _selStadCard ? (builder.stadDefMap?.[_selStadCard.stadium_id] || null) : null
+
   // Calcul des remplaçants avec données joueurs
   const subPlayers = builder.subs.map(id => builder.playerCards.find(c => c.id === id)).filter(Boolean)
   const allUsed    = [...Object.values(builder.slots), ...builder.subs]
 
-  // Variables pour la barre du bas
-  const _selStadCard = builder.stadiumCards?.find(c => c.id === builder.stadiumCardId) || null
-  const _stadDef = _selStadCard ? (builder.stadDefMap?.[_selStadCard.stadium_id] || null) : null
-
   container.innerHTML = `
-  <div id="deck-builder-screen" style="display:flex;flex-direction:column;height:100%;overflow:hidden;background:#0a3d1e;color:#fff">
-
-    <!-- Header -->
-    <div id="deck-top-bar" style="flex-shrink:0">
-      <div style="display:flex;align-items:center;gap:8px;padding:6px 12px;background:rgba(0,0,0,0.4)">
-        <button id="builder-back" style="background:transparent;border:none;color:#fff;font-size:20px;cursor:pointer;padding:0 4px">←</button>
-        <div style="flex:1">
-          <div style="font-size:15px;font-weight:900">${builder.name}</div>
-          <div style="font-size:11px;opacity:0.6">${filled}/11 · ${builder.subs.length}/5 rempl.</div>
-        </div>
-        <button id="save-deck" ${filled < 11 ? 'disabled' : ''} style="padding:6px 14px;border-radius:8px;border:none;background:${filled<11?'rgba(255,255,255,0.08)':'#1A6B3C'};color:${filled<11?'rgba(255,255,255,0.3)':'#fff'};font-size:12px;font-weight:700;cursor:${filled<11?'default':'pointer'}">
-          ${filled < 11 ? `⚠️ ${11-filled} manquant(s)` : '💾 Enregistrer'}
-        </button>
+  <div style="height:100%;overflow:hidden;background:var(--page-bg)">
+    <div class="page-header" style="display:flex;align-items:center;gap:8px;padding:6px 12px;min-height:0">
+      <button class="btn-icon" id="builder-back" style="font-size:16px">←</button>
+      <div style="flex:1">
+        <h2 style="font-size:14px;margin:0">${builder.name}</h2>
+        <p style="font-size:11px;margin:0">${filled}/11 · ${builder.subs.length}/5 rempl.</p>
       </div>
-      ${_stadDef ? `
-      <div style="display:flex;align-items:center;gap:8px;padding:5px 14px;background:linear-gradient(90deg,rgba(232,119,34,0.3),transparent);border-top:1px solid rgba(232,119,34,0.3)">
-        <span>🏟️</span>
-        <span style="font-size:12px;font-weight:700">${_stadDef.name}</span>
-        <span style="font-size:11px;color:#FFD700;margin-left:auto">+10 aux joueurs ${_stadDef.club?.encoded_name||_stadDef.country_code||''}</span>
-      </div>` : ''}
     </div>
 
-    <!-- Terrain : prend tout l'espace -->
-    <div id="deck-field-zone" style="flex:1;min-height:0;overflow:visible;position:relative;display:flex;align-items:center;justify-content:center">
-      <div class="deck-field-wrap" style="overflow:visible"></div>
-    </div>
 
-    <!-- Barre du bas : remplaçants + stade + formation -->
-    <div id="deck-bottom-bar" style="flex-shrink:0;background:rgba(0,0,0,0.35);border-top:1px solid rgba(255,255,255,0.08);padding:8px 10px">
-      <div style="display:flex;gap:8px;align-items:center">
 
-        <!-- Remplaçants -->
-        <div style="flex:1;min-width:0">
-          <div style="font-size:9px;font-weight:700;color:rgba(255,255,255,0.5);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">Remplaçants (${builder.subs.length}/5)</div>
-          <div style="display:flex;gap:4px;align-items:center;overflow-x:auto;padding-bottom:2px" id="subs-list">
+    <!-- ── LAYOUT PC ─────────────────────────────────────── -->
+    <div class="deck-pc-layout" style="display:none">
+      <div style="display:flex;gap:0;min-height:600px">
+
+        <!-- Remplaçants (colonne gauche) -->
+        <div style="width:105px;flex-shrink:0;background:rgba(0,0,0,0.3);display:flex;flex-direction:column;align-items:center;padding:12px 6px;gap:8px;border-right:1px solid rgba(255,255,255,0.1)">
+
+
+          <!-- Remplaçants PC : colonne verticale -->
+          <div style="font-size:11px;font-weight:700;color:rgba(255,255,255,0.6);letter-spacing:1px;text-transform:uppercase;text-align:center;margin-top:8px">Remplaçants<br>(${builder.subs.length}/5)</div>
+          <div style="display:flex;flex-direction:column;gap:6px;align-items:center" id="subs-list">
             ${subPlayers.map(card => {
               const p = { ...card.player, _evolution_bonus: card.evolution_bonus || 0 }
-              return `<div style="position:relative;flex-shrink:0">
-                ${renderPlayerCard({ ...p }, { width: 44, showStad: true, stadDef: _stadDef })}
-                <button data-remove-sub="${card.id}" style="position:absolute;top:-4px;right:-4px;width:14px;height:14px;background:#c0392b;border:none;border-radius:50%;color:#fff;font-size:9px;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;z-index:10">✕</button>
+              return `<div style="position:relative;flex-shrink:0;overflow:visible">
+                ${renderPlayerCard({ ...p, _evolution_bonus: p._evolution_bonus||0 }, { width: 60, showStad: true, stadDef: _stadDef })}
+                <button data-remove-sub="${card.id}"
+                  style="position:absolute;top:-6px;right:-6px;width:18px;height:18px;background:#c0392b;border:none;border-radius:50%;color:#fff;font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;padding:0;z-index:10">✕</button>
               </div>`
             }).join('')}
-            ${builder.subs.length < 5 ? `<div id="add-sub-btn" style="width:34px;height:44px;border:2px dashed rgba(255,255,255,0.3);border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:16px;color:rgba(255,255,255,0.4);cursor:pointer;flex-shrink:0">+</div>` : ''}
+            ${builder.subs.length < 5 ? `<div id="add-sub-btn" style="width:60px;height:77px;border:2px dashed rgba(255,255,255,0.3);border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:18px;color:rgba(255,255,255,0.4);cursor:pointer">+</div>` : ''}
           </div>
         </div>
 
-        <!-- Stade -->
-        <div style="flex-shrink:0;text-align:center">
-          <div style="font-size:9px;font-weight:700;color:rgba(255,255,255,0.5);text-transform:uppercase;margin-bottom:4px">🏟️</div>
-          <div id="stad-btn" style="cursor:pointer">
-            ${_selStadCard && _stadDef ? `
-            <div style="width:44px;height:56px;border-radius:6px;background:linear-gradient(135deg,#1a3a6b,#0a1a3a);border:2px solid #4fc3f7;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px">
-              ${_stadDef.club?.logo_url ? `<img src="${_stadDef.club.logo_url}" style="width:24px;height:24px;object-fit:contain">` : `<span style="font-size:18px">🏟️</span>`}
-              <span style="font-size:7px;font-weight:700;color:#4fc3f7;text-align:center">${(_stadDef.name||'').slice(0,8)}</span>
-            </div>` : `
-            <div style="width:44px;height:56px;border:2px dashed rgba(255,165,0,0.4);border-radius:6px;display:flex;flex-direction:column;align-items:center;justify-content:center">
-              <span style="font-size:20px">🏟️</span>
-              <span style="font-size:9px;color:rgba(255,255,255,0.4)">+</span>
-            </div>`}
-          </div>
+        <!-- Terrain PC (colonne centrale) -->
+        <div style="flex:1;background:linear-gradient(180deg,#1a6b3c,#0a3d1e);overflow:hidden;height:700px">
+          <div id="deck-field-pc" style="margin-top:50px"></div>
         </div>
 
-        <!-- Formation -->
-        <div style="flex-shrink:0;text-align:center">
-          <div style="font-size:9px;font-weight:700;color:rgba(255,255,255,0.5);text-transform:uppercase;margin-bottom:4px">⚽</div>
-          <div id="formation-btn" style="cursor:pointer;width:50px;height:56px;border-radius:6px;background:#1a3a6b;border:2px solid #555;display:flex;align-items:center;justify-content:center">
-            <span style="font-size:10px;font-weight:900;color:#fff;text-align:center">${builder.formation}</span>
+        <!-- Formation + Stade (colonne droite) -->
+        <div style="width:130px;flex-shrink:0;background:rgba(0,0,0,0.3);display:flex;flex-direction:column;align-items:center;padding:12px 8px;gap:12px;border-left:1px solid rgba(255,255,255,0.1)">
+          <!-- Formation -->
+          <div style="width:100%;text-align:center">
+            <div style="font-size:10px;font-weight:700;color:rgba(255,255,255,0.5);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px">Formation</div>
+            <div id="formation-pc-btn" style="cursor:pointer;width:100px;height:50px;border-radius:8px;background:#1a3a6b;border:2px solid #555;display:flex;align-items:center;justify-content:center;margin:0 auto">
+              <span style="font-size:18px;font-weight:900;color:#fff">${builder.formation}</span>
+            </div>
+          </div>
+          <!-- Stade -->
+          <div style="width:100%;text-align:center">
+            <div style="font-size:10px;font-weight:700;color:rgba(255,255,255,0.5);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px">🏟️ Stade</div>
+            <div id="add-stad-btn-pc" style="cursor:pointer;margin:0 auto;width:fit-content">
+              ${_selStadCard ? (() => {
+                const def = builder.stadDefMap[_selStadCard.stadium_id]
+                const logo = def?.club?.logo_url || null
+                return `<div style="width:100px;height:130px;border-radius:8px;background:linear-gradient(135deg,#1a3a6b,#0a1a3a);border:2px solid #4fc3f7;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px">
+                  ${logo ? `<img src="${logo}" style="width:48px;height:48px;object-fit:contain">` : `<span style="font-size:36px">🏟️</span>`}
+                  <span style="font-size:10px;font-weight:700;color:#E87722;text-align:center;padding:0 4px">${(def?.name||'Stade').slice(0,14)}</span>
+                </div>`
+              })() : `<div style="width:100px;height:130px;border:2px dashed rgba(255,165,0,0.4);border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px">
+                <span style="font-size:36px">🏟️</span>
+                <span style="font-size:10px;color:rgba(255,255,255,0.4)">Ajouter</span>
+              </div>`}
+            </div>
           </div>
         </div>
 
       </div>
     </div>
 
+    <!-- ── LAYOUT MOBILE ─────────────────────────────────── -->
+    <div class="deck-mobile-layout" style="display:none">
+      <!-- Terrain mobile -->
+      <div style="background:linear-gradient(180deg,#1a6b3c,#0a3d1e);overflow:hidden">
+        <div id="deck-field-mobile" style="margin-top:30px"></div>
+      </div>
+
+      <!-- Remplaçants + Stade mobile -->
+      <div style="padding:8px 10px;background:rgba(0,0,0,0.25);border-top:1px solid rgba(255,255,255,0.1)">
+        <div style="display:flex;gap:10px;align-items:flex-start">
+          <!-- Remplaçants mobile -->
+          <div style="flex:1;min-width:0">
+            <div style="font-size:10px;font-weight:700;margin-bottom:6px;color:rgba(255,255,255,0.6);letter-spacing:1px;text-transform:uppercase">Remplaçants (${builder.subs.length}/5)</div>
+            <div style="display:flex;gap:4px;align-items:center;flex-wrap:nowrap;overflow-x:auto" id="subs-list">
+              ${subPlayers.map(card => {
+                const p = { ...card.player, _evolution_bonus: card.evolution_bonus || 0 }
+                return `<div style="position:relative;flex-shrink:0;overflow:visible">
+                  ${renderPlayerCard({ ...p, _evolution_bonus: p._evolution_bonus||0 }, { width: 44, showStad: true, stadDef: _stadDef })}
+                  <button data-remove-sub="${card.id}"
+                    style="position:absolute;top:-5px;right:-5px;width:15px;height:15px;background:#c0392b;border:none;border-radius:50%;color:#fff;font-size:9px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;padding:0;z-index:10">✕</button>
+                </div>`
+              }).join('')}
+              ${builder.subs.length < 5 ? `<div id="add-sub-btn" style="width:28px;height:36px;border:2px dashed rgba(255,255,255,0.3);border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:16px;color:rgba(255,255,255,0.4);cursor:pointer;flex-shrink:0">+</div>` : ''}
+            </div>
+          </div>
+          <!-- Formation mobile -->
+          <div style="flex-shrink:0;text-align:center">
+            <div style="font-size:10px;font-weight:700;margin-bottom:6px;color:rgba(255,255,255,0.6);letter-spacing:1px;text-transform:uppercase">⚽</div>
+            <div id="formation-mobile-btn" style="cursor:pointer;width:50px;height:65px;border-radius:6px;background:#1a3a6b;border:2px solid #555;display:flex;align-items:center;justify-content:center">
+              <span style="font-size:11px;font-weight:900;color:#fff;text-align:center">${builder.formation}</span>
+            </div>
+          </div>
+          <!-- Stade mobile : à droite -->
+          <div style="flex-shrink:0;text-align:center">
+            <div style="font-size:10px;font-weight:700;margin-bottom:6px;color:rgba(255,255,255,0.6);letter-spacing:1px;text-transform:uppercase">🏟️</div>
+            <div id="add-stad-btn" style="cursor:pointer">
+              ${_selStadCard ? (() => {
+                const def = builder.stadDefMap[_selStadCard.stadium_id]
+                const logo = def?.club?.logo_url || null
+                return `<div style="width:50px;height:65px;border-radius:6px;background:linear-gradient(135deg,#1a3a6b,#0a1a3a);border:2px solid #4fc3f7;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px">
+                  ${logo ? `<img src="${logo}" style="width:26px;height:26px;object-fit:contain">` : `<span style="font-size:18px">🏟️</span>`}
+                  <span style="font-size:14px;font-weight:700;color:#E87722;text-align:center;padding:0 2px">${(def?.name||'Stade').slice(0,10)}</span>
+                </div>`
+              })() : `<div style="width:50px;height:65px;border:2px dashed rgba(255,165,0,0.4);border-radius:6px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px">
+                <span style="font-size:18px">🏟️</span>
+                <span style="font-size:8px;color:rgba(255,255,255,0.4)">+</span>
+              </div>`}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sauvegarder -->
+    <div class="page-body" style="padding-bottom:20px">
+      <button class="btn btn-primary" id="save-deck" style="width:100%" ${filled < 11 ? 'disabled' : ''}>
+        ${filled < 11 ? `Placez encore ${11-filled} joueur(s)` : '💾 Enregistrer le deck'}
+      </button>
+    </div>
   </div>`
 
-  // Injecter le terrain avec la même logique que fixDeckSVG du choix du deck
-  requestAnimationFrame(() => requestAnimationFrame(() => {
-    const wrap = container.querySelector('.deck-field-wrap')
-    const zone = container.querySelector('#deck-field-zone')
-    if (!wrap || !zone) return
+  // Activer le bon layout AVANT renderDeckField
+  const isDesktop = window.innerWidth >= 900
+  const pcLayout     = container.querySelector('.deck-pc-layout')
+  const mobileLayout = container.querySelector('.deck-mobile-layout')
+  if (pcLayout)     pcLayout.style.display     = isDesktop ? 'block' : 'none'
+  if (mobileLayout) mobileLayout.style.display = isDesktop ? 'none'  : 'block'
 
-    const availH = Math.max(200, zone.clientHeight - 40)
-    const availWraw = Math.max(200, zone.clientWidth - 16)
-    const isPC = zone.clientWidth >= 900
-    const availW = isPC ? Math.min(availWraw, Math.round(availH * 0.95)) : availWraw
-    const CW = Math.max(52, Math.round(availW * 0.18))
-    const mobilePad = isPC ? null : Math.round(CW * 0.55)
+  renderDeckField(container, builder, positions, ctx)
 
-    // Construire l'équipe depuis les slots du builder
-    const team = { GK: [], DEF: [], MIL: [], ATT: [] }
-    positions.forEach(pos => {
-      const cardId = builder.slots[pos]
-      if (!cardId) return
-      const card = builder.playerCards?.find(c => c.id === cardId)
-      if (!card?.player) return
-      const role = pos.replace(/[0-9]/g, '')
-      if (!team[role]) team[role] = []
-      const p = playerFromCard(card, role)
-      if (_stadDef) {
-        const matchClub    = _stadDef.club_id     && String(p.club_id)     === String(_stadDef.club_id)
-        const matchCountry = _stadDef.country_code && p.country_code        === _stadDef.country_code
-        if (matchClub || matchCountry) p.stadiumBonus = true
-      }
-      team[role].push(p)
-    })
+  container.querySelectorAll('#builder-back').forEach(el => el.addEventListener('click', () => navigate('decks')))
 
-    wrap.innerHTML = renderTeam(team, builder.formation, null, [], availW, availH, [], mobilePad)
-    wrap.style.cssText = `width:${availW}px;height:${availH}px;overflow:visible;margin:${isPC?0:30}px auto 0`
 
-    const svg = wrap.querySelector('svg')
-    if (svg) {
-      svg.style.cssText = 'display:block;width:100%;height:100%'
-      svg.setAttribute('preserveAspectRatio', isPC ? 'xMidYMid meet' : 'none')
-    }
-
-    // Rendre les cartes cliquables pour sélectionner/désélectionner un joueur
-    wrap.querySelectorAll('[data-pos]').forEach(el => {
-      el.style.cursor = 'pointer'
+  // Formation mobile et PC : même modal
+  const openFormationModal = () => {
+    const { openModal, closeModal } = ctx
+    const bodyHtml = `<div style="display:flex;flex-wrap:wrap;gap:8px;padding:8px">
+      ${formationOptions.map(f =>
+        `<div data-forma="${f}" style="cursor:pointer;padding:10px 16px;border-radius:8px;background:${f===builder.formation?'#1A6B3C':'#f0f0f0'};color:${f===builder.formation?'#fff':'#111'};font-weight:900;font-size:16px;border:2px solid ${f===builder.formation?'#1A6B3C':'#ddd'}">${f}</div>`
+      ).join('')}
+    </div>`
+    openModal('⚽ Choisir une formation', bodyHtml)
+    // Attacher les listeners directement sur les éléments rendus
+    document.querySelectorAll('#modal-body [data-forma]').forEach(el => {
       el.addEventListener('click', () => {
-        const pos = el.dataset.pos
-        openSlotSelector(pos, builder, container, ctx)
+        builder.formation = el.dataset.forma
+        // Nettoyer les slots incompatibles avec la nouvelle formation
+        const newPos = buildPositions(builder.formation)
+        const clean = {}
+        newPos.forEach(p => { if (builder.slots[p]) clean[p] = builder.slots[p] })
+        builder.slots = clean
+        closeModal()
+        renderBuilder(container, builder, ctx)
       })
     })
-  }))
+  }
+  container.querySelectorAll('#formation-mobile-btn, #formation-pc-btn').forEach(el => el.addEventListener('click', openFormationModal))
 
-  document.getElementById('builder-back').addEventListener('click', () => navigate('decks'))
-  document.getElementById('save-deck').addEventListener('click', () => saveDeck(builder, ctx))
 
-  // Formation
-  document.getElementById('formation-btn')?.addEventListener('click', () => {
-    openFormationModal(builder, container, ctx)
-  })
 
-  // Stade
-  document.getElementById('stad-btn')?.addEventListener('click', () => {
-    openStadiumSelector(builder, container, ctx)
-  })
+
+  // Stade PC et mobile
+  container.querySelectorAll('#add-stad-btn-pc, #add-stad-btn').forEach(el => el.addEventListener('click', () => openStadiumSelector(builder, container, ctx)))
+
+  container.querySelectorAll('#save-deck').forEach(el => el.addEventListener('click', () => saveDeck(builder, ctx)))
 
   // Retirer un remplaçant
   container.querySelectorAll('[data-remove-sub]').forEach(btn => {
@@ -379,13 +425,12 @@ function renderBuilder(container, builder, ctx) {
   })
 
   // Ajouter un remplaçant
-  document.getElementById('add-sub-btn')?.addEventListener('click', () => {
-    openSubSelector(builder, container, ctx)
-  })
+  container.querySelectorAll('#add-sub-btn').forEach(el => el.addEventListener('click', () => openSubSelector(builder, container, ctx)))
 }
 
 function renderDeckField(container, builder, positions, ctx) {
-  const field = container.querySelector('#deck-field')
+  const isDesktopField = window.innerWidth >= 900
+  const field = container.querySelector(isDesktopField ? '#deck-field-pc' : '#deck-field-mobile')
   if (!field) return
 
   // Calculer le stade sélectionné pour le bonus +10
@@ -395,88 +440,88 @@ function renderDeckField(container, builder, positions, ctx) {
   const FPOS   = FORMATION_POSITIONS[builder.formation] || {}
   const FLINKS = getActiveLinks(builder.formation) || []
 
-  // Slots par position
+  // Slots par position — on attache evolution_bonus au player pour y accéder dans le rendu
   const slots = {}
   for (const pos of positions) {
     const cardId = builder.slots[pos]
     const card   = cardId ? builder.playerCards.find(c => c.id === cardId) : null
-    slots[pos]   = card ? card.player : null
+    if (card?.player) {
+      slots[pos] = { ...card.player, _evolution_bonus: card.evolution_bonus || 0, face: card.player.face || null }
+    } else {
+      slots[pos] = null
+    }
   }
 
-  const W=300, H=300, CW=48, CH=64, NAMEH=13, BOTHH=16, PAD=38
+  // Terrain HTML : cartes positionnées en absolu sur un terrain de 320x320
+  // Taille responsive
+  const isDesktopRDF = window.innerWidth >= 900
+  // PC : terrain dans la colonne droite (largeur - 140px stade)
+  const availW = isDesktopRDF ? window.innerWidth - 280 : window.innerWidth - 20
+  const W      = isDesktopRDF ? Math.min(availW, 860) : availW
+  const H      = isDesktopRDF ? Math.round(W * 0.82)  : Math.round(W * 0.85)
+  const CARD_W = isDesktopRDF ? 84 : 44  // 70 * 1.2 = 84
 
-  function px(pos) {
-    const p = FPOS[pos]; return p ? { x:p.x*W, y:p.y*H } : null
-  }
-
-  let svg = ''
-
-  // 1. Liens
+  // SVG des liens uniquement
+  let linkSvg = ''
   for (const [posA, posB] of FLINKS) {
-    const a = px(posA), b = px(posB); if (!a||!b) continue
-    const pA = slots[posA] ? { ...slots[posA], club_id: slots[posA].club_id, country_code: slots[posA].country_code, rarity: slots[posA].rarity } : null
-    const pB = slots[posB] ? { ...slots[posB], club_id: slots[posB].club_id, country_code: slots[posB].country_code, rarity: slots[posB].rarity } : null
+    const fA = FPOS[posA], fB = FPOS[posB]; if (!fA||!fB) continue
+    const ax = fA.x*W, ay = Math.round(0.03*H + fA.y*0.85*H), bx = fB.x*W, by = Math.round(0.03*H + fB.y*0.85*H)
+    const pA = slots[posA], pB = slots[posB]
     const lc = linkColor(pA, pB)
     const noLink = lc === '#ff3333' || lc === '#cc2222'
     if (!noLink) {
-      svg += `<line x1="${a.x.toFixed(1)}" y1="${a.y.toFixed(1)}" x2="${b.x.toFixed(1)}" y2="${b.y.toFixed(1)}" stroke="${lc}" stroke-width="8" stroke-linecap="round" opacity="0.2"/>`
-      svg += `<line x1="${a.x.toFixed(1)}" y1="${a.y.toFixed(1)}" x2="${b.x.toFixed(1)}" y2="${b.y.toFixed(1)}" stroke="${lc}" stroke-width="2.5" stroke-linecap="round" opacity="0.9"/>`
+      linkSvg += `<line x1="${ax.toFixed(1)}" y1="${ay.toFixed(1)}" x2="${bx.toFixed(1)}" y2="${by.toFixed(1)}" stroke="${lc}" stroke-width="8" stroke-linecap="round" opacity="0.15"/>`
+      linkSvg += `<line x1="${ax.toFixed(1)}" y1="${ay.toFixed(1)}" x2="${bx.toFixed(1)}" y2="${by.toFixed(1)}" stroke="${lc}" stroke-width="2.5" stroke-linecap="round" opacity="0.85"/>`
     } else {
-      svg += `<line x1="${a.x.toFixed(1)}" y1="${a.y.toFixed(1)}" x2="${b.x.toFixed(1)}" y2="${b.y.toFixed(1)}" stroke="${lc}" stroke-width="2.5" stroke-linecap="round" opacity="0.4"/>`
+      linkSvg += `<line x1="${ax.toFixed(1)}" y1="${ay.toFixed(1)}" x2="${bx.toFixed(1)}" y2="${by.toFixed(1)}" stroke="${lc}" stroke-width="2" stroke-linecap="round" opacity="0.35"/>`
     }
   }
 
-  // 2. Cartes joueurs
+  // Cartes HTML
+  let cardsHtml = ''
+  const CARD_H = Math.round(CARD_W * 657/507)
   for (const pos of positions) {
-    const c = px(pos); if (!c) continue
-    const p    = slots[pos]
-    const role = pos.replace(/\d+/,'')
-    const bg   = JOB_COLORS[role] || '#555'
-    const x0   = (c.x - CW/2).toFixed(1)
-    const y0   = (c.y - CH/2).toFixed(1)
-    const rarityBorder = { normal:'#aaa', pepite:'#D4A017', pépite:'#D4A017', papyte:'#222', legende:'#7a28b8', légende:'#7a28b8' }[p?.rarity] || '#aaa'
+    const fp = FPOS[pos]; if (!fp) continue
+    const p = slots[pos]
+    const cx = fp.x * W
+    // Compression Y : remap [0,1] → [0.03, 0.88] pour tout rentrer dans le viewport
+    const cyRaw = fp.y * H
+    const cy = Math.round(0.03 * H + fp.y * (0.85 * H))
+    const left = Math.round(cx - CARD_W/2)
+    const top  = Math.round(cy - CARD_H/2)
 
     if (p) {
-      const portrait = getPortrait(p)
-      const logoUrl  = getClubLogo(p)
-      const flag     = flagImgUrl(p.country_code)
-      const evoSlot = (p.card?.evolution_bonus || p.evolution_bonus || 0)
-      const note0    = (Number(role==='GK'?p.note_g:role==='DEF'?p.note_d:role==='MIL'?p.note_m:p.note_a)||0) + (role===p.job||role===p.job2?evoSlot:0)
-      // Bonus stade : +10 si même club ou même pays
-      const hasBonus = stadDef && (
+      const role = pos.replace(/\d+/, '')
+      const hasStad = stadDef && (
         (stadDef.club_id && String(p.club_id) === String(stadDef.club_id)) ||
         (stadDef.country_code && p.country_code === stadDef.country_code)
       )
-      const note = hasBonus ? note0 + 10 : note0
-      const portH    = CH - NAMEH - BOTHH
-
-      svg += `<defs><clipPath id="dcp-${pos}"><rect x="${x0}" y="${(c.y-CH/2+NAMEH).toFixed(1)}" width="${CW}" height="${portH}"/></clipPath></defs>`
-      svg += `<rect x="${x0}" y="${y0}" width="${CW}" height="${CH}" rx="5" fill="${bg}"/>`
-      if (portrait) svg += `<image href="${portrait}" x="${x0}" y="${(c.y-CH/2+NAMEH).toFixed(1)}" width="${CW}" height="${portH}" clip-path="url(#dcp-${pos})" preserveAspectRatio="xMidYMin slice"/>`
-      svg += `<rect x="${x0}" y="${y0}" width="${CW}" height="${NAMEH}" fill="rgba(255,255,255,0.93)"/>`
-      svg += `<text x="${c.x.toFixed(1)}" y="${(c.y-CH/2+8.5).toFixed(1)}" text-anchor="middle" dominant-baseline="central" font-size="6.5" font-weight="900" fill="#111" font-family="Arial Black,Arial">${(p.surname_encoded||'').slice(0,9)}</text>`
-      const by0 = (c.y+CH/2-BOTHH).toFixed(1)
-      svg += `<rect x="${x0}" y="${by0}" width="${CW}" height="${BOTHH}" fill="rgba(255,255,255,0.93)"/>`
-      if (flag) svg += `<image href="${flag}" x="${(c.x-21).toFixed(1)}" y="${(c.y+CH/2-BOTHH+3).toFixed(1)}" width="13" height="10" preserveAspectRatio="xMidYMid slice"/>`
-      svg += `<text x="${c.x.toFixed(1)}" y="${(c.y+CH/2-BOTHH/2).toFixed(1)}" text-anchor="middle" dominant-baseline="central" font-size="12" font-weight="900" fill="#111" font-family="Arial Black">${note}</text>`
-      if (logoUrl) svg += `<image href="${logoUrl}" x="${(c.x+CW/2-14).toFixed(1)}" y="${(c.y+CH/2-BOTHH+2).toFixed(1)}" width="12" height="12" preserveAspectRatio="xMidYMid meet"/>`
-      svg += `<rect x="${x0}" y="${y0}" width="${CW}" height="${CH}" rx="5" fill="none" stroke="${hasBonus ? '#E87722' : rarityBorder}" stroke-width="${hasBonus ? '2.5' : '2'}"/>`
-      if (hasBonus) {
-        svg += `<rect x="${(c.x+CW/2-13).toFixed(1)}" y="${y0}" width="13" height="9" rx="3" fill="#E87722"/>`
-        svg += `<text x="${(c.x+CW/2-6.5).toFixed(1)}" y="${(c.y-CH/2+4.5).toFixed(1)}" text-anchor="middle" dominant-baseline="central" font-size="5.5" font-weight="900" fill="#fff" font-family="Arial">+10</text>`
-      }
+      const cardHtml = renderPlayerCard(
+        { ...p, _evolution_bonus: p._evolution_bonus||0 },
+        { width: CARD_W, showStad: true, stadDef, role }
+      )
+      const stadIcon = hasStad ? `<div style="position:absolute;top:-18px;left:0;right:0;text-align:center;font-size:14px;z-index:5;line-height:1">🏟️</div>` : ''
+      cardsHtml += `<div style="position:absolute;left:${left}px;top:${top}px;cursor:pointer;z-index:2;position:absolute" class="deck-slot-hit" data-pos="${pos}">
+        <div style="position:relative">${stadIcon}${cardHtml}</div>
+      </div>`
     } else {
-      // Slot vide
-      svg += `<rect x="${x0}" y="${y0}" width="${CW}" height="${CH}" rx="5" fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.35)" stroke-width="2" stroke-dasharray="5,3"/>`
-      svg += `<text x="${c.x.toFixed(1)}" y="${c.y.toFixed(1)}" text-anchor="middle" dominant-baseline="central" font-size="22" fill="rgba(255,255,255,0.35)">+</text>`
-      svg += `<text x="${c.x.toFixed(1)}" y="${(c.y+16).toFixed(1)}" text-anchor="middle" font-size="7" fill="rgba(255,255,255,0.3)">${role}</text>`
+      const role = pos.replace(/\d+/, '')
+      cardsHtml += `<div style="position:absolute;left:${left}px;top:${top}px;width:${CARD_W}px;height:${CARD_H}px;
+        border:2px dashed rgba(255,255,255,0.35);border-radius:6px;
+        display:flex;flex-direction:column;align-items:center;justify-content:center;
+        cursor:pointer;z-index:2;background:rgba(255,255,255,0.04)"
+        class="deck-slot-hit" data-pos="${pos}">
+        <span style="font-size:20px;color:rgba(255,255,255,0.35)">+</span>
+        <span style="font-size:8px;color:rgba(255,255,255,0.3);margin-top:2px">${role}</span>
+      </div>`
     }
-
-    // Zone cliquable
-    svg += `<rect x="${x0}" y="${y0}" width="${CW}" height="${CH}" rx="5" fill="rgba(0,0,0,0.01)" class="deck-slot-hit" data-pos="${pos}" style="cursor:pointer"/>`
   }
 
-  field.innerHTML = `<svg viewBox="${-PAD} ${-PAD} ${W+PAD*2} ${H+PAD*2}" width="100%" style="display:block;max-width:440px;margin:0 auto">${svg}</svg>`
+  field.innerHTML = `
+    <div style="position:relative;width:${W}px;height:${H}px;margin:0 auto">
+      <svg style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none" viewBox="0 0 ${W} ${H}">${linkSvg}</svg>
+      ${cardsHtml}
+    </div>`
 
   field.querySelectorAll('.deck-slot-hit').forEach(el => {
     el.addEventListener('click', () => openPlayerSelector(el.dataset.pos, builder, container, ctx))
@@ -484,10 +529,66 @@ function renderDeckField(container, builder, positions, ctx) {
 }
 
 
+// ── Sélecteur de stade ───────────────────────────────────
+function openStadiumSelector(builder, container, ctx) {
+  const { openModal, closeModal } = ctx
+  const cards = builder.stadiumCards || []
+
+  openModal('🏟️ Choisir un stade',
+    `<div style="display:flex;flex-wrap:wrap;gap:10px;padding:8px">
+      <div id="stad-none" style="cursor:pointer;width:70px;text-align:center">
+        <div style="width:65px;height:85px;border:2px dashed #ccc;border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;${!builder.stadiumCardId?'border-color:#E87722':''}">
+          <span style="font-size:22px">🚫</span>
+          <span style="font-size:9px;color:#666">Aucun</span>
+        </div>
+      </div>
+      ${cards.map(c => {
+        const def = builder.stadDefMap[c.stadium_id]
+        const logo = def?.club?.logo_url || null
+        const imgUrl = def?.image_url ? (import.meta.env.BASE_URL + 'icons/' + def.image_url) : null
+        const sel = builder.stadiumCardId === c.id
+        const flagUrl = def?.country_code && !logo ? `https://flagsapi.com/${def.country_code.slice(0,2).toUpperCase()}/flat/64.png` : null
+        // Nom : "Stade" sur la 1re ligne, suite sur la 2e
+        const fullName = def?.name || 'Stade'
+        const nameParts = fullName.match(/^(Stade\s+(?:de\s+)?(?:\w+)?)(.*)?$/i)
+        const nameLine1 = nameParts ? nameParts[1].trim() : fullName.slice(0,8)
+        const nameLine2 = nameParts?.[2]?.trim() || ''
+        return `<div class="stad-choice" data-stad-id="${c.id}" style="cursor:pointer;width:80px;text-align:center">
+          <div style="width:75px;height:95px;border-radius:8px;background:linear-gradient(135deg,#1a3a6b,#0a1a3a);border:2px solid ${sel?'#4fc3f7':'#444'};display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;overflow:hidden;position:relative">
+            ${imgUrl ? `<img src="${imgUrl}" style="width:100%;height:100%;object-fit:cover;position:absolute;inset:0;opacity:0.4">` : ''}
+            ${logo ? `<img src="${logo}" style="width:36px;height:36px;object-fit:contain;position:relative;z-index:1">` : flagUrl ? `<img src="${flagUrl}" style="width:40px;height:28px;object-fit:cover;border-radius:3px;position:relative;z-index:1">` : `<span style="font-size:24px;position:relative;z-index:1">🏟️</span>`}
+            <div style="position:relative;z-index:1;text-align:center;padding:0 3px">
+              <div style="font-size:8px;font-weight:700;color:${sel?'#4fc3f7':'#ccc'}">${nameLine1}</div>
+              ${nameLine2 ? `<div style="font-size:8px;font-weight:700;color:${sel?'#4fc3f7':'#aaa'}">${nameLine2}</div>` : ''}
+            </div>
+          </div>
+        </div>`
+      }).join('')}
+    </div>`
+  )
+
+  document.getElementById('stad-none')?.addEventListener('click', () => {
+    builder.stadiumCardId = null
+    closeModal()
+    renderBuilder(container, builder, ctx)
+  })
+  document.querySelectorAll('.stad-choice').forEach(el => {
+    el.addEventListener('click', () => {
+      builder.stadiumCardId = el.dataset.stadId
+      closeModal()
+      renderBuilder(container, builder, ctx)
+    })
+  })
+}
+
+// ── Sélecteur de stade ───────────────────────────────────
+
 // ── Sélecteur de joueur (Petit 2 + 3) ────────────────────
 function openPlayerSelector(position, builder, container, ctx) {
   const { openModal, closeModal } = ctx
   const role = position.replace(/\d+/, '')
+  const _selStadCardP = builder.stadiumCards?.find(c => c.id === builder.stadiumCardId)
+  const _stadDef = _selStadCardP ? (builder.stadDefMap?.[_selStadCardP.stadium_id] || null) : null
 
   // Exclure les joueurs déjà placés (par player_id pour éviter les doublons)
   const currentCardId = builder.slots[position]
@@ -518,7 +619,6 @@ function openPlayerSelector(position, builder, container, ctx) {
   })
 
   eligible.sort((a, b) => {
-    const evoFn = card?.evolution_bonus||0; const fn = r => (r==='GK'?p.note_g : r==='DEF'?p.note_d : r==='MIL'?p.note_m : p.note_a) + (r===p.job||r===p.job2?evoFn:0)
     const evoA = a.evolution_bonus||0, evoB = b.evolution_bonus||0
     const nA = (role==='GK'?a.player.note_g : role==='DEF'?a.player.note_d : role==='MIL'?a.player.note_m : a.player.note_a) + (role===a.player.job||role===a.player.job2?evoA:0)
     const nB = (role==='GK'?b.player.note_g : role==='DEF'?b.player.note_d : role==='MIL'?b.player.note_m : b.player.note_a) + (role===b.player.job||role===b.player.job2?evoB:0)
@@ -532,37 +632,12 @@ function openPlayerSelector(position, builder, container, ctx) {
         <button class="btn btn-danger btn-sm" id="remove-player" style="width:100%;margin-bottom:4px">
           ✕ Retirer le joueur actuel
         </button>` : ''}
-      ${eligible.length > 0 ? eligible.map(c => {
-        const p = c.player
-        const evoPick = card.evolution_bonus||0
-        const note = (role==='GK'?p.note_g : role==='DEF'?p.note_d : role==='MIL'?p.note_m : p.note_a) + (role===p.job||role===p.job2?evoPick:0)
-        const portrait = getPortrait(p)
-        const rarColor = {normal:'#ccc',pepite:'#D4A017',papyte:'#909090',legende:'#7a28b8'}[p.rarity]
-        return `<div class="player-option" data-card-id="${c.id}"
-          style="display:flex;align-items:center;gap:10px;padding:8px;border:1.5px solid var(--gray-200);border-radius:10px;cursor:pointer">
-          <!-- Portrait -->
-          <div style="width:44px;height:44px;border-radius:8px;overflow:hidden;flex-shrink:0;background:#dde;border:2px solid ${JOB_COLORS[role]}">
-            ${portrait
-              ? `<img src="${portrait}" style="width:100%;height:100%;object-fit:cover">`
-              : `<div style="width:100%;height:100%;background:${JOB_COLORS[role]};display:flex;align-items:center;justify-content:center;color:#fff;font-size:10px;font-weight:700">${role}</div>`}
-          </div>
-          <!-- Infos -->
-          <div style="flex:1;min-width:0">
-            <div style="font-weight:700;font-size:13px">${p.firstname} ${p.surname_encoded}</div>
-            <div style="display:flex;align-items:center;gap:6px;margin-top:3px">
-              <img src="https://flagsapi.com/${p.country_code}/flat/32.png" style="width:18px;height:12px;border-radius:2px;object-fit:cover" alt="${p.country_code}">
-              ${p.clubs?.logo_url
-                ? `<img src="${p.clubs.logo_url}" style="width:18px;height:18px;object-fit:contain">`
-                : `<span style="font-size:10px;color:var(--gray-600)">${p.clubs?.encoded_name||'—'}</span>`}
-              <span style="font-size:10px;color:var(--gray-600)">${p.country_code}</span>
-            </div>
-          </div>
-          <!-- Note -->
-          <div style="width:36px;height:36px;border-radius:8px;background:${JOB_COLORS[role]};color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:16px;border:2px solid ${rarColor};flex-shrink:0">
-            ${note}
-          </div>
+      ${eligible.length > 0 ? `<div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center">` + eligible.map(c => {
+        const p = { ...c.player, _evolution_bonus: c.evolution_bonus||0 }
+        return `<div class="player-option" data-card-id="${c.id}" style="cursor:pointer">
+          ${renderPlayerCard(p, { width: 100, showStad: true, stadDef: _stadDef, role })}
         </div>`
-      }).join('') : '<div style="text-align:center;color:var(--gray-600);padding:20px">Aucun joueur pour ce poste.<br><small>Ouvre des boosters !</small></div>'}
+      }).join('') + '</div>' : '<div style="text-align:center;color:var(--gray-600);padding:20px">Aucun joueur pour ce poste.<br><small>Ouvre des boosters !</small></div>'}
     </div>`,
     `<button class="btn btn-ghost" id="close-selector">Fermer</button>`
   )
@@ -587,14 +662,18 @@ function openPlayerSelector(position, builder, container, ctx) {
 // ── Sélecteur remplaçant ──────────────────────────────────
 function openSubSelector(builder, container, ctx) {
   const { openModal, closeModal } = ctx
+  const _selStadCard2 = builder.stadiumCards?.find(c => c.id === builder.stadiumCardId)
+  const _selStadDef = _selStadCard2 ? (builder.stadDefMap?.[_selStadCard2.stadium_id] || null) : null
   // Exclure par player_id (unicité stricte)
   const usedPlayerIds = new Set()
-  Object.values(builder.slots).filter(Boolean).forEach(id => {
-    const c = builder.playerCards.find(c => c.id === id)
+  Object.keys(builder.slots).forEach(pos => {
+    const cardId = builder.slots[pos]
+    if (!cardId) return
+    const c = builder.playerCards.find(c => c.id === cardId)
     if (c?.player?.id) usedPlayerIds.add(c.player.id)
   })
-  builder.subs.forEach(id => {
-    const c = builder.playerCards.find(c => c.id === id)
+  builder.subs.forEach(cardId => {
+    const c = builder.playerCards.find(c => c.id === cardId)
     if (c?.player?.id) usedPlayerIds.add(c.player.id)
   })
 
@@ -609,24 +688,12 @@ function openSubSelector(builder, container, ctx) {
 
   openModal('Ajouter un remplaçant',
     `<div style="max-height:60vh;overflow-y:auto;display:flex;flex-direction:column;gap:8px">
-      ${available.length > 0 ? available.map(c => {
-        const p = c.player
-        const portrait = getPortrait(p)
-        const mainNote = (p.job==='GK'?p.note_g : p.job==='DEF'?p.note_d : p.job==='MIL'?p.note_m : p.note_a) + (card.evolution_bonus||0)
-        return `<div class="player-option" data-card-id="${c.id}"
-          style="display:flex;align-items:center;gap:10px;padding:8px;border:1.5px solid var(--gray-200);border-radius:10px;cursor:pointer">
-          <div style="width:40px;height:40px;border-radius:8px;overflow:hidden;flex-shrink:0;background:#dde;border:2px solid ${JOB_COLORS[p.job]}">
-            ${portrait ? `<img src="${portrait}" style="width:100%;height:100%;object-fit:cover">` : ''}
-          </div>
-          <div style="flex:1">
-            <div style="font-weight:700;font-size:13px">${p.firstname} ${p.surname_encoded}</div>
-            <div style="font-size:11px;color:var(--gray-600)">${p.job} · ${p.country_code} · ${p.clubs?.encoded_name||'—'}</div>
-          </div>
-          <div style="width:32px;height:32px;border-radius:6px;background:${JOB_COLORS[p.job]};color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900">
-            ${mainNote}
-          </div>
+      ${available.length > 0 ? `<div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center">` + available.map(c => {
+        const p = { ...c.player, _evolution_bonus: c.evolution_bonus||0 }
+        return `<div class="player-option" data-card-id="${c.id}" style="cursor:pointer">
+          ${renderPlayerCard(p, { width: 100, showStad: true, stadDef: _selStadDef })}
         </div>`
-      }).join('') : '<div style="text-align:center;padding:20px;color:var(--gray-600)">Tous vos joueurs sont déjà utilisés.</div>'}
+      }).join('') + '</div>' : '<div style="text-align:center;padding:20px;color:var(--gray-600)">Tous vos joueurs sont déjà utilisés.</div>'}
     </div>`,
     `<button class="btn btn-ghost" id="close-sub-selector">Fermer</button>`
   )

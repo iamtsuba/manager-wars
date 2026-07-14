@@ -366,6 +366,15 @@ export function showGameToast(msg, bg = 'rgba(0,0,0,0.85)', duration = 2200) {
 // ── Duel milieu : calculs et rendu ──────────────────────────
 // Source unique partagée par match-ia.js et match-pvp.js
 
+function milNoteWithBonus(p, stadDef) {
+  const base = getNoteForRole(p, 'MIL')
+  const stadBonus = (p.stadiumBonus || (stadDef && (
+    (stadDef.club_id && String(p.club_id) === String(stadDef.club_id)) ||
+    (stadDef.country_code && p.country_code === stadDef.country_code)
+  ))) ? 10 : 0
+  return base + stadBonus
+}
+
 export function milScore(mils, stadDef) {
     return mils.reduce((s,p) => s + milNoteWithBonus(p, stadDef), 0)
   }

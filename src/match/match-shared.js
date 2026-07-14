@@ -469,9 +469,9 @@ export async function renderDeckSelect(container, ctx, matchMode) {
       const isPC = zone.clientWidth >= 900
       // PC : pleine largeur mais CW plafonné pour éviter les cartes géantes
       const availW = availWraw
-      // Sur PC : CW max 110px pour garder des cartes proportionnées
+      // Sur PC : CW max 50px (110/2.2) pour cartes proportionnées
       const CW = isPC
-        ? Math.min(110, Math.max(52, Math.round(availW * 0.168)))
+        ? Math.min(50, Math.max(24, Math.round(availW * 0.076)))
         : Math.max(44, Math.round(availW * 0.168))
 
       if (availH < 220 || availW < 220) {

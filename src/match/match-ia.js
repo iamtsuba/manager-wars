@@ -196,65 +196,20 @@ function generateFakeAITeam(formation) {
 }
 
 function showOpponentReveal(container, game, ctx) {
-  const stadSVG = `<div style="position:relative;width:22px;height:22px;flex-shrink:0;display:flex;align-items:center;justify-content:center">
-    <div style="position:absolute;inset:-6px;border-radius:50%;background:radial-gradient(ellipse,rgba(30,144,255,0.6) 0%,transparent 68%);pointer-events:none"></div>
-    <svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" style="position:relative;z-index:1;width:22px;height:22px;display:block">
-      <ellipse cx="16" cy="29.5" rx="12" ry="2.5" fill="#999" opacity="0.35"/>
-      <ellipse cx="16" cy="19" rx="13" ry="9" fill="#3a7bbf"/>
-      <ellipse cx="16" cy="14" rx="13" ry="5.5" fill="#4a8fd4"/>
-      <ellipse cx="16" cy="14" rx="7.5" ry="3" fill="#2ea44f"/>
-      <line x1="6" y1="11" x2="4" y2="21" stroke="#2a6aa8" stroke-width="1.2" opacity="0.8"/>
-      <line x1="11" y1="9.5" x2="11" y2="23" stroke="#2a6aa8" stroke-width="1.2" opacity="0.8"/>
-      <line x1="21" y1="9.5" x2="21" y2="23" stroke="#2a6aa8" stroke-width="1.2" opacity="0.8"/>
-      <line x1="26" y1="11" x2="28" y2="21" stroke="#2a6aa8" stroke-width="1.2" opacity="0.8"/>
-      <rect x="14" y="22" width="4" height="5" rx="1" fill="#1a4a80"/>
-      <line x1="9" y1="6" x2="9" y2="13" stroke="#333" stroke-width="1.3"/>
-      <polygon points="9,6 14.5,8.5 9,11" fill="#FFD700"/>
-      <line x1="23" y1="6" x2="23" y2="13" stroke="#333" stroke-width="1.3"/>
-      <polygon points="23,6 17.5,8.5 23,11" fill="#FFD700"/>
-      <ellipse cx="16" cy="14" rx="13" ry="5.5" fill="none" stroke="#1a1a1a" stroke-width="1.5"/>
-      <ellipse cx="16" cy="19" rx="13" ry="9" fill="none" stroke="#1a1a1a" stroke-width="1.5"/>
-    </svg>
-  </div>`
-
   container.innerHTML = `
-  <div class="match-screen" style="display:flex;flex-direction:column;height:100%;overflow:hidden;background:#0a3d1e;color:#fff">
-    <!-- Header -->
-    <div style="flex-shrink:0;padding:10px 16px;background:rgba(0,0,0,0.4);text-align:center">
-      <div style="font-size:10px;opacity:.6;letter-spacing:2px;text-transform:uppercase">Équipe adverse</div>
-      <div style="font-size:18px;font-weight:900;color:#ff6b6b">IA (${game.difficulty.toUpperCase()})</div>
-    </div>
-    ${game.aiStadiumDef ? `
-    <div style="display:flex;align-items:center;gap:8px;padding:5px 14px;background:linear-gradient(90deg,rgba(30,100,220,0.35),rgba(10,60,180,0.15));border-bottom:1px solid rgba(30,120,255,0.45);flex-shrink:0">
-      ${stadSVG}
-      <span style="font-size:12px;font-weight:700">${game.aiStadiumDef.name}</span>
-      <span style="font-size:11px;color:#5DAAFF;margin-left:auto">+10 aux joueurs ${game.aiStadiumDef.club?.encoded_name||game.aiStadiumDef.country_code||''}</span>
-    </div>` : ''}
-    <!-- Terrain -->
-    <div id="opponent-swipe-zone" style="flex:1;min-height:0;overflow:hidden;display:flex;align-items:center;justify-content:center;padding:4px">
-      <div class="opponent-preview-wrap" style="overflow:hidden;display:flex;align-items:center;justify-content:center"></div>
+  <div class="match-screen" style="display:flex;flex-direction:column;align-items:center;justify-content:flex-start;height:100%;overflow:hidden;gap:12px;padding:12px 16px;background:#0a3d1e;overflow-y:auto">
+    <div style="font-size:11px;color:rgba(255,255,255,0.5);letter-spacing:3px;text-transform:uppercase;margin-top:8px">Équipe adverse</div>
+    <div style="font-size:20px;font-weight:900;color:#ff6b6b">IA (${game.difficulty.toUpperCase()})</div>
+    ${game.aiStadiumDef ? `<div style="font-size:11px;color:#FFD700;margin-top:2px">🏟️ ${game.aiStadiumDef.name} · +10 aux joueurs ${game.aiStadiumDef.club?.encoded_name||''}</div>` : ''}
+    <div style="width:100%;max-width:900px;margin:0 auto">${buildTeamSVG(
+      game.aiTeam, game.formation, null, [],
+      svgW(), svgH()
+    )}</div>
+    <div style="font-size:15px;color:rgba(255,255,255,0.7)">
+      <span class="loading-dots">Chargement</span>
     </div>
     <style>@keyframes ld{0%,20%{opacity:0.3}50%{opacity:1}80%,100%{opacity:0.3}}.loading-dots::after{content:'...';animation:ld 1.4s infinite}</style>
   </div>`
-
-  // Injecter le SVG après mesure réelle (même logique que deck-select)
-  requestAnimationFrame(() => requestAnimationFrame(() => {
-    const wrap = container.querySelector('.opponent-preview-wrap')
-    const zone = container.querySelector('#opponent-swipe-zone')
-    if (!wrap || !zone) return
-    const isPC = zone.clientWidth >= 900
-    const availH = Math.max(200, zone.clientHeight - (isPC ? 20 : 40))
-    const availW = Math.max(200, zone.clientWidth - (isPC ? 20 : 16))
-    const mobilePad = isPC ? null : Math.round(Math.max(44, Math.round(availW * 0.168)) * 0.55)
-    wrap.innerHTML = renderTeam(game.aiTeam, game.formation, null, [], availW, availH, [], mobilePad)
-    wrap.style.cssText = `width:${availW}px;height:${availH}px;overflow:visible;flex-shrink:0`
-    const svg = wrap.querySelector('svg')
-    if (svg) {
-      svg.style.cssText = 'display:block;width:100%;height:100%'
-      svg.setAttribute('preserveAspectRatio', isPC ? 'xMidYMid meet' : 'none')
-    }
-  }))
-
   setTimeout(() => showMidfieldAnimation(container, game, ctx), 5000)
 }
 
@@ -285,7 +240,7 @@ function showMidfieldAnimation(container, game, ctx) {
 
 
   container.innerHTML = `
-  <div class="match-screen" style="position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;overflow:hidden;gap:14px;padding:16px;background:#0a3d1e;overflow-y:auto">
+  <div class="match-screen" style="position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;overflow:hidden;gap:clamp(14px,3vh,40px);padding:clamp(16px,3vw,48px);background:#0a3d1e;overflow-y:auto">
     <style>
       @keyframes duelPulse { 0%{transform:scale(1)} 50%{transform:scale(1.18)} 100%{transform:scale(1)} }
       @keyframes duelGlow { 0%,100%{text-shadow:0 0 12px rgba(255,215,0,0.6)} 50%{text-shadow:0 0 28px rgba(255,215,0,0.95)} }
@@ -303,9 +258,9 @@ function showMidfieldAnimation(container, game, ctx) {
     ${renderMilRow(homeMils, game.clubName, '#D4A017', 'home', homeStad)}
 
     <div style="display:flex;flex-direction:column;align-items:center;gap:2px;margin:4px 0">
-      <div id="score-home" style="font-size:48px;font-weight:900;color:#D4A017;transition:all 0.5s ease">0</div>
-      <div id="vs-label" style="font-size:14px;color:rgba(255,255,255,0.4);letter-spacing:3px;opacity:0">VS</div>
-      <div id="score-ai" style="font-size:48px;font-weight:900;color:rgba(255,255,255,0.7);transition:all 0.5s ease">0</div>
+      <div id="score-home" style="font-size:clamp(48px,6vw,90px);font-weight:900;color:#D4A017;transition:all 0.5s ease">0</div>
+      <div id="vs-label" style="font-size:clamp(14px,2vw,22px);color:rgba(255,255,255,0.4);letter-spacing:3px;opacity:0">VS</div>
+      <div id="score-ai" style="font-size:clamp(48px,6vw,90px);font-weight:900;color:rgba(255,255,255,0.7);transition:all 0.5s ease">0</div>
     </div>
 
     ${renderMilRow(aiMils, 'IA', '#bb2020', 'ai', aiStad)}

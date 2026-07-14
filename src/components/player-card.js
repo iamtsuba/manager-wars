@@ -137,10 +137,11 @@ export function renderPlayerCard(p, opts = {}) {
   const rectR    = ax(6)
 
   return `<div style="position:relative;width:${width}px;height:${height + (stadB>0 ? ax(22) : 0)}px;flex-shrink:0;${opacity}user-select:none;${glowStyle}">
-  ${stadB > 0 ? `<div style="position:absolute;left:${ax(190)}px;top:${rectY}px;width:${rectH}px;height:${rectH}px;z-index:5;font-size:${px(rectH * 0.85)};line-height:1;display:flex;align-items:center;justify-content:center">🏟️</div>` : ''}
   <div style="position:absolute;top:${opts._cardOffset||0}px;left:0;width:${width}px;height:${height}px">
 
   <img src="${tmpl}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:fill" draggable="false">
+
+  ${stadB > 0 ? `<div style="position:absolute;left:${ax(190)}px;top:${rectY}px;width:${rectH}px;height:${rectH}px;z-index:5;font-size:${px(rectH * 0.85)};line-height:1;display:flex;align-items:center;justify-content:center">🏟️</div>` : ''}
 
   <!-- Prénom : premier tiers du bandeau -->
   <div style="position:absolute;top:${px(48)};left:0;right:0;text-align:center;z-index:4;padding:0 ${px(50)}">

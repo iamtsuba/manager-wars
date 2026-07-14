@@ -339,7 +339,7 @@ import{s as w,F as si,r as Ie,j as It,l as Gi,m as bt,h as di,n as mn,o as xn,T 
         border:1.5px solid #ddd;background:#fff;
         font-size:14px;font-weight:700;cursor:pointer;color:#555;
       }
-    </style>`}const In="2026.07.14-2309";async function Ai(e,{state:t,navigate:i,toast:n}){var o,r;const a=t.profile;a&&(e.innerHTML=`
+    </style>`}const In="2026.07.14-2310";async function Ai(e,{state:t,navigate:i,toast:n}){var o,r;const a=t.profile;a&&(e.innerHTML=`
   <style>
     .home-dark {
       min-height: 100%;
@@ -1534,7 +1534,7 @@ import{s as w,F as si,r as Ie,j as It,l as Gi,m as bt,h as di,n as mn,o as xn,T 
       <div style="display:flex;align-items:center;justify-content:center;gap:0">
         ${e.map((o,r)=>{const s=r<e.length-1?bt(o,e[r+1]):null,d=!s||s==="#ff3333"||s==="#cc2222",l=s==="#00ff88"?"+2":s==="#FFD700"?"+1":"";return on(o,a),o.stadiumBonus||a&&(a.club_id&&String(o.club_id)===String(a.club_id)||a.country_code&&(o.country_code,a.country_code)),`
           <div class="duel-card duel-card-${n}" data-idx="${r}" style="opacity:0;transform:translateY(18px) scale(0.7);transition:opacity .35s ease, transform .35s cubic-bezier(.34,1.56,.64,1);flex-shrink:0">
-            ${Ie({...o,_evolution_bonus:0},{width:window.innerWidth>=900?Math.min(200,Math.max(130,Math.round(window.innerWidth*.13))):58,showStad:!0,stadDef:a,role:"MIL",extraNote:o.boost||0})}
+            ${Ie({...o,_evolution_bonus:0},{width:window.innerWidth>=900?Math.min(130,Math.max(80,Math.round(window.innerWidth*.08))):58,showStad:!0,stadDef:a,role:"MIL",extraNote:o.boost||0})}
           </div>
           ${r<e.length-1?`<div class="duel-link duel-link-${n}" data-idx="${r}" style="position:relative;width:18px;height:5px;border-radius:3px;background:${d?"rgba(255,255,255,0.12)":s};flex-shrink:0;opacity:0;transition:opacity .3s ease;box-shadow:${d?"none":`0 0 8px ${s}`}">
             ${l?`<span style="position:absolute;top:-13px;left:50%;transform:translateX(-50%);font-size:8px;font-weight:900;color:${s}">${l}</span>`:""}

@@ -451,7 +451,7 @@ export async function renderDeckSelect(container, ctx, matchMode) {
       // PC : plafonner la largeur (zone très large) ; Mobile : utiliser toute la largeur
       const availW = isPC ? Math.min(availWraw, Math.round(availH * 0.95)) : availWraw
       // Recalculer CW comme dans buildTeamSVG pour connaître la taille des cartes
-      const CW = Math.max(44, Math.round(availW * 0.14))
+      const CW = Math.max(44, Math.round(availW * 0.168))
 
       if (availH < 220 || availW < 220) {
         // Le layout n'est pas encore stable → réessayer au prochain frame
@@ -599,7 +599,7 @@ export function buildTeamSVG(team, formation, phase, selectedIds, W=310, H=310, 
 
   // 2. Cartes joueurs : renderPlayerCard via foreignObject
   // Cartes grandes : ~18% de la largeur du terrain
-  const CW = Math.max(44, Math.round(W * 0.14))
+  const CW = Math.max(44, Math.round(W * 0.168))
   const CH = Math.round(CW * 657/507)
 
   for (const [pos, p] of Object.entries(slots)) {

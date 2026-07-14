@@ -141,7 +141,7 @@ export function renderPlayerCard(p, opts = {}) {
 
   <img src="${tmpl}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:fill" draggable="false">
 
-  ${stadB > 0 ? `<div style="position:absolute;left:50%;top:${rectY}px;transform:translateX(-50%);width:${rectH}px;height:${rectH}px;z-index:10;font-size:${px(rectH * 0.9)};line-height:1;display:flex;align-items:center;justify-content:center;text-shadow:0 0 4px #000">🏟️</div>` : ''}
+  ${stadB > 0 ? `<div style="position:absolute;left:${ax(216)}px;top:${rectY}px;width:${rectH}px;height:${rectH}px;z-index:10;font-size:${px(rectH)};line-height:1;display:flex;align-items:center;justify-content:center">🏟️</div>` : ''}
 
   <!-- Prénom : premier tiers du bandeau -->
   <div style="position:absolute;top:${px(48)};left:0;right:0;text-align:center;z-index:4;padding:0 ${px(50)}">

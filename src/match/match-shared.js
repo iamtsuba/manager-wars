@@ -403,7 +403,7 @@ export async function renderDeckSelect(container, ctx, matchMode) {
 
       <!-- Bandeau stade si présent -->
       ${stadiumDef ? `
-      <div style="display:flex;align-items:center;gap:8px;padding:6px 14px;background:linear-gradient(90deg,rgba(232,119,34,0.3),rgba(196,90,0,0.2));border-top:1px solid rgba(232,119,34,0.4);flex-shrink:0">
+      <div style="display:flex;align-items:center;gap:8px;padding:6px 14px;background:linear-gradient(90deg,rgba(30,100,220,0.35),rgba(10,60,180,0.15));border-top:1px solid rgba(30,120,255,0.45);flex-shrink:0">
         <div style="position:relative;width:30px;height:30px;flex-shrink:0;display:flex;align-items:center;justify-content:center">
           <div style="position:absolute;inset:-7px;border-radius:50%;background:radial-gradient(ellipse,rgba(30,144,255,0.6) 0%,transparent 68%);pointer-events:none"></div>
           <svg width="30" height="30" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" style="position:relative;z-index:1;display:block">
@@ -425,7 +425,7 @@ export async function renderDeckSelect(container, ctx, matchMode) {
           </svg>
         </div>
         <div style="flex:1;font-size:12px;font-weight:700;color:rgba(255,255,255,0.9)">${stadiumDef.name}</div>
-        <div style="font-size:11px;font-weight:900;color:#FFD700">+10 aux joueurs ${stadiumDef.club?.encoded_name || stadiumDef.country_code || ''}</div>
+        <div style="font-size:11px;font-weight:900;color:#5DAAFF">+10 aux joueurs ${stadiumDef.club?.encoded_name || stadiumDef.country_code || ''}</div>
       </div>` : ''}
 
       <!-- Terrain preview : SVG occupe toute la zone disponible (carré max) -->

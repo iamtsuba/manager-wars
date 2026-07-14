@@ -466,7 +466,7 @@ export async function renderDeckSelect(container, ctx, matchMode) {
       // Mesurer l'espace réel disponible : quasi toute la hauteur, marge 20px haut/bas
       const isPC = zone.clientWidth >= 900
       // Hauteur strictement limitée à la zone pour ne pas déborder sur les boutons
-      const availH = Math.max(200, zone.clientHeight - (isPC ? 8 : 40))
+      const availH = Math.max(200, zone.clientHeight - (isPC ? 60 : 40))
       const availWraw = Math.max(200, zone.clientWidth - 16)
       const availW = availWraw
       const CW = isPC

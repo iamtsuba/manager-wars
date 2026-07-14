@@ -404,7 +404,26 @@ export async function renderDeckSelect(container, ctx, matchMode) {
       <!-- Bandeau stade si présent -->
       ${stadiumDef ? `
       <div style="display:flex;align-items:center;gap:8px;padding:6px 14px;background:linear-gradient(90deg,rgba(232,119,34,0.3),rgba(196,90,0,0.2));border-top:1px solid rgba(232,119,34,0.4);flex-shrink:0">
-        <span style="font-size:16px">🏟️</span>
+        <div style="position:relative;width:30px;height:30px;flex-shrink:0;display:flex;align-items:center;justify-content:center">
+          <div style="position:absolute;inset:-7px;border-radius:50%;background:radial-gradient(ellipse,rgba(30,144,255,0.6) 0%,transparent 68%);pointer-events:none"></div>
+          <svg width="30" height="30" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" style="position:relative;z-index:1;display:block">
+            <ellipse cx="16" cy="29.5" rx="12" ry="2.5" fill="#999" opacity="0.35"/>
+            <ellipse cx="16" cy="19" rx="13" ry="9" fill="#3a7bbf"/>
+            <ellipse cx="16" cy="14" rx="13" ry="5.5" fill="#4a8fd4"/>
+            <ellipse cx="16" cy="14" rx="7.5" ry="3" fill="#2ea44f"/>
+            <line x1="6" y1="11" x2="4" y2="21" stroke="#2a6aa8" stroke-width="1.2" opacity="0.8"/>
+            <line x1="11" y1="9.5" x2="11" y2="23" stroke="#2a6aa8" stroke-width="1.2" opacity="0.8"/>
+            <line x1="21" y1="9.5" x2="21" y2="23" stroke="#2a6aa8" stroke-width="1.2" opacity="0.8"/>
+            <line x1="26" y1="11" x2="28" y2="21" stroke="#2a6aa8" stroke-width="1.2" opacity="0.8"/>
+            <rect x="14" y="22" width="4" height="5" rx="1" fill="#1a4a80"/>
+            <line x1="9" y1="6" x2="9" y2="13" stroke="#333" stroke-width="1.3"/>
+            <polygon points="9,6 14.5,8.5 9,11" fill="#FFD700"/>
+            <line x1="23" y1="6" x2="23" y2="13" stroke="#333" stroke-width="1.3"/>
+            <polygon points="23,6 17.5,8.5 23,11" fill="#FFD700"/>
+            <ellipse cx="16" cy="14" rx="13" ry="5.5" fill="none" stroke="#1a1a1a" stroke-width="1.5"/>
+            <ellipse cx="16" cy="19" rx="13" ry="9" fill="none" stroke="#1a1a1a" stroke-width="1.5"/>
+          </svg>
+        </div>
         <div style="flex:1;font-size:12px;font-weight:700;color:rgba(255,255,255,0.9)">${stadiumDef.name}</div>
         <div style="font-size:11px;font-weight:900;color:#FFD700">+10 aux joueurs ${stadiumDef.club?.encoded_name || stadiumDef.country_code || ''}</div>
       </div>` : ''}
@@ -412,7 +431,7 @@ export async function renderDeckSelect(container, ctx, matchMode) {
       <!-- Terrain preview : SVG occupe toute la zone disponible (carré max) -->
       <div id="deck-swipe-zone" style="flex:1;min-height:0;overflow:hidden;position:relative;touch-action:pan-y;display:flex;align-items:center;justify-content:center;padding:4px">
         ${team
-          ? `<div class="deck-preview-wrap" style="aspect-ratio:1/1;max-width:100%;max-height:100%;width:auto;height:100%;overflow:hidden">${renderTeam(team, formation, null, [], 285, 285)}</div>`
+          ? `<div class="deck-preview-wrap" style="overflow:hidden;display:flex;align-items:center;justify-content:center"></div>`
           : `<div style="display:flex;align-items:center;justify-content:center;height:100%;opacity:.4;flex-direction:column;gap:8px">
               <div style="font-size:32px">⚠️</div>
               <div>Deck incomplet (${starters.length}/11)</div>
@@ -439,14 +458,27 @@ export async function renderDeckSelect(container, ctx, matchMode) {
       </div>
     </div>`
 
-    // Retirer le cap max-width:440px du SVG pour qu'il remplisse le wrapper
-    ;(function fixDeckSVG() {
-      const svg = container.querySelector('.deck-preview-wrap svg')
-      if (!svg) return
-      svg.removeAttribute('width'); svg.removeAttribute('height')
-      svg.style.cssText = 'width:100%;height:100%;display:block;max-width:none;margin:0'
-      svg.setAttribute('preserveAspectRatio', 'xMidYMid meet')
-    })()
+    // Injecter le SVG terrain après mesure réelle de la zone (double rAF pour stabilité)
+    if (team) {
+      requestAnimationFrame(() => requestAnimationFrame(function fixDeckSVG() {
+        const wrap = container.querySelector('.deck-preview-wrap')
+        const zone = container.querySelector('#deck-swipe-zone')
+        if (!wrap || !zone) return
+        const isPC = zone.clientWidth >= 900
+        const availH = Math.max(200, zone.clientHeight - (isPC ? 20 : 40))
+        const availW = Math.max(200, zone.clientWidth - (isPC ? 20 : 16))
+        if (availH < 220 || availW < 220) { requestAnimationFrame(fixDeckSVG); return }
+        const CW = Math.max(44, Math.round(availW * 0.168))
+        const mobilePad = isPC ? null : Math.round(CW * 0.55)
+        wrap.innerHTML = renderTeam(team, formation, null, [], availW, availH, [], mobilePad)
+        wrap.style.cssText = \`width:\${availW}px;height:\${availH}px;overflow:visible;flex-shrink:0\`
+        const svg = wrap.querySelector('svg')
+        if (svg) {
+          svg.style.cssText = 'display:block;width:100%;height:100%'
+          svg.setAttribute('preserveAspectRatio', isPC ? 'xMidYMid meet' : 'none')
+        }
+      }))
+    }
 
     document.getElementById('prev-deck')?.addEventListener('click', () => {
       if (currentIdx > 0) { currentIdx--; renderPreview() }

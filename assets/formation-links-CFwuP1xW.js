@@ -286,7 +286,7 @@ ${v}`}class L extends Error{constructor({message:e,code:r,cause:s,name:n}){var i
 
   <img src="${g}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:fill" draggable="false">
 
-  ${T>0?`<div style="position:absolute;left:50%;top:${at}px;transform:translateX(-50%);width:${me}px;height:${me}px;z-index:10;font-size:${d(me*.9)};line-height:1;display:flex;align-items:center;justify-content:center;text-shadow:0 0 4px #000">🏟️</div>`:""}
+  ${T>0?`<div style="position:absolute;left:${h(216)}px;top:${at}px;width:${me}px;height:${me}px;z-index:10;font-size:${d(me)};line-height:1;display:flex;align-items:center;justify-content:center">🏟️</div>`:""}
 
   <!-- Prénom : premier tiers du bandeau -->
   <div style="position:absolute;top:${d(48)};left:0;right:0;text-align:center;z-index:4;padding:0 ${d(50)}">

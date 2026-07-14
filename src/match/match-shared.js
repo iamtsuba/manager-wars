@@ -383,6 +383,7 @@ export async function renderDeckSelect(container, ctx, matchMode) {
 
     // Carte Stade : bonus +10 aux joueurs du même club/pays
     let stadiumDef = deck.stadium_card?.stadium_def || null
+    console.log('[deck-select] stadiumDef:', stadiumDef, 'team GK club_id:', Object.values(team||{})[0]?.[0]?.club_id)
     if (stadiumDef && team) team = applyStadiumBonus(team, stadiumDef)
 
     const complete = starters.length >= 11

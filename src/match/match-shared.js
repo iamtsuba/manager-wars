@@ -633,7 +633,7 @@ export function buildTeamSVG(team, formation, phase, selectedIds, W=310, H=310, 
     // p.stadiumBonus déjà géré par renderPlayerCard (ligne 84 player-card.js)
     const cardHtml = renderPlayerCard(
       { ...p, _evolution_bonus: 0 },
-      { width: CW, showStad: true, stadDef: null, role, extraNote }
+      { width: CW, showStad: true, stadDef: null, role, extraNote, _cardOffset: 30 }
     )
     const selStyle = isSelected ? 'outline:3px solid #FFD700;outline-offset:2px;border-radius:8px;opacity:0.75;' : ''
     svg += `<foreignObject x="${fx - 2}" y="${fy - 30}" width="${CW + 8}" height="${CH + 60}" style="overflow:visible">

@@ -383,10 +383,6 @@ export async function renderDeckSelect(container, ctx, matchMode) {
 
     // Carte Stade : bonus +10 aux joueurs du même club/pays
     let stadiumDef = deck.stadium_card?.stadium_def || null
-    const _gk = Object.values(team||{}).flat()[0]
-    console.log('[deck-select] stadiumDef club_id:', stadiumDef?.club_id, typeof stadiumDef?.club_id)
-    console.log('[deck-select] player club_id:', _gk?.club_id, typeof _gk?.club_id)
-    console.log('[deck-select] match?', String(stadiumDef?.club_id) === String(_gk?.club_id))
     if (stadiumDef && team) team = applyStadiumBonus(team, stadiumDef)
 
     const complete = starters.length >= 11
@@ -610,7 +606,6 @@ export function buildTeamSVG(team, formation, phase, selectedIds, W=310, H=310, 
     const c = px(pos)
     if (!c || !p) continue
     const role = pos.replace(/[0-9]/g,'')
-    if (p.stadiumBonus) console.log('[buildTeamSVG] stadiumBonus=true sur', p.name, pos)
 
     const isExtraSelectable = extraSelectableIds.includes(p.cardId)
     const selectable = (phase==='attack' && (['MIL','ATT'].includes(role) || isExtraSelectable) && !p.used)

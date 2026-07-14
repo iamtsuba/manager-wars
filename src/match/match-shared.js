@@ -408,10 +408,29 @@ export async function renderDeckSelect(container, ctx, matchMode) {
           <button id="next-deck" style="width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,${currentIdx===decks.length-1?'0.05':'0.15'});border:2px solid rgba(255,255,255,${currentIdx===decks.length-1?'0.1':'0.3'});color:${currentIdx===decks.length-1?'rgba(255,255,255,0.2)':'#fff'};font-size:18px;cursor:${currentIdx===decks.length-1?'default':'pointer'};flex-shrink:0">▶</button>
         </div>
         ${stadiumDef ? `
-        <div style="display:flex;align-items:center;gap:8px;padding:5px 14px;background:linear-gradient(90deg,rgba(232,119,34,0.3),transparent);border-top:1px solid rgba(232,119,34,0.3)">
-          <span>🏟️</span>
+        <div style="display:flex;align-items:center;gap:8px;padding:5px 14px;background:linear-gradient(90deg,rgba(30,100,220,0.35),rgba(10,60,180,0.15));border-top:1px solid rgba(30,120,255,0.45)">
+          <div style="position:relative;width:30px;height:30px;flex-shrink:0;display:flex;align-items:center;justify-content:center">
+            <div style="position:absolute;inset:-7px;border-radius:50%;background:radial-gradient(ellipse,rgba(30,144,255,0.6) 0%,transparent 68%);pointer-events:none"></div>
+            <svg width="30" height="30" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" style="position:relative;z-index:1;display:block">
+              <ellipse cx="16" cy="29.5" rx="12" ry="2.5" fill="#999" opacity="0.35"/>
+              <ellipse cx="16" cy="19" rx="13" ry="9" fill="#3a7bbf"/>
+              <ellipse cx="16" cy="14" rx="13" ry="5.5" fill="#4a8fd4"/>
+              <ellipse cx="16" cy="14" rx="7.5" ry="3" fill="#2ea44f"/>
+              <line x1="6" y1="11" x2="4" y2="21" stroke="#2a6aa8" stroke-width="1.2" opacity="0.8"/>
+              <line x1="11" y1="9.5" x2="11" y2="23" stroke="#2a6aa8" stroke-width="1.2" opacity="0.8"/>
+              <line x1="21" y1="9.5" x2="21" y2="23" stroke="#2a6aa8" stroke-width="1.2" opacity="0.8"/>
+              <line x1="26" y1="11" x2="28" y2="21" stroke="#2a6aa8" stroke-width="1.2" opacity="0.8"/>
+              <rect x="14" y="22" width="4" height="5" rx="1" fill="#1a4a80"/>
+              <line x1="9" y1="6" x2="9" y2="13" stroke="#333" stroke-width="1.3"/>
+              <polygon points="9,6 14.5,8.5 9,11" fill="#FFD700"/>
+              <line x1="23" y1="6" x2="23" y2="13" stroke="#333" stroke-width="1.3"/>
+              <polygon points="23,6 17.5,8.5 23,11" fill="#FFD700"/>
+              <ellipse cx="16" cy="14" rx="13" ry="5.5" fill="none" stroke="#1a1a1a" stroke-width="1.5"/>
+              <ellipse cx="16" cy="19" rx="13" ry="9" fill="none" stroke="#1a1a1a" stroke-width="1.5"/>
+            </svg>
+          </div>
           <span style="font-size:12px;font-weight:700">${stadiumDef.name}</span>
-          <span style="font-size:11px;color:#FFD700;margin-left:auto">+10 aux joueurs ${stadiumDef.club?.encoded_name||stadiumDef.country_code||''}</span>
+          <span style="font-size:11px;color:#5DAAFF;margin-left:auto">+10 aux joueurs ${stadiumDef.club?.encoded_name||stadiumDef.country_code||''}</span>
         </div>` : ''}
       </div>
 
@@ -449,7 +468,8 @@ export async function renderDeckSelect(container, ctx, matchMode) {
       const availWraw = Math.max(200, zone.clientWidth - 16)
       const isPC = zone.clientWidth >= 900
       // PC : plafonner la largeur (zone très large) ; Mobile : utiliser toute la largeur
-      const availW = isPC ? Math.min(availWraw, Math.round(availH * 0.95)) : availWraw
+      // PC : pleine largeur disponible pour combler les espaces vides
+      const availW = availWraw
       // Recalculer CW comme dans buildTeamSVG pour connaître la taille des cartes
       const CW = Math.max(44, Math.round(availW * 0.168))
 

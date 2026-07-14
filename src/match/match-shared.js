@@ -435,9 +435,9 @@ export async function renderDeckSelect(container, ctx, matchMode) {
       </div>
 
       <!-- Terrain : prend tout l'espace restant, SVG injecté après mesure -->
-      <div id="deck-swipe-zone" style="flex:1;min-height:0;overflow:visible;position:relative;touch-action:pan-y;display:flex;align-items:center;justify-content:center">
+      <div id="deck-swipe-zone" style="flex:1;min-height:0;overflow:hidden;position:relative;touch-action:pan-y;display:flex;align-items:center;justify-content:center">
         ${team
-          ? `<div class="deck-preview-wrap" style="overflow:visible;width:100%;height:100%;display:flex;align-items:center;justify-content:center"></div>`
+          ? `<div class="deck-preview-wrap" style="overflow:hidden;width:100%;height:100%;display:flex;align-items:center;justify-content:center"></div>`
           : `<div style="opacity:.4;text-align:center"><div style="font-size:32px">⚠️</div><div>Deck incomplet (${starters.length}/11)</div></div>`
         }
       </div>
@@ -464,14 +464,13 @@ export async function renderDeckSelect(container, ctx, matchMode) {
       if (!wrap || !zone || !team) return
 
       // Mesurer l'espace réel disponible : quasi toute la hauteur, marge 20px haut/bas
-      const availH = Math.max(200, zone.clientHeight - 40)
-      const availWraw = Math.max(200, zone.clientWidth - 16)
       const isPC = zone.clientWidth >= 900
-      // PC : pleine largeur mais CW plafonné pour éviter les cartes géantes
+      // Hauteur strictement limitée à la zone pour ne pas déborder sur les boutons
+      const availH = Math.max(200, zone.clientHeight - (isPC ? 8 : 40))
+      const availWraw = Math.max(200, zone.clientWidth - 16)
       const availW = availWraw
-      // Sur PC : CW max 50px (110/2.2) pour cartes proportionnées
       const CW = isPC
-        ? Math.min(50, Math.max(24, Math.round(availW * 0.076)))
+        ? Math.min(117, Math.max(52, Math.round(availW * 0.22)))
         : Math.max(44, Math.round(availW * 0.168))
 
       if (availH < 220 || availW < 220) {
@@ -485,7 +484,7 @@ export async function renderDeckSelect(container, ctx, matchMode) {
       // Mobile : PAD réduit pour que GK touche le bas et ATT touche le haut
       const mobilePad = isPC ? null : Math.round(CW * 0.55)
       wrap.innerHTML = renderTeam(team, formation, null, [], availW, availH, [], mobilePad)
-      wrap.style.cssText = `width:${availW}px;height:${availH}px;overflow:visible;margin:${isPC?0:60}px auto 0`
+      wrap.style.cssText = `width:${availW}px;height:${availH}px;overflow:hidden;margin:${isPC?0:60}px auto 0`
 
       const svg = wrap.querySelector('svg')
       if (svg) {

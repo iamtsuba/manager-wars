@@ -467,11 +467,12 @@ export async function renderDeckSelect(container, ctx, matchMode) {
       const availH = Math.max(200, zone.clientHeight - 40)
       const availWraw = Math.max(200, zone.clientWidth - 16)
       const isPC = zone.clientWidth >= 900
-      // PC : plafonner la largeur (zone très large) ; Mobile : utiliser toute la largeur
-      // PC : pleine largeur disponible pour combler les espaces vides
+      // PC : pleine largeur mais CW plafonné pour éviter les cartes géantes
       const availW = availWraw
-      // Recalculer CW comme dans buildTeamSVG pour connaître la taille des cartes
-      const CW = Math.max(44, Math.round(availW * 0.168))
+      // Sur PC : CW max 110px pour garder des cartes proportionnées
+      const CW = isPC
+        ? Math.min(110, Math.max(52, Math.round(availW * 0.168)))
+        : Math.max(44, Math.round(availW * 0.168))
 
       if (availH < 220 || availW < 220) {
         // Le layout n'est pas encore stable → réessayer au prochain frame

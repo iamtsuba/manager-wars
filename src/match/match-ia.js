@@ -1024,6 +1024,13 @@ function aiTurn(container, game, ctx) {
   const availSubsNow  = (game.homeSubs||[]).filter(s => !(game.usedSubIds||[]).includes(s.cardId))
   const canSubNow     = availSubsNow.length > 0 && game.subsUsed < game.maxSubs
   if (homeDefenders.length === 0 && !canSubNow) {
+    const attackerIsOnlyGK = selected.length === 1 && (selected[0]._line === 'GK' || selected[0].job === 'GK')
+    if (attackerIsOnlyGK && isTeamEmpty(game.homeTeam) && game.homeScore === game.aiScore) {
+      // Corner décisif : le gardien adverse monte marquer, je n'ai plus personne du tout.
+      game.aiScore++
+      logAndPlayCorner(container, game, ctx, 'ai', selected[0])
+      return
+    }
     game.aiScore++
     const duelEntry = {
       type:'duel', isGoal:true, homeScored:false,
@@ -1052,8 +1059,15 @@ function aiDefend(container, game, ctx) {
   // le joueur marque automatiquement, même avec un défenseur.
   const aiAvailable = ['GK','DEF','MIL','ATT'].flatMap(r => (game.aiTeam[r]||[]).filter(p=>!p.used))
   if (!aiAvailable.length) {
-    game.homeScore++
     const att = game.pendingAttack?.players || []
+    const attackerIsOnlyGK = att.length === 1 && (att[0]._line === 'GK' || att[0].job === 'GK')
+    if (attackerIsOnlyGK && game.homeScore === game.aiScore) {
+      // Corner décisif : mon gardien monte marquer, l'IA n'a plus personne.
+      game.homeScore++
+      logAndPlayCorner(container, game, ctx, 'home', att[0])
+      return
+    }
+    game.homeScore++
     const duelEntry = {
       type:'duel', isGoal:true, homeScored:true,
       homePlayers: att.map(p => histPlayer(p)),
@@ -1108,8 +1122,8 @@ function aiDefend(container, game, ctx) {
 
 function nextTurn(container, game, ctx, next) {
   game.round++
-  // Corner décisif : si un camp n'a plus QUE son gardien et que le score est
-  // nul, le gardien monte marquer (animation dédiée) plutôt que de boucler.
+  // Corner décisif : un camp n'a plus QUE son gardien ET l'adversaire n'a
+  // plus aucun joueur du tout, score nul → le gardien monte marquer.
   if (tryLastCornerGoal(container, game, ctx)) return
   if (isMatchOver(game)) { finishMatch(container, game, ctx); return }
   if (next === 'home-attack') {
@@ -1128,28 +1142,42 @@ function nextTurn(container, game, ctx, next) {
   }
 }
 
-// ── Corner décisif : un camp réduit à son seul gardien, score à égalité ──
-// "Dans ce cas uniquement" : Dernier Corner → Le Gardien monte → BUT.
+// ── Corner décisif ────────────────────────────────────────
+// Ne se déclenche QUE si : mon camp n'a plus QUE son gardien, l'ADVERSAIRE
+// n'a plus AUCUN joueur du tout (vraiment vide), et le score est nul.
+// Si l'adversaire a encore des joueurs, le gardien reste un défenseur normal.
+function isTeamEmpty(team) {
+  return !['GK','DEF','MIL','ATT'].some(r => (team[r]||[]).some(p => !p.used))
+}
+function onlyGKLeft(team) {
+  const gkFree   = (team.GK||[]).some(p => !p.used)
+  const restFree = ['DEF','MIL','ATT'].some(r => (team[r]||[]).some(p => !p.used))
+  return gkFree && !restFree
+}
+
 function tryLastCornerGoal(container, game, ctx) {
   if (game.homeScore !== game.aiScore) return false
-  const onlyGK = (team) => {
-    const gkFree = (team.GK||[]).some(p => !p.used)
-    const restFree = ['DEF','MIL','ATT'].some(r => (team[r]||[]).some(p => !p.used))
-    return gkFree && !restFree
+  if (onlyGKLeft(game.homeTeam) && isTeamEmpty(game.aiTeam)) {
+    const gk = (game.homeTeam.GK||[]).find(p => !p.used)
+    if (!gk) return false
+    gk.used = true
+    game.homeScore++
+    logAndPlayCorner(container, game, ctx, 'home', gk)
+    return true
   }
-  if (onlyGK(game.homeTeam)) { showLastCornerAnimation(container, game, ctx, 'home'); return true }
-  if (onlyGK(game.aiTeam))   { showLastCornerAnimation(container, game, ctx, 'ai');   return true }
+  if (onlyGKLeft(game.aiTeam) && isTeamEmpty(game.homeTeam)) {
+    const gk = (game.aiTeam.GK||[]).find(p => !p.used)
+    if (!gk) return false
+    gk.used = true
+    game.aiScore++
+    logAndPlayCorner(container, game, ctx, 'ai', gk)
+    return true
+  }
   return false
 }
 
-function showLastCornerAnimation(container, game, ctx, side) {
-  const team = side === 'home' ? game.homeTeam : game.aiTeam
-  const gk = (team.GK||[]).find(p => !p.used)
-  if (!gk) return
-  gk.used = true
-  if (side === 'home') game.homeScore++
-  else game.aiScore++
-
+// Log + cinématique, en supposant le score déjà incrémenté et le gardien déjà marqué used
+function logAndPlayCorner(container, game, ctx, side, gk) {
   game.log.push({
     type: 'duel', isGoal: true, homeScored: side === 'home',
     homePlayers: side === 'home' ? [histPlayer(gk)] : [],
@@ -1171,6 +1199,8 @@ function showLastCornerAnimation(container, game, ctx, side) {
     await showText('⚽ DERNIER CORNER', '#FFD700')
     await showText('🧤 LE GARDIEN MONTE !', '#4fc3f7')
     overlay.remove()
+    game.pendingAttack = null
+    renderGame(container, game, ctx)
     showGoalAnimation([histPlayer(gk)], game.homeScore, game.aiScore, side === 'home', () => {
       if (isMatchOver(game)) { finishMatch(container, game, ctx); return }
       nextTurn(container, game, ctx, side === 'home' ? 'ai-attack' : 'home-attack')
@@ -1218,7 +1248,7 @@ function renderSubCard(p) {
 }
 
 function openSubstitution(container, game, ctx, preferredSubId = null, preferredOutId = null) {
-  if (game.phase !== 'attack' && game.phase !== 'defense') { showGameToast('⏰ Remplacement possible uniquement pendant votre attaque ou votre défense','rgba(180,100,0,0.9)'); return }
+  if (game.phase !== 'attack') { showGameToast('⏰ Remplacement uniquement avant une attaque','rgba(180,100,0,0.9)'); return }
   if (!game.usedSubIds) game.usedSubIds = []
   if (game.subsUsed >= game.maxSubs) { showGameToast(`Maximum ${game.maxSubs} remplacements atteint`,'rgba(180,30,30,0.9)'); return }
   const grayedPlayers = Object.entries(game.homeTeam).flatMap(([r,ps]) => (ps||[]).filter(p => p.used).map(p => ({...p, _line:p._line||r})))
@@ -1392,17 +1422,17 @@ function openGCPicker(pool, count, label, container, game, onConfirm) {
       <div style="font-size:12px;color:rgba(255,255,255,0.5)">${chosen.length}/${count}</div>
       <button id="gc-picker-close" style="background:none;border:none;color:rgba(255,255,255,0.5);font-size:22px;cursor:pointer">✕</button>
     </div>
-    <div style="flex:1;overflow-y:auto;padding:12px;display:flex;flex-wrap:wrap;gap:8px;align-content:flex-start">
+    <div style="flex:1;overflow-y:auto;padding:12px;display:flex;flex-wrap:wrap;gap:8px;align-content:flex-start;justify-content:center">
       ${pool.map(p => {
         const role = p._line || p.job || 'MIL'
-        const bg   = ({ GK:'#111', DEF:'#bb2020', MIL:'#D4A017', ATT:'#1A6B3C' })[role] || '#555'
-        const note = getNoteForRole(p, role) + (p.boost||0)
         const sel  = chosen.find(x => x.cardId === p.cardId)
+        const cardHtml = renderPlayerCard(
+          { ...p, _evolution_bonus: 0 },
+          { width: 90, showStad: true, role, extraNote: p.boost || 0 }
+        )
         return `<div class="gc-pick-item" data-cid="${p.cardId}"
-          style="width:80px;border-radius:8px;border:2.5px solid ${sel?'#FFD700':'rgba(255,255,255,0.25)'};background:${bg};overflow:hidden;cursor:pointer;flex-shrink:0;${p.used?'opacity:0.3;pointer-events:none':''}">
-          <div style="background:rgba(255,255,255,0.9);text-align:center;padding:2px;font-size:7px;font-weight:900;color:#111;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">${p.name||'?'}</div>
-          <div style="height:50px;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:900;color:#fff">${note}</div>
-          <div style="background:rgba(255,255,255,0.9);text-align:center;padding:2px;font-size:8px;font-weight:700;color:#333">${role}</div>
+          style="position:relative;border-radius:8px;${sel?'outline:3px solid #FFD700;outline-offset:2px;':''}cursor:pointer;flex-shrink:0;${p.used?'opacity:0.3;pointer-events:none':''}">
+          ${cardHtml}
         </div>`
       }).join('')}
     </div>

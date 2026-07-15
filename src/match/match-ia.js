@@ -507,16 +507,16 @@ function renderGame(container, game, ctx) {
         // Attaque IA en cours → panel visuel rouge
         if (game.phase === 'defense' && game.pendingAttack) {
           const atk = game.pendingAttack
-          return `<div style="padding:5px 8px;background:rgba(180,30,30,0.2);border-left:3px solid #ff6b6b">
+          return `<div style="padding:5px 8px;background:rgba(180,30,30,0.2);border-left:3px solid #ff6b6b;text-align:center">
             <div style="font-size:8px;color:#ff6b6b;letter-spacing:2px;margin-bottom:4px;text-transform:uppercase">⚔️ IA ATTAQUE — Défendez !</div>
-            ${renderCardRow((atk.players||[]).map(p=>({...p,used:false})), '#ff6b6b', atk.total)}
+            <div style="display:flex;justify-content:center">${renderCardRow((atk.players||[]).map(p=>({...p,used:false})), '#ff6b6b', atk.total)}</div>
           </div>`
         }
         if (game.phase === 'ai-defense' && game.pendingAttack) {
           const atk = game.pendingAttack
-          return `<div style="padding:5px 8px;background:rgba(26,107,60,0.2);border-left:3px solid #00ff88">
+          return `<div style="padding:5px 8px;background:rgba(26,107,60,0.2);border-left:3px solid #00ff88;text-align:center">
             <div style="font-size:8px;color:#00ff88;letter-spacing:2px;margin-bottom:4px;text-transform:uppercase">⚔️ VOUS ATTAQUEZ</div>
-            ${renderCardRow((atk.players||[]).map(p=>({...p,used:false})), '#00ff88', atk.total)}
+            <div style="display:flex;justify-content:center">${renderCardRow((atk.players||[]).map(p=>({...p,used:false})), '#00ff88', atk.total)}</div>
           </div>`
         }
         // Sinon : dernière action du log
@@ -1168,7 +1168,7 @@ function renderSubCard(p) {
 }
 
 function openSubstitution(container, game, ctx, preferredSubId = null, preferredOutId = null) {
-  if (game.phase !== 'attack') { showGameToast('⏰ Remplacement uniquement avant une attaque','rgba(180,100,0,0.9)'); return }
+  if (game.phase !== 'attack' && game.phase !== 'defense') { showGameToast('⏰ Remplacement possible uniquement pendant votre attaque ou votre défense','rgba(180,100,0,0.9)'); return }
   if (!game.usedSubIds) game.usedSubIds = []
   if (game.subsUsed >= game.maxSubs) { showGameToast(`Maximum ${game.maxSubs} remplacements atteint`,'rgba(180,30,30,0.9)'); return }
   const grayedPlayers = Object.entries(game.homeTeam).flatMap(([r,ps]) => (ps||[]).filter(p => p.used).map(p => ({...p, _line:p._line||r})))

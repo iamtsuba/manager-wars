@@ -601,7 +601,7 @@ function renderGame(container, game, ctx) {
       // ─── Terrain ──────────────────────────────────────────
       const terrainHTML = `<div style="overflow:hidden;min-width:0;flex:1;min-height:0;display:flex;flex-direction:column" id="match-field">
         <div class="terrain-wrapper" style="overflow:hidden;width:100%;flex:1;min-height:0;display:flex;align-items:center;justify-content:center">
-          ${renderTeam(game.homeTeam,game.formation,game.phase,selectedIds,_pc?Math.min(1300,Math.max(300,window.innerWidth-310)):svgW(),_pc?Math.round(Math.min(1300,Math.max(300,window.innerWidth-310))*1.1):svgH(),extraSelectableIds)}
+          ${renderTeam(game.homeTeam,game.formation,game.phase,selectedIds,svgW(),svgH(),extraSelectableIds)}
         </div>
       </div>`
 
@@ -631,7 +631,7 @@ function renderGame(container, game, ctx) {
         <div id="mobile-play-area" style="flex:1;min-height:0;display:flex;overflow:hidden">
           <div id="match-field" style="flex:1;min-width:0;min-height:0;overflow:hidden">
             <div class="terrain-wrapper" style="width:100%;height:100%;overflow:hidden">
-              ${renderTeam(game.homeTeam,game.formation,game.phase,selectedIds,_pc?Math.min(1300,Math.max(300,window.innerWidth-310)):svgW(),_pc?Math.round(Math.min(1300,Math.max(300,window.innerWidth-310))*1.1):svgH(),extraSelectableIds)}
+              ${renderTeam(game.homeTeam,game.formation,game.phase,selectedIds,svgW(),svgH(),extraSelectableIds)}
             </div>
           </div>
         </div>
@@ -743,8 +743,6 @@ function renderGame(container, game, ctx) {
     svg.removeAttribute('width')
     svg.removeAttribute('height')
     svg.style.cssText = 'width:100%;height:100%;display:block;max-width:none;margin:0'
-    // viewBox resserré : PAD original=38, on réduit à 10 → plus de zoom
-    svg.setAttribute('viewBox', '-26 -26 352 352')
     svg.setAttribute('preserveAspectRatio', 'xMidYMid meet')
   })()
 

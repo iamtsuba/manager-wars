@@ -743,7 +743,7 @@ function renderGame(container, game, ctx) {
     if (!svg) return
     svg.removeAttribute('width')
     svg.removeAttribute('height')
-    if (_pc) {
+    if (window.innerWidth >= 700) {
       svg.style.cssText = 'width:100%;height:auto;display:block;max-width:none;margin:0'
       svg.setAttribute('preserveAspectRatio', 'xMidYMid meet')
     } else {

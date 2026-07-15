@@ -743,6 +743,8 @@ function renderGame(container, game, ctx) {
     svg.removeAttribute('width')
     svg.removeAttribute('height')
     svg.style.cssText = 'width:100%;height:100%;display:block;max-width:none;margin:0'
+    const vb = (svg.getAttribute('viewBox') || '-80 -80 1460 760').split(' ').map(Number)
+    svg.setAttribute('viewBox', `${vb[0]} ${vb[1]} ${vb[2]} ${vb[3] + 80}`)
     svg.setAttribute('preserveAspectRatio', 'xMidYMid meet')
   })()
 

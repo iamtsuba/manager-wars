@@ -1474,16 +1474,17 @@ import{s as w,F as si,r as Me,j as Mt,l as Gi,m as bt,h as di,n as mn,o as xn,T 
               note_g,note_d,note_m,note_a,rarity,skin,hair,hair_length,face,
               clubs(encoded_name,logo_url)))`).eq("deck_id",d).order("slot_order")]);l=E[0].data,u=E[0].error,c=E[1].data,g=E[1].error}catch(E){console.error("[Match] Exception chargement deck:",E),rt(e,"⚠️","Erreur réseau lors du chargement du deck. Réessaie.","Retour",()=>o("home"));return}if(u||g){console.error("[Match] Erreur Supabase:",u||g),rt(e,"⚠️","Erreur lors du chargement du deck.","Retour",()=>o("home"));return}const m=(c||[]).filter(E=>{var F;return E.is_starter&&((F=E.card)==null?void 0:F.player)}).map(E=>ni(E.card,E.position)),f=(c||[]).filter(E=>{var F;return!E.is_starter&&((F=E.card)==null?void 0:F.player)}).map(E=>ni(E.card,E.position));if(m.length<11){rt(e,"⚠️",`Deck incomplet (${m.length}/11).`,"Compléter",()=>o("decks"));return}const p=(c||[]).find(E=>{var F;return((F=E.card)==null?void 0:F.card_type)==="formation"}),x=(l==null?void 0:l.formation)||((C=p==null?void 0:p.card)==null?void 0:C.formation)||"4-4-2",{data:b,error:h}=await w.from("cards").select("id, gc_type, gc_definition_id").eq("owner_id",a.profile.id).eq("card_type","game_changer"),{data:v}=await w.from("gc_definitions").select("*").eq("is_active",!0),k=(b||[]).map(E=>({...E,_gcDef:(v==null?void 0:v.find(F=>F.name===E.gc_type||F.id===E.gc_definition_id))||null}));let y=null;if(l!=null&&l.stadium_card_id){const{data:E}=await w.from("cards").select("stadium_id").eq("id",l.stadium_card_id).single();if(E!=null&&E.stadium_id){const{data:F}=await w.from("stadium_definitions").select("id,name,club_id,country_code,image_url,club:clubs(encoded_name,logo_url)").eq("id",E.stadium_id).single();y=F||null}}n({deckId:d,formation:x,starters:m,subsRaw:f,gcCardsEnriched:k,gcDefs:v||[],stadiumDef:y})}function ot(){return Math.min(window.innerWidth-40,860)}function ut(){return Math.round(ot()*1.1)}function bo(e){var a,o;if(!e)return null;const t=e._line||e.job||"MIL",i=t==="GK"?e.note_g||0:t==="DEF"?e.note_d||0:t==="MIL"?e.note_m||0:e.note_a||0,n=e.stadiumBonus?10:0;return{name:e.name,firstname:e.firstname||"",note:i+(e.boost||0)+n,note_g:e.note_g||0,note_d:e.note_d||0,note_m:e.note_m||0,note_a:e.note_a||0,_evolution_bonus:0,stadiumBonus:e.stadiumBonus||!1,boost:e.boost||0,job:e.job,job2:e.job2||null,_line:e._line||e.job,_col:e._col,country_code:e.country_code,club_id:e.club_id,rarity:e.rarity,clubName:e.clubName||((a=e.clubs)==null?void 0:a.encoded_name)||null,clubLogo:e.clubLogo||((o=e.clubs)==null?void 0:o.logo_url)||null,face:e.face||null,portrait:zt(e)}}function nn(e){var o,r,s;if(!e)return"";const t=d=>d?Me({...d,_evolution_bonus:0},{width:52,role:d._line||d.job,showStad:!!d.stadiumBonus,extraNote:d.boost||0}):"",n={goal:"⚽","goal-home":"⚽","goal-ai":"⚽",duel:"⚔️",midfield:"🎯",sub:"🔄",gc:"⚡",boost:"💥","defense-won":"🛡️","attack-won":"⚔️","defense-lost":"😓","attack-lost":"😓"}[e.type]||"📋";return`
     <div style="padding:8px 12px;border-left:3px solid ${((o=e.type)==null?void 0:o.includes("goal"))?"#22c55e":"rgba(255,255,255,0.15)"};margin-bottom:4px">
-      <div style="font-size:11px;color:rgba(255,255,255,0.5);margin-bottom:4px">${n} ${e.title||e.text||""}</div>
-      ${(r=e.homePlayers)!=null&&r.length?`
-        <div style="display:flex;gap:3px;flex-wrap:wrap;margin-bottom:4px">
-          ${e.homePlayers.map(t).join("")}
+      <div style="font-size:11px;color:rgba(255,255,255,0.5);margin-bottom:6px;text-align:center">${n} ${e.title||e.text||""}</div>
+      ${(r=e.homePlayers)!=null&&r.length||(s=e.aiPlayers)!=null&&s.length?`
+        <div style="display:flex;align-items:flex-start;justify-content:center;gap:16px">
+          <div style="flex:1;display:flex;gap:3px;flex-wrap:wrap;justify-content:flex-end">
+            ${(e.homePlayers||[]).map(t).join("")}
+          </div>
+          <div style="flex:1;display:flex;gap:3px;flex-wrap:wrap;justify-content:flex-start">
+            ${(e.aiPlayers||[]).map(t).join("")}
+          </div>
         </div>`:""}
-      ${(s=e.aiPlayers)!=null&&s.length?`
-        <div style="display:flex;gap:3px;flex-wrap:wrap">
-          ${e.aiPlayers.map(t).join("")}
-        </div>`:""}
-      ${e.text&&e.title?`<div style="font-size:10px;color:rgba(255,255,255,0.4);margin-top:4px">${e.text}</div>`:""}
+      ${e.text&&e.title?`<div style="font-size:10px;color:rgba(255,255,255,0.4);margin-top:4px;text-align:center">${e.text}</div>`:""}
     </div>`}function at(e,t,i,n,a){const o=document.getElementById("goal-anim-overlay");o&&o.remove();const r=document.createElement("div");r.id="goal-anim-overlay",r.style.cssText=`
     position:fixed;inset:0;z-index:3000;
     display:flex;flex-direction:column;align-items:center;justify-content:center;

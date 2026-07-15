@@ -33,10 +33,17 @@ async function createFriendMatch(container, ctx, deckId, myGC, gcDefs, stadiumDe
   const { state, navigate, toast } = ctx
   const myId = state.user.id
 
-  // Créer l'invitation
-  const { data: invite } = await supabase.from('friend_match_invites').insert({
-    inviter_id: myId, invitee_id: friendId, status: 'pending'
+  // Créer l'invitation (avec mon deck, nécessaire pour créer le match à l'acceptation)
+  const { data: invite, error: inviteErr } = await supabase.from('friend_match_invites').insert({
+    inviter_id: myId, invitee_id: friendId, status: 'pending', deck_id: deckId
   }).select('id').single()
+
+  if (inviteErr || !invite) {
+    console.error('[Friend] Erreur création invitation:', inviteErr)
+    toast('Impossible de créer l\'invitation', 'error')
+    navigate('home')
+    return
+  }
 
   container.innerHTML = `
     <div style="min-height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;background:linear-gradient(135deg,#0a1a2e,#0d3d1e);color:#fff;padding:32px;text-align:center;gap:20px">
@@ -47,49 +54,87 @@ async function createFriendMatch(container, ctx, deckId, myGC, gcDefs, stadiumDe
       <button id="cancel-friend" style="padding:10px 28px;border-radius:20px;border:1px solid rgba(255,255,255,0.2);background:transparent;color:rgba(255,255,255,0.5);font-size:13px;cursor:pointer">Annuler</button>
     </div>`
 
+  let matched = false
+  let channel = null
+
+  const cleanup = async () => {
+    if (channel) { channel.unsubscribe(); channel = null }
+  }
+
   document.getElementById('cancel-friend')?.addEventListener('click', async () => {
-    if (invite) await supabase.from('friend_match_invites').update({ status: 'declined' }).eq('id', invite.id)
+    await cleanup()
+    await supabase.from('friend_match_invites').update({ status: 'declined' }).eq('id', invite.id)
     _showBottomNav(container)
     navigate('home')
   })
 
-  // Attendre que le match soit créé
-  let matched = false
-  const channel = supabase.channel(`friend_${myId}`)
+  // L'ami accepte via la RPC accept_friend_invite, qui crée la ligne `matches`
+  // et met à jour l'invitation (status='accepted', match_id) → on écoute ça.
+  channel = supabase.channel(`friend_invite_${invite.id}`)
     .on('postgres_changes', {
-      event: 'INSERT', schema: 'public', table: 'matches',
-      filter: `home_id=eq.${myId}`
-    }, async ({ new: match }) => {
-      if (matched) return
+      event: 'UPDATE', schema: 'public', table: 'friend_match_invites',
+      filter: `id=eq.${invite.id}`
+    }, async ({ new: row }) => {
+      if (matched || row.status !== 'accepted' || !row.match_id) return
       matched = true
-      channel.unsubscribe()
-      if (invite) await supabase.from('friend_match_invites').update({ status: 'accepted' }).eq('id', invite.id)
-      await renderPvpMatch(container, ctx, match.id, true, { myGC, gcDefs, stadiumDef })
+      await cleanup()
+      await renderPvpMatch(container, ctx, row.match_id, true, { myGC, gcDefs, stadiumDef })
     })
     .subscribe()
 
-  setTimeout(() => { if (!matched) { channel.unsubscribe(); toast('Invitation expirée', 'info'); navigate('home') } }, 120000)
+  // Poll de secours (au cas où l'événement Realtime serait manqué)
+  const pollTimer = setInterval(async () => {
+    if (matched) return
+    const { data: row } = await supabase.from('friend_match_invites').select('status, match_id').eq('id', invite.id).single()
+    if (row?.status === 'accepted' && row.match_id) {
+      matched = true
+      clearInterval(pollTimer)
+      await cleanup()
+      await renderPvpMatch(container, ctx, row.match_id, true, { myGC, gcDefs, stadiumDef })
+    }
+  }, 3000)
+
+  setTimeout(async () => {
+    if (!matched) {
+      clearInterval(pollTimer)
+      await cleanup()
+      toast('Invitation expirée', 'info')
+      navigate('home')
+    }
+  }, 120000)
 }
 
 async function joinFriendMatch(container, ctx, deckId, myGC, gcDefs, stadiumDef) {
   const { state, navigate, toast } = ctx
   const myId = state.user.id
 
-  // Chercher un match en attente
-  const { data: match } = await supabase
-    .from('matches')
-    .select('id, home_id, away_id, status')
-    .eq('away_id', myId)
-    .eq('status', 'in_progress')
+  // Chercher une invitation en attente pour moi
+  const { data: invite } = await supabase
+    .from('friend_match_invites')
+    .select('id, inviter_id')
+    .eq('invitee_id', myId)
+    .eq('status', 'pending')
     .order('created_at', { ascending: false })
     .limit(1)
     .maybeSingle()
 
-  if (!match) {
-    toast('Aucun match en attente', 'error')
+  if (!invite) {
+    toast('Aucune invitation en attente', 'error')
     navigate('home')
     return
   }
 
-  await renderPvpMatch(container, ctx, match.id, false, { myGC, gcDefs, stadiumDef })
+  // Accepter via la RPC : crée réellement la ligne `matches`
+  const { data: result, error } = await supabase.rpc('accept_friend_invite', {
+    p_invite_id: invite.id, p_invitee_deck_id: deckId
+  })
+
+  if (error || !result?.success) {
+    console.error('[Friend] Erreur accept_friend_invite:', error || result)
+    toast(result?.error || 'Impossible de rejoindre le match', 'error')
+    navigate('home')
+    return
+  }
+
+  await renderPvpMatch(container, ctx, result.match_id, false, { myGC, gcDefs, stadiumDef })
 }

@@ -36,6 +36,10 @@ async function showMatchmakingSearch(container, ctx, deckId, formation, starters
     : `linear-gradient(135deg, #0a1a2e 0%, #0d3d1e 100%)`
   const spinCol = isRanked ? (tier?.color || '#D4A017') : '#FFD700'
 
+  let cancelled = false
+  let channel = null
+  let pollTimer = null
+
   container.innerHTML = `
     <div style="min-height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;background:${bgGrad};color:#fff;padding:32px;text-align:center;gap:20px">
       ${isRanked ? `<div style="font-size:36px">${tier?.emoji || '⚽'}</div>` : ''}
@@ -46,27 +50,53 @@ async function showMatchmakingSearch(container, ctx, deckId, formation, starters
       <button id="cancel-mm" style="padding:10px 28px;border-radius:20px;border:1px solid rgba(255,255,255,0.2);background:transparent;color:rgba(255,255,255,0.5);font-size:13px;cursor:pointer;margin-top:8px">Annuler</button>
     </div>`
 
-  document.getElementById('cancel-mm')?.addEventListener('click', () => {
-    channel?.unsubscribe()
+  const cleanup = async () => {
+    cancelled = true
+    if (channel) { channel.unsubscribe(); channel = null }
+    if (pollTimer) { clearInterval(pollTimer); pollTimer = null }
+    await supabase.rpc('cancel_matchmaking', { p_user_id: state.profile.id }).catch(()=>{})
+  }
+
+  document.getElementById('cancel-mm')?.addEventListener('click', async () => {
+    await cleanup()
     _showBottomNav(container)
     navigate('home')
   })
 
-  // Inscrit dans la file de matchmaking
-  const myId = state.user.id
-  const { data: existing } = await supabase.from('matchmaking_queue').select('id').eq('user_id', myId).single()
-  if (!existing) {
-    await supabase.from('matchmaking_queue').insert({
-      user_id: myId, deck_id: deckId, formation, mmr: myMmr, is_ranked: isRanked
+  const startPvpMatch = async (matchId, amIHome) => {
+    if (cancelled) return
+    cancelled = true
+    if (channel) { channel.unsubscribe(); channel = null }
+    if (pollTimer) { clearInterval(pollTimer); pollTimer = null }
+    await renderPvpMatch(container, ctx, matchId, amIHome, {
+      myGC, gcDefs, stadiumDef, isRanked, rankedData,
+      onMatchEnd: isRanked ? handleRankedEnd : null
     })
   }
 
-  let channel
-  let matched = false
+  // ── Tentative de matchmaking : apparie immédiatement ou m'inscrit en file ──
+  const myId = state.user.id
+  const { data: result, error } = await supabase.rpc('try_matchmake', {
+    p_user_id: myId, p_deck_id: deckId, p_formation: formation, p_mmr: myMmr, p_is_ranked: isRanked
+  })
 
-  // Polling + Realtime pour trouver un match
+  if (error || !result?.success) {
+    console.error('[Matchmaking] try_matchmake error:', error || result)
+    toast('Erreur de matchmaking', 'error')
+    _showBottomNav(container)
+    navigate('home')
+    return
+  }
+
+  if (result.matched) {
+    // Un adversaire attendait déjà : je suis "away", lui est "home"
+    await startPvpMatch(result.match_id, false)
+    return
+  }
+
+  // Personne en attente : j'écoute Realtime + je poll en secours
   const checkMatch = async () => {
-    if (matched) return
+    if (cancelled) return
     const { data: match } = await supabase
       .from('matches')
       .select('id, home_id, away_id')
@@ -77,21 +107,11 @@ async function showMatchmakingSearch(container, ctx, deckId, formation, starters
       .maybeSingle()
 
     if (match) {
-      matched = true
-      channel?.unsubscribe()
-      await supabase.from('matchmaking_queue').delete().eq('user_id', myId)
       const amIHome = match.home_id === myId
-      await renderPvpMatch(container, ctx, match.id, amIHome, {
-        myGC, gcDefs, stadiumDef, isRanked, rankedData,
-        onMatchEnd: isRanked ? handleRankedEnd : null
-      })
+      await startPvpMatch(match.id, amIHome)
     }
   }
 
-  await checkMatch()
-  if (matched) return
-
-  // Écoute Realtime
   channel = supabase.channel(`mm_${myId}`)
     .on('postgres_changes', {
       event: 'INSERT', schema: 'public', table: 'matches',
@@ -103,9 +123,8 @@ async function showMatchmakingSearch(container, ctx, deckId, formation, starters
     }, checkMatch)
     .subscribe()
 
-  // Polling de secours toutes les 3s
-  const pollTimer = setInterval(checkMatch, 3000)
-  setTimeout(() => { clearInterval(pollTimer); channel?.unsubscribe() }, 120000)
+  pollTimer = setInterval(checkMatch, 3000)
+  setTimeout(() => { if (!cancelled) cleanup() }, 120000)
 }
 
 async function handleRankedEnd(result, ctx) {

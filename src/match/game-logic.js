@@ -85,16 +85,22 @@ export function calcLinks(selected) {
 
 // ── Attaque (GDD §5.2) ────────────────────────────────────
 // Note en attaque selon le SLOT : MIL → note_m, ATT → note_a
+// "Double attaque" (GC) ne double QUE la note brute du joueur — pas le
+// bonus stade (+10), ni le boost, ni les liens (bug corrigé : ces valeurs
+// étaient additionnées avant le *2, donc doublées par erreur).
 export function calcAttack(selected, modifiers = {}) {
-  const base  = selected.reduce((s, p) => {
+  let noteSum = 0, extraSum = 0
+  selected.forEach(p => {
     const r = p._line || p.job
+    const note = Number(r==='MIL' ? p.note_m : p.note_a) || 0
     const stadBonus = p.stadiumBonus && (r === 'MIL' || r === 'ATT') ? 10 : 0
-    return s + (Number(r==='MIL'?p.note_m : p.note_a)||0) + (p.boost||0) + stadBonus
-  }, 0)
+    noteSum  += modifiers.doubleAttack ? note * 2 : note
+    extraSum += (p.boost||0) + stadBonus
+  })
+  const base  = noteSum + extraSum
   const links = calcLinks(selected)
   let total = base + links
-  if (modifiers.doubleAttack) total *= 2
-  if (modifiers.stolenNote)   total -= modifiers.stolenNote
+  if (modifiers.stolenNote) total -= modifiers.stolenNote
   return { base, links, total: Math.max(0, total) }
 }
 

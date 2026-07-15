@@ -339,7 +339,7 @@ import{s as w,F as si,r as Ie,j as It,l as Gi,m as bt,h as di,n as mn,o as xn,T 
         border:1.5px solid #ddd;background:#fff;
         font-size:14px;font-weight:700;cursor:pointer;color:#555;
       }
-    </style>`}const In="2026.07.15-2042";async function Mi(e,{state:t,navigate:i,toast:n}){var o,r;const a=t.profile;a&&(e.innerHTML=`
+    </style>`}const In="2026.07.15-2045";async function Mi(e,{state:t,navigate:i,toast:n}){var o,r;const a=t.profile;a&&(e.innerHTML=`
   <style>
     .home-dark {
       min-height: 100%;
@@ -1684,7 +1684,7 @@ import{s as w,F as si,r as Ie,j as It,l as Gi,m as bt,h as di,n as mn,o as xn,T 
         ${o.length===0?'<div style="font-size:7px;color:rgba(255,255,255,0.25);text-align:center;margin-top:6px;line-height:1.4">Pas de<br>rempl.</div>':o.map(T=>`<div class="sub-btn-col" data-sub-id="${T.cardId}" style="cursor:pointer;flex-shrink:0">${Xe(T,76,100)}</div>`).join("")}
       </div>`,V=`<div style="overflow:hidden;min-width:0;flex:1;min-height:0;display:flex;flex-direction:column" id="match-field">
         <div class="terrain-wrapper" style="overflow:hidden;width:100%;flex:1;min-height:0;display:flex;align-items:center;justify-content:center">
-          ${yt(t.homeTeam,t.formation,t.phase,n,$?Math.max(300,window.innerWidth-310):ot(),$?Math.round(Math.max(300,window.innerWidth-310)*1.1):ut(),c)}
+          ${yt(t.homeTeam,t.formation,t.phase,n,$?Math.min(1500,Math.max(300,window.innerWidth-310)):ot(),$?Math.round(Math.min(1500,Math.max(300,window.innerWidth-310))*1.1):ut(),c)}
         </div>
       </div>`;return $?`
         <div style="display:flex;flex:1;min-height:0;overflow:hidden">
@@ -1704,7 +1704,7 @@ import{s as w,F as si,r as Ie,j as It,l as Gi,m as bt,h as di,n as mn,o as xn,T 
         <div id="mobile-play-area" style="flex:1;min-height:0;display:flex;overflow:hidden">
           <div id="match-field" style="flex:1;min-width:0;min-height:0;overflow:hidden">
             <div class="terrain-wrapper" style="width:100%;height:100%;overflow:hidden">
-              ${yt(t.homeTeam,t.formation,t.phase,n,$?Math.max(300,window.innerWidth-310):ot(),$?Math.round(Math.max(300,window.innerWidth-310)*1.1):ut(),c)}
+              ${yt(t.homeTeam,t.formation,t.phase,n,$?Math.min(1500,Math.max(300,window.innerWidth-310)):ot(),$?Math.round(Math.min(1500,Math.max(300,window.innerWidth-310))*1.1):ut(),c)}
             </div>
           </div>
         </div>

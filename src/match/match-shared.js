@@ -391,7 +391,8 @@ export async function renderDeckSelect(container, ctx, matchMode) {
     container.style.height = '100%'
     container.style.overflow = 'hidden'
     container.innerHTML = `
-    <div id="deck-select-screen" style="display:flex;flex-direction:column;height:100%;overflow:hidden;background:#0a3d1e;color:#fff">
+    <div id="deck-select-screen" style="display:flex;flex-direction:column;height:100%;overflow:hidden;background:#0a3d1e;color:#fff;position:relative">
+      <button id="cancel-deck-select" style="position:absolute;top:8px;right:10px;z-index:10;width:32px;height:32px;border-radius:50%;border:none;background:rgba(180,30,30,0.85);color:#fff;font-size:18px;font-weight:900;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;padding:0">✕</button>
 
       <!-- Header : titre + nav deck + stade (flex-shrink:0) -->
       <div id="deck-top-bar" style="flex-shrink:0">
@@ -452,7 +453,6 @@ export async function renderDeckSelect(container, ctx, matchMode) {
           color:${complete?'#fff':'rgba(255,255,255,0.3)'};font-size:16px;font-weight:900;cursor:${complete?'pointer':'default'}">
           ${complete?'✅ Valider ce deck':'⚠️ Deck incomplet'}
         </button>
-        <button id="cancel-deck-select" style="width:100%;padding:10px;border-radius:12px;border:1px solid rgba(255,255,255,0.2);background:transparent;color:rgba(255,255,255,.5);font-size:14px;cursor:pointer">Annuler</button>
       </div>
     </div>`
 

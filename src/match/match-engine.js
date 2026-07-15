@@ -217,16 +217,17 @@ export function renderLogEntry(entry) {
 
   return `
     <div style="padding:8px 12px;border-left:3px solid ${isGoal?'#22c55e':'rgba(255,255,255,0.15)'};margin-bottom:4px">
-      <div style="font-size:11px;color:rgba(255,255,255,0.5);margin-bottom:4px">${icon} ${entry.title||entry.text||''}</div>
-      ${entry.homePlayers?.length ? `
-        <div style="display:flex;gap:3px;flex-wrap:wrap;margin-bottom:4px">
-          ${entry.homePlayers.map(renderCard).join('')}
+      <div style="font-size:11px;color:rgba(255,255,255,0.5);margin-bottom:6px;text-align:center">${icon} ${entry.title||entry.text||''}</div>
+      ${(entry.homePlayers?.length || entry.aiPlayers?.length) ? `
+        <div style="display:flex;align-items:flex-start;justify-content:center;gap:16px">
+          <div style="flex:1;display:flex;gap:3px;flex-wrap:wrap;justify-content:flex-end">
+            ${(entry.homePlayers||[]).map(renderCard).join('')}
+          </div>
+          <div style="flex:1;display:flex;gap:3px;flex-wrap:wrap;justify-content:flex-start">
+            ${(entry.aiPlayers||[]).map(renderCard).join('')}
+          </div>
         </div>` : ''}
-      ${entry.aiPlayers?.length ? `
-        <div style="display:flex;gap:3px;flex-wrap:wrap">
-          ${entry.aiPlayers.map(renderCard).join('')}
-        </div>` : ''}
-      ${entry.text && entry.title ? `<div style="font-size:10px;color:rgba(255,255,255,0.4);margin-top:4px">${entry.text}</div>` : ''}
+      ${entry.text && entry.title ? `<div style="font-size:10px;color:rgba(255,255,255,0.4);margin-top:4px;text-align:center">${entry.text}</div>` : ''}
     </div>`
 }
 

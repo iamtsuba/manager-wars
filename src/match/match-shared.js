@@ -635,10 +635,11 @@ export function buildTeamSVG(team, formation, phase, selectedIds, W=310, H=310, 
     const isSelected = selectedIds.includes(p.cardId)
 
     let extraNote = p.boost || 0
+    let hasStadThisPhase = false
     if (p.stadiumBonus) {
-      if (phase === 'attack' && (role === 'ATT' || role === 'MIL')) extraNote += 10
-      else if (phase === 'defense' && (role === 'GK' || role === 'DEF' || role === 'MIL')) extraNote += 10
-      else if (!phase) extraNote += 10
+      if (phase === 'attack' && (role === 'ATT' || role === 'MIL')) { extraNote += 10; hasStadThisPhase = true }
+      else if (phase === 'defense' && (role === 'GK' || role === 'DEF' || role === 'MIL')) { extraNote += 10; hasStadThisPhase = true }
+      else if (!phase) { extraNote += 10; hasStadThisPhase = true }
     }
 
     const fx = Math.round(c.x - CW/2)
@@ -652,15 +653,18 @@ export function buildTeamSVG(team, formation, phase, selectedIds, W=310, H=310, 
     }
 
     // Evo déjà intégré dans note_g/d/m/a par playerFromCard → _evolution_bonus:0
-    // p.stadiumBonus déjà géré par renderPlayerCard (ligne 84 player-card.js)
+    // stadiumBonus déjà intégré dans extraNote ci-dessus (conditionné par phase/rôle) →
+    // on force stadiumBonus:false + showStad:false pour éviter que renderPlayerCard
+    // l'ajoute une 2e fois ; _forceStadColor garde juste la couleur bleue de la note.
     const cardHtml = renderPlayerCard(
-      { ...p, _evolution_bonus: 0 },
-      { width: CW, showStad: true, stadDef: null, role, extraNote, _cardOffset: 30 }
+      { ...p, _evolution_bonus: 0, stadiumBonus: false },
+      { width: CW, showStad: false, stadDef: null, role, extraNote, _cardOffset: 30, _forceStadColor: hasStadThisPhase }
     )
-    const selStyle = isSelected ? 'outline:3px solid #FFD700;outline-offset:2px;border-radius:8px;opacity:0.75;' : ''
+    const selStyle = isSelected ? `position:absolute;top:${30}px;left:0;width:${CW}px;height:${CH}px;outline:3px solid #FFD700;outline-offset:2px;border-radius:8px;pointer-events:none;` : ''
     svg += `<foreignObject x="${fx - 2}" y="${fy - 30}" width="${CW + 8}" height="${CH + 60}" style="overflow:visible">
-      <div xmlns="http://www.w3.org/1999/xhtml" style="${selStyle}position:relative">
+      <div xmlns="http://www.w3.org/1999/xhtml" style="position:relative">
         ${cardHtml}
+        ${isSelected ? `<div style="${selStyle}"></div>` : ''}
       </div>
     </foreignObject>`
 

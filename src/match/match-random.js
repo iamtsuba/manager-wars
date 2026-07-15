@@ -75,10 +75,12 @@ async function showMatchmakingSearch(container, ctx, deckId, formation, starters
   }
 
   // ── Tentative de matchmaking : apparie immédiatement ou m'inscrit en file ──
+  // Ranked garde sa propre RPC try_matchmake_ranked (progressive MMR, déjà
+  // existante) ; random simple utilise try_matchmake (user_id + deck_id).
   const myId = state.user.id
-  const { data: result, error } = await supabase.rpc('try_matchmake', {
-    p_user_id: myId, p_deck_id: deckId, p_formation: formation, p_mmr: myMmr, p_is_ranked: isRanked
-  })
+  const { data: result, error } = isRanked
+    ? await supabase.rpc('try_matchmake_ranked', { p_user_id: myId, p_deck_id: deckId, p_mmr: myMmr })
+    : await supabase.rpc('try_matchmake', { p_user_id: myId, p_deck_id: deckId })
 
   if (error || !result?.success) {
     console.error('[Matchmaking] try_matchmake error:', error || result)

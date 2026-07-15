@@ -444,11 +444,12 @@ function renderGame(container, game, ctx) {
   const grayedPlayers = Object.values(game.homeTeam).flat().filter(p => p.used)
   const canSub = grayedPlayers.length > 0 && availSubs.length > 0 && game.subsUsed < game.maxSubs
 
-  // Défenseurs/GK autorisés à attaquer si : aucun MIL/ATT restant ET l'IA n'a
-  // plus aucun joueur disponible. Dans ce cas leur note est forcée à 1.
-  const aiHasNoOne = !['GK','DEF','MIL','ATT'].some(r => (game.aiTeam[r]||[]).some(p=>!p.used))
+  // Défenseurs/GK autorisés à attaquer dès qu'il n'y a plus de MIL/ATT disponible
+  // (peu importe l'état de l'adversaire — sinon boucle infinie possible si les deux
+  // camps sont réduits à leurs seuls défenseurs/gardien sans que l'un soit VRAIMENT vide).
+  // Dans ce cas leur note est forcée à 1.
   const homeMilAtt = [...(game.homeTeam.MIL||[]),...(game.homeTeam.ATT||[])].filter(p=>!p.used)
-  const extraSelectableIds = (game.phase==='attack' && aiHasNoOne && homeMilAtt.length===0)
+  const extraSelectableIds = (game.phase==='attack' && homeMilAtt.length===0)
     ? [...(game.homeTeam.GK||[]),...(game.homeTeam.DEF||[])].filter(p=>!p.used).map(p=>p.cardId)
     : []
 
@@ -459,10 +460,10 @@ function renderGame(container, game, ctx) {
   const isDefense = game.phase === 'defense'
   const isFinished = game.phase === 'finished'
 
-  // Joueur bloqué : phase attack, aucun MIL/ATT dispo, plus de remplacements possibles
+  // Joueur bloqué : phase attack, aucun MIL/ATT/DEF/GK dispo, plus de remplacements possibles
   const availSubsNowRender = (game.homeSubs||[]).filter(s => !(game.usedSubIds||[]).includes(s.cardId))
   const canSubNowRender = availSubsNowRender.length > 0 && game.subsUsed < game.maxSubs
-  const isBlocked = isAttack && homeMilAtt.length === 0 && !canSubNowRender
+  const isBlocked = isAttack && homeMilAtt.length === 0 && extraSelectableIds.length === 0 && !canSubNowRender
 
   // GC disponibles
   const activeGCs = game.gcCards.filter(gc => !game.usedGc.includes(gc.id))
@@ -872,11 +873,11 @@ function confirmAttack(container, game, ctx) {
   if (game._timerInt) { clearInterval(game._timerInt); game._timerInt = null }
   updateLastPlayer(game, ctx, ctx.state.profile.id)
   // Re-piocher les objets joueurs À JOUR (boost inclus) depuis game.homeTeam.
-  // Pour les DEF/GK qui attaquent en mode spécial (IA sans joueurs), forcer note à 1.
-  const aiHasNoOneNow = !['GK','DEF','MIL','ATT'].some(r => (game.aiTeam[r]||[]).some(p=>!p.used))
+  // Les DEF/GK ne sont sélectionnables en attaque que via le fallback (plus de
+  // MIL/ATT dispo) → leur note est toujours forcée à 1 dans ce cas.
   const selected = game.selected.map(s => {
     const live = (game.homeTeam[s._role]||[]).find(x => x.cardId === s.cardId) || s
-    const isDefAttacking = aiHasNoOneNow && ['GK','DEF'].includes(s._role)
+    const isDefAttacking = ['GK','DEF'].includes(s._role)
     return { ...live, _line: s._role, ...(isDefAttacking ? { note_a: Math.max(1, Number(live.note_a)||0) } : {}) }
   })
   const calc = calcAttack(selected, game.modifiers.home)
@@ -1003,9 +1004,15 @@ function aiTurn(container, game, ctx) {
   // IA tente un remplacement ou un GC avant d'attaquer
   aiMaySub(game)
   aiMayPlayGC(game)
-  const allAi = [...(game.aiTeam.MIL||[]),...(game.aiTeam.ATT||[])]
+  let allAi = [...(game.aiTeam.MIL||[]),...(game.aiTeam.ATT||[])].filter(p=>!p.used)
+  let aiForcedNote1 = false
+  if (!allAi.length) {
+    allAi = [...(game.aiTeam.GK||[]),...(game.aiTeam.DEF||[])].filter(p=>!p.used)
+    aiForcedNote1 = true
+  }
   const selected = aiSelectPlayers(allAi, 'attack', game.difficulty)
   if (!selected.length) { checkEnd(container, game, ctx); return }
+  if (aiForcedNote1) selected.forEach(p => { p._line = p._line || p.job; p.note_a = Math.max(1, Number(p.note_a)||0) })
   const calc = calcAttack(selected, game.modifiers.ai)
   game.pendingAttack = { ...calc, players:selected, side:'ai' }
   selected.forEach(s => { s.used = true })
@@ -1101,32 +1108,74 @@ function aiDefend(container, game, ctx) {
 
 function nextTurn(container, game, ctx, next) {
   game.round++
+  // Corner décisif : si un camp n'a plus QUE son gardien et que le score est
+  // nul, le gardien monte marquer (animation dédiée) plutôt que de boucler.
+  if (tryLastCornerGoal(container, game, ctx)) return
   if (isMatchOver(game)) { finishMatch(container, game, ctx); return }
   if (next === 'home-attack') {
-    const homeAtt = [...(game.homeTeam.MIL||[]),...(game.homeTeam.ATT||[])].filter(p=>!p.used)
-    if (!homeAtt.length) {
-      // Plus d'attaquants — s'il reste des défenseurs, l'IA attaque et le joueur
-      // peut encore défendre. Sans ça, le match se terminait prématurément.
-      const homeDef = [...(game.homeTeam.GK||[]),...(game.homeTeam.DEF||[]),...(game.homeTeam.MIL||[])].filter(p=>!p.used)
-      if (!homeDef.length) {
-        // Vraiment plus aucun joueur → fin de match normale
-        checkEnd(container, game, ctx); return
-      }
-      // Il reste des défenseurs : l'IA attaque, le joueur doit défendre
-      const aiAtt2 = [...(game.aiTeam.MIL||[]),...(game.aiTeam.ATT||[])].filter(p=>!p.used)
-      if (!aiAtt2.length) { checkEnd(container, game, ctx); return }
-      setTimeout(() => aiTurn(container, game, ctx), 100)
-      return
-    }
+    // Fallback GK/DEF (note forcée à 1) inclus : "attaquants" = tout joueur
+    // encore disponible, pas seulement MIL/ATT.
+    const homeAny = ['MIL','ATT','GK','DEF'].some(r => (game.homeTeam[r]||[]).some(p=>!p.used))
+    if (!homeAny) { checkEnd(container, game, ctx); return }
     game.phase = 'attack'
     renderGame(container, game, ctx)
   } else {
-    const aiAtt = [...(game.aiTeam.MIL||[]),...(game.aiTeam.ATT||[])].filter(p=>!p.used)
-    if (!aiAtt.length) { checkEnd(container, game, ctx); return }
+    const aiAny = ['MIL','ATT','GK','DEF'].some(r => (game.aiTeam[r]||[]).some(p=>!p.used))
+    if (!aiAny) { checkEnd(container, game, ctx); return }
     game.phase = 'ai-attack'
     renderGame(container, game, ctx)
     setTimeout(() => aiTurn(container, game, ctx), 800)
   }
+}
+
+// ── Corner décisif : un camp réduit à son seul gardien, score à égalité ──
+// "Dans ce cas uniquement" : Dernier Corner → Le Gardien monte → BUT.
+function tryLastCornerGoal(container, game, ctx) {
+  if (game.homeScore !== game.aiScore) return false
+  const onlyGK = (team) => {
+    const gkFree = (team.GK||[]).some(p => !p.used)
+    const restFree = ['DEF','MIL','ATT'].some(r => (team[r]||[]).some(p => !p.used))
+    return gkFree && !restFree
+  }
+  if (onlyGK(game.homeTeam)) { showLastCornerAnimation(container, game, ctx, 'home'); return true }
+  if (onlyGK(game.aiTeam))   { showLastCornerAnimation(container, game, ctx, 'ai');   return true }
+  return false
+}
+
+function showLastCornerAnimation(container, game, ctx, side) {
+  const team = side === 'home' ? game.homeTeam : game.aiTeam
+  const gk = (team.GK||[]).find(p => !p.used)
+  if (!gk) return
+  gk.used = true
+  if (side === 'home') game.homeScore++
+  else game.aiScore++
+
+  game.log.push({
+    type: 'duel', isGoal: true, homeScored: side === 'home',
+    homePlayers: side === 'home' ? [histPlayer(gk)] : [],
+    aiPlayers:   side === 'ai'   ? [histPlayer(gk)] : [],
+    text: `⚽ DERNIER CORNER — Le gardien ${side==='home'?'':'adverse '}marque !`,
+  })
+
+  const overlay = document.createElement('div')
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.93);z-index:950;display:flex;align-items:center;justify-content:center;overflow:hidden;text-align:center;padding:24px'
+  document.body.appendChild(overlay)
+
+  const showText = (text, color) => new Promise(resolve => {
+    overlay.innerHTML = `<div style="font-size:32px;font-weight:900;color:${color};letter-spacing:2px;animation:lcFade 1.4s ease both">${text}</div>
+    <style>@keyframes lcFade{0%{opacity:0;transform:scale(0.8)}18%{opacity:1;transform:scale(1)}82%{opacity:1}100%{opacity:0;transform:scale(1.05)}}</style>`
+    setTimeout(resolve, 1400)
+  })
+
+  ;(async () => {
+    await showText('⚽ DERNIER CORNER', '#FFD700')
+    await showText('🧤 LE GARDIEN MONTE !', '#4fc3f7')
+    overlay.remove()
+    showGoalAnimation([histPlayer(gk)], game.homeScore, game.aiScore, side === 'home', () => {
+      if (isMatchOver(game)) { finishMatch(container, game, ctx); return }
+      nextTurn(container, game, ctx, side === 'home' ? 'ai-attack' : 'home-attack')
+    })
+  })()
 }
 
 function isMatchOver(game) {
@@ -1136,6 +1185,7 @@ function isMatchOver(game) {
 }
 
 function checkEnd(container, game, ctx) {
+  if (tryLastCornerGoal(container, game, ctx)) return
   if (isMatchOver(game)) finishMatch(container, game, ctx)
   else { game.phase = 'attack'; renderGame(container, game, ctx) }
 }

@@ -599,8 +599,8 @@ function renderGame(container, game, ctx) {
       </div>`
 
       // ─── Terrain ──────────────────────────────────────────
-      const terrainHTML = `<div style="overflow:hidden;min-width:0;flex:1;min-height:0;display:flex;flex-direction:column;${_pc?'overflow-y:auto;min-height:500px':''}" id="match-field">
-        <div class="terrain-wrapper" style="overflow:hidden;width:100%;${_pc?'':'flex:1;min-height:0;'}display:flex;align-items:${_pc?'flex-start':'center'};justify-content:center">
+      const terrainHTML = `<div style="overflow:hidden;min-width:0;flex:1;min-height:0;display:flex;flex-direction:column" id="match-field">
+        <div class="terrain-wrapper" style="overflow:hidden;width:100%;flex:1;min-height:0;display:flex;align-items:center;justify-content:center">
           ${renderTeam(game.homeTeam,game.formation,game.phase,selectedIds,_pc?1300:svgW(),_pc?600:svgH(),extraSelectableIds)}
         </div>
       </div>`
@@ -743,13 +743,8 @@ function renderGame(container, game, ctx) {
     if (!svg) return
     svg.removeAttribute('width')
     svg.removeAttribute('height')
-    if (window.innerWidth >= 700) {
-      svg.style.cssText = 'width:100%;height:auto;display:block;max-width:none;margin:0'
-      svg.setAttribute('preserveAspectRatio', 'xMidYMid meet')
-    } else {
-      svg.style.cssText = 'width:100%;height:100%;display:block;max-width:none;margin:0'
-      svg.setAttribute('preserveAspectRatio', 'xMidYMid meet')
-    }
+    svg.style.cssText = 'width:100%;height:100%;display:block;max-width:none;margin:0'
+    svg.setAttribute('preserveAspectRatio', 'xMidYMid meet')
   })()
 
   if (!game._resizeBound) {

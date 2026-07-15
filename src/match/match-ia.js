@@ -741,6 +741,11 @@ function renderGame(container, game, ctx) {
     const svg = container.querySelector('#match-field .terrain-wrapper svg')
              || container.querySelector('.terrain-wrapper svg')
     if (!svg) return
+    // CAUSE RACINE : #match-terrain-wrap (div généré par renderTeam) n'a pas
+    // de largeur → dans un flex centré, il se réduit et le SVG width:100%
+    // devient minuscule. On force le wrap ET le svg à remplir le conteneur.
+    const wrap = svg.closest('#match-terrain-wrap')
+    if (wrap) wrap.style.cssText = 'position:relative;width:100%;height:100%;padding:0'
     svg.removeAttribute('width')
     svg.removeAttribute('height')
     svg.style.cssText = 'width:100%;height:100%;display:block;max-width:none;margin:0'
@@ -751,7 +756,11 @@ function renderGame(container, game, ctx) {
     game._resizeBound = true
     window.addEventListener('resize', () => {
       const svg2 = container.querySelector('.terrain-wrapper svg')
-      if (svg2) { svg2.style.cssText = 'width:100%;height:100%;display:block;max-width:none;margin:0' }
+      if (svg2) {
+        const wrap2 = svg2.closest('#match-terrain-wrap')
+        if (wrap2) wrap2.style.cssText = 'position:relative;width:100%;height:100%;padding:0'
+        svg2.style.cssText = 'width:100%;height:100%;display:block;max-width:none;margin:0'
+      }
     })
   }
 

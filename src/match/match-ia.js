@@ -599,7 +599,7 @@ function renderGame(container, game, ctx) {
       </div>`
 
       // ─── Terrain ──────────────────────────────────────────
-      const terrainHTML = `<div style="overflow:hidden;min-width:0;flex:1;min-height:0;display:flex;flex-direction:column;${_pc?'overflow-y:auto':''}" id="match-field">
+      const terrainHTML = `<div style="overflow:hidden;min-width:0;flex:1;min-height:0;display:flex;flex-direction:column;${_pc?'overflow-y:auto;min-height:500px':''}" id="match-field">
         <div class="terrain-wrapper" style="overflow:hidden;width:100%;${_pc?'':'flex:1;min-height:0;'}display:flex;align-items:${_pc?'flex-start':'center'};justify-content:center">
           ${renderTeam(game.homeTeam,game.formation,game.phase,selectedIds,_pc?1300:svgW(),_pc?600:svgH(),extraSelectableIds)}
         </div>
@@ -738,12 +738,12 @@ function renderGame(container, game, ctx) {
 
   // ── Dimensionnement du SVG du terrain (PC / Mobile) ──────────
   ;(function fixSVG() {
-    const svg = container.querySelector('.terrain-wrapper svg')
+    const svg = container.querySelector('#match-field .terrain-wrapper svg')
+             || container.querySelector('.terrain-wrapper svg')
     if (!svg) return
     svg.removeAttribute('width')
     svg.removeAttribute('height')
     if (_pc) {
-      // PC : SVG pleine largeur, hauteur proportionnelle automatique
       svg.style.cssText = 'width:100%;height:auto;display:block;max-width:none;margin:0'
       svg.setAttribute('preserveAspectRatio', 'xMidYMid meet')
     } else {

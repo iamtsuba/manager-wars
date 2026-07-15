@@ -96,33 +96,30 @@ async function showMatchmakingSearch(container, ctx, deckId, formation, starters
     return
   }
 
-  // Personne en attente : j'écoute Realtime + je poll en secours
+  // Personne en attente : j'écoute Realtime ma propre ligne matchmaking_queue
+  // (mise à jour status='matched' + match_id par celui qui me rejoint), + poll en secours
   const checkMatch = async () => {
     if (cancelled) return
-    const { data: match } = await supabase
-      .from('matches')
-      .select('id, home_id, away_id')
-      .or(`home_id.eq.${myId},away_id.eq.${myId}`)
-      .eq('status', 'in_progress')
-      .order('created_at', { ascending: false })
-      .limit(1)
+    const { data: row } = await supabase
+      .from('matchmaking_queue')
+      .select('status, match_id')
+      .eq('user_id', myId)
       .maybeSingle()
 
-    if (match) {
-      const amIHome = match.home_id === myId
-      await startPvpMatch(match.id, amIHome)
+    if (row?.status === 'matched' && row.match_id) {
+      // J'attendais : je suis "home"
+      await startPvpMatch(row.match_id, true)
     }
   }
 
   channel = supabase.channel(`mm_${myId}`)
     .on('postgres_changes', {
-      event: 'INSERT', schema: 'public', table: 'matches',
-      filter: `home_id=eq.${myId}`
-    }, checkMatch)
-    .on('postgres_changes', {
-      event: 'UPDATE', schema: 'public', table: 'matches',
-      filter: `away_id=eq.${myId}`
-    }, checkMatch)
+      event: 'UPDATE', schema: 'public', table: 'matchmaking_queue',
+      filter: `user_id=eq.${myId}`
+    }, (payload) => {
+      const row = payload.new
+      if (row.status === 'matched' && row.match_id) startPvpMatch(row.match_id, true)
+    })
     .subscribe()
 
   pollTimer = setInterval(checkMatch, 3000)

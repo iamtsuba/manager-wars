@@ -16,6 +16,7 @@ import {
   histPlayer as _histPlayer, withStadBonus,
   svgW, svgH,
   showGoalAnimation, renderLogEntry, showSubAnimation, showGameToast,
+  milScore, milLinks, renderMilRow, renderOpponentReveal,
 } from './match-engine.js'
 import { supabase } from '../lib/supabase.js'
 import { applyOwnEvolution } from './evolutive-cards.js'
@@ -808,11 +809,12 @@ async function _renderPvpMatchCore(container, ctx, matchId, amIHome, myGC = [], 
   // ── Reveal équipe adverse (5s) ──────────────────────────
   function renderPvpReveal() {
     _hideBottomNav(container)
+    // Le bonus stade est déjà appliqué comme flag p.stadiumBonus sur chaque
+    // joueur (voir applyStadiumBonus à la construction du game state) — pas
+    // besoin de stadDef ici, buildTeamSVG/renderPlayerCard lisent ce flag.
     container.innerHTML = `
-    <div class="match-screen" style="display:flex;flex-direction:column;align-items:center;justify-content:flex-start;height:100%;overflow:hidden;gap:12px;padding:12px 16px;background:#0a3d1e;overflow-y:auto">
-      <div style="font-size:11px;color:rgba(255,255,255,0.5);letter-spacing:3px;text-transform:uppercase;margin-top:8px">Équipe adverse</div>
-      <div style="font-size:20px;font-weight:900;color:#ff6b6b">${gameState[oppRole+'Name']||'Adversaire'}</div>
-      <div style="width:min(90vw,420px)">${buildTeamSVG(gameState[oppRole+'Team'],gameState[oppRole+'Formation'],null,[],svgW(),svgH())}</div>
+    <div class="match-screen" style="display:flex;flex-direction:column;height:100%;overflow:hidden;overflow-y:auto;background:#0a3d1e">
+      ${renderOpponentReveal(gameState[oppRole+'Team'], gameState[oppRole+'Formation'], null, gameState[oppRole+'Name']||'Adversaire')}
     </div>`
     if (myRole==='p1') setTimeout(async()=>{ await pushState({ phase:'midfield' }) }, 5000)
   }
@@ -827,30 +829,9 @@ async function _renderPvpMatchCore(container, ctx, matchId, amIHome, myGC = [], 
 
     const myMils  = gameState[myRole+'Team'].MIL||[]
     const oppMils = gameState[oppRole+'Team'].MIL||[]
+    // Bonus stade déjà appliqué comme flag p.stadiumBonus → stadDef=null suffit
     const myTotal=milScore(myMils)+milLinks(myMils), oppTotal=milScore(oppMils)+milLinks(oppMils)
     const myWins=myTotal>=oppTotal
-
-    function renderMilRow(mils,label,side){
-      return `<div id="duel-row-${side}" style="text-align:center;width:100%;transition:transform .5s cubic-bezier(.5,0,.75,0),opacity .5s ease;transform-origin:center">
-        <div style="font-size:11px;color:rgba(255,255,255,0.55);letter-spacing:2px;margin-bottom:10px;text-transform:uppercase;font-weight:700">${label}</div>
-        <div style="display:flex;align-items:center;justify-content:center;gap:0">
-          ${mils.map((p,i)=>{
-            const lc=i<mils.length-1?linkColor(p,mils[i+1]):null
-            const noLink=!lc||lc==='#ff3333'||lc==='#cc2222'
-            const lv=lc==='#00ff88'?'+2':lc==='#FFD700'?'+1':''
-            return `<div class="duel-card duel-card-${side}" data-idx="${i}" style="opacity:0;transform:translateY(18px) scale(0.7);transition:opacity .35s ease,transform .35s cubic-bezier(.34,1.56,.64,1);flex-shrink:0">
-              ${renderPlayerCard({...p, _evolution_bonus:0}, {width:window.innerWidth>=900?90:58, showStad:true, stadDef:gameState.homeStadiumDef||gameState.stadiumDef||null, role:'MIL', extraNote:p.boost||0})}
-            </div>
-            ${i<mils.length-1?`<div class="duel-link duel-link-${side}" style="position:relative;width:18px;height:5px;border-radius:3px;background:${noLink?'rgba(255,255,255,0.12)':lc};flex-shrink:0;opacity:0;transition:opacity .3s ease;box-shadow:${noLink?'none':`0 0 8px ${lc}`}">
-              ${lv?`<span style="position:absolute;top:-13px;left:50%;transform:translateX(-50%);font-size:8px;font-weight:900;color:${lc}">${lv}</span>`:''}
-            </div>`:''}`
-          }).join('')}
-        </div>
-        <div class="duel-score-line duel-score-line-${side}" style="margin-top:10px;font-size:12px;color:rgba(255,255,255,0.55);opacity:0;transition:opacity .4s ease">
-          Score: ${milScore(mils)} + ${milLinks(mils)} liens = <b style="color:#fff">${milScore(mils)+milLinks(mils)}</b>
-        </div>
-      </div>`
-    }
 
     _hideBottomNav(container)
     container.innerHTML = `
@@ -868,13 +849,13 @@ async function _renderPvpMatchCore(container, ctx, matchId, amIHome, myGC = [], 
       <div style="text-align:center;color:#fff">
         <div style="font-size:11px;opacity:.5;letter-spacing:3px;text-transform:uppercase">Duel du milieu de terrain</div>
       </div>
-      ${renderMilRow(myMils, gameState[myRole+'Name']||'Vous', 'me')}
+      ${renderMilRow(myMils, gameState[myRole+'Name']||'Vous', '#FFD700', 'me', null)}
       <div style="display:flex;flex-direction:column;align-items:center;gap:2px;margin:4px 0">
         <div id="pvp-score-me" style="font-size:48px;font-weight:900;color:#D4A017;transition:all .5s ease">0</div>
         <div id="pvp-vs" style="font-size:14px;color:rgba(255,255,255,.4);letter-spacing:3px;opacity:0">VS</div>
         <div id="pvp-score-opp" style="font-size:48px;font-weight:900;color:rgba(255,255,255,.7);transition:all .5s ease">0</div>
       </div>
-      ${renderMilRow(oppMils, gameState[oppRole+'Name']||'Adversaire', 'opp')}
+      ${renderMilRow(oppMils, gameState[oppRole+'Name']||'Adversaire', '#e03030', 'opp', null)}
       <div id="duel-shock" style="position:absolute;left:50%;top:50%;width:120px;height:120px;border-radius:50%;border:6px solid #FFD700;opacity:0;pointer-events:none"></div>
       <div id="pvp-duel-finale" style="position:fixed;inset:0;z-index:200;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:24px;opacity:0;pointer-events:none;background:radial-gradient(circle at center,rgba(10,61,30,.4),rgba(10,61,30,.92))"></div>
     </div>`

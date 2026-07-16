@@ -7,7 +7,7 @@
 
 import { supabase }              from '../lib/supabase.js'
 import { computeGlicko2, getTier } from '../ranked/glicko2.js'
-import { renderDeckSelect, loadMatchSetup, _hideBottomNav, _showBottomNav } from './match-shared.js'
+import { renderDeckSelect, loadMatchSetup, showGCSelection, _hideBottomNav, _showBottomNav } from './match-shared.js'
 import { renderPvpMatch, resumePvpMatch as _resumePvpMatch } from './match-pvp.js'
 
 export async function renderMatchRandom(container, ctx, isRanked = false) {
@@ -15,9 +15,12 @@ export async function renderMatchRandom(container, ctx, isRanked = false) {
   const rankedData = isRanked ? (ctx?.state?.params?.rankedData || null) : null
 
   await loadMatchSetup(container, ctx, isRanked ? 'ranked' : 'random', async ({ deckId, formation, starters, subsRaw, gcCardsEnriched, gcDefs, stadiumDef }) => {
-    const myGC = gcCardsEnriched || []
     _hideBottomNav(container)
-    await showMatchmakingSearch(container, ctx, deckId, formation, starters, subsRaw, myGC, gcDefs, stadiumDef, isRanked, rankedData)
+    const proceed = async (chosenGC) => {
+      await showMatchmakingSearch(container, ctx, deckId, formation, starters, subsRaw, chosenGC || [], gcDefs, stadiumDef, isRanked, rankedData)
+    }
+    if (!gcCardsEnriched?.length) { await proceed([]); return }
+    showGCSelection(container, gcCardsEnriched, proceed)
   })
 }
 

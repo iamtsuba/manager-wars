@@ -34,6 +34,8 @@ import {
 import { renderPlayerCard } from '../components/player-card.js'
 
 const BASE = import.meta.env.BASE_URL
+// histPlayer importé depuis match-engine.js (aliasé _histPlayer)
+const histPlayer = (p) => _histPlayer(p)
 
 // Point d'entrée public
 export async function renderPvpMatch(container, ctx, matchId, amIHome, opts = {}) {
@@ -622,20 +624,20 @@ async function _renderPvpMatchCore(container, ctx, matchId, amIHome, myGC = [], 
     const logHTML = (() => {
       if (isMyDefense && gameState.pendingAttack?.players) {
         const atk = gameState.pendingAttack
-        return `<div style="padding:5px 8px;background:rgba(180,30,30,0.2);border-left:3px solid #ff6b6b">
+        return `<div style="padding:5px 8px;background:rgba(180,30,30,0.2);border-left:3px solid #ff6b6b;text-align:center">
           <div style="font-size:8px;color:#ff6b6b;letter-spacing:2px;margin-bottom:4px;text-transform:uppercase">⚔️ ${oppName} ATTAQUE — Défendez !</div>
-          ${renderCardRow((atk.players||[]).map(p=>({...p,used:false})),'#ff6b6b',atk.total)}
+          <div style="display:flex;justify-content:center">${renderCardRow((atk.players||[]).map(p=>({...p,used:false})),'#ff6b6b',atk.total)}</div>
         </div>`
       }
       if (isMyAttack && gameState.pendingAttack?.players) {
         const atk = gameState.pendingAttack
-        return `<div style="padding:5px 8px;background:rgba(26,107,60,0.2);border-left:3px solid #00ff88">
+        return `<div style="padding:5px 8px;background:rgba(26,107,60,0.2);border-left:3px solid #00ff88;text-align:center">
           <div style="font-size:8px;color:#00ff88;letter-spacing:2px;margin-bottom:4px;text-transform:uppercase">⚔️ VOUS ATTAQUEZ</div>
-          ${renderCardRow((atk.players||[]).map(p=>({...p,used:false})),'#00ff88',atk.total)}
+          <div style="display:flex;justify-content:center">${renderCardRow((atk.players||[]).map(p=>({...p,used:false})),'#00ff88',atk.total)}</div>
         </div>`
       }
       const last = (gameState.log||[]).slice(-1)[0]
-      if (!last) return '<div style="padding:6px 8px;font-size:11px;color:rgba(255,255,255,0.3)">⏳ Match en cours...</div>'
+      if (!last) return '<div style="padding:6px 8px;font-size:11px;color:rgba(255,255,255,0.3);text-align:center">⏳ Match en cours...</div>'
       return '<div style="padding:2px 4px">' + renderLogEntry(last) + '</div>'
     })()
 

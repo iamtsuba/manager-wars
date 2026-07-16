@@ -609,11 +609,11 @@ async function _renderPvpMatchCore(container, ctx, matchId, amIHome, myGC = [], 
         : availSubs.map(s=>`<div class="pvp-sub-btn" data-sub-id="${s.cardId}" style="cursor:pointer;flex-shrink:0">${renderMiniCardHTML(s,_pc?76:44,_pc?100:58)}</div>`).join('')}
     </div>`
 
-    // ── Terrain ──
+    // ── Terrain (dimensions identiques match-ia.js) ──
     const phase = isMyAttack?'attack':isMyDefense?'defense':'idle'
     const terrainHTML = `<div style="overflow:hidden;min-width:0;flex:1;min-height:0;display:flex;flex-direction:column" id="match-field">
       <div class="terrain-wrapper" style="overflow:hidden;width:100%;flex:1;min-height:0;display:flex;align-items:center;justify-content:center">
-        ${renderTeam(myTeam, gameState[myRole+'Formation'], phase, selectedIds,svgW(),svgH(), extraSelectableIds)}
+        ${renderTeam(myTeam, gameState[myRole+'Formation'], phase, selectedIds, _pc?1300:svgW(), _pc?600:svgH(), extraSelectableIds)}
       </div>
     </div>`
 
@@ -730,14 +730,33 @@ async function _renderPvpMatchCore(container, ctx, matchId, amIHome, myGC = [], 
     }
 
     // ── Fix SVG terrain ──
+    // ── Dimensionnement du SVG du terrain (identique match-ia.js) ──────────
     ;(function fixSVG() {
-      const svg = container.querySelector('.terrain-wrapper svg')
+      const svg = container.querySelector('#match-field .terrain-wrapper svg')
+               || container.querySelector('.terrain-wrapper svg')
       if (!svg) return
-      svg.removeAttribute('width'); svg.removeAttribute('height')
+      // CAUSE RACINE (identique match-ia.js) : #match-terrain-wrap (généré par
+      // renderTeam) n'a pas de largeur → dans un flex centré, il se réduit et
+      // le SVG width:100% devient minuscule.
+      const wrap = svg.closest('#match-terrain-wrap')
+      if (wrap) wrap.style.cssText = 'position:relative;width:100%;height:100%;padding:0'
+      svg.removeAttribute('width')
+      svg.removeAttribute('height')
       svg.style.cssText = 'width:100%;height:100%;display:block;max-width:none;margin:0'
-      svg.setAttribute('viewBox', '-26 -26 352 352')
       svg.setAttribute('preserveAspectRatio', 'xMidYMid meet')
     })()
+
+    if (!gameState._pvpResizeBound) {
+      gameState._pvpResizeBound = true
+      window.addEventListener('resize', () => {
+        const svg2 = container.querySelector('.terrain-wrapper svg')
+        if (svg2) {
+          const wrap2 = svg2.closest('#match-terrain-wrap')
+          if (wrap2) wrap2.style.cssText = 'position:relative;width:100%;height:100%;padding:0'
+          svg2.style.cssText = 'width:100%;height:100%;display:block;max-width:none;margin:0'
+        }
+      })
+    }
 
     // ── Événements ──
     container.querySelectorAll('.match-slot-hit').forEach(el => {
@@ -816,6 +835,15 @@ async function _renderPvpMatchCore(container, ctx, matchId, amIHome, myGC = [], 
     <div class="match-screen" style="display:flex;flex-direction:column;height:100%;overflow:hidden;overflow-y:auto;background:#0a3d1e">
       ${renderOpponentReveal(gameState[oppRole+'Team'], gameState[oppRole+'Formation'], null, gameState[oppRole+'Name']||'Adversaire')}
     </div>`
+    // Même fix de dimensionnement SVG que match-ia.js (wrapper sans largeur)
+    const svg = container.querySelector('svg')
+    const wrap = svg?.closest('#match-terrain-wrap')
+    if (wrap) wrap.style.cssText = 'position:relative;width:100%;height:100%;padding:0'
+    if (svg) {
+      svg.removeAttribute('width'); svg.removeAttribute('height')
+      svg.style.cssText = 'width:100%;height:100%;display:block;max-width:none;margin:0'
+      svg.setAttribute('preserveAspectRatio', 'xMidYMid meet')
+    }
     if (myRole==='p1') setTimeout(async()=>{ await pushState({ phase:'midfield' }) }, 5000)
   }
 

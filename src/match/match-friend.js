@@ -6,7 +6,7 @@
  */
 
 import { supabase }          from '../lib/supabase.js'
-import { loadMatchSetup, _hideBottomNav, _showBottomNav } from './match-shared.js'
+import { loadMatchSetup, showGCSelection, _hideBottomNav, _showBottomNav } from './match-shared.js'
 import { renderPvpMatch }    from './match-pvp.js'
 
 export async function renderMatchFriend(container, ctx) {
@@ -16,16 +16,21 @@ export async function renderMatchFriend(container, ctx) {
   const friendName = params.friendName || 'Ami'
 
   await loadMatchSetup(container, ctx, 'friend', async ({ deckId, formation, starters, subsRaw, gcCardsEnriched, gcDefs, stadiumDef }) => {
-    const myGC = gcCardsEnriched || []
     _hideBottomNav(container)
 
-    if (friendId) {
-      // Inviteur : créer le match et attendre que l'ami rejoigne
-      await createFriendMatch(container, ctx, deckId, myGC, gcDefs, stadiumDef, friendId, friendName)
-    } else {
-      // Invité : rejoindre un match existant
-      await joinFriendMatch(container, ctx, deckId, myGC, gcDefs, stadiumDef)
+    const proceed = async (chosenGC) => {
+      const myGC = chosenGC || []
+      if (friendId) {
+        // Inviteur : créer le match et attendre que l'ami rejoigne
+        await createFriendMatch(container, ctx, deckId, myGC, gcDefs, stadiumDef, friendId, friendName)
+      } else {
+        // Invité : rejoindre un match existant
+        await joinFriendMatch(container, ctx, deckId, myGC, gcDefs, stadiumDef)
+      }
     }
+
+    if (!gcCardsEnriched?.length) { await proceed([]); return }
+    showGCSelection(container, gcCardsEnriched, proceed)
   })
 }
 

@@ -384,8 +384,8 @@ export function milLinks(mils) {
     let bonus = 0
     for (let i = 0; i < mils.length-1; i++) {
       const c = linkColor(mils[i], mils[i+1])
-      if (c === '#00ff88') bonus += 2
-      else if (c === '#FFD700') bonus += 1
+      if (c === '#00ff88') bonus += 10
+      else if (c === '#FFD700') bonus += 5
     }
     return bonus
   }
@@ -397,7 +397,7 @@ export function renderMilRow(mils, label, color, side, stadDef) {
         ${mils.map((p, i) => {
           const lc = i < mils.length-1 ? linkColor(p, mils[i+1]) : null
           const noLink = !lc || lc === '#ff3333' || lc === '#cc2222'
-          const linkVal = lc === '#00ff88' ? '+2' : lc === '#FFD700' ? '+1' : ''
+          const linkVal = lc === '#00ff88' ? '+10' : lc === '#FFD700' ? '+5' : ''
           const noteDisplay = milNoteWithBonus(p, stadDef)
           const hasStad = p.stadiumBonus || (stadDef && (
             (stadDef.club_id && String(p.club_id) === String(stadDef.club_id)) ||

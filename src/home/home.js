@@ -369,23 +369,38 @@ async function loadFriendRequestsBanner(state, toast) {
 
 function showDifficultyPicker(navigate) {
   const levels = [
-    { mode:'vs_ai_easy',   label:'Facile',    sub:'Gain 500 cr.',   icon:'🟢' },
-    { mode:'vs_ai_medium', label:'Moyen',     sub:'Gain 1 000 cr.', icon:'🟡' },
-    { mode:'vs_ai_hard',   label:'Difficile', sub:'Gain 1 500 cr.', icon:'🟠' },
-    { mode:'vs_ai_club',   label:'Club',      sub:'Gain 2 500 cr.', icon:'🔴' },
+    { mode:'vs_ai_easy',   label:'Facile',    desc:'Pour découvrir le jeu',      credits:'500',   icon:'🟢',
+      bg:'#eefaf2', border:'#bfe8cf', iconBg:'#1A6B3C', text:'#12401f' },
+    { mode:'vs_ai_medium', label:'Moyen',     desc:'Un défi équilibré',          credits:'1 000', icon:'🟡',
+      bg:'#fdf7e6', border:'#f0dd9e', iconBg:'#D4A017', text:'#5c4408' },
+    { mode:'vs_ai_hard',   label:'Difficile', desc:'Réservé aux experts',        credits:'1 500', icon:'🔴',
+      bg:'#fdecec', border:'#f3bcbc', iconBg:'#bb2020', text:'#5c1010' },
   ]
   const overlay = document.createElement('div')
   overlay.className = 'modal-overlay'
   overlay.style.zIndex = '2000'
-  overlay.innerHTML = `<div class="modal" style="max-width:380px">
+  overlay.innerHTML = `<div class="modal" style="max-width:400px;border-radius:18px;overflow:hidden">
     <div class="modal-header"><h2>Choisir la difficulté</h2><button class="btn-icon" id="diff-cancel">✕</button></div>
-    <div class="modal-body">
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-        ${levels.map(l => `<div class="action-card" data-mode="${l.mode}" style="cursor:pointer"><div class="icon">${l.icon}</div><div class="label">${l.label}</div><div class="sub">${l.sub}</div></div>`).join('')}
+    <div class="modal-body" style="padding:16px">
+      <div style="display:flex;flex-direction:column;gap:10px">
+        ${levels.map(l => `
+          <div class="diff-card" data-mode="${l.mode}" style="cursor:pointer;display:flex;align-items:center;gap:14px;padding:14px 16px;border-radius:14px;background:${l.bg};border:1px solid ${l.border};transition:transform .12s ease, box-shadow .12s ease">
+            <div style="width:46px;height:46px;border-radius:12px;background:${l.iconBg};display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;box-shadow:0 4px 10px -4px ${l.iconBg}">${l.icon}</div>
+            <div style="flex:1;min-width:0">
+              <div style="font-weight:800;font-size:15px;color:${l.text}">${l.label}</div>
+              <div style="font-size:12px;color:${l.text};opacity:0.65;margin-top:1px">${l.desc}</div>
+            </div>
+            <div style="font-weight:900;font-size:12.5px;color:${l.text};background:rgba(255,255,255,0.6);padding:6px 11px;border-radius:999px;flex-shrink:0;white-space:nowrap">+${l.credits} cr.</div>
+          </div>
+        `).join('')}
       </div>
     </div>
   </div>`
   document.body.appendChild(overlay)
+  overlay.querySelectorAll('.diff-card').forEach(el => {
+    el.addEventListener('mouseenter', () => { el.style.transform = 'translateY(-1px)'; el.style.boxShadow = '0 6px 16px -6px rgba(0,0,0,0.18)' })
+    el.addEventListener('mouseleave', () => { el.style.transform = ''; el.style.boxShadow = '' })
+  })
   const cleanup = () => overlay.remove()
   document.getElementById('diff-cancel').addEventListener('click', cleanup)
   overlay.addEventListener('click', e => { if (e.target === overlay) cleanup() })

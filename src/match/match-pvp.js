@@ -622,12 +622,26 @@ async function _renderPvpMatchCore(container, ctx, matchId, amIHome, myGC = [], 
 
 
     // ── Zone action (haut) — identique match-ia ──
+    const myTeamForPreview = gameState[myRole+'Team']
     const logHTML = (() => {
       if (isMyDefense && gameState.pendingAttack?.players) {
         const atk = gameState.pendingAttack
+        let livePreview = ''
+        if (mySelected.length > 0) {
+          const selectedLive = mySelected.map(s => {
+            const live = (myTeamForPreview[s._role]||[]).find(x => x.cardId === s.cardId) || s
+            return { ...live, _line: s._role }
+          })
+          const calc = calcDefense(selectedLive, gameState.modifiers?.[myRole]||{})
+          livePreview = `<div style="margin-top:6px;padding-top:6px;border-top:1px solid rgba(255,255,255,0.15)">
+            <div style="font-size:8px;color:#3a7bd5;letter-spacing:2px;margin-bottom:4px;text-transform:uppercase">🛡️ Votre défense (${mySelected.length}/3)</div>
+            <div style="display:flex;justify-content:center">${renderCardRow(selectedLive.map(p=>({...p,used:false})),'#3a7bd5',calc.total)}</div>
+          </div>`
+        }
         return `<div style="padding:5px 8px;background:rgba(180,30,30,0.2);border-left:3px solid #ff6b6b;text-align:center">
           <div style="font-size:8px;color:#ff6b6b;letter-spacing:2px;margin-bottom:4px;text-transform:uppercase">⚔️ ${oppName} ATTAQUE — Défendez !</div>
           <div style="display:flex;justify-content:center">${renderCardRow((atk.players||[]).map(p=>({...p,used:false})),'#ff6b6b',atk.total)}</div>
+          ${livePreview}
         </div>`
       }
       if (isMyAttack && gameState.pendingAttack?.players) {
@@ -635,6 +649,19 @@ async function _renderPvpMatchCore(container, ctx, matchId, amIHome, myGC = [], 
         return `<div style="padding:5px 8px;background:rgba(26,107,60,0.2);border-left:3px solid #00ff88;text-align:center">
           <div style="font-size:8px;color:#00ff88;letter-spacing:2px;margin-bottom:4px;text-transform:uppercase">⚔️ VOUS ATTAQUEZ</div>
           <div style="display:flex;justify-content:center">${renderCardRow((atk.players||[]).map(p=>({...p,used:false})),'#00ff88',atk.total)}</div>
+        </div>`
+      }
+      // Phase attaque, pas encore confirmé → aperçu live de MA sélection
+      if (isMyAttack && !gameState.pendingAttack?.players && mySelected.length > 0) {
+        const selectedLive = mySelected.map(s => {
+          const live = (myTeamForPreview[s._role]||[]).find(x => x.cardId === s.cardId) || s
+          const isDefAttacking = ['GK','DEF'].includes(s._role)
+          return { ...live, _line: s._role, ...(isDefAttacking ? { note_a: Math.max(1, Number(live.note_a)||0) } : {}) }
+        })
+        const calc = calcAttack(selectedLive, gameState.modifiers?.[myRole]||{})
+        return `<div style="padding:5px 8px;background:rgba(26,107,60,0.2);border-left:3px solid #FFD700;text-align:center">
+          <div style="font-size:8px;color:#FFD700;letter-spacing:2px;margin-bottom:4px;text-transform:uppercase">⚔️ Votre sélection (${mySelected.length}/3)</div>
+          <div style="display:flex;justify-content:center">${renderCardRow(selectedLive.map(p=>({...p,used:false})),'#FFD700',calc.total)}</div>
         </div>`
       }
       const last = (gameState.log||[]).slice(-1)[0]

@@ -71,13 +71,13 @@ export function calcLinks(selected) {
       if (!linked) continue
 
       // Cohérence avec l'affichage : on compte selon linkColor.
-      //  vert (#00ff88) = pays + club = +2
-      //  jaune (#FFD700) = pays OU club = +1
+      //  vert (#00ff88) = pays + club = +10
+      //  jaune (#FFD700) = pays OU club = +5
       //  rouge = aucun lien = +0
       const sc = a.country_code && b.country_code && a.country_code === b.country_code
       const sk = a.club_id && b.club_id && a.club_id === b.club_id
-      if (sc && sk) bonus += 2
-      else if (sc || sk) bonus += 1
+      if (sc && sk) bonus += 10
+      else if (sc || sk) bonus += 5
     }
   }
   return bonus

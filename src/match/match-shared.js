@@ -139,11 +139,11 @@ export function getColsForLine(n) {
 }
 
 export function rollBoost() {
-  // +3 70%, +5 20%, +10 10%
+  // +1 70%, +2 20%, +3 10%
   const r = Math.random() * 100
-  if (r < 10) return 10
-  if (r < 30) return 5
-  return 3
+  if (r < 10) return 3
+  if (r < 30) return 2
+  return 1
 }
 
 export function buildTeam(starters, formation) {
@@ -546,13 +546,21 @@ export function renderMiniCardHTML(p, w=44, h=58, stadDef=null) {
 }
 
 
-export function renderCardRow(players, accentColor, total) {
+export function renderCardRow(players, accentColor, total, phase) {
   if (!players?.length) return ''
   const shown = players.slice(0, 5)
   let html = '<div style="display:flex;align-items:center;gap:0;flex-wrap:nowrap;overflow:hidden">'
   shown.forEach((p, i) => {
     const role = p._line || p.job || 'MIL'
-    html += renderPlayerCard(p, { width: 40, role, extraNote: p.boost || 0 })
+    // Bonus stade (+10), cohérent avec ce qui est affiché sur le terrain
+    // (buildTeamSVG) : conditionné au rôle selon la phase attaque/défense.
+    let extraNote = p.boost || 0
+    if (p.stadiumBonus) {
+      if (phase === 'attack' && (role === 'ATT' || role === 'MIL')) extraNote += 10
+      else if (phase === 'defense' && (role === 'GK' || role === 'DEF' || role === 'MIL')) extraNote += 10
+      else if (!phase) extraNote += 10
+    }
+    html += renderPlayerCard(p, { width: 40, role, extraNote })
     if (i < shown.length - 1) {
       const lc = linkColor(p, shown[i+1])
       const noLink = lc === '#ff3333' || lc === '#cc2222'

@@ -1238,6 +1238,59 @@ async function _renderPvpMatchCore(container, ctx, matchId, amIHome, myGC = [], 
     }
   }
 
+  // ── Corner décisif (identique match-ia.js, adapté au tour par tour) ──
+  // Ne se déclenche QUE si : un camp n'a plus QUE son gardien, l'ADVERSAIRE
+  // n'a plus AUCUN joueur du tout, et le score est nul.
+  function onlyGKLeft(team) {
+    const gkFree   = (team.GK||[]).some(p => !p.used)
+    const restFree = ['DEF','MIL','ATT'].some(r => (team[r]||[]).some(p => !p.used))
+    return gkFree && !restFree
+  }
+  function tryLastCornerGoal(gs) {
+    if ((gs.p1Score||0) !== (gs.p2Score||0)) return null
+    if (onlyGKLeft(gs.p1Team) && !hasAnyPlayer(gs.p2Team)) return { side:'p1', gk:(gs.p1Team.GK||[]).find(p=>!p.used) }
+    if (onlyGKLeft(gs.p2Team) && !hasAnyPlayer(gs.p1Team)) return { side:'p2', gk:(gs.p2Team.GK||[]).find(p=>!p.used) }
+    return null
+  }
+  async function playCornerAndPush(cornerInfo, baseState) {
+    const { side, gk } = cornerInfo
+    if (!gk) return
+    const scoreKey = side+'Score'
+    const newScore = (baseState[scoreKey]||0) + 1
+    gk.used = true
+    const log = [...(baseState.log||[])]
+    log.push({ type:'duel', isGoal:true, homeScored: side===myRole,
+      homePlayers: side==='p1' ? [histPlayer(gk)] : [],
+      aiPlayers:   side==='p2' ? [histPlayer(gk)] : [],
+      text: `⚽ DERNIER CORNER — Le gardien de ${baseState[side+'Name']} marque !` })
+    const round = (baseState.round||0) + 1
+    const nextAttacker = side==='p1' ? 'p2' : 'p1'
+    const newState = { ...baseState, [scoreKey]: newScore, log, round }
+    const isFinished = checkMatchEnd(newState)
+    _goalAnimShownFor.add(round)
+
+    const overlay = document.createElement('div')
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.93);z-index:950;display:flex;align-items:center;justify-content:center;overflow:hidden;text-align:center;padding:24px'
+    document.body.appendChild(overlay)
+    const showText = (text, color) => new Promise(resolve => {
+      overlay.innerHTML = `<div style="font-size:32px;font-weight:900;color:${color};letter-spacing:2px;animation:lcFade 1.4s ease both">${text}</div>
+      <style>@keyframes lcFade{0%{opacity:0;transform:scale(0.8)}18%{opacity:1;transform:scale(1)}82%{opacity:1}100%{opacity:0;transform:scale(1.05)}}</style>`
+      setTimeout(resolve, 1400)
+    })
+    await showText('⚽ DERNIER CORNER', '#FFD700')
+    await showText('🧤 LE GARDIEN MONTE !', '#4fc3f7')
+    overlay.remove()
+
+    const myNewScore  = side===myRole ? newScore : (baseState[myRole+'Score']||0)
+    const oppNewScore = side===myRole ? (baseState[oppRole+'Score']||0) : newScore
+    showGoalAnimation([histPlayer(gk)], myNewScore, oppNewScore, side===myRole, async () => {
+      await pushState({ [scoreKey]: newScore, log, round,
+        pendingAttack: null, phase: isFinished?'finished':nextAttacker+'-attack',
+        attacker: nextAttacker, ['selected_'+myRole]: [], modifiers: { ...gameState.modifiers, [myRole]:{} } })
+      if (isFinished) await finishMatch({ ...gameState, [scoreKey]: newScore })
+    })
+  }
+
   async function pvpConfirmAttack() {
     const myTeam = gameState[myRole+'Team']
     const oppHasNoOne = !['GK','DEF','MIL','ATT'].some(r => (gameState[oppRole+'Team'][r]||[]).some(p=>!p.used))
@@ -1268,6 +1321,12 @@ async function _renderPvpMatchCore(container, ctx, matchId, amIHome, myGC = [], 
     const log = [...(gameState.log||[])]
 
     if (oppHasNoOne) {
+      const attackerIsOnlyGK = selected.length === 1 && (selected[0]._line === 'GK' || selected[0].job === 'GK')
+      if (attackerIsOnlyGK && (gameState.p1Score||0) === (gameState.p2Score||0)) {
+        // Corner décisif : mon gardien monte marquer, l'adversaire n'a plus personne.
+        await playCornerAndPush({ side: myRole, gk: selected[0] }, { ...gameState, [myRole+'Team']: myTeam, log })
+        return
+      }
       const newScore = (gameState[myRole+'Score']||0) + 1
       const players = selected.map(p=>histPlayer(p))
       log.push({ type:'duel', isGoal:true, homeScored:true,
@@ -1336,8 +1395,12 @@ async function _renderPvpMatchCore(container, ctx, matchId, amIHome, myGC = [], 
     // Le prochain attaquant garde la main même s'il ne peut pas attaquer (il verra PASSER).
     // Le match ne se termine que si plus personne ne peut marquer (checkMatchEnd).
     const nextPhase = isFinished ? 'finished' : nextAttacker+'-attack'
+    // Corner décisif : si après cette défense un camp n'a plus QUE son gardien
+    // face à un adversaire totalement vide, à score nul → le gardien monte.
+    const cornerInfo = !isFinished && !goal ? tryLastCornerGoal(newState) : null
 
     const doNext = async () => {
+      if (cornerInfo) { await playCornerAndPush(cornerInfo, newState); return }
       await pushState({ [myRole+'Team']: myTeam, [oppRole+'Team']: gameState[oppRole+'Team'],
         [attackerRole+'Score']: newAttackerScore,
         ['selected_'+myRole]: [], modifiers: { ...gameState.modifiers, [myRole]:{} },

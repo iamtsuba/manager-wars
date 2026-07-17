@@ -56,6 +56,8 @@
   .hero-ctas{display:flex; gap:14px; flex-wrap:wrap}
 
   .duel-card{position:relative; background:var(--panel); border:1px solid var(--panel-line); border-radius:20px; padding:26px; overflow:hidden}
+  .browser-bar{display:flex; align-items:center; gap:7px; padding:12px 16px; background:rgba(0,0,0,0.35); border-bottom:1px solid var(--panel-line)}
+  .browser-bar .dot{width:10px; height:10px; border-radius:50%; display:block}
   .duel-card .cap{font-family:'Barlow Condensed'; text-transform:uppercase; letter-spacing:0.22em; font-size:11px; color:var(--ink-faint); margin-bottom:18px}
   svg.duelviz{width:100%; height:auto; display:block}
   .note-badge{font-family:'Barlow Condensed'; font-weight:900; font-size:20px}
@@ -128,30 +130,31 @@
       </div>
     </div>
 
-    <div class="duel-card">
-      <div class="cap">Aperçu — bonus de liens</div>
-      <svg class="duelviz" viewBox="0 0 360 220" xmlns="http://www.w3.org/2000/svg">
-        <line x1="70" y1="60" x2="180" y2="110" stroke="#D4A017" stroke-width="4" stroke-linecap="round" class="ly"/>
-        <line x1="180" y1="110" x2="290" y2="60" stroke="#22c55e" stroke-width="4" stroke-linecap="round" class="lg"/>
-        <line x1="70" y1="60" x2="70" y2="165" stroke="#ff5a5a" stroke-width="3" stroke-linecap="round" opacity="0.55"/>
-        <line x1="290" y1="60" x2="290" y2="165" stroke="#D4A017" stroke-width="4" stroke-linecap="round" class="ly"/>
+    <div class="duel-card" style="padding:0">
+      <div class="browser-bar">
+        <span class="dot" style="background:#ff5f57"></span>
+        <span class="dot" style="background:#febc2e"></span>
+        <span class="dot" style="background:#28c840"></span>
+      </div>
+      <img src="/marketing/screenshot-match.jpg" alt="Écran de match Manager Wars montrant une formation en grille avec liens de club et de pays" style="width:100%; display:block">
+    </div>
+  </section>
+</div>
 
-        <g><circle cx="70" cy="60" r="26" fill="#1A6B3C" stroke="rgba(255,255,255,0.35)" stroke-width="2"/>
-          <text x="70" y="66" text-anchor="middle" class="note-badge" fill="#fff">27</text></g>
-        <g><circle cx="180" cy="110" r="26" fill="#D4A017" stroke="rgba(255,255,255,0.35)" stroke-width="2"/>
-          <text x="180" y="116" text-anchor="middle" class="note-badge" fill="#141000">31</text></g>
-        <g><circle cx="290" cy="60" r="26" fill="#1A6B3C" stroke="rgba(255,255,255,0.35)" stroke-width="2"/>
-          <text x="290" y="66" text-anchor="middle" class="note-badge" fill="#fff">19</text></g>
-        <g><circle cx="70" cy="165" r="22" fill="#111" stroke="rgba(255,255,255,0.3)" stroke-width="2"/>
-          <text x="70" y="171" text-anchor="middle" class="note-badge" fill="#fff" font-size="16">8</text></g>
-        <g><circle cx="290" cy="165" r="22" fill="#bb2020" stroke="rgba(255,255,255,0.3)" stroke-width="2"/>
-          <text x="290" y="171" text-anchor="middle" class="note-badge" fill="#fff" font-size="16">14</text></g>
-
-        <text x="125" y="78" text-anchor="middle" class="link-tag" fill="#D4A017">+5</text>
-        <text x="235" y="78" text-anchor="middle" class="link-tag" fill="#22c55e">+10</text>
-        <text x="298" y="118" text-anchor="middle" class="link-tag" fill="#D4A017">+5</text>
-      </svg>
-      <p style="color:var(--ink-faint); font-size:12px; margin:14px 0 0">Même club ou même pays : lien doré (+5). Les deux à la fois : lien vert (+10).</p>
+<div class="wrap">
+  <section style="padding-top:0">
+    <div class="section-head" style="margin-bottom:24px">
+      <p class="eyebrow">En vrai jeu</p>
+      <h2>Chaque ligne, chaque colonne</h2>
+      <p>La formation en grille détermine qui peut se lier à qui. Vert : club et pays partagés. Doré : l'un des deux. Rouge : aucun lien.</p>
+    </div>
+    <div class="duel-card" style="padding:0; max-width:640px; margin:0 auto">
+      <div class="browser-bar">
+        <span class="dot" style="background:#ff5f57"></span>
+        <span class="dot" style="background:#febc2e"></span>
+        <span class="dot" style="background:#28c840"></span>
+      </div>
+      <img src="/marketing/screenshot-team.jpg" alt="Formation en grille avec liens colorés entre les joueurs" style="width:100%; display:block">
     </div>
   </section>
 </div>
@@ -205,6 +208,30 @@
       <div class="job-chip" style="background:rgba(26,107,60,0.22); border:1px solid rgba(26,107,60,0.5)">
         <div class="job-note" style="color:#22c55e">ATT</div>
         <div class="job-name">Attaquant</div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<div class="wrap">
+  <section>
+    <div class="section-head">
+      <p class="eyebrow">Votre collection</p>
+      <h2>Des cartes à collectionner</h2>
+      <p>Chaque joueur a sa propre note, son pays, son club — la matière première de vos liens.</p>
+    </div>
+    <div class="grid4">
+      <div class="card" style="padding:0; overflow:hidden; text-align:center">
+        <img src="/marketing/card-atwood.jpg" alt="Carte joueur Ryan Atwood" style="width:100%; display:block">
+      </div>
+      <div class="card" style="padding:0; overflow:hidden; text-align:center">
+        <img src="/marketing/card-adi.jpg" alt="Carte joueur Gabi Adi" style="width:100%; display:block">
+      </div>
+      <div class="card" style="padding:0; overflow:hidden; text-align:center">
+        <img src="/marketing/card-borges.jpg" alt="Carte joueur Sébastien Borges" style="width:100%; display:block">
+      </div>
+      <div class="card" style="padding:0; overflow:hidden; text-align:center">
+        <img src="/marketing/card-tarrasco.jpg" alt="Carte joueur Cédric Tarrasco" style="width:100%; display:block">
       </div>
     </div>
   </section>

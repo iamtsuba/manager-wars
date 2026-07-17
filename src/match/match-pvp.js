@@ -790,7 +790,13 @@ async function _renderPvpMatchCore(container, ctx, matchId, amIHome, myGC = [], 
     container.querySelector('#pvp-sub-open')?.addEventListener('click', () => pvpOpenSubSelector())
 
     container.querySelectorAll('.pvp-gc-mini').forEach(el => {
-      el.addEventListener('click', () => pvpShowGCDetail(el.dataset.gcId, el.dataset.gcType))
+      if (!isMyAttack) {
+        el.style.opacity = '0.35'
+        el.style.cursor = 'default'
+        el.addEventListener('click', () => showGameToast('⚡ Les Game Changers ne sont utilisables qu\'en attaque', 'rgba(180,100,0,0.9)'))
+      } else {
+        el.addEventListener('click', () => pvpShowGCDetail(el.dataset.gcId, el.dataset.gcType))
+      }
     })
     container.querySelector('#pvp-boost-card')?.addEventListener('click', () => pvpOpenBoostPicker())
     container.querySelector('#pvp-action')?.addEventListener('click', (e) => {

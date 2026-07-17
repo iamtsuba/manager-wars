@@ -410,15 +410,15 @@ async function _renderPvpMatchCore(container, ctx, matchId, amIHome, myGC = [], 
     let chosen = []
     function rebuild() {
       const itemsHTML = pool.map(p => {
-        const bg=({GK:'#111',DEF:'#bb2020',MIL:'#D4A017',ATT:'#1A6B3C'})[p._line]||'#555'
-        const note=getNoteForRole(p,p._line)+(p.boost||0)
-        const sel=chosen.find(x=>x.cardId===p.cardId)
-        const border=sel?'#FFD700':'rgba(255,255,255,0.25)'
-        const opacity=p.used?'opacity:0.3;pointer-events:none':''
-        return `<div class="pp-item" data-cid="${p.cardId}" style="width:80px;border-radius:8px;border:2.5px solid ${border};background:${bg};overflow:hidden;cursor:pointer;${opacity}">
-          <div style="background:rgba(255,255,255,0.9);text-align:center;padding:2px;font-size:7px;font-weight:900;color:#111;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">${p.name||'?'}</div>
-          <div style="height:50px;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:900;color:#fff">${note}</div>
-          <div style="background:rgba(255,255,255,0.9);text-align:center;padding:2px;font-size:8px;font-weight:700;color:#333">${p._line}</div>
+        const role = p._line || p.job || 'MIL'
+        const sel  = chosen.find(x => x.cardId === p.cardId)
+        const cardHtml = renderPlayerCard(
+          { ...p, _evolution_bonus: 0 },
+          { width: 90, showStad: true, role, extraNote: p.boost || 0 }
+        )
+        return `<div class="pp-item" data-cid="${p.cardId}"
+          style="position:relative;border-radius:8px;${sel?'outline:3px solid #FFD700;outline-offset:2px;':''}cursor:pointer;flex-shrink:0;${p.used?'opacity:0.3;pointer-events:none':''}">
+          ${cardHtml}
         </div>`
       }).join('')
       overlay.innerHTML = `
@@ -427,7 +427,7 @@ async function _renderPvpMatchCore(container, ctx, matchId, amIHome, myGC = [], 
           <span style="font-size:12px;color:rgba(255,255,255,0.5)">${chosen.length}/${count}</span>
           <button id="pp-close" style="background:none;border:none;color:rgba(255,255,255,0.5);font-size:22px;cursor:pointer">✕</button>
         </div>
-        <div style="flex:1;overflow-y:auto;padding:12px;display:flex;flex-wrap:wrap;gap:8px;align-content:flex-start">
+        <div style="flex:1;overflow-y:auto;padding:12px;display:flex;flex-wrap:wrap;gap:8px;align-content:flex-start;justify-content:center">
           ${itemsHTML}
         </div>
         <div style="padding:12px;background:rgba(0,0,0,0.4);flex-shrink:0">
@@ -544,10 +544,11 @@ async function _renderPvpMatchCore(container, ctx, matchId, amIHome, myGC = [], 
     const activeGCs  = myGcFull.filter(gc => !myUsedGc.includes(gc.id))
     const boostAvail = gameState.boostOwner === myRole && !gameState.boostUsed
 
-    // DEF/GK attaquent si seuls restants ET adversaire sans joueurs
-    const oppHasNoOne = !['GK','DEF','MIL','ATT'].some(r => (oppTeam[r]||[]).some(p=>!p.used))
+    // DEF/GK attaquent dès qu'il n'y a plus de MIL/ATT (indépendamment de
+    // l'adversaire — identique à la règle élargie de match-ia.js, évite les
+    // fins de match prématurées / blocages)
     const myMilAtt    = [...(myTeam.MIL||[]),...(myTeam.ATT||[])].filter(p=>!p.used)
-    const extraSelectableIds = (isMyAttack && oppHasNoOne && myMilAtt.length===0)
+    const extraSelectableIds = (isMyAttack && myMilAtt.length===0)
       ? [...(myTeam.GK||[]),...(myTeam.DEF||[])].filter(p=>!p.used).map(p=>p.cardId)
       : []
 
@@ -1242,7 +1243,9 @@ async function _renderPvpMatchCore(container, ctx, matchId, amIHome, myGC = [], 
     const oppHasNoOne = !['GK','DEF','MIL','ATT'].some(r => (gameState[oppRole+'Team'][r]||[]).some(p=>!p.used))
     const selected = (gameState['selected_'+myRole]||[]).map(s => {
       const live = (myTeam[s._role]||[]).find(x => x.cardId===s.cardId) || s
-      const isExtra = oppHasNoOne && ['GK','DEF'].includes(s._role)
+      // DEF/GK ne sont sélectionnables en attaque que via le fallback (plus de
+      // MIL/ATT dispo) → leur note est toujours forcée à 1 dans ce cas.
+      const isExtra = ['GK','DEF'].includes(s._role)
       // Réhydrater _col depuis la position du joueur dans sa ligne (survie au round-trip JSON)
       const lineArr = myTeam[s._role]||[]
       const colIdx = lineArr.findIndex(x => x.cardId === s.cardId)
@@ -1374,23 +1377,18 @@ async function _renderPvpMatchCore(container, ctx, matchId, amIHome, myGC = [], 
   //  - non sinon (→ bouton PASSER)
   function canAttack(role) {
     const myT  = gameState[role+'Team']
-    const oppT = gameState[(role==='p1'?'p2':'p1')+'Team']
     if (hasAttacker(myT)) return true
-    if (!hasAnyPlayer(oppT) && onlyDefenders(myT)) return true   // def → note 1
+    if (onlyDefenders(myT)) return true   // def/GK → note forcée à 1, peu importe l'adversaire
     return false
   }
   // Fin de match : aucun des deux ne peut plus marquer.
   // = les deux n'ont plus que des défenseurs (ou plus rien du tout).
   function checkMatchEnd(gs) {
-    const p1CanScore = ['MIL','ATT'].some(r=>(gs.p1Team[r]||[]).some(p=>!p.used))
-    const p2CanScore = ['MIL','ATT'].some(r=>(gs.p2Team[r]||[]).some(p=>!p.used))
-    // Si l'un n'a plus que des def mais l'autre est vide, le def peut encore marquer (note 1)
-    const p1Any = hasAnyPlayer(gs.p1Team), p2Any = hasAnyPlayer(gs.p2Team)
-    const p1CouldScoreVsEmpty = !p2Any && p1Any
-    const p2CouldScoreVsEmpty = !p1Any && p2Any
-    const p1Done = !p1CanScore && !p1CouldScoreVsEmpty
-    const p2Done = !p2CanScore && !p2CouldScoreVsEmpty
-    return p1Done && p2Done
+    // Identique à isMatchOver (match-ia.js) : le match n'est vraiment terminé
+    // que si NI l'un NI l'autre n'a plus AUCUN joueur disponible, DEF/GK
+    // inclus — puisque DEF/GK peuvent toujours attaquer en fallback (note
+    // forcée à 1) dès qu'il n'y a plus de MIL/ATT, peu importe l'adversaire.
+    return !hasAnyPlayer(gs.p1Team) && !hasAnyPlayer(gs.p2Team)
   }
 
   // winner_id basé sur les scores finaux (null = match nul)

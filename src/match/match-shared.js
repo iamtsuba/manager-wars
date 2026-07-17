@@ -139,11 +139,11 @@ export function getColsForLine(n) {
 }
 
 export function rollBoost() {
-  // +1 70%, +2 20%, +3 10%
+  // +3 70%, +5 20%, +10 10%
   const r = Math.random() * 100
-  if (r < 10) return 3
-  if (r < 30) return 2
-  return 1
+  if (r < 10) return 10
+  if (r < 30) return 5
+  return 3
 }
 
 export function buildTeam(starters, formation) {

@@ -1,3 +1,5 @@
+import { linkColor } from './formation-links.js'
+
 /**
  * Manager Wars — Logique de jeu (GDD §7 & §8)
  * Grille 3 colonnes × 4 lignes. Liens H (même ligne, cols adjacentes) et V (même col, lignes adjacentes)
@@ -70,14 +72,13 @@ export function calcLinks(selected) {
       const linked = (sameLine && adjCols) || (sameCol && adjLines)
       if (!linked) continue
 
-      // Cohérence avec l'affichage : on compte selon linkColor.
-      //  vert (#00ff88) = pays + club = +10
-      //  jaune (#FFD700) = pays OU club = +5
-      //  rouge = aucun lien = +0
-      const sc = a.country_code && b.country_code && a.country_code === b.country_code
-      const sk = a.club_id && b.club_id && a.club_id === b.club_id
-      if (sc && sk) bonus += 10
-      else if (sc || sk) bonus += 5
+      // Bonus dérivé DIRECTEMENT de linkColor (source unique avec l'affichage) :
+      // gère aussi les Légendes (lien doré garanti avec tout le monde, vert si
+      // le pays correspond en plus) — l'ancienne réimplémentation locale ici
+      // oubliait cette règle, d'où un désaccord avec la couleur affichée.
+      const lc = linkColor(a, b)
+      if (lc === '#00ff88') bonus += 10
+      else if (lc === '#FFD700') bonus += 5
     }
   }
   return bonus

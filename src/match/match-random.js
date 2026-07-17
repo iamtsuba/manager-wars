@@ -57,7 +57,7 @@ async function showMatchmakingSearch(container, ctx, deckId, formation, starters
     cancelled = true
     if (channel) { channel.unsubscribe(); channel = null }
     if (pollTimer) { clearInterval(pollTimer); pollTimer = null }
-    await supabase.rpc('cancel_matchmaking', { p_user_id: state.profile.id }).catch(()=>{})
+    try { await supabase.rpc('cancel_matchmaking', { p_user_id: state.profile.id }) } catch (e) { console.error('[Matchmaking] cancel error:', e) }
   }
 
   document.getElementById('cancel-mm')?.addEventListener('click', async () => {

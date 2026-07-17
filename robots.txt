@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Allow: /accueil.html
+Allow: /confidentialite.html
+Allow: /contact.html
+
+Sitemap: https://fmwars.com/sitemap.xml

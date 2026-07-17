@@ -40,7 +40,8 @@ async function createFriendMatch(container, ctx, deckId, myGC, gcDefs, stadiumDe
 
   // Créer l'invitation (avec mon deck, nécessaire pour créer le match à l'acceptation)
   const { data: invite, error: inviteErr } = await supabase.from('friend_match_invites').insert({
-    inviter_id: myId, invitee_id: friendId, status: 'pending', deck_id: deckId
+    inviter_id: myId, invitee_id: friendId, friend_id: friendId, status: 'pending',
+    inviter_deck_id: deckId, expires_at: new Date(Date.now() + 2*60*1000).toISOString()
   }).select('id').single()
 
   if (inviteErr || !invite) {

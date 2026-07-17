@@ -46,8 +46,13 @@ export async function renderMatchIA(container, ctx) {
 
       const launchMatch = async (selectedGC) => {
         try {
+          // La contrainte matches_mode_check n'autorise pas 'vs_ai_club' — la
+          // valeur attendue en base pour ce palier de difficulté est 'club'.
+          // On ne change QUE la valeur insérée ; `mode`/`game.mode` restent
+          // 'vs_ai_club' pour la difficulté IA, les récompenses et le replay.
+          const dbMode = mode === 'vs_ai_club' ? 'club' : mode
           const { data: match, error: matchErr } = await supabase.from('matches').insert({
-            home_id: state.profile.id, away_id:null, mode,
+            home_id: state.profile.id, away_id:null, mode: dbMode,
             home_deck_id: deckId, status:'in_progress',
           }).select().single()
 

@@ -728,7 +728,7 @@ function openFormationModal(card, allFormationCards, ctx, openModal) {
     <div style="background:#f0f8f0;border-radius:10px;padding:12px 14px">
       <div style="font-size:12px;font-weight:700;color:#1A6B3C;margin-bottom:4px">📌 Liens (GDD §7)</div>
       <div style="font-size:12px;color:#333;line-height:1.6">
-        Deux joueurs <b>adjacents</b> (↔ horizontal ou ↕ vertical) partageant le même <b>pays</b> ou le même <b>club</b> donnent <b>+1</b> à l'action.
+        Deux joueurs <b>adjacents</b> (↔ horizontal ou ↕ vertical) partageant le même <b>pays</b> ou le même <b>club</b> donnent <b>+5</b> à l'action (<b>+10</b> si les deux correspondent).
       </div>
     </div>
     ${clubsHTML}

@@ -404,8 +404,8 @@ export function linkColor(pA, pB) {
   const sk = pA.club_id && pB.club_id && pA.club_id === pB.club_id
   // Légende : lien minimum orange (club) avec tous, ou vert si le pays correspond
   if (isLegend) return sc ? '#00ff88' : '#FFD700'
-  if (sc && sk) return '#00ff88'            // vert : pays + club = +2
-  if (sc || sk) return '#FFD700'            // jaune : pays OU club = +1
+  if (sc && sk) return '#00ff88'            // vert : pays + club = +10
+  if (sc || sk) return '#FFD700'            // jaune : pays OU club = +5
   return '#ff3333'                          // rouge : aucun lien
 }
 

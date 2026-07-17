@@ -19,7 +19,7 @@ import {
   milScore, milLinks, renderMilRow, renderOpponentReveal,
 } from './match-engine.js'
 import { supabase } from '../lib/supabase.js'
-import { applyOwnEvolution } from './evolutive-cards.js'
+import { applyOwnEvolution, updateEvolutiveCards } from './evolutive-cards.js'
 import {
   GC_DEFS, getNoteForRole, calcAttack, calcDefense,
   calcMidfieldDuel, resolveDuel, aiSelectPlayers, getRewards,

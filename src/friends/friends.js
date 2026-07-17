@@ -118,15 +118,25 @@ async function loadFriendsList(state, toast, ctx = {}) {
     btn.addEventListener('click', () => showStatsPopup(state, btn.dataset.stats, btn.dataset.friendName))
   })
   list.querySelectorAll('[data-match]').forEach(btn => {
-    btn.addEventListener('click', () => {
+    btn.addEventListener('click', async () => {
       const fid = btn.dataset.friendId
       const fname = btn.dataset.friendName
-      console.log('[Friends] clic match', { fid, fname, hasNavigate: typeof navigate })
-      if (typeof navigate === 'function') {
-        navigate('match', { matchMode: 'friend', friendId: fid, friendName: fname })
-      } else {
-        toast('Erreur navigation', 'error')
-      }
+      if (typeof navigate !== 'function') { toast('Erreur navigation', 'error'); return }
+
+      // Cet ami m'a-t-il DÉJÀ envoyé une invitation en attente ? Si oui, je
+      // dois la rejoindre au lieu d'en créer une nouvelle (sinon si les deux
+      // joueurs cliquent chacun de leur côté, les deux créent une invitation
+      // et personne ne rejoint jamais — match bloqué indéfiniment).
+      const myId = state.user.id
+      const { data: pendingFromFriend } = await supabase
+        .from('friend_match_invites')
+        .select('id')
+        .eq('inviter_id', fid).eq('invitee_id', myId).eq('status', 'pending')
+        .order('created_at', { ascending: false }).limit(1).maybeSingle()
+
+      const isAccepting = !!pendingFromFriend
+      console.log('[Friends] clic match', { fid, fname, isAccepting })
+      navigate('match', { matchMode: 'friend', friendId: fid, friendName: fname, isAccepting })
     })
   })
 }

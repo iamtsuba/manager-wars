@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Contact — Manager Wars</title>
+<meta name="description" content="Contactez l'équipe de Manager Wars pour toute question, signalement de bug, ou demande liée à vos données.">
+<link rel="icon" href="/icons/logo-withname.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;900&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg-0:#081308; --bg-1:#0d1a0f; --bg-2:#123018;
+    --panel:rgba(255,255,255,0.04); --panel-line:rgba(255,255,255,0.08);
+    --gold:#D4A017; --ink:#f3f5f2; --ink-dim:rgba(243,245,242,0.68); --ink-faint:rgba(243,245,242,0.42);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    background:linear-gradient(180deg, var(--bg-0), var(--bg-1) 40%, var(--bg-2));
+    color:var(--ink); font-family:'Inter', system-ui, sans-serif; line-height:1.7; min-height:100vh;
+  }
+  .wrap{max-width:680px; margin:0 auto; padding:0 22px 80px}
+  .topbar{display:flex; align-items:center; justify-content:space-between; padding:22px 0 40px}
+  .brand{display:flex; align-items:center; gap:10px; font-family:'Barlow Condensed'; font-weight:900; font-size:20px}
+  .brand img{height:28px}
+  .topbar a.back{color:var(--ink-dim); text-decoration:none; font-size:14px}
+  .topbar a.back:hover{color:var(--ink)}
+  h1{font-family:'Barlow Condensed'; font-weight:900; font-size:clamp(30px,5vw,42px); margin:0 0 12px}
+  p.lede{color:var(--ink-dim); font-size:15px; max-width:480px; margin:0 0 34px}
+  .cards{display:grid; gap:16px}
+  .card{background:var(--panel); border:1px solid var(--panel-line); border-radius:16px; padding:22px 24px; display:flex; gap:16px; align-items:flex-start}
+  .card .ico{width:42px; height:42px; border-radius:10px; background:rgba(212,160,23,0.16); color:var(--gold); display:flex; align-items:center; justify-content:center; font-size:20px; flex-shrink:0}
+  .card h3{font-family:'Barlow Condensed'; font-weight:700; font-size:18px; margin:0 0 6px; color:var(--ink)}
+  .card p{margin:0 0 10px; color:var(--ink-dim); font-size:14px}
+  .card a.link{color:var(--gold); text-decoration:none; font-weight:600; font-size:14px}
+  .card a.link:hover{text-decoration:underline}
+  footer{border-top:1px solid var(--panel-line); padding-top:24px; margin-top:50px; display:flex; justify-content:space-between; flex-wrap:wrap; gap:12px}
+  footer a{color:var(--ink-dim); text-decoration:none; font-size:13px; margin-left:20px}
+  footer a:hover{color:var(--ink)}
+  footer .copy{color:var(--ink-faint); font-size:13px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="topbar">
+    <div class="brand"><img src="/icons/logo-withname.png" alt="Manager Wars"></div>
+    <a class="back" href="/accueil.html">← Retour à l'accueil</a>
+  </div>
+
+  <h1>Contact</h1>
+  <p class="lede">Une question, un bug à signaler, ou une demande concernant vos données personnelles ? Voici comment nous joindre.</p>
+
+  <div class="cards">
+    <div class="card">
+      <div class="ico">✉️</div>
+      <div>
+        <h3>Par e-mail</h3>
+        <p>Pour toute question générale, signalement de bug, ou demande liée à vos données (accès, suppression).</p>
+        <a class="link" href="mailto:contact@fmwars.com">contact@fmwars.com</a>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="ico">🐛</div>
+      <div>
+        <h3>Signaler un problème dans le jeu</h3>
+        <p>Un bug rencontré en jouant ? Décrivez-le par e-mail avec le mode de jeu concerné (Vs IA, Aléatoire, Ami, Mini-ligue) et, si possible, une capture d'écran.</p>
+        <a class="link" href="mailto:contact@fmwars.com?subject=Bug%20Manager%20Wars">contact@fmwars.com</a>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="ico">🔒</div>
+      <div>
+        <h3>Vos données personnelles</h3>
+        <p>Pour consulter, corriger ou supprimer vos données, écrivez-nous à l'adresse ci-dessus. Voir aussi notre <a class="link" style="display:inline" href="/confidentialite.html">politique de confidentialité</a>.</p>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    <span class="copy">© Manager Wars</span>
+    <div>
+      <a href="/accueil.html">Accueil</a>
+      <a href="/confidentialite.html">Confidentialité</a>
+    </div>
+  </footer>
+</div>
+</body>
+</html>

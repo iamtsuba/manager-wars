@@ -489,17 +489,20 @@ async function finishLeague(container, ctx, leagueId, pot, standingsIn, memberLi
     standings=computeStandings(memberList,ml||[])
   }
   const prizes=[Math.floor(pot*.7),Math.floor(pot*.2),Math.floor(pot*.1)]
+  const winnerIds = standings.slice(0,3).map(s=>s.userId)
 
-  // Stocker le prize_amount sur chaque membre du podium (pas encore versé)
-  await Promise.all(standings.slice(0,3).map((s,i)=>{
-    if(!prizes[i]) return Promise.resolve()
-    return supabase.from('mini_league_members')
-      .update({ prize_amount: prizes[i], prize_claimed: false })
-      .eq('league_id', leagueId).eq('user_id', s.userId)
-  }))
+  // Via RPC (contourne RLS) : le créateur ne peut pas modifier directement
+  // la ligne mini_league_members des AUTRES joueurs pour leur assigner leur
+  // gain — d'où l'absence de popup/crédits pour les gagnants jusqu'ici.
+  const { data: fin, error: finErr } = await supabase.rpc('finish_mini_league', {
+    p_league_id: leagueId, p_winner_ids: winnerIds, p_prizes: prizes
+  })
+  if (finErr || !fin?.success) {
+    console.error('[MiniLeague] finish_mini_league:', finErr)
+    toast('Erreur lors de la distribution du pot', 'error')
+    return
+  }
 
-  // Marquer terminée — PAS d'archivage automatique
-  await supabase.from('mini_leagues').update({ status:'finished' }).eq('id', leagueId)
   toast('🏆 Mini League terminée ! Les gagnants peuvent récupérer leurs crédits.','success')
   openLeague(container, ctx, leagueId)
 }

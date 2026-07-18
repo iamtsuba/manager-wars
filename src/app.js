@@ -120,7 +120,7 @@ async function renderPage() {
       if (mm === 'random')  await renderMatchRandom(container, ctx, false)
       else if (mm === 'ranked') await renderMatchRandom(container, ctx, true)
       else if (mm === 'friend') await renderMatchFriend(container, ctx, state.params?.friendId, state.params?.friendName)
-      else if (mm === 'mini-league') await renderMatchMiniLeague(container, ctx, state.params?.mlMatchId, state.params?.leagueId)
+      else if (mm === 'mini_league' || mm === 'mini-league') await renderMatchMiniLeague(container, ctx, state.params?.mlMatchId, state.params?.leagueId)
       else                   await renderMatchIA(container, ctx)
       break
     }

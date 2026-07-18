@@ -549,7 +549,7 @@ export function renderMiniCardHTML(p, w=44, h=58, stadDef=null) {
 }
 
 
-export function renderCardRow(players, accentColor, total, phase) {
+export function renderCardRow(players, accentColor, total, phase, formation) {
   if (!players?.length) return ''
   const shown = players.slice(0, 5)
   let html = '<div style="display:flex;align-items:center;gap:0;flex-wrap:nowrap;overflow:hidden">'
@@ -569,7 +569,7 @@ export function renderCardRow(players, accentColor, total, phase) {
       // N'affiche un lien coloré que si les 2 joueurs sont VRAIMENT adjacents
       // sur la grille (même logique que calcLinks) — sinon le lien affiché
       // ne compte pas dans le total réel, ce qui induisait en erreur.
-      const lc = isAdjacent(p, next) ? linkColor(p, next) : null
+      const lc = isAdjacent(p, next, formation) ? linkColor(p, next) : null
       const noLink = !lc || lc === '#ff3333' || lc === '#cc2222'
       html += `<div style="width:7px;height:3px;background:${noLink?'rgba(255,255,255,0.12)':lc};border-radius:2px;flex-shrink:0;margin:0 1px"></div>`
     }

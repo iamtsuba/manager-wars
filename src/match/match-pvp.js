@@ -55,7 +55,14 @@ export async function resumePvpMatch(container, ctx, matchId) {
   const { data: match } = await supabase.from('matches').select('home_id,away_id,mode,is_ranked').eq('id', matchId).single()
   if (!match) { ctx.toast('Match introuvable', 'error'); ctx.navigate('home'); return }
   const amIHome = match.home_id === ctx.state.user.id
-  return _renderPvpMatchCore(container, ctx, matchId, amIHome, [], [], match.is_ranked || false, null, null, null, null, null)
+  // Récupérer le contexte Mini League si ce match en fait partie (sinon perdu
+  // à la reprise → plus de retour vers la ligue ni de mise à jour du score)
+  let mlLeagueId = null, mlMatchId = null
+  if (match.mode === 'mini_league') {
+    const { data: mlRow } = await supabase.from('mini_league_matches').select('id, league_id').eq('match_id', matchId).maybeSingle()
+    if (mlRow) { mlLeagueId = mlRow.league_id; mlMatchId = mlRow.id }
+  }
+  return _renderPvpMatchCore(container, ctx, matchId, amIHome, [], [], match.is_ranked || false, null, null, null, mlLeagueId, mlMatchId)
 }
 
 // ─── Core PvP ───────────────────────────────────────────────
@@ -324,18 +331,13 @@ async function _renderPvpMatchCore(container, ctx, matchId, amIHome, myGC = [], 
     }
     const homeScore = forfeitState.p1Score||0, awayScore = forfeitState.p2Score||0
     try {
-      await supabase.from('matches').update({
-        status:'finished', forfeit:true, winner_id:winnerId,
-        home_score: homeScore, away_score: awayScore,
-        game_state: forfeitState
-      }).eq('id', matchId)
-      // Spécifique Mini League : reporter le résultat (sinon le match reste
-      // "pending" indéfiniment et bloque la journée)
-      if (mlMatchId) {
-        await supabase.from('mini_league_matches').update({
-          status: 'finished', home_score: homeScore, away_score: awayScore, match_id: matchId
-        }).eq('id', mlMatchId)
-      }
+      // game_state : update normal (autorisé pour les participants pendant le match)
+      await supabase.from('matches').update({ game_state: forfeitState }).eq('id', matchId)
+      // status/scores/mini_league_matches : via RPC (contourne RLS, cf. finishMatch)
+      const { data: fin, error: finErr } = await supabase.rpc('finish_pvp_match', {
+        p_match_id: matchId, p_winner_id: winnerId, p_home_score: homeScore, p_away_score: awayScore, p_forfeit: true
+      })
+      if (finErr) console.error('[PvP] finish_pvp_match (forfeit):', finErr)
       // Récompenses en crédits (même mécanisme qu'une fin de match normale)
       try {
         const { data: rw } = await supabase.rpc('apply_match_rewards', { p_match_id: matchId })
@@ -1527,24 +1529,18 @@ async function _renderPvpMatchCore(container, ctx, matchId, amIHome, myGC = [], 
       const winnerId = computeWinnerId(finalState)
       const loserId  = winnerId ? (match.home_id === winnerId ? match.away_id : match.home_id) : null
       const homeScore = finalState.p1Score||0, awayScore = finalState.p2Score||0
-      await supabase.from('matches').update({
-        status: 'finished',
-        winner_id: winnerId,
-        home_score: homeScore,
-        away_score: awayScore
-      }).eq('id', matchId)
+      // RPC (contourne RLS) : met à jour matches.status ET mini_league_matches
+      // en une transaction sécurisée — un update client direct sur ces tables
+      // échouait silencieusement (aucune erreur, mais rien n'était écrit).
+      const { data: fin, error: finErr } = await supabase.rpc('finish_pvp_match', {
+        p_match_id: matchId, p_winner_id: winnerId, p_home_score: homeScore, p_away_score: awayScore, p_forfeit: false
+      })
+      if (finErr) console.error('[PvP] finish_pvp_match:', finErr)
       // Évolution des cartes pépite/papyte (hors IA)
       if (winnerId && loserId) updateEvolutiveCards(winnerId, loserId).catch(()=>{})
-      // Spécifique Mini League : reporter le résultat sur mini_league_matches
-      if (mlMatchId) {
-        await supabase.from('mini_league_matches').update({
-          status: 'finished', home_score: homeScore, away_score: awayScore, match_id: matchId
-        }).eq('id', mlMatchId)
-      }
       // Récompenses en crédits (identique en principe à match-ia.js) — via RPC
       // car il faut créditer les DEUX joueurs, pas seulement celui dont le
-      // client exécute finishMatch (RLS empêche de modifier le profil adverse
-      // directement). Idempotent (rewards_applied) au cas où appelé 2 fois.
+      // client exécute finishMatch. Idempotent (rewards_applied).
       try {
         const { data: rw } = await supabase.rpc('apply_match_rewards', { p_match_id: matchId })
         if (rw?.success && !rw?.skipped && typeof ctx.refreshProfile === 'function') await ctx.refreshProfile()

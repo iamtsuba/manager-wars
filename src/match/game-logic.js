@@ -1,4 +1,4 @@
-import { linkColor } from './formation-links.js'
+import { linkColor, getActiveLinks } from './formation-links.js'
 
 /**
  * Manager Wars — Logique de jeu (GDD §7 & §8)
@@ -48,16 +48,20 @@ export function getNoteForRole(player, role) {
 }
 
 // ── Calcul des liens (GDD §7) ─────────────────────────────
-// Liens H : même ligne, cols adjacentes (|col1-col2| == 1)
-// Liens V : même col,  lignes adjacentes (lignes consécutives dans la grille)
 const LINE_ORDER = ['ATT','MIL','DEF','GK']
 
-// Adjacence réelle sur la grille (même ligne + colonnes adjacentes, OU même
-// colonne + lignes adjacentes) — source unique, utilisée aussi par
-// renderCardRow (match-shared.js) pour ne pas afficher un lien qui ne compte
-// pas réellement dans le total.
-export function isAdjacent(a, b) {
+// Adjacence réelle : utilise la VRAIE topologie de la formation
+// (FORMATION_LINKS, ex: le GK peut être lié à DEF2 ET DEF3 → "triangle")
+// — la même source que le dessin des liens sur le terrain. Repli sur un
+// calcul géométrique simple si la formation/position n'est pas connue.
+export function isAdjacent(a, b, formation) {
   if (!a || !b) return false
+  if (formation && a.position && b.position) {
+    const links = getActiveLinks(formation)
+    return links.some(([p1, p2]) =>
+      (p1 === a.position && p2 === b.position) || (p1 === b.position && p2 === a.position)
+    )
+  }
   const sameCol  = a._col != null && b._col != null && a._col === b._col
   const adjCols  = a._col != null && b._col != null && Math.abs(a._col - b._col) === 1
   const lineIdxA = LINE_ORDER.indexOf(a._line || a.job)
@@ -67,7 +71,7 @@ export function isAdjacent(a, b) {
   return (sameLine && adjCols) || (sameCol && adjLines)
 }
 
-export function calcLinks(selected) {
+export function calcLinks(selected, formation) {
   let bonus = 0
   const n = selected.length
   for (let i = 0; i < n; i++) {
@@ -76,7 +80,7 @@ export function calcLinks(selected) {
       const b = selected[j]
       if (!a || !b) continue
 
-      if (!isAdjacent(a, b)) continue
+      if (!isAdjacent(a, b, formation)) continue
 
       // Bonus dérivé DIRECTEMENT de linkColor (source unique avec l'affichage) :
       // gère aussi les Légendes (lien doré garanti avec tout le monde, vert si
@@ -95,7 +99,7 @@ export function calcLinks(selected) {
 // "Double attaque" (GC) ne double QUE la note brute du joueur — pas le
 // bonus stade (+10), ni le boost, ni les liens (bug corrigé : ces valeurs
 // étaient additionnées avant le *2, donc doublées par erreur).
-export function calcAttack(selected, modifiers = {}) {
+export function calcAttack(selected, modifiers = {}, formation) {
   let noteSum = 0, extraSum = 0
   selected.forEach(p => {
     const r = p._line || p.job
@@ -105,7 +109,7 @@ export function calcAttack(selected, modifiers = {}) {
     extraSum += (p.boost||0) + stadBonus
   })
   const base  = noteSum + extraSum
-  const links = calcLinks(selected)
+  const links = calcLinks(selected, formation)
   let total = base + links
   if (modifiers.stolenNote) total -= modifiers.stolenNote
   return { base, links, total: Math.max(0, total) }
@@ -113,7 +117,7 @@ export function calcAttack(selected, modifiers = {}) {
 
 // ── Défense (GDD §5.4) ────────────────────────────────────
 // GK → note_g, MIL → note_m (les milieux gardent leur note MIL en défense aussi), DEF → note_d
-export function calcDefense(selected, modifiers = {}) {
+export function calcDefense(selected, modifiers = {}, formation) {
   const base = selected.reduce((s, p) => {
     const r = p._line || p.job
     let note = 0
@@ -123,16 +127,16 @@ export function calcDefense(selected, modifiers = {}) {
     const stadBonus = p.stadiumBonus && (r === 'GK' || r === 'DEF' || r === 'MIL') ? 10 : 0
     return s + note + (p.boost||0) + stadBonus
   }, 0)
-  const links = calcLinks(selected)
+  const links = calcLinks(selected, formation)
   let total = base + links
   if (modifiers.stolenNote) total -= modifiers.stolenNote
   return { base, links, total: Math.max(0, total) }
 }
 
 // ── Duel milieu (GDD §4.1) ───────────────────────────────
-export function calcMidfieldDuel(midfielders) {
+export function calcMidfieldDuel(midfielders, formation) {
   const base  = midfielders.reduce((s, p) => s + getNoteForRole(p, 'MIL'), 0)
-  const links = calcLinks(midfielders)
+  const links = calcLinks(midfielders, formation)
   return base + links
 }
 

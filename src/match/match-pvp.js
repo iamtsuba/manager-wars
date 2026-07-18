@@ -1524,8 +1524,18 @@ async function _renderPvpMatchCore(container, ctx, matchId, amIHome, myGC = [], 
           status: 'finished', home_score: homeScore, away_score: awayScore, match_id: matchId
         }).eq('id', mlMatchId)
       }
+      // Récompenses en crédits (identique en principe à match-ia.js) — via RPC
+      // car il faut créditer les DEUX joueurs, pas seulement celui dont le
+      // client exécute finishMatch (RLS empêche de modifier le profil adverse
+      // directement). Idempotent (rewards_applied) au cas où appelé 2 fois.
+      try {
+        const { data: rw } = await supabase.rpc('apply_match_rewards', { p_match_id: matchId })
+        if (rw?.success && !rw?.skipped && typeof ctx.refreshProfile === 'function') await ctx.refreshProfile()
+      } catch(e) { console.error('[PvP] apply_match_rewards:', e) }
       if (typeof onMatchEnd === 'function') {
-        try { await onMatchEnd({ homeScore, awayScore, winnerId }) } catch(e) { console.error('[PvP] onMatchEnd:', e) }
+        try {
+          await onMatchEnd({ homeScore, awayScore, winnerId, homeId: match.home_id, awayId: match.away_id, matchId })
+        } catch(e) { console.error('[PvP] onMatchEnd:', e) }
       }
     } catch(e) { console.error('[PvP] finishMatch:', e) }
   }

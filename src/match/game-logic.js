@@ -52,6 +52,21 @@ export function getNoteForRole(player, role) {
 // Liens V : même col,  lignes adjacentes (lignes consécutives dans la grille)
 const LINE_ORDER = ['ATT','MIL','DEF','GK']
 
+// Adjacence réelle sur la grille (même ligne + colonnes adjacentes, OU même
+// colonne + lignes adjacentes) — source unique, utilisée aussi par
+// renderCardRow (match-shared.js) pour ne pas afficher un lien qui ne compte
+// pas réellement dans le total.
+export function isAdjacent(a, b) {
+  if (!a || !b) return false
+  const sameCol  = a._col != null && b._col != null && a._col === b._col
+  const adjCols  = a._col != null && b._col != null && Math.abs(a._col - b._col) === 1
+  const lineIdxA = LINE_ORDER.indexOf(a._line || a.job)
+  const lineIdxB = LINE_ORDER.indexOf(b._line || b.job)
+  const adjLines = Math.abs(lineIdxA - lineIdxB) === 1
+  const sameLine = (a._line || a.job) === (b._line || b.job)
+  return (sameLine && adjCols) || (sameCol && adjLines)
+}
+
 export function calcLinks(selected) {
   let bonus = 0
   const n = selected.length
@@ -61,16 +76,7 @@ export function calcLinks(selected) {
       const b = selected[j]
       if (!a || !b) continue
 
-      const sameCol  = a._col != null && b._col != null && a._col === b._col
-      const adjCols  = a._col != null && b._col != null && Math.abs(a._col - b._col) === 1
-      const lineIdxA = LINE_ORDER.indexOf(a._line || a.job)
-      const lineIdxB = LINE_ORDER.indexOf(b._line || b.job)
-      const adjLines = Math.abs(lineIdxA - lineIdxB) === 1
-      const sameLine = (a._line || a.job) === (b._line || b.job)
-
-      // Lien valide si : même ligne + cols adjacentes, OU même col + lignes adjacentes
-      const linked = (sameLine && adjCols) || (sameCol && adjLines)
-      if (!linked) continue
+      if (!isAdjacent(a, b)) continue
 
       // Bonus dérivé DIRECTEMENT de linkColor (source unique avec l'affichage) :
       // gère aussi les Légendes (lien doré garanti avec tout le monde, vert si

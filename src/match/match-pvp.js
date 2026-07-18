@@ -322,16 +322,33 @@ async function _renderPvpMatchCore(container, ctx, matchId, amIHome, myGC = [], 
       [winnerRole+'Score']: 3, [loserRole+'Score']: 0,
       phase: 'finished'
     }
+    const homeScore = forfeitState.p1Score||0, awayScore = forfeitState.p2Score||0
     try {
       await supabase.from('matches').update({
         status:'finished', forfeit:true, winner_id:winnerId,
-        home_score: forfeitState.p1Score||0, away_score: forfeitState.p2Score||0,
+        home_score: homeScore, away_score: awayScore,
         game_state: forfeitState
       }).eq('id', matchId)
+      // Spécifique Mini League : reporter le résultat (sinon le match reste
+      // "pending" indéfiniment et bloque la journée)
+      if (mlMatchId) {
+        await supabase.from('mini_league_matches').update({
+          status: 'finished', home_score: homeScore, away_score: awayScore, match_id: matchId
+        }).eq('id', mlMatchId)
+      }
+      // Récompenses en crédits (même mécanisme qu'une fin de match normale)
+      try {
+        const { data: rw } = await supabase.rpc('apply_match_rewards', { p_match_id: matchId })
+        if (rw?.success && !rw?.skipped && typeof ctx.refreshProfile === 'function') await ctx.refreshProfile()
+      } catch(e) { console.error('[PvP] apply_match_rewards (forfeit):', e) }
     } catch {}
     try { supabase.removeChannel(channel) } catch {}
     // Court délai pour que le Realtime atteigne l'adversaire avant navigation
-    setTimeout(() => { _showBottomNav(container); navigate('home') }, 800)
+    setTimeout(() => {
+      _showBottomNav(container)
+      if (mlLeagueId) navigate('mini-league', { openLeagueId: mlLeagueId })
+      else navigate('home')
+    }, 800)
   }
 
   // ── GC_ENGINE PvP (identique à match-ia.js mais sur gameState.p1/p2Team) ──

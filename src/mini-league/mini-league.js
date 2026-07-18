@@ -2,6 +2,14 @@ import { supabase } from '../lib/supabase.js'
 
 const GREEN  = '#1A6B3C'
 const YELLOW = '#D4A017'
+// Palette sombre cohérente avec le reste de l'app (var(--page-bg) etc.) —
+// évite le contraste brutal blanc/vert du design précédent.
+const PANEL   = 'rgba(255,255,255,0.045)'
+const BORDER  = 'rgba(255,255,255,0.09)'
+const DIVIDER = 'rgba(255,255,255,0.08)'
+const TXT     = '#f3f5f2'
+const TXT_DIM = 'rgba(243,245,242,0.62)'
+const TXT_FAINT = 'rgba(243,245,242,0.4)'
 
 export async function renderMiniLeague(container, ctx) {
   container.innerHTML = '<div style="padding:40px;text-align:center;color:#aaa">⚽ Chargement...</div>'
@@ -46,17 +54,17 @@ async function showLeagueList(container, ctx, activeTab = 'waiting') {
 
   container.innerHTML = `
   <div style="height:100%;overflow-y:auto;background:var(--page-bg)">
-    <div style="padding:12px 16px;background:#fff;border-bottom:1px solid #eee;display:flex;align-items:center;justify-content:space-between">
+    <div style="padding:14px 16px;background:var(--nav-bg,#0d1a0f);border-bottom:1px solid ${DIVIDER};display:flex;align-items:center;justify-content:space-between">
       <div>
-        <div style="font-size:18px;font-weight:900">🏆 Mini League</div>
-        <div style="font-size:12px;color:#888">Championnats 3 à 8 joueurs</div>
+        <div style="font-size:18px;font-weight:900;color:${TXT}">🏆 Mini League</div>
+        <div style="font-size:12px;color:${TXT_DIM}">Championnats 3 à 8 joueurs</div>
       </div>
       <button id="ml-create-btn" class="btn btn-primary">+ Créer</button>
     </div>
-    <div style="display:flex;background:#fff;border-bottom:1px solid #eee">
-      ${tabs.map(t => `<button class="ml-tab" data-tab="${t.key}" style="flex:1;padding:10px 4px;border:none;border-bottom:2px solid ${activeTab===t.key?GREEN:'transparent'};background:none;font-size:12px;font-weight:${activeTab===t.key?'900':'600'};color:${activeTab===t.key?GREEN:'#888'};cursor:pointer">${t.label}${t.count?` (${t.count})`:''}</button>`).join('')}
+    <div style="display:flex;background:var(--nav-bg,#0d1a0f);border-bottom:1px solid ${DIVIDER}">
+      ${tabs.map(t => `<button class="ml-tab" data-tab="${t.key}" style="flex:1;padding:11px 4px;border:none;border-bottom:2px solid ${activeTab===t.key?GREEN:'transparent'};background:none;font-size:12px;font-weight:${activeTab===t.key?'900':'600'};color:${activeTab===t.key?'#4ade80':TXT_FAINT};cursor:pointer">${t.label}${t.count?` (${t.count})`:''}</button>`).join('')}
     </div>
-    <div style="padding:12px 16px;display:flex;flex-direction:column;gap:10px">
+    <div style="padding:14px 16px;display:flex;flex-direction:column;gap:10px">
       ${activeTab==='waiting' ? renderWaitingTab(myWaiting, otherPublic, uid)
         : activeTab==='active' ? renderActiveTab(myActive, uid)
         : renderArchivedTab(myArchived, uid)}
@@ -74,12 +82,12 @@ function leagueCard(l, uid, showJoin=false) {
   const isCreator = l.creator_id === uid
   const pot = l.pot || 0
   const cnt = l.mini_league_members?.[0]?.count || 0
-  return `<div data-league-id="${l.id}" style="background:#fff;border-radius:12px;padding:14px 16px;box-shadow:0 1px 6px rgba(0,0,0,0.08);cursor:pointer;margin-bottom:8px">
+  return `<div data-league-id="${l.id}" style="background:${PANEL};border:1px solid ${BORDER};border-radius:12px;padding:14px 16px;cursor:pointer;margin-bottom:8px">
     <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:6px">
-      <div style="font-size:15px;font-weight:900;flex:1;margin-right:8px">${l.name}</div>
-      ${isCreator?`<button data-delete="${l.id}" data-name="${l.name}" style="background:none;border:none;font-size:16px;cursor:pointer;color:#cc2222;flex-shrink:0;padding:0">🗑️</button>`:''}
+      <div style="font-size:15px;font-weight:900;flex:1;margin-right:8px;color:${TXT}">${l.name}</div>
+      ${isCreator?`<button data-delete="${l.id}" data-name="${l.name}" style="background:none;border:none;font-size:16px;cursor:pointer;color:#ff6b6b;flex-shrink:0;padding:0">🗑️</button>`:''}
     </div>
-    <div style="display:flex;flex-wrap:wrap;gap:8px;font-size:11px;color:#666;margin-bottom:${showJoin?'10px':'0'}">
+    <div style="display:flex;flex-wrap:wrap;gap:8px;font-size:11px;color:${TXT_DIM};margin-bottom:${showJoin?'10px':'0'}">
       <span>${l.type==='private'?'🔒':'🌐'} ${l.type==='private'?'Privée':'Publique'}</span>
       <span>⚽ ${l.mode==='aller-retour'?'A-R':'Aller'}</span>
       <span>👥 ${cnt}/${l.max_players}</span>
@@ -93,12 +101,12 @@ function leagueCard(l, uid, showJoin=false) {
 
 function renderWaitingTab(myWaiting, otherPublic, uid) {
   const parts = []
-  if (myWaiting.length) { parts.push('<div style="font-size:11px;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:1px">Mes leagues en attente</div>'); parts.push(...myWaiting.map(l=>leagueCard(l,uid,false))) }
-  if (otherPublic.length) { parts.push('<div style="font-size:11px;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:1px;margin-top:4px">Rejoindre</div>'); parts.push(...otherPublic.map(l=>leagueCard(l,uid,true))) }
-  return parts.length ? parts.join('') : '<div style="text-align:center;padding:40px;color:#aaa">🏆<br>Aucune mini league.<br>Crée la première !</div>'
+  if (myWaiting.length) { parts.push(`<div style="font-size:11px;font-weight:700;color:${TXT_FAINT};text-transform:uppercase;letter-spacing:1px">Mes leagues en attente</div>`); parts.push(...myWaiting.map(l=>leagueCard(l,uid,false))) }
+  if (otherPublic.length) { parts.push(`<div style="font-size:11px;font-weight:700;color:${TXT_FAINT};text-transform:uppercase;letter-spacing:1px;margin-top:4px">Rejoindre</div>`); parts.push(...otherPublic.map(l=>leagueCard(l,uid,true))) }
+  return parts.length ? parts.join('') : `<div style="text-align:center;padding:40px;color:${TXT_FAINT}">🏆<br>Aucune mini league.<br>Crée la première !</div>`
 }
-function renderActiveTab(l,uid) { return l.length ? l.map(x=>leagueCard(x,uid)).join('') : '<div style="text-align:center;padding:40px;color:#aaa">Aucune mini league en cours.</div>' }
-function renderArchivedTab(l,uid) { return l.length ? l.map(x=>leagueCard(x,uid)).join('') : '<div style="text-align:center;padding:40px;color:#aaa">Aucune mini league archivée.</div>' }
+function renderActiveTab(l,uid) { return l.length ? l.map(x=>leagueCard(x,uid)).join('') : `<div style="text-align:center;padding:40px;color:${TXT_FAINT}">Aucune mini league en cours.</div>` }
+function renderArchivedTab(l,uid) { return l.length ? l.map(x=>leagueCard(x,uid)).join('') : `<div style="text-align:center;padding:40px;color:${TXT_FAINT}">Aucune mini league archivée.</div>` }
 
 function showCreateForm(container, ctx) {
   const ov = document.createElement('div')
@@ -312,52 +320,52 @@ async function openLeague(container, ctx, leagueId) {
 
   container.innerHTML = `
   <div style="height:100%;overflow-y:auto;background:var(--page-bg)">
-    <div style="padding:12px 16px;background:#fff;border-bottom:1px solid #eee;display:flex;align-items:center;gap:10px">
-      <button id="ml-back" style="background:none;border:none;font-size:20px;cursor:pointer">‹</button>
+    <div style="padding:14px 16px;background:var(--nav-bg,#0d1a0f);border-bottom:1px solid ${DIVIDER};display:flex;align-items:center;gap:10px">
+      <button id="ml-back" style="background:none;border:none;font-size:20px;cursor:pointer;color:${TXT}">‹</button>
       <div style="flex:1">
-        <div style="font-size:16px;font-weight:900">${league.name}</div>
-        <div style="font-size:11px;color:#888">${league.mode==='aller-retour'?'Aller-Retour':'Aller'} · max ${league.max_players} · 💰 ${fee} cr./joueur</div>
+        <div style="font-size:16px;font-weight:900;color:${TXT}">${league.name}</div>
+        <div style="font-size:11px;color:${TXT_DIM}">${league.mode==='aller-retour'?'Aller-Retour':'Aller'} · max ${league.max_players} · 💰 ${fee} cr./joueur</div>
       </div>
       <div style="text-align:right;flex-shrink:0">
-        <div style="font-size:11px;font-weight:700;padding:4px 10px;border-radius:12px;background:${league.status==='active'?'#d1fae5':league.status==='finished'?'#f3e8ff':'#fef9c3'};color:${league.status==='active'?'#166534':league.status==='finished'?'#6b21a8':'#854d0e'}">
+        <div style="font-size:11px;font-weight:700;padding:4px 10px;border-radius:12px;background:${league.status==='active'?'rgba(74,222,128,0.16)':league.status==='finished'?'rgba(168,85,247,0.16)':'rgba(212,160,23,0.16)'};color:${league.status==='active'?'#4ade80':league.status==='finished'?'#c084fc':'#eab308'}">
           ${league.status==='waiting'?'En attente':league.status==='active'?`J${league.current_day}/${league.total_days}`:'Terminée'}
         </div>
         ${pot>0?`<div style="font-size:12px;font-weight:900;color:${YELLOW};margin-top:4px">🏆 ${pot.toLocaleString('fr')} cr.</div>`:''}
       </div>
     </div>
-    <div style="padding:12px 16px;display:flex;flex-direction:column;gap:14px">
+    <div style="padding:14px 16px;display:flex;flex-direction:column;gap:14px">
 
       ${league.status==='waiting'?`
-      <div style="background:#fff;border-radius:12px;padding:16px;box-shadow:0 1px 6px rgba(0,0,0,0.08)">
-        <div style="font-size:14px;font-weight:900;margin-bottom:4px">👥 Joueurs (${memberList.length}/${league.max_players})</div>
-        <div style="font-size:12px;color:#888;margin-bottom:10px">💰 ${fee} cr./joueur → Pot estimé : ${(fee*memberList.length).toLocaleString('fr')} cr. (🥇${Math.floor(fee*memberList.length*.7).toLocaleString('fr')} · 🥈${Math.floor(fee*memberList.length*.2).toLocaleString('fr')} · 🥉${Math.floor(fee*memberList.length*.1).toLocaleString('fr')})</div>
+      <div style="background:${PANEL};border:1px solid ${BORDER};border-radius:12px;padding:16px">
+        <div style="font-size:14px;font-weight:900;margin-bottom:4px;color:${TXT}">👥 Joueurs (${memberList.length}/${league.max_players})</div>
+        <div style="font-size:12px;color:${TXT_DIM};margin-bottom:10px">💰 ${fee} cr./joueur → Pot estimé : ${(fee*memberList.length).toLocaleString('fr')} cr. (🥇${Math.floor(fee*memberList.length*.7).toLocaleString('fr')} · 🥈${Math.floor(fee*memberList.length*.2).toLocaleString('fr')} · 🥉${Math.floor(fee*memberList.length*.1).toLocaleString('fr')})</div>
         ${memberList.map(u=>`
-          <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #f5f5f5">
+          <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid ${DIVIDER}">
             <div style="width:36px;height:36px;border-radius:50%;background:${u.club_color2||GREEN};display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:900;color:${u.club_color1||'#fff'}">${(u.pseudo||'?').slice(0,2).toUpperCase()}</div>
-            <div style="flex:1"><div style="font-size:13px;font-weight:700">${u.club_name||u.pseudo}</div><div style="font-size:11px;color:#999">@${u.pseudo}</div></div>
+            <div style="flex:1"><div style="font-size:13px;font-weight:700;color:${TXT}">${u.club_name||u.pseudo}</div><div style="font-size:11px;color:${TXT_FAINT}">@${u.pseudo}</div></div>
             ${u.id===league.creator_id?'<span style="font-size:10px;color:#D4A017;font-weight:700">👑</span>':''}
           </div>`).join('')}
         ${isCreator&&memberList.length>=2?`<button id="ml-start-btn" class="btn btn-primary" style="width:100%;margin-top:14px;padding:12px">🚀 Lancer (prélève ${fee} cr. × ${memberList.length})</button>`:''}
-        ${isCreator?`<button id="ml-delete-btn" class="btn btn-ghost btn-sm" style="color:#cc2222;width:100%;margin-top:8px">🗑️ Supprimer</button>`:''}
+        ${isCreator?`<button id="ml-delete-btn" class="btn btn-ghost btn-sm" style="color:#ff6b6b;width:100%;margin-top:8px">🗑️ Supprimer</button>`:''}
         ${!isMember?`<button id="ml-join-now" class="btn btn-primary" style="width:100%;margin-top:14px">Rejoindre (mise : ${fee} cr.)</button>`:''}
         ${isMember&&!isCreator?`
-          <button id="ml-leave-btn" class="btn btn-ghost btn-sm" style="color:#cc2222;width:100%;margin-top:10px">↩️ Se désinscrire et récupérer ${fee.toLocaleString('fr')} cr.</button>
+          <button id="ml-leave-btn" class="btn btn-ghost btn-sm" style="color:#ff6b6b;width:100%;margin-top:10px">↩️ Se désinscrire et récupérer ${fee.toLocaleString('fr')} cr.</button>
         `:''}
       </div>`:''}
 
       ${league.status==='active'?`
-      <div style="background:#fff;border-radius:12px;padding:16px;box-shadow:0 1px 6px rgba(0,0,0,0.08)">
-        <div style="font-size:14px;font-weight:900;margin-bottom:10px">📅 Journée ${league.current_day} / ${league.total_days}</div>
+      <div style="background:${PANEL};border:1px solid ${BORDER};border-radius:12px;padding:16px">
+        <div style="font-size:14px;font-weight:900;margin-bottom:10px;color:${TXT}">📅 Journée ${league.current_day} / ${league.total_days}</div>
         ${todayMatches.map(m=>matchRowHTML(m,memberList,uid,isMember)).join('')}
         ${isCreator&&allTodayDone&&!isLastDay?`<button id="ml-next-day" class="btn btn-primary" style="width:100%;margin-top:12px">➡️ Journée suivante</button>`:''}
         ${isCreator&&allTodayDone&&isLastDay?`<button id="ml-finish-btn" class="btn btn-primary" style="width:100%;margin-top:12px;background:#7a28b8">🏆 Terminer et distribuer le pot</button>`:''}
       </div>`:''}
 
       ${(league.status==='active'||league.status==='finished')&&standings.length?`
-      <div style="background:#fff;border-radius:12px;padding:16px;box-shadow:0 1px 6px rgba(0,0,0,0.08)">
-        <div style="font-size:14px;font-weight:900;margin-bottom:10px">🏆 Classement</div>
+      <div style="background:${PANEL};border:1px solid ${BORDER};border-radius:12px;padding:16px">
+        <div style="font-size:14px;font-weight:900;margin-bottom:10px;color:${TXT}">🏆 Classement</div>
         <table style="width:100%;border-collapse:collapse;font-size:12px">
-          <thead><tr style="font-size:10px;color:#888;text-transform:uppercase;border-bottom:2px solid #f0f0f0">
+          <thead><tr style="font-size:10px;color:${TXT_FAINT};text-transform:uppercase;border-bottom:2px solid ${DIVIDER}">
             <th style="text-align:left;padding:5px 0">#</th><th style="text-align:left;padding:5px 0">Club</th>
             <th style="text-align:center;padding:5px 3px">J</th><th style="text-align:center;padding:5px 3px">G-N-P</th>
             <th style="text-align:center;padding:5px 3px">DB</th><th style="text-align:center;font-weight:900;padding:5px 3px">Pts</th>
@@ -365,30 +373,30 @@ async function openLeague(container, ctx, leagueId) {
           </tr></thead>
           <tbody>${standings.map((s,i)=>{
             const prize=(pot>0&&league.status==='finished')?(i===0?Math.floor(pot*.7):i===1?Math.floor(pot*.2):i===2?Math.floor(pot*.1):0):0
-            return `<tr style="border-bottom:1px solid #f5f5f5;${s.userId===uid?'background:#f0fdf4;':''}">
-              <td style="padding:7px 3px 7px 0;font-weight:700;color:${i===0?YELLOW:i<3?GREEN:'#555'}">${['🥇','🥈','🥉'][i]||i+1}</td>
-              <td style="padding:7px 3px"><div style="font-weight:700">${s.clubName}</div><div style="font-size:10px;color:#999">@${s.pseudo}</div></td>
-              <td style="text-align:center">${s.played}</td><td style="text-align:center">${s.won}-${s.drawn}-${s.lost}</td>
-              <td style="text-align:center;color:${s.goalDiff>=0?GREEN:'#cc2222'}">${s.goalDiff>=0?'+':''}${s.goalDiff}</td>
-              <td style="text-align:center;font-weight:900;font-size:14px">${s.points}</td>
+            return `<tr style="border-bottom:1px solid ${DIVIDER};${s.userId===uid?'background:rgba(74,222,128,0.08);':''}">
+              <td style="padding:7px 3px 7px 0;font-weight:700;color:${i===0?YELLOW:i<3?'#4ade80':TXT_DIM}">${['🥇','🥈','🥉'][i]||i+1}</td>
+              <td style="padding:7px 3px"><div style="font-weight:700;color:${TXT}">${s.clubName}</div><div style="font-size:10px;color:${TXT_FAINT}">@${s.pseudo}</div></td>
+              <td style="text-align:center;color:${TXT_DIM}">${s.played}</td><td style="text-align:center;color:${TXT_DIM}">${s.won}-${s.drawn}-${s.lost}</td>
+              <td style="text-align:center;color:${s.goalDiff>=0?'#4ade80':'#ff6b6b'}">${s.goalDiff>=0?'+':''}${s.goalDiff}</td>
+              <td style="text-align:center;font-weight:900;font-size:14px;color:${TXT}">${s.points}</td>
               ${pot>0&&league.status==='finished'?`<td style="text-align:right;font-weight:700;color:${YELLOW}">${prize?prize.toLocaleString('fr')+' cr.':'—'}</td>`:''}
             </tr>`}).join('')}</tbody>
         </table>
       </div>`:''}
 
       ${league.status!=='waiting'&&league.current_day>1?`
-      <div style="background:#fff;border-radius:12px;padding:16px;box-shadow:0 1px 6px rgba(0,0,0,0.08)">
-        <div style="font-size:14px;font-weight:900;margin-bottom:10px">📋 Résultats</div>
+      <div style="background:${PANEL};border:1px solid ${BORDER};border-radius:12px;padding:16px">
+        <div style="font-size:14px;font-weight:900;margin-bottom:10px;color:${TXT}">📋 Résultats</div>
         ${Array.from({length:Math.max(0,league.status==='active'?league.current_day-1:league.current_day)},(_,i)=>i+1).reverse().map(day=>{
           const dayM=(mlMatches||[]).filter(m=>m.matchday===day)
-          return `<div style="margin-bottom:10px"><div style="font-size:11px;font-weight:700;color:#888;margin-bottom:6px">Journée ${day}</div>${dayM.map(m=>matchRowHTML(m,memberList,uid,false,true)).join('')}</div>`
+          return `<div style="margin-bottom:10px"><div style="font-size:11px;font-weight:700;color:${TXT_FAINT};margin-bottom:6px">Journée ${day}</div>${dayM.map(m=>matchRowHTML(m,memberList,uid,false,true)).join('')}</div>`
         }).join('')}
       </div>`:''}
 
       ${isCreator&&!league.is_archived&&league.status!=='waiting'?`
       <div style="display:flex;gap:8px">
-        <button id="ml-archive-btn" class="btn btn-ghost btn-sm" style="flex:1;color:#555">📁 Archiver</button>
-        <button id="ml-delete-now" class="btn btn-ghost btn-sm" style="flex:1;color:#cc2222">🗑️ Supprimer</button>
+        <button id="ml-archive-btn" class="btn btn-ghost btn-sm" style="flex:1;color:${TXT_DIM}">📁 Archiver</button>
+        <button id="ml-delete-now" class="btn btn-ghost btn-sm" style="flex:1;color:#ff6b6b">🗑️ Supprimer</button>
       </div>`:''}
 
     </div>
@@ -422,17 +430,17 @@ async function openLeague(container, ctx, leagueId) {
 
 function matchRowHTML(m, members, uid, isMember, readonly=false) {
   const getUser=id=>members.find(u=>u.id===id)
-  if(m.is_bye){const e=getUser(m.home_id);return `<div style="padding:8px;border-radius:8px;background:#f9f9f9;margin-bottom:6px;font-size:12px;color:#888;text-align:center">🔵 ${e?.club_name||e?.pseudo||'?'} exempté(e)</div>`}
+  if(m.is_bye){const e=getUser(m.home_id);return `<div style="padding:8px;border-radius:8px;background:rgba(255,255,255,0.03);margin-bottom:6px;font-size:12px;color:${TXT_DIM};text-align:center">🔵 ${e?.club_name||e?.pseudo||'?'} exempté(e)</div>`}
   const home=getUser(m.home_id),away=getUser(m.away_id)
   const isMyMatch=m.home_id===uid||m.away_id===uid
   const canPlay=isMyMatch&&m.status==='pending'&&isMember&&!readonly
   const score=m.status==='finished'?`${m.home_score} - ${m.away_score}`:'vs'
-  return `<div style="display:flex;align-items:center;gap:8px;padding:10px;border-radius:8px;background:${isMyMatch?'#f0fdf4':'#f9f9f9'};margin-bottom:6px;border:1px solid ${isMyMatch?'#86efac':'#f0f0f0'}">
-    <div style="flex:1;text-align:right;font-size:12px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${home?.club_name||home?.pseudo||'?'}</div>
-    <div style="font-size:13px;font-weight:900;min-width:50px;text-align:center;color:${m.status==='finished'?GREEN:'#999'}">${score}</div>
-    <div style="flex:1;font-size:12px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${away?.club_name||away?.pseudo||'?'}</div>
+  return `<div style="display:flex;align-items:center;gap:8px;padding:10px;border-radius:8px;background:${isMyMatch?'rgba(26,107,60,0.16)':'rgba(255,255,255,0.03)'};margin-bottom:6px;border:1px solid ${isMyMatch?'rgba(74,222,128,0.35)':DIVIDER}">
+    <div style="flex:1;text-align:right;font-size:12px;font-weight:700;color:${TXT};overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${home?.club_name||home?.pseudo||'?'}</div>
+    <div style="font-size:13px;font-weight:900;min-width:50px;text-align:center;color:${m.status==='finished'?'#4ade80':TXT_FAINT}">${score}</div>
+    <div style="flex:1;font-size:12px;font-weight:700;color:${TXT};overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${away?.club_name||away?.pseudo||'?'}</div>
     ${canPlay?`<button data-play-match="${m.id}" class="btn btn-primary btn-sm" style="padding:4px 10px;font-size:11px;flex-shrink:0">⚽</button>`:''}
-    ${m.status==='finished'?'<span style="font-size:10px;color:#22c55e;flex-shrink:0">✅</span>':''}
+    ${m.status==='finished'?'<span style="font-size:10px;color:#4ade80;flex-shrink:0">✅</span>':''}
   </div>`
 }
 

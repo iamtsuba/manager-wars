@@ -298,7 +298,7 @@ async function loadOngoingMatchBanner(state, toast, navigate) {
 }
 
 async function abandonMatch(matchId, oppId, uid) {
-  const { data: m } = await supabase.from('matches').select('home_id, away_id, game_state').eq('id', matchId).single()
+  const { data: m } = await supabase.from('matches').select('home_id, away_id, game_state, mode').eq('id', matchId).single()
   if (!m) return
   const amIHome = m.home_id === uid
   const home_score = amIHome ? 0 : 3
@@ -307,6 +307,11 @@ async function abandonMatch(matchId, oppId, uid) {
   gs.p1Score = home_score; gs.p2Score = away_score
   gs.phase = 'finished'; gs.forfeit = true
   await supabase.from('matches').update({ status:'finished', forfeit:true, winner_id:oppId, home_score, away_score, game_state:gs }).eq('id', matchId)
+  // Spécifique Mini League : reporter aussi le résultat (sinon le match reste
+  // "pending" indéfiniment et bloque le passage à la journée suivante)
+  if (m.mode === 'mini_league') {
+    await supabase.from('mini_league_matches').update({ status:'finished', home_score, away_score }).eq('match_id', matchId)
+  }
 }
 
 function showAbandonConfirm(onConfirm) {

@@ -630,7 +630,12 @@ async function _renderPvpMatchCore(container, ctx, matchId, amIHome, myGC = [], 
         if (mySelected.length > 0) {
           const selectedLive = mySelected.map(s => {
             const live = (myTeamForPreview[s._role]||[]).find(x => x.cardId === s.cardId) || s
-            return { ...live, _line: s._role }
+            // Réhydrater _col (survie au round-trip JSON), sinon les liens sont sous-comptés dans l'aperçu
+            const lineArr = myTeamForPreview[s._role]||[]
+            const colIdx = lineArr.findIndex(x => x.cardId === s.cardId)
+            const cols = getColsForLine(lineArr.length)
+            const _col = colIdx>=0 ? cols[colIdx] : (live._col ?? 1)
+            return { ...live, _line: s._role, _col }
           })
           const calc = calcDefense(selectedLive, gameState.modifiers?.[myRole]||{})
           livePreview = `<div style="margin-top:6px;padding-top:6px;border-top:1px solid rgba(255,255,255,0.15)">
@@ -656,7 +661,12 @@ async function _renderPvpMatchCore(container, ctx, matchId, amIHome, myGC = [], 
         const selectedLive = mySelected.map(s => {
           const live = (myTeamForPreview[s._role]||[]).find(x => x.cardId === s.cardId) || s
           const isDefAttacking = ['GK','DEF'].includes(s._role)
-          return { ...live, _line: s._role, ...(isDefAttacking ? { note_a: Math.max(1, Number(live.note_a)||0) } : {}) }
+          // Réhydrater _col (survie au round-trip JSON), sinon les liens sont sous-comptés dans l'aperçu
+          const lineArr = myTeamForPreview[s._role]||[]
+          const colIdx = lineArr.findIndex(x => x.cardId === s.cardId)
+          const cols = getColsForLine(lineArr.length)
+          const _col = colIdx>=0 ? cols[colIdx] : (live._col ?? 1)
+          return { ...live, _line: s._role, _col, ...(isDefAttacking ? { note_a: Math.max(1, Number(live.note_a)||0) } : {}) }
         })
         const calc = calcAttack(selectedLive, gameState.modifiers?.[myRole]||{})
         return `<div style="padding:5px 8px;background:rgba(26,107,60,0.2);border-left:3px solid #FFD700;text-align:center">

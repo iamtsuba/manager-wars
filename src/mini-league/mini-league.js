@@ -298,7 +298,7 @@ async function archiveLeague(container, ctx, leagueId) {
   ctx.toast('Mini League archivée','success'); showLeagueList(container,ctx,'archived')
 }
 
-async function openLeague(container, ctx, leagueId) {
+export async function openLeague(container, ctx, leagueId) {
   const {state,toast}=ctx; const uid=state.profile.id
   const [{data:league},{data:members},{data:mlMatches}] = await Promise.all([
     supabase.from('mini_leagues').select('*').eq('id',leagueId).single(),

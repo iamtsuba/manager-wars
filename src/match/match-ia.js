@@ -870,7 +870,13 @@ function renderGame(container, game, ctx) {
     el.addEventListener('click', () => openSubstitution(container, game, ctx, null, el.dataset.cardId))
   })
   container.querySelectorAll('.gc-mini').forEach(el => {
-    el.addEventListener('click', () => openGCDetail(el.dataset.gcId, el.dataset.gcType, container, game, ctx))
+    if (!isAttack) {
+      el.style.opacity = '0.35'
+      el.style.cursor = 'default'
+      el.addEventListener('click', () => showGameToast('⚡ Les Game Changers ne sont utilisables qu\'en attaque', 'rgba(180,100,0,0.9)'))
+    } else {
+      el.addEventListener('click', () => openGCDetail(el.dataset.gcId, el.dataset.gcType, container, game, ctx))
+    }
   })
   document.getElementById('boost-card')?.addEventListener('click', () => useBoost(container, game, ctx))
 

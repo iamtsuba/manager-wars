@@ -339,7 +339,7 @@ import{s as w,l as Pt,F as Ii,r as Se,j as Jt,m as on,h as Si,n as Mn,o as jn,T 
         border:1.5px solid #ddd;background:#fff;
         font-size:14px;font-weight:700;cursor:pointer;color:#555;
       }
-    </style>`}const Vn="2026.07.18-1202";async function Hi(e,{state:t,navigate:i,toast:n}){var o,a;const r=t.profile;r&&(e.innerHTML=`
+    </style>`}const Vn="2026.07.18-1207";async function Hi(e,{state:t,navigate:i,toast:n}){var o,a;const r=t.profile;r&&(e.innerHTML=`
   <style>
     .home-dark {
       min-height: 100%;
@@ -1416,7 +1416,7 @@ import{s as w,l as Pt,F as Ii,r as Se,j as Jt,m as on,h as Si,n as Mn,o as jn,T 
           </button>
         </div>
       </div>
-    </div>`,e.querySelectorAll(".gc-select-card").forEach(u=>{u.addEventListener("click",()=>{const p=u.dataset.id,g=o.find(h=>h.id===p);if(!g)return;const b=a.findIndex(h=>h.gc_type===g.gc_type);b>-1?a.splice(b,1):a.length<3&&a.push(g),c()})}),(f=e.querySelector("#gc-launch"))==null||f.addEventListener("click",()=>{d&&l(a)}),(x=e.querySelector("#gc-no-gc"))==null||x.addEventListener("click",()=>l([])),(m=e.querySelector("#gc-reset"))==null||m.addEventListener("click",()=>{a.length&&(a=[],c())})}c()}function Co(e){var n;const t=((n=e==null?void 0:e.state)==null?void 0:n.params)||{},i=t.matchMode||"vs_ai_easy";return i==="friend"?`Match vs ${t.friendName||"Ami"}`:i==="random"?"Match vs Random":`Match vs IA — ${i.replace("vs_ai_","").toUpperCase()}`}async function Bo(e,t,i){const{state:n,navigate:r}=t;e.innerHTML='<div style="padding:40px;text-align:center;color:#aaa">⚽ Chargement...</div>';const{data:o}=await w.from("decks").select(`id,name,is_active,formation,stadium_card_id,
+    </div>`,e.querySelectorAll(".gc-select-card").forEach(u=>{u.addEventListener("click",()=>{const p=u.dataset.id,g=o.find(h=>h.id===p);if(!g)return;const b=a.findIndex(h=>h.gc_type===g.gc_type);b>-1?a.splice(b,1):a.length<3&&a.push(g),c()})}),(f=e.querySelector("#gc-launch"))==null||f.addEventListener("click",()=>{d&&l(a)}),(x=e.querySelector("#gc-no-gc"))==null||x.addEventListener("click",()=>l([])),(m=e.querySelector("#gc-reset"))==null||m.addEventListener("click",()=>{a.length&&(a=[],c())})}c()}function Co(e,t){var r;const i=((r=t==null?void 0:t.state)==null?void 0:r.params)||{},n=e||i.matchMode||"vs_ai_easy";return n==="friend"?`Match vs ${i.friendName||"Ami"}`:n==="random"?"Match vs Random":n==="ranked"?"Match Classé":n==="mini_league"||n==="mini-league"?"🏆 Match de Mini League":`Match vs IA — ${n.replace("vs_ai_","").toUpperCase()}`}async function Bo(e,t,i){const{state:n,navigate:r}=t;e.innerHTML='<div style="padding:40px;text-align:center;color:#aaa">⚽ Chargement...</div>';const{data:o}=await w.from("decks").select(`id,name,is_active,formation,stadium_card_id,
       stadium_card:cards!stadium_card_id(id,stadium_id,
         stadium_def:stadium_definitions(id,name,club_id,country_code,image_url,
           club:clubs(encoded_name,logo_url)))`).eq("owner_id",n.profile.id).order("created_at",{ascending:!1});if(!o||o.length===0){_t(e,"📋","Aucun deck. Crée un deck avant de jouer !","Créer un deck",()=>r("decks"));return}const a=o.map(x=>x.id),{data:s}=await w.from("deck_cards").select(`deck_id, position, is_starter, slot_order,
@@ -1430,7 +1430,7 @@ import{s as w,l as Pt,F as Ii,r as Se,j as Jt,m as on,h as Si,n as Mn,o as jn,T 
       <!-- Header : titre + nav deck + stade (flex-shrink:0) -->
       <div id="deck-top-bar" style="flex-shrink:0">
         <div style="padding:8px 16px;background:rgba(0,0,0,0.4);text-align:center">
-          <div style="font-size:10px;opacity:.6;letter-spacing:2px;text-transform:uppercase">${Co(t)}</div>
+          <div style="font-size:10px;opacity:.6;letter-spacing:2px;text-transform:uppercase">${Co(i,t)}</div>
           <div style="font-size:16px;font-weight:900">Choisis ton deck</div>
         </div>
         <div style="display:flex;align-items:center;gap:8px;padding:6px 8px">

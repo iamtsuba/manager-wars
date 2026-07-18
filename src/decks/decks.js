@@ -2,6 +2,57 @@ import { supabase } from '../lib/supabase.js'
 import { renderPlayerCard } from '../components/player-card.js'
 import { FORMATION_LINKS, FORMATION_POSITIONS, computeLinks, linkColor, getActiveLinks } from '../match/formation-links.js'
 
+// ── Modales in-app (remplacent prompt()/confirm() natifs du navigateur) ──
+function showPromptModal(title, defaultValue = '') {
+  return new Promise(resolve => {
+    const overlay = document.createElement('div')
+    overlay.className = 'modal-overlay'
+    overlay.style.zIndex = '2100'
+    overlay.innerHTML = `<div class="modal" style="max-width:360px">
+      <div class="modal-header"><h2>${title}</h2><button class="btn-icon" id="pm-cancel">✕</button></div>
+      <div class="modal-body" style="padding:18px 20px">
+        <input id="pm-input" type="text" value="${(defaultValue||'').replace(/"/g,'&quot;')}"
+          style="width:100%;padding:11px 14px;border-radius:10px;border:1px solid var(--gray-300,#d1d5db);font-size:15px;box-sizing:border-box" />
+        <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px">
+          <button class="btn btn-ghost" id="pm-cancel2">Annuler</button>
+          <button class="btn btn-primary" id="pm-ok">Valider</button>
+        </div>
+      </div>
+    </div>`
+    document.body.appendChild(overlay)
+    const input = overlay.querySelector('#pm-input')
+    input.focus(); input.select()
+    const finish = (val) => { overlay.remove(); resolve(val) }
+    overlay.querySelector('#pm-ok').addEventListener('click', () => finish(input.value.trim() || null))
+    overlay.querySelector('#pm-cancel').addEventListener('click', () => finish(null))
+    overlay.querySelector('#pm-cancel2').addEventListener('click', () => finish(null))
+    overlay.addEventListener('click', e => { if (e.target === overlay) finish(null) })
+    input.addEventListener('keydown', e => { if (e.key === 'Enter') finish(input.value.trim() || null); if (e.key === 'Escape') finish(null) })
+  })
+}
+
+function showConfirmModal(message, danger = false) {
+  return new Promise(resolve => {
+    const overlay = document.createElement('div')
+    overlay.className = 'modal-overlay'
+    overlay.style.zIndex = '2100'
+    overlay.innerHTML = `<div class="modal" style="max-width:380px">
+      <div class="modal-body" style="padding:24px 22px 20px;text-align:center">
+        <p style="font-size:15px;line-height:1.5;margin:0 0 20px">${message}</p>
+        <div style="display:flex;justify-content:center;gap:10px">
+          <button class="btn btn-ghost" id="cm-cancel">Annuler</button>
+          <button class="btn ${danger?'':'btn-primary'}" id="cm-ok" style="${danger?'background:var(--red,#c0392b);color:#fff;border:none':''}">Confirmer</button>
+        </div>
+      </div>
+    </div>`
+    document.body.appendChild(overlay)
+    const finish = (val) => { overlay.remove(); resolve(val) }
+    overlay.querySelector('#cm-ok').addEventListener('click', () => finish(true))
+    overlay.querySelector('#cm-cancel').addEventListener('click', () => finish(false))
+    overlay.addEventListener('click', e => { if (e.target === overlay) finish(false) })
+  })
+}
+
 const FORMATIONS = {
   '4-3-3 (3)': { GK:1, DEF:4, MIL:3, ATT:3 },
   '5-3-2':     { GK:1, DEF:5, MIL:3, ATT:2 },
@@ -109,7 +160,7 @@ export async function renderDecks(container, ctx) {
   </div>`
 
   document.getElementById('new-deck-btn').addEventListener('click', async () => {
-    const name = prompt('Nom du deck :', `Deck ${(decks?.length||0)+1}`)
+    const name = await showPromptModal('Nom du deck', `Deck ${(decks?.length||0)+1}`)
     if (!name) return
     const { data, error } = await supabase.from('decks')
       .insert({ owner_id: state.profile.id, name })
@@ -127,7 +178,7 @@ export async function renderDecks(container, ctx) {
   // Renommer
   container.querySelectorAll('[data-rename]').forEach(btn => {
     btn.addEventListener('click', async () => {
-      const newName = prompt('Nouveau nom :', btn.dataset.name)
+      const newName = await showPromptModal('Nouveau nom', btn.dataset.name)
       if (!newName || newName === btn.dataset.name) return
       const { error } = await supabase.from('decks').update({ name: newName }).eq('id', btn.dataset.rename)
       if (error) { toast(error.message, 'error'); return }
@@ -139,7 +190,7 @@ export async function renderDecks(container, ctx) {
   // Supprimer
   container.querySelectorAll('[data-delete]').forEach(btn => {
     btn.addEventListener('click', async () => {
-      if (!confirm(`Supprimer le deck "${btn.dataset.name}" ? Cette action est irréversible.`)) return
+      if (!await showConfirmModal(`Supprimer le deck "${btn.dataset.name}" ? Cette action est irréversible.`, true)) return
       await supabase.from('deck_cards').delete().eq('deck_id', btn.dataset.delete)
       const { error } = await supabase.from('decks').delete().eq('id', btn.dataset.delete)
       if (error) { toast(error.message, 'error'); return }

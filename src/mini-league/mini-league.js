@@ -43,7 +43,23 @@ async function showLeagueList(container, ctx, activeTab = 'waiting') {
 
   const myWaiting  = myLeagues.filter(l => l.status==='waiting' && !l.is_archived)
   const myActive   = myLeagues.filter(l => l.status==='active'  && !l.is_archived)
-  const myArchived = myLeagues.filter(l => l.is_archived || l.status==='finished')
+  const archivedCandidates = myLeagues.filter(l => l.is_archived || l.status==='finished')
+
+  // "Archivées" = uniquement les leagues où j'ai RÉELLEMENT joué au moins un
+  // match (pas seulement rejointes) — cas rare d'un membre systématiquement
+  // exempté (bye) qui n'aurait jamais réellement affronté personne.
+  let myArchived = archivedCandidates
+  if (archivedCandidates.length) {
+    const { data: playedRows } = await supabase
+      .from('mini_league_matches')
+      .select('league_id')
+      .in('league_id', archivedCandidates.map(l=>l.id))
+      .or(`home_id.eq.${uid},away_id.eq.${uid}`)
+      .not('status', 'eq', 'bye')
+    const playedLeagueIds = new Set((playedRows||[]).map(r=>r.league_id))
+    myArchived = archivedCandidates.filter(l => playedLeagueIds.has(l.id))
+  }
+
   const otherPublic = waitingLeagues.filter(l => !myLeagueIds.includes(l.id))
 
   const tabs = [

@@ -656,15 +656,15 @@ async function _renderPvpMatchCore(container, ctx, matchId, amIHome, myGC = [], 
             const _col = colIdx>=0 ? cols[colIdx] : (live._col ?? 1)
             return { ...live, _line: s._role, _col }
           })
-          const calc = calcDefense(selectedLive, gameState.modifiers?.[myRole]||{})
+          const calc = calcDefense(selectedLive, gameState.modifiers?.[myRole]||{}, gameState[myRole+'Formation'])
           livePreview = `<div style="margin-top:6px;padding-top:6px;border-top:1px solid rgba(255,255,255,0.15)">
             <div style="font-size:8px;color:#3a7bd5;letter-spacing:2px;margin-bottom:4px;text-transform:uppercase">🛡️ Votre défense (${mySelected.length}/3)</div>
-            <div style="display:flex;justify-content:center">${renderCardRow(selectedLive.map(p=>({...p,used:false})),'#3a7bd5',calc.total,'defense')}</div>
+            <div style="display:flex;justify-content:center">${renderCardRow(selectedLive.map(p=>({...p,used:false})),'#3a7bd5',calc.total,'defense',gameState[myRole+'Formation'])}</div>
           </div>`
         }
         return `<div style="padding:5px 8px;background:rgba(180,30,30,0.2);border-left:3px solid #ff6b6b;text-align:center">
           <div style="font-size:8px;color:#ff6b6b;letter-spacing:2px;margin-bottom:4px;text-transform:uppercase">⚔️ ${oppName} ATTAQUE — Défendez !</div>
-          <div style="display:flex;justify-content:center">${renderCardRow((atk.players||[]).map(p=>({...p,used:false})),'#ff6b6b',atk.total,'attack')}</div>
+          <div style="display:flex;justify-content:center">${renderCardRow((atk.players||[]).map(p=>({...p,used:false})),'#ff6b6b',atk.total,'attack',gameState[oppRole+'Formation'])}</div>
           ${livePreview}
         </div>`
       }
@@ -672,7 +672,7 @@ async function _renderPvpMatchCore(container, ctx, matchId, amIHome, myGC = [], 
         const atk = gameState.pendingAttack
         return `<div style="padding:5px 8px;background:rgba(26,107,60,0.2);border-left:3px solid #00ff88;text-align:center">
           <div style="font-size:8px;color:#00ff88;letter-spacing:2px;margin-bottom:4px;text-transform:uppercase">⚔️ VOUS ATTAQUEZ</div>
-          <div style="display:flex;justify-content:center">${renderCardRow((atk.players||[]).map(p=>({...p,used:false})),'#00ff88',atk.total,'attack')}</div>
+          <div style="display:flex;justify-content:center">${renderCardRow((atk.players||[]).map(p=>({...p,used:false})),'#00ff88',atk.total,'attack',gameState[myRole+'Formation'])}</div>
         </div>`
       }
       // Phase attaque, pas encore confirmé → aperçu live de MA sélection
@@ -687,10 +687,10 @@ async function _renderPvpMatchCore(container, ctx, matchId, amIHome, myGC = [], 
           const _col = colIdx>=0 ? cols[colIdx] : (live._col ?? 1)
           return { ...live, _line: s._role, _col, ...(isDefAttacking ? { note_a: Math.max(1, Number(live.note_a)||0) } : {}) }
         })
-        const calc = calcAttack(selectedLive, gameState.modifiers?.[myRole]||{})
+        const calc = calcAttack(selectedLive, gameState.modifiers?.[myRole]||{}, gameState[myRole+'Formation'])
         return `<div style="padding:5px 8px;background:rgba(26,107,60,0.2);border-left:3px solid #FFD700;text-align:center">
           <div style="font-size:8px;color:#FFD700;letter-spacing:2px;margin-bottom:4px;text-transform:uppercase">⚔️ Votre sélection (${mySelected.length}/3)</div>
-          <div style="display:flex;justify-content:center">${renderCardRow(selectedLive.map(p=>({...p,used:false})),'#FFD700',calc.total,'attack')}</div>
+          <div style="display:flex;justify-content:center">${renderCardRow(selectedLive.map(p=>({...p,used:false})),'#FFD700',calc.total,'attack',gameState[myRole+'Formation'])}</div>
         </div>`
       }
       const last = (gameState.log||[]).slice(-1)[0]
@@ -1374,7 +1374,7 @@ async function _renderPvpMatchCore(container, ctx, matchId, amIHome, myGC = [], 
       return { ...live, _line: s._role, _col, stadiumBonus: stadB, ...(isExtra ? { note_a: Math.max(1, Number(live.note_a)||0) } : {}) }
     })
     if (!selected.length) return
-    const calc = calcAttack(selected, gameState.modifiers[myRole]||{})
+    const calc = calcAttack(selected, gameState.modifiers[myRole]||{}, gameState[myRole+'Formation'])
     // Marquer used dans le registre persisté (source de vérité) + flag local immédiat
     markUsed(myRole, selected.map(s => s.cardId))
     selected.forEach(sel => { const p=(myTeam[sel._role]||[]).find(pp=>pp.cardId===sel.cardId); if(p) p.used=true })
@@ -1427,7 +1427,7 @@ async function _renderPvpMatchCore(container, ctx, matchId, amIHome, myGC = [], 
       const _col = colIdx>=0 ? cols[colIdx] : (live._col ?? 1)
       return { ...live, _line: s._role, _col }
     })
-    const calc = calcDefense(selected, gameState.modifiers[myRole]||{})
+    const calc = calcDefense(selected, gameState.modifiers[myRole]||{}, gameState[myRole+'Formation'])
     // Marquer used dans le registre persisté (source de vérité) + flag local immédiat
     markUsed(myRole, selected.map(s => s.cardId))
     selected.forEach(sel => { const p=(myTeam[sel._role]||[]).find(pp=>pp.cardId===sel.cardId); if(p) p.used=true })

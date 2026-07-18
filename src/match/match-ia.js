@@ -519,15 +519,15 @@ function renderGame(container, game, ctx) {
               const live = (game.homeTeam[s._role]||[]).find(x => x.cardId === s.cardId) || s
               return { ...live, _line: s._role }
             })
-            const calc = calcDefense(selectedLive, game.modifiers.home)
+            const calc = calcDefense(selectedLive, game.modifiers.home, game.formation)
             livePreview = `<div style="margin-top:6px;padding-top:6px;border-top:1px solid rgba(255,255,255,0.15)">
               <div style="font-size:8px;color:#3a7bd5;letter-spacing:2px;margin-bottom:4px;text-transform:uppercase">🛡️ Votre défense (${game.selected.length}/3)</div>
-              <div style="display:flex;justify-content:center">${renderCardRow(selectedLive.map(p=>({...p,used:false})), '#3a7bd5', calc.total, 'defense')}</div>
+              <div style="display:flex;justify-content:center">${renderCardRow(selectedLive.map(p=>({...p,used:false})), '#3a7bd5', calc.total, 'defense', game.formation)}</div>
             </div>`
           }
           return `<div style="padding:5px 8px;background:rgba(180,30,30,0.2);border-left:3px solid #ff6b6b;text-align:center">
             <div style="font-size:8px;color:#ff6b6b;letter-spacing:2px;margin-bottom:4px;text-transform:uppercase">⚔️ IA ATTAQUE — Défendez !</div>
-            <div style="display:flex;justify-content:center">${renderCardRow((atk.players||[]).map(p=>({...p,used:false})), '#ff6b6b', atk.total, 'attack')}</div>
+            <div style="display:flex;justify-content:center">${renderCardRow((atk.players||[]).map(p=>({...p,used:false})), '#ff6b6b', atk.total, 'attack', game.formation)}</div>
             ${livePreview}
           </div>`
         }
@@ -535,7 +535,7 @@ function renderGame(container, game, ctx) {
           const atk = game.pendingAttack
           return `<div style="padding:5px 8px;background:rgba(26,107,60,0.2);border-left:3px solid #00ff88;text-align:center">
             <div style="font-size:8px;color:#00ff88;letter-spacing:2px;margin-bottom:4px;text-transform:uppercase">⚔️ VOUS ATTAQUEZ</div>
-            <div style="display:flex;justify-content:center">${renderCardRow((atk.players||[]).map(p=>({...p,used:false})), '#00ff88', atk.total, 'attack')}</div>
+            <div style="display:flex;justify-content:center">${renderCardRow((atk.players||[]).map(p=>({...p,used:false})), '#00ff88', atk.total, 'attack', game.formation)}</div>
           </div>`
         }
         // Phase attaque, pas encore confirmé → aperçu live de MA sélection
@@ -545,10 +545,10 @@ function renderGame(container, game, ctx) {
             const isDefAttacking = ['GK','DEF'].includes(s._role)
             return { ...live, _line: s._role, ...(isDefAttacking ? { note_a: Math.max(1, Number(live.note_a)||0) } : {}) }
           })
-          const calc = calcAttack(selectedLive, game.modifiers.home)
+          const calc = calcAttack(selectedLive, game.modifiers.home, game.formation)
           return `<div style="padding:5px 8px;background:rgba(26,107,60,0.2);border-left:3px solid #FFD700;text-align:center">
             <div style="font-size:8px;color:#FFD700;letter-spacing:2px;margin-bottom:4px;text-transform:uppercase">⚔️ Votre sélection (${game.selected.length}/3)</div>
-            <div style="display:flex;justify-content:center">${renderCardRow(selectedLive.map(p=>({...p,used:false})), '#FFD700', calc.total, 'attack')}</div>
+            <div style="display:flex;justify-content:center">${renderCardRow(selectedLive.map(p=>({...p,used:false})), '#FFD700', calc.total, 'attack', game.formation)}</div>
           </div>`
         }
         // Sinon : dernière action du log
@@ -709,8 +709,8 @@ function renderGame(container, game, ctx) {
               const side = e.homeScored ? '⚽ BUT !' : isGoal ? '⚽ BUT IA !' : e.homePlayers?.length ? '⚔️ Attaque' : '🛡️ Défense'
               return `<div style="padding:8px;border-radius:8px;background:${isGoal?'rgba(212,160,23,0.12)':'rgba(255,255,255,0.04)'};border-left:3px solid ${accent};margin-bottom:4px">
                 <div style="font-size:9px;color:${accent};letter-spacing:1px;margin-bottom:5px;font-weight:700;text-transform:uppercase">${side}</div>
-                ${e.homePlayers?.length ? `<div style="margin-bottom:3px">${renderCardRow(e.homePlayers,'rgba(255,255,255,0.7)',e.homeTotal)}</div>` : ''}
-                ${e.aiPlayers?.length ? `<div style="opacity:0.7">${renderCardRow(e.aiPlayers,'#ff6b6b',e.aiTotal)}</div>` : ''}
+                ${e.homePlayers?.length ? `<div style="margin-bottom:3px">${renderCardRow(e.homePlayers,'rgba(255,255,255,0.7)',e.homeTotal,undefined,game.formation)}</div>` : ''}
+                ${e.aiPlayers?.length ? `<div style="opacity:0.7">${renderCardRow(e.aiPlayers,'#ff6b6b',e.aiTotal,undefined,game.formation)}</div>` : ''}
               </div>`
             }
             if (e.type === 'sub') {
@@ -917,7 +917,7 @@ function confirmAttack(container, game, ctx) {
     const isDefAttacking = ['GK','DEF'].includes(s._role)
     return { ...live, _line: s._role, ...(isDefAttacking ? { note_a: Math.max(1, Number(live.note_a)||0) } : {}) }
   })
-  const calc = calcAttack(selected, game.modifiers.home)
+  const calc = calcAttack(selected, game.modifiers.home, game.formation)
   game.pendingAttack = { ...calc, players:[...selected], side:'home' }
   game.selected.forEach(sel => {
     const p = (game.homeTeam[sel._role]||[]).find(pp => pp.cardId === sel.cardId)
@@ -945,7 +945,7 @@ function confirmDefense(container, game, ctx) {
     )) || false
     return { ...live, _line: s._role, stadiumBonus: stadB }
   })
-  const calc = calcDefense(selected, game.modifiers.home)
+  const calc = calcDefense(selected, game.modifiers.home, game.formation)
   game.selected.forEach(sel => {
     const p = (game.homeTeam[sel._role]||[]).find(pp => pp.cardId === sel.cardId)
     if (p) p.used = true
@@ -1050,7 +1050,7 @@ function aiTurn(container, game, ctx) {
   const selected = aiSelectPlayers(allAi, 'attack', game.difficulty)
   if (!selected.length) { checkEnd(container, game, ctx); return }
   if (aiForcedNote1) selected.forEach(p => { p._line = p._line || p.job; p.note_a = Math.max(1, Number(p.note_a)||0) })
-  const calc = calcAttack(selected, game.modifiers.ai)
+  const calc = calcAttack(selected, game.modifiers.ai, game.formation)
   game.pendingAttack = { ...calc, players:selected, side:'ai' }
   selected.forEach(s => { s.used = true })
   game.log.push({ text:`🤖 IA attaque : ${calc.total} (${selected.map(p=>p.name).join(', ')})`, type:'info' })
@@ -1120,7 +1120,7 @@ function aiDefend(container, game, ctx) {
     })
     return
   }
-  const defVal = selected.length > 0 ? calcDefense(selected, game.modifiers.ai).total : 0
+  const defVal = selected.length > 0 ? calcDefense(selected, game.modifiers.ai, game.formation).total : 0
   selected.forEach(s => { s.used = true })
   const result = resolveDuel(game.pendingAttack.total, defVal, game.modifiers.ai)
   const duelEntryAttack = {

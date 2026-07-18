@@ -41,7 +41,19 @@
   footer .copy{color:var(--ink-faint); font-size:13px}
 </style>
 <!-- Google AdSense -->
+<!-- Google Consent Mode : refuse par defaut tant que l'utilisateur n'a pas choisi -->
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('consent', 'default', {
+    'ad_storage': 'denied',
+    'ad_user_data': 'denied',
+    'ad_personalization': 'denied',
+    'analytics_storage': 'denied'
+  });
+</script>
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-5827602487507112" crossorigin="anonymous"></script>
+  <script src="/cookie-consent.js" defer></script>
 </head>
 <body>
 <div class="wrap">

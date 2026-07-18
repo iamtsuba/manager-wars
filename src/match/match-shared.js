@@ -5,6 +5,7 @@ import {
   calcMidfieldDuel, resolveDuel, aiSelectPlayers, getRewards
 } from './game-logic.js'
 import { FORMATION_LINKS, FORMATION_POSITIONS, linkColor, getActiveLinks } from './formation-links.js'
+import { isAdjacent } from './game-logic.js'
 
 // ═══════════════════════════════════════════════════════════
 // match-shared.js — Code 100% commun entre Match vs IA et Match Random.
@@ -564,8 +565,12 @@ export function renderCardRow(players, accentColor, total, phase) {
     }
     html += renderPlayerCard(p, { width: 40, role, extraNote })
     if (i < shown.length - 1) {
-      const lc = linkColor(p, shown[i+1])
-      const noLink = lc === '#ff3333' || lc === '#cc2222'
+      const next = shown[i+1]
+      // N'affiche un lien coloré que si les 2 joueurs sont VRAIMENT adjacents
+      // sur la grille (même logique que calcLinks) — sinon le lien affiché
+      // ne compte pas dans le total réel, ce qui induisait en erreur.
+      const lc = isAdjacent(p, next) ? linkColor(p, next) : null
+      const noLink = !lc || lc === '#ff3333' || lc === '#cc2222'
       html += `<div style="width:7px;height:3px;background:${noLink?'rgba(255,255,255,0.12)':lc};border-radius:2px;flex-shrink:0;margin:0 1px"></div>`
     }
   })

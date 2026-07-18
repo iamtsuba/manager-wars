@@ -1509,14 +1509,24 @@ async function _renderPvpMatchCore(container, ctx, matchId, amIHome, myGC = [], 
     try {
       const winnerId = computeWinnerId(finalState)
       const loserId  = winnerId ? (match.home_id === winnerId ? match.away_id : match.home_id) : null
+      const homeScore = finalState.p1Score||0, awayScore = finalState.p2Score||0
       await supabase.from('matches').update({
         status: 'finished',
         winner_id: winnerId,
-        home_score: finalState.p1Score||0,
-        away_score: finalState.p2Score||0
+        home_score: homeScore,
+        away_score: awayScore
       }).eq('id', matchId)
       // Évolution des cartes pépite/papyte (hors IA)
       if (winnerId && loserId) updateEvolutiveCards(winnerId, loserId).catch(()=>{})
+      // Spécifique Mini League : reporter le résultat sur mini_league_matches
+      if (mlMatchId) {
+        await supabase.from('mini_league_matches').update({
+          status: 'finished', home_score: homeScore, away_score: awayScore, match_id: matchId
+        }).eq('id', mlMatchId)
+      }
+      if (typeof onMatchEnd === 'function') {
+        try { await onMatchEnd({ homeScore, awayScore, winnerId }) } catch(e) { console.error('[PvP] onMatchEnd:', e) }
+      }
     } catch(e) { console.error('[PvP] finishMatch:', e) }
   }
 
@@ -1529,9 +1539,14 @@ async function _renderPvpMatchCore(container, ctx, matchId, amIHome, myGC = [], 
       <div style="font-size:64px">${won?'🏆':draw?'🤝':'😤'}</div>
       <div style="font-size:24px;font-weight:900;color:#fff">${won?'Victoire !':draw?'Match nul':'Défaite'}</div>
       <div style="font-size:32px;font-weight:900;color:#FFD700">${myScore} - ${oppScore}</div>
-      <button id="pvp-home" style="padding:16px 40px;border-radius:14px;border:none;background:#1A6B3C;color:#fff;font-size:16px;font-weight:900;cursor:pointer">🏠 Retour</button>
+      <button id="pvp-home" style="padding:16px 40px;border-radius:14px;border:none;background:#1A6B3C;color:#fff;font-size:16px;font-weight:900;cursor:pointer">${mlLeagueId?'🏆 Retour à la Mini League':'🏠 Retour'}</button>
     </div>`
-    document.getElementById('pvp-home')?.addEventListener('click',()=>{try{supabase.removeChannel(channel)}catch{};_showBottomNav(container);navigate('home')})
+    document.getElementById('pvp-home')?.addEventListener('click',()=>{
+      try{supabase.removeChannel(channel)}catch{}
+      _showBottomNav(container)
+      if (mlLeagueId) navigate('mini-league', { openLeagueId: mlLeagueId })
+      else navigate('home')
+    })
   }
 
   renderPvpScreen()

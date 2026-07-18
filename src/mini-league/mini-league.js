@@ -59,7 +59,10 @@ async function showLeagueList(container, ctx, activeTab = 'waiting') {
         <div style="font-size:18px;font-weight:900;color:${TXT}">🏆 Mini League</div>
         <div style="font-size:12px;color:${TXT_DIM}">Championnats 3 à 8 joueurs</div>
       </div>
-      <button id="ml-create-btn" class="btn btn-primary">+ Créer</button>
+      <div style="display:flex;align-items:center;gap:8px">
+        <button id="ml-refresh-list" title="Actualiser" style="background:rgba(255,255,255,0.06);border:1px solid ${BORDER};border-radius:8px;width:36px;height:36px;font-size:16px;cursor:pointer;color:${TXT}">🔄</button>
+        <button id="ml-create-btn" class="btn btn-primary">+ Créer</button>
+      </div>
     </div>
     <div style="display:flex;background:var(--nav-bg,#0d1a0f);border-bottom:1px solid ${DIVIDER}">
       ${tabs.map(t => `<button class="ml-tab" data-tab="${t.key}" style="flex:1;padding:11px 4px;border:none;border-bottom:2px solid ${activeTab===t.key?GREEN:'transparent'};background:none;font-size:12px;font-weight:${activeTab===t.key?'900':'600'};color:${activeTab===t.key?'#4ade80':TXT_FAINT};cursor:pointer">${t.label}${t.count?` (${t.count})`:''}</button>`).join('')}
@@ -72,6 +75,7 @@ async function showLeagueList(container, ctx, activeTab = 'waiting') {
   </div>`
 
   document.getElementById('ml-create-btn')?.addEventListener('click', () => showCreateForm(container, ctx))
+  document.getElementById('ml-refresh-list')?.addEventListener('click', () => showLeagueList(container, ctx, activeTab))
   container.querySelectorAll('.ml-tab').forEach(btn => btn.addEventListener('click', () => showLeagueList(container, ctx, btn.dataset.tab)))
   container.querySelectorAll('[data-league-id]').forEach(card => card.addEventListener('click', () => openLeague(container, ctx, card.dataset.leagueId)))
   container.querySelectorAll('[data-join]').forEach(btn => btn.addEventListener('click', e => { e.stopPropagation(); joinLeague(container, ctx, btn.dataset.join, btn.dataset.type) }))
@@ -322,6 +326,7 @@ export async function openLeague(container, ctx, leagueId) {
   <div style="height:100%;overflow-y:auto;background:var(--page-bg)">
     <div style="padding:14px 16px;background:var(--nav-bg,#0d1a0f);border-bottom:1px solid ${DIVIDER};display:flex;align-items:center;gap:10px">
       <button id="ml-back" style="background:none;border:none;font-size:20px;cursor:pointer;color:${TXT}">‹</button>
+      <button id="ml-refresh" title="Actualiser" style="background:rgba(255,255,255,0.06);border:1px solid ${BORDER};border-radius:8px;width:32px;height:32px;font-size:15px;cursor:pointer;color:${TXT};flex-shrink:0">🔄</button>
       <div style="flex:1">
         <div style="font-size:16px;font-weight:900;color:${TXT}">${league.name}</div>
         <div style="font-size:11px;color:${TXT_DIM}">${league.mode==='aller-retour'?'Aller-Retour':'Aller'} · max ${league.max_players} · 💰 ${fee} cr./joueur</div>
@@ -404,6 +409,11 @@ export async function openLeague(container, ctx, leagueId) {
 
   const backTab=league.status==='waiting'?'waiting':league.status==='active'?'active':'archived'
   document.getElementById('ml-back')?.addEventListener('click', ()=>showLeagueList(container,ctx,backTab))
+  document.getElementById('ml-refresh')?.addEventListener('click', async (e) => {
+    const btn = e.currentTarget
+    btn.style.opacity = '0.5'
+    await openLeague(container, ctx, leagueId)
+  })
   document.getElementById('ml-start-btn')?.addEventListener('click', ()=>startLeague(container,ctx,league,memberList))
   document.getElementById('ml-next-day')?.addEventListener('click', ()=>nextMatchday(container,ctx,leagueId))
   document.getElementById('ml-finish-btn')?.addEventListener('click', ()=>finishLeague(container,ctx,leagueId,pot,standings,memberList))

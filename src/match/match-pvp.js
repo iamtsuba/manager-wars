@@ -338,6 +338,13 @@ async function _renderPvpMatchCore(container, ctx, matchId, amIHome, myGC = [], 
         p_match_id: matchId, p_winner_id: winnerId, p_home_score: homeScore, p_away_score: awayScore, p_forfeit: true
       })
       if (finErr) console.error('[PvP] finish_pvp_match (forfeit):', finErr)
+      // Spécifique Mini League : vérifie si c'était le dernier match de la
+      // dernière journée — si oui, termine et archive la ligue automatiquement
+      // (plus besoin du créateur pour distribuer le pot)
+      if (mlLeagueId) {
+        try { await supabase.rpc('check_and_finish_mini_league', { p_league_id: mlLeagueId }) }
+        catch(e) { console.error('[PvP] check_and_finish_mini_league (forfeit):', e) }
+      }
       // Récompenses en crédits (même mécanisme qu'une fin de match normale)
       try {
         const { data: rw } = await supabase.rpc('apply_match_rewards', { p_match_id: matchId })
@@ -1536,6 +1543,12 @@ async function _renderPvpMatchCore(container, ctx, matchId, amIHome, myGC = [], 
         p_match_id: matchId, p_winner_id: winnerId, p_home_score: homeScore, p_away_score: awayScore, p_forfeit: false
       })
       if (finErr) console.error('[PvP] finish_pvp_match:', finErr)
+      // Spécifique Mini League : vérifie si c'était le dernier match de la
+      // dernière journée — si oui, termine et archive la ligue automatiquement
+      if (mlLeagueId) {
+        try { await supabase.rpc('check_and_finish_mini_league', { p_league_id: mlLeagueId }) }
+        catch(e) { console.error('[PvP] check_and_finish_mini_league:', e) }
+      }
       // Évolution des cartes pépite/papyte (hors IA)
       if (winnerId && loserId) updateEvolutiveCards(winnerId, loserId).catch(()=>{})
       // Récompenses en crédits (identique en principe à match-ia.js) — via RPC

@@ -363,7 +363,6 @@ export async function openLeague(container, ctx, leagueId) {
         <div style="font-size:14px;font-weight:900;margin-bottom:10px;color:${TXT}">📅 Journée ${league.current_day} / ${league.total_days}</div>
         ${todayMatches.map(m=>matchRowHTML(m,memberList,uid,isMember)).join('')}
         ${isCreator&&allTodayDone&&!isLastDay?`<button id="ml-next-day" class="btn btn-primary" style="width:100%;margin-top:12px">➡️ Journée suivante</button>`:''}
-        ${isCreator&&allTodayDone&&isLastDay?`<button id="ml-finish-btn" class="btn btn-primary" style="width:100%;margin-top:12px;background:#7a28b8">🏆 Terminer et distribuer le pot</button>`:''}
       </div>`:''}
 
       ${(league.status==='active'||league.status==='finished')&&standings.length?`
@@ -416,7 +415,6 @@ export async function openLeague(container, ctx, leagueId) {
   })
   document.getElementById('ml-start-btn')?.addEventListener('click', ()=>startLeague(container,ctx,league,memberList))
   document.getElementById('ml-next-day')?.addEventListener('click', ()=>nextMatchday(container,ctx,leagueId))
-  document.getElementById('ml-finish-btn')?.addEventListener('click', ()=>finishLeague(container,ctx,leagueId,pot,standings,memberList))
   document.getElementById('ml-join-now')?.addEventListener('click', ()=>joinLeague(container,ctx,leagueId,league.type))
   document.getElementById('ml-leave-btn')?.addEventListener('click', ()=>leaveLeague(container,ctx,leagueId,fee))
   document.getElementById('ml-delete-btn')?.addEventListener('click', ()=>deleteLeague(container,ctx,leagueId,league.name,'waiting'))
@@ -429,10 +427,10 @@ export async function openLeague(container, ctx, leagueId) {
     })
   })
 
-  // Popup prize : league terminée + joueur dans le top 3
+  // Popup prize : league terminée + joueur dans le top 3 + pas déjà réclamé
   if(league.status==='finished' && myMembership) {
     const myPos=standings.findIndex(s=>s.userId===uid)
-    if(myPos>=0 && myPos<3 && myMembership.prize_amount>0) {
+    if(myPos>=0 && myPos<3 && myMembership.prize_amount>0 && !myMembership.prize_claimed) {
       setTimeout(()=>showPrizePopup(container,ctx,league,myMembership,myPos), 400)
     }
   }
@@ -474,37 +472,9 @@ async function startLeague(container, ctx, league, members) {
 async function nextMatchday(container, ctx, leagueId) {
   const {data:l}=await supabase.from('mini_leagues').select('current_day,total_days,pot').eq('id',leagueId).single()
   const next=(l.current_day||0)+1
-  if(next>(l.total_days||0)){await finishLeague(container,ctx,leagueId,l.pot||0,null,null);return}
+  if(next>(l.total_days||0)){ openLeague(container,ctx,leagueId); return }
   await supabase.from('mini_leagues').update({current_day:next}).eq('id',leagueId)
   ctx.toast(`Journée ${next} commencée !`,'success'); openLeague(container,ctx,leagueId)
-}
-
-async function finishLeague(container, ctx, leagueId, pot, standingsIn, memberListIn) {
-  const {toast,state}=ctx
-  let standings=standingsIn, memberList=memberListIn
-  if(!standings){
-    const {data:ml}=await supabase.from('mini_league_matches').select('*').eq('league_id',leagueId)
-    const {data:mem}=await supabase.from('mini_league_members').select('*, user:users(id,pseudo,club_name)').eq('league_id',leagueId)
-    memberList=(mem||[]).map(m=>m.user).filter(Boolean)
-    standings=computeStandings(memberList,ml||[])
-  }
-  const prizes=[Math.floor(pot*.7),Math.floor(pot*.2),Math.floor(pot*.1)]
-  const winnerIds = standings.slice(0,3).map(s=>s.userId)
-
-  // Via RPC (contourne RLS) : le créateur ne peut pas modifier directement
-  // la ligne mini_league_members des AUTRES joueurs pour leur assigner leur
-  // gain — d'où l'absence de popup/crédits pour les gagnants jusqu'ici.
-  const { data: fin, error: finErr } = await supabase.rpc('finish_mini_league', {
-    p_league_id: leagueId, p_winner_ids: winnerIds, p_prizes: prizes
-  })
-  if (finErr || !fin?.success) {
-    console.error('[MiniLeague] finish_mini_league:', finErr)
-    toast('Erreur lors de la distribution du pot', 'error')
-    return
-  }
-
-  toast('🏆 Mini League terminée ! Les gagnants peuvent récupérer leurs crédits.','success')
-  openLeague(container, ctx, leagueId)
 }
 
 // Popup de réclamation des crédits pour le top 3
@@ -538,15 +508,29 @@ async function showPrizePopup(container, ctx, league, myMembership, myPos) {
   ov.querySelector('#prize-close')?.addEventListener('click',()=>ov.remove())
   ov.addEventListener('click',e=>{if(e.target===ov)ov.remove()})
 
-  ov.querySelector('#claim-prize-btn')?.addEventListener('click', async()=>{
-    const {data:me}=await supabase.from('users').select('credits').eq('id',state.profile.id).single()
-    await supabase.from('users').update({credits:(me?.credits||0)+prize}).eq('id',state.profile.id)
-    await supabase.from('mini_league_members')
-      .update({prize_claimed:true}).eq('league_id',league.id).eq('user_id',state.profile.id)
-    if(state.profile) state.profile.credits=(me?.credits||0)+prize
-    const credEl=document.getElementById('nav-credits')
-    if(credEl) credEl.textContent=`💰 ${state.profile.credits.toLocaleString('fr')}`
-    toast(`💰 +${prize.toLocaleString('fr')} cr. ajoutés à ton solde !`,'success')
+  ov.querySelector('#claim-prize-btn')?.addEventListener('click', async(e)=>{
+    const btn = e.currentTarget
+    btn.disabled = true
+    btn.textContent = '...'
+    const { data: res, error } = await supabase.rpc('claim_mini_league_prize', {
+      p_league_id: league.id, p_user_id: state.profile.id
+    })
+    if (error || !res?.success) {
+      console.error('[MiniLeague] claim_mini_league_prize:', error || res)
+      toast(res?.error || 'Erreur lors de la récupération', 'error')
+      btn.disabled = false
+      btn.textContent = `💰 Récupérer ${prize.toLocaleString('fr')} cr.`
+      return
+    }
+    if (res.already_claimed) {
+      toast('Déjà récupéré précédemment', 'info')
+    } else {
+      const newCredits = (state.profile.credits||0) + res.prize
+      if(state.profile) state.profile.credits = newCredits
+      const credEl=document.getElementById('nav-credits')
+      if(credEl) credEl.textContent=`💰 ${newCredits.toLocaleString('fr')}`
+      toast(`💰 +${res.prize.toLocaleString('fr')} cr. ajoutés à ton solde !`,'success')
+    }
     ov.remove()
     openLeague(container,ctx,league.id)
   })

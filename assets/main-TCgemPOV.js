@@ -339,13 +339,12 @@ import{s as w,l as Ht,m as Ci,F as Bi,r as Ae,j as ei,h as qi,n as Hn,o as Un,T 
         border:1.5px solid #ddd;background:#fff;
         font-size:14px;font-weight:700;cursor:pointer;color:#555;
       }
-    </style>`}const ro="2026.07.19-2341";async function en(e,{state:t,navigate:i,toast:n}){var o,a;const r=t.profile;r&&(e.innerHTML=`
+    </style>`}const ro="2026.07.19-2343";async function en(e,{state:t,navigate:i,toast:n}){var o,a;const r=t.profile;r&&(e.innerHTML=`
   <style>
     .home-dark {
       min-height: 100%;
-      background: radial-gradient(ellipse at 20% 50%, rgba(0,60,30,0.55) 0%, transparent 60%),
-                  radial-gradient(ellipse at 80% 20%, rgba(0,40,80,0.4) 0%, transparent 55%),
-                  linear-gradient(160deg, #0a0f0a 0%, #0d1a0f 40%, #080d08 100%);
+      background: var(--page-bg);
+      background-image: var(--page-gradient);
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -371,8 +370,8 @@ import{s as w,l as Ht,m as Ci,F as Bi,r as Ae,j as ei,h as qi,n as Hn,o as Un,T 
       gap: 12px;
       box-shadow: 0 4px 20px rgba(0,0,0,0.4);
     }
-    .home-hero-info h3 { margin:0; font-size:17px; font-weight:900; color:#fff; }
-    .home-hero-info .level { font-size:11px; color:rgba(255,255,255,0.7); letter-spacing:1px; text-transform:uppercase; margin-top:2px; }
+    .home-hero-info h3 { margin:0; font-size:17px; font-weight:900; color:var(--tile-fg-on-page); }
+    .home-hero-info .level { font-size:11px; color:var(--tile-fg-dim); letter-spacing:1px; text-transform:uppercase; margin-top:2px; }
     .home-hero-btn {
       width:38px; height:38px; border-radius:50%; border:none;
       background:rgba(255,255,255,0.15); cursor:pointer;
@@ -403,17 +402,17 @@ import{s as w,l as Ht,m as Ci,F as Bi,r as Ae,j as ei,h as qi,n as Hn,o as Un,T 
     }
     .play-tile {
       border-radius: 16px;
-      background: rgba(255,255,255,0.05);
-      border: 1px solid rgba(255,255,255,0.08);
+      background: var(--tile-bg);
+      border: 1px solid var(--tile-border);
       cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
       padding: 10px;
-      transition: transform .15s, background .15s;
+      transition: transform .15s, filter .15s;
       backdrop-filter: blur(4px);
     }
-    .play-tile:hover { background: rgba(255,255,255,0.09); }
+    .play-tile:hover { filter: brightness(1.12); }
     .play-tile:active { transform: scale(.96); }
     .play-text-overlay { max-height: 26px !important; width: auto !important; }
     .ranked-tile .play-text-overlay { max-height: 34px !important; }
@@ -428,16 +427,16 @@ import{s as w,l as Ht,m as Ci,F as Bi,r as Ae,j as ei,h as qi,n as Hn,o as Un,T 
       padding: 4px 0;
     }
     .home-logout-btn {
-      background: rgba(255,255,255,0.07);
-      border: 1px solid rgba(255,255,255,0.12);
+      background: var(--tile-bg);
+      border: 1px solid var(--tile-border);
       border-radius: 20px;
-      color: rgba(255,255,255,0.5);
+      color: var(--tile-fg-dim);
       font-size: 12px;
       padding: 6px 18px;
       cursor: pointer;
-      transition: background .2s;
+      transition: filter .2s;
     }
-    .home-logout-btn:hover { background: rgba(255,255,255,0.12); }
+    .home-logout-btn:hover { filter: brightness(1.15); }
   </style>
 
   <div class="home-dark" id="home-dark">
@@ -531,13 +530,15 @@ import{s as w,l as Ht,m as Ci,F as Bi,r as Ae,j as ei,h as qi,n as Hn,o as Un,T 
       </div>
       <button data-resume="${l.id}" data-mini="${x?"1":""}" style="width:38px;height:38px;border-radius:50%;border:none;background:#22c55e;color:#fff;font-size:18px;cursor:pointer;flex-shrink:0">⚽</button>
       <button data-abandon="${l.id}" data-opp="${c}" style="width:38px;height:38px;border-radius:50%;border:none;background:#cc2222;color:#fff;font-size:18px;cursor:pointer;flex-shrink:0">✕</button>
-    </div>`}).join(""),n.querySelectorAll("[data-resume]").forEach(l=>{l.addEventListener("click",async()=>{const c=document.getElementById("page-content")||document.getElementById("app");if(l.dataset.mini==="1"){const{data:d}=await w.from("mini_league_matches").select("id, league_id").eq("match_id",l.dataset.resume).single();d?i("match-mini-league",{mlMatchId:d.id,leagueId:d.league_id}):i("mini-league")}else{const{resumePvpMatch:d}=await gn(async()=>{const{resumePvpMatch:x}=await Promise.resolve().then(()=>hr);return{resumePvpMatch:x}},void 0);d(c,{state:e,navigate:i,toast:t,openModal:null,closeModal:null,refreshProfile:null},l.dataset.resume)}})}),n.querySelectorAll("[data-abandon]").forEach(l=>{l.addEventListener("click",()=>{lo(async()=>{await so(l.dataset.abandon,l.dataset.opp,r),t("Match abandonné (défaite 3-0)","info"),yn(e,t,i)})})})}async function so(e,t,i){const{data:n}=await w.from("matches").select("home_id, away_id, game_state, mode").eq("id",e).single();if(!n)return;const r=n.home_id===i,o=r?0:3,a=r?3:0,s=n.game_state||{};s.p1Score=o,s.p2Score=a,s.phase="finished",s.forfeit=!0,await w.from("matches").update({status:"finished",forfeit:!0,winner_id:t,home_score:o,away_score:a,game_state:s}).eq("id",e),n.mode==="mini_league"&&await w.from("mini_league_matches").update({status:"finished",home_score:o,away_score:a}).eq("match_id",e)}function lo(e){const t=document.createElement("div");t.style.cssText="position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:9000;display:flex;align-items:center;justify-content:center;padding:20px",t.innerHTML=`<div style="background:#111;border:1px solid rgba(255,255,255,0.1);border-radius:16px;padding:24px;max-width:340px;width:100%;text-align:center;color:#fff">
-    <div style="font-size:40px;margin-bottom:8px">⚠️</div>
-    <div style="font-size:17px;font-weight:900;margin-bottom:6px">Abandonner le match ?</div>
-    <div style="font-size:13px;color:rgba(255,255,255,0.6);margin-bottom:18px">Tu perdras par forfait <b>3-0</b>.</div>
-    <div style="display:flex;gap:10px">
-      <button id="ab-cancel" style="flex:1;padding:12px;border-radius:10px;border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.05);font-weight:700;cursor:pointer;color:rgba(255,255,255,0.7)">Annuler</button>
-      <button id="ab-ok" style="flex:1;padding:12px;border-radius:10px;border:none;background:#cc2222;color:#fff;font-weight:900;cursor:pointer">Abandonner</button>
+    </div>`}).join(""),n.querySelectorAll("[data-resume]").forEach(l=>{l.addEventListener("click",async()=>{const c=document.getElementById("page-content")||document.getElementById("app");if(l.dataset.mini==="1"){const{data:d}=await w.from("mini_league_matches").select("id, league_id").eq("match_id",l.dataset.resume).single();d?i("match-mini-league",{mlMatchId:d.id,leagueId:d.league_id}):i("mini-league")}else{const{resumePvpMatch:d}=await gn(async()=>{const{resumePvpMatch:x}=await Promise.resolve().then(()=>hr);return{resumePvpMatch:x}},void 0);d(c,{state:e,navigate:i,toast:t,openModal:null,closeModal:null,refreshProfile:null},l.dataset.resume)}})}),n.querySelectorAll("[data-abandon]").forEach(l=>{l.addEventListener("click",()=>{lo(async()=>{await so(l.dataset.abandon,l.dataset.opp,r),t("Match abandonné (défaite 3-0)","info"),yn(e,t,i)})})})}async function so(e,t,i){const{data:n}=await w.from("matches").select("home_id, away_id, game_state, mode").eq("id",e).single();if(!n)return;const r=n.home_id===i,o=r?0:3,a=r?3:0,s=n.game_state||{};s.p1Score=o,s.p2Score=a,s.phase="finished",s.forfeit=!0,await w.from("matches").update({status:"finished",forfeit:!0,winner_id:t,home_score:o,away_score:a,game_state:s}).eq("id",e),n.mode==="mini_league"&&await w.from("mini_league_matches").update({status:"finished",home_score:o,away_score:a}).eq("match_id",e)}function lo(e){const t=document.createElement("div");t.className="modal-overlay",t.innerHTML=`<div class="modal" style="max-width:340px">
+    <div class="modal-body" style="padding:26px 22px 20px;text-align:center">
+      <div style="font-size:40px;margin-bottom:8px">⚠️</div>
+      <div style="font-size:17px;font-weight:900;margin-bottom:6px;color:#1a1a1a">Abandonner le match ?</div>
+      <div style="font-size:13px;color:#666;margin-bottom:18px">Tu perdras par forfait <b>3-0</b>.</div>
+      <div style="display:flex;gap:10px">
+        <button id="ab-cancel" class="btn btn-ghost" style="flex:1">Annuler</button>
+        <button id="ab-ok" class="btn" style="flex:1;background:var(--danger);color:#fff;border:none;font-weight:900">Abandonner</button>
+      </div>
     </div>
   </div>`,document.body.appendChild(t),t.querySelector("#ab-cancel").addEventListener("click",()=>t.remove()),t.querySelector("#ab-ok").addEventListener("click",()=>{t.remove(),e()}),t.addEventListener("click",i=>{i.target===t&&t.remove()})}async function co(e,t,i){var s,l,c,d;const n=document.getElementById("match-invite-banner");if(!n)return;const{data:r}=await w.from("friend_match_invites").select("id, inviter_id, inviter:users!inviter_id(pseudo, club_name)").eq("invitee_id",e.user.id).eq("status","pending").order("created_at",{ascending:!1}).limit(1).maybeSingle();if(!r){n.innerHTML="";return}const o=((s=r.inviter)==null?void 0:s.club_name)||((l=r.inviter)==null?void 0:l.pseudo)||"?",a=r.inviter_id;n.innerHTML=`<div id="match-invite-btn" style="display:flex;align-items:center;gap:10px;background:linear-gradient(135deg,rgba(26,10,46,0.8),rgba(74,26,138,0.6));color:#fff;border-radius:12px;padding:12px 16px;border:1px solid rgba(122,40,184,0.4);cursor:pointer;box-shadow:0 3px 12px rgba(74,10,138,0.3)">
     <div style="background:rgba(255,255,255,0.15);border-radius:50%;width:36px;height:36px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">⚽</div>
@@ -2757,7 +2758,7 @@ import{s as w,l as Ht,m as Ci,F as Bi,r as Ae,j as ei,h as qi,n as Hn,o as Un,T 
     </div>
   </div>`}Kn(Yn);const be={user:null,profile:null,page:"home",params:{}};function Ft(e,t="info",i=3e3){const n=document.getElementById("toast");n&&(n.textContent=e,n.className=`show ${t}`,clearTimeout(n._t),n._t=setTimeout(()=>{n.className=""},i))}function Yr(e,t,i=""){document.getElementById("modal-title").textContent=e,document.getElementById("modal-body").innerHTML=t,document.getElementById("modal-footer").innerHTML=i,document.getElementById("modal-overlay").classList.remove("hidden")}function ji(){document.getElementById("modal-overlay").classList.add("hidden")}async function Vt(){if(!be.user)return;const{data:e}=await w.from("users").select("*").eq("id",be.user.id).single();e&&(be.profile=e)}const Pn="mw_theme";function Gn(){return localStorage.getItem(Pn)||"dark"}function Wr(e){var t;localStorage.setItem(Pn,e),Xr(e),(t=be.profile)!=null&&t.id&&w.from("users").update({theme:e}).eq("id",be.profile.id).then(()=>{})}function Xr(e){document.documentElement.setAttribute("data-theme",e)}function Pt(e,t={}){be.page=e,be.params=t,Rn()}async function Rn(){var n,r,o,a;const e=document.getElementById("page-content");if(!e)return;document.querySelectorAll(".bottom-nav a").forEach(s=>{s.classList.toggle("active",s.dataset.page===be.page)});const t=document.getElementById("nav-credits");t&&be.profile&&(t.textContent=`💰 ${(be.profile.credits||0).toLocaleString("fr")}`);const i={state:be,navigate:Pt,toast:Ft,openModal:Yr,closeModal:ji,refreshProfile:Vt};switch(e.innerHTML='<div style="padding:40px;text-align:center;color:#aaa">⚽</div>',be.page){case"home":await en(e,i);break;case"settings":await $i(e,i);break;case"collection":await Eo(e,i);break;case"decks":await Ei(e,i);break;case"boosters":await Fo(e,i);break;case"ranked":await Kr(e,i);break;case"match":{const s=be.params&&be.params.matchMode||"vs_ai_easy";s==="random"?await Ai(e,i,!1):s==="ranked"?await Ai(e,i,!0):s==="friend"?await vr(e,i,(n=be.params)==null?void 0:n.friendId,(r=be.params)==null?void 0:r.friendName):s==="mini_league"||s==="mini-league"?await un(e,i,(o=be.params)==null?void 0:o.mlMatchId,(a=be.params)==null?void 0:a.leagueId):await Zo(e,i);break}case"market":await Rr(e,i);break;case"rankings":await Ur(e,i);break;case"matches":await Vr(e,i);break;case"friends":await to(e,i);break;case"mini-league":await kr(e,i);break;case"match-mini-league":{const s=be.params||{};await un(e,i,s.mlMatchId,s.leagueId);break}default:await en(e,i)}}function Jr(){var n,r;const e=document.getElementById("app"),t=be.profile;if(!t)return;const i="/icons/";e.innerHTML=`
     <nav class="top-nav">
-      <div class="logo" id="nav-logo" title="Manager Wars v2026.07.19-2341" style="cursor:pointer">
+      <div class="logo" id="nav-logo" title="Manager Wars v2026.07.19-2343" style="cursor:pointer">
         <img src="${i}logo-withname.png" alt="Manager Wars" style="height:48px;width:auto;display:block">
       </div>
       <div style="display:flex;align-items:center;gap:10px">

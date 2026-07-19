@@ -339,7 +339,7 @@ import{s as _,l as Rt,m as Si,F as Ai,r as Ae,j as Qt,h as Mi,n as Mn,o as jn,T 
         border:1.5px solid #ddd;background:#fff;
         font-size:14px;font-weight:700;cursor:pointer;color:#555;
       }
-    </style>`}const Vn="2026.07.19-1113";async function Ki(e,{state:t,navigate:i,toast:n}){var o,a;const r=t.profile;r&&(e.innerHTML=`
+    </style>`}const Vn="2026.07.19-1117";async function Ki(e,{state:t,navigate:i,toast:n}){var o,a;const r=t.profile;r&&(e.innerHTML=`
   <style>
     .home-dark {
       min-height: 100%;
@@ -2704,8 +2704,9 @@ import{s as _,l as Rt,m as Si,F as Ai,r as Ae,j as Qt,h as Mi,n as Mn,o as jn,T 
     </div>
   </div>`}Cn(qn);const we={user:null,profile:null,page:"home",params:{}};function qt(e,t="info",i=3e3){const n=document.getElementById("toast");n&&(n.textContent=e,n.className=`show ${t}`,clearTimeout(n._t),n._t=setTimeout(()=>{n.className=""},i))}function jr(e,t,i=""){document.getElementById("modal-title").textContent=e,document.getElementById("modal-body").innerHTML=t,document.getElementById("modal-footer").innerHTML=i,document.getElementById("modal-overlay").classList.remove("hidden")}function Ii(){document.getElementById("modal-overlay").classList.add("hidden")}async function Ht(){if(!we.user)return;const{data:e}=await _.from("users").select("*").eq("id",we.user.id).single();e&&(we.profile=e)}function Ut(e,t={}){we.page=e,we.params=t,Sn()}async function Sn(){var n,r,o,a;const e=document.getElementById("page-content");if(!e)return;document.querySelectorAll(".bottom-nav a").forEach(s=>{s.classList.toggle("active",s.dataset.page===we.page)});const t=document.getElementById("nav-credits");t&&we.profile&&(t.textContent=`💰 ${(we.profile.credits||0).toLocaleString("fr")}`);const i={state:we,navigate:Ut,toast:qt,openModal:jr,closeModal:Ii,refreshProfile:Ht};switch(e.innerHTML='<div style="padding:40px;text-align:center;color:#aaa">⚽</div>',we.page){case"home":await Ki(e,i);break;case"collection":await co(e,i);break;case"decks":await wi(e,i);break;case"boosters":await ko(e,i);break;case"ranked":await Ar(e,i);break;case"match":{const s=we.params&&we.params.matchMode||"vs_ai_easy";s==="random"?await Ti(e,i,!1):s==="ranked"?await Ti(e,i,!0):s==="friend"?await rr(e,i,(n=we.params)==null?void 0:n.friendId,(r=we.params)==null?void 0:r.friendName):s==="mini_league"||s==="mini-league"?await on(e,i,(o=we.params)==null?void 0:o.mlMatchId,(a=we.params)==null?void 0:a.leagueId):await Fo(e,i);break}case"market":await Lr(e,i);break;case"rankings":await Sr(e,i);break;case"matches":await Mr(e,i);break;case"friends":await On(e,i);break;case"mini-league":await dr(e,i);break;case"match-mini-league":{const s=we.params||{};await on(e,i,s.mlMatchId,s.leagueId);break}default:await Ki(e,i)}}function Cr(){var n;const e=document.getElementById("app"),t=we.profile;if(!t)return;const i="/icons/";e.innerHTML=`
     <nav class="top-nav">
-      <div class="logo" id="nav-logo">
+      <div class="logo" id="nav-logo" title="Manager Wars v2026.07.19-1117" style="position:relative;cursor:pointer">
         <img src="${i}logo-withname.png" alt="Manager Wars" style="height:48px;width:auto;display:block">
+        <span id="nav-version-tip" style="position:absolute;bottom:-20px;left:0;font-size:9px;color:rgba(255,255,255,0.3);letter-spacing:0.08em;white-space:nowrap;pointer-events:none">v2026.07.19-1117</span>
       </div>
       <div style="display:flex;align-items:center;gap:10px">
         <div id="nav-credits" class="credits">💰 ${(t.credits||0).toLocaleString("fr")}</div>

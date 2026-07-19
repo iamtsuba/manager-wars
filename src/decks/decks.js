@@ -151,7 +151,7 @@ export async function renderDecks(container, ctx) {
               <button class="btn btn-ghost btn-sm" style="color:var(--red,#c0392b)" data-delete="${d.id}" data-name="${d.name}">🗑️</button>
             </div>
           </div>`).join('')
-        : '<div style="text-align:center;color:var(--gray-600);padding:40px">Aucun deck. Crée ton premier !</div>'}
+        : '<div style="text-align:center;color:var(--tile-fg-dim);padding:40px">Aucun deck. Crée ton premier !</div>'}
       </div>
       <div style="margin-top:16px">
         <button class="btn btn-primary" id="new-deck-btn" style="width:100%">+ Nouveau deck</button>
@@ -688,7 +688,7 @@ function openPlayerSelector(position, builder, container, ctx) {
         return `<div class="player-option" data-card-id="${c.id}" style="cursor:pointer">
           ${renderPlayerCard(p, { width: 100, showStad: true, stadDef: _stadDef, role })}
         </div>`
-      }).join('') + '</div>' : '<div style="text-align:center;color:var(--gray-600);padding:20px">Aucun joueur pour ce poste.<br><small>Ouvre des boosters !</small></div>'}
+      }).join('') + '</div>' : '<div style="text-align:center;color:var(--tile-fg-dim);padding:20px">Aucun joueur pour ce poste.<br><small>Ouvre des boosters !</small></div>'}
     </div>`,
     `<button class="btn btn-ghost" id="close-selector">Fermer</button>`
   )
@@ -744,7 +744,7 @@ function openSubSelector(builder, container, ctx) {
         return `<div class="player-option" data-card-id="${c.id}" style="cursor:pointer">
           ${renderPlayerCard(p, { width: 100, showStad: true, stadDef: _selStadDef })}
         </div>`
-      }).join('') + '</div>' : '<div style="text-align:center;padding:20px;color:var(--gray-600)">Tous vos joueurs sont déjà utilisés.</div>'}
+      }).join('') + '</div>' : '<div style="text-align:center;padding:20px;color:var(--tile-fg-dim)">Tous vos joueurs sont déjà utilisés.</div>'}
     </div>`,
     `<button class="btn btn-ghost" id="close-sub-selector">Fermer</button>`
   )

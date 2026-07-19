@@ -449,14 +449,19 @@ function renderGame(container, game, ctx) {
   const grayedPlayers = Object.values(game.homeTeam).flat().filter(p => p.used)
   const canSub = grayedPlayers.length > 0 && availSubs.length > 0 && game.subsUsed < game.maxSubs
 
-  // Défenseurs/GK autorisés à attaquer dès qu'il n'y a plus de MIL/ATT disponible
-  // (peu importe l'état de l'adversaire — sinon boucle infinie possible si les deux
-  // camps sont réduits à leurs seuls défenseurs/gardien sans que l'un soit VRAIMENT vide).
-  // Dans ce cas leur note est forcée à 1.
+  // Règle DEF/GK (précisée) : un défenseur ne peut attaquer (note forcée à 1)
+  // QUE si l'IA n'a plus AUCUN joueur dans sa formation. Le gardien ne peut
+  // attaquer QUE si l'IA n'a plus personne ET que je n'ai moi-même plus que
+  // lui (plus de DEF/MIL/ATT) — c'est le dernier recours absolu.
   const homeMilAtt = [...(game.homeTeam.MIL||[]),...(game.homeTeam.ATT||[])].filter(p=>!p.used)
-  const extraSelectableIds = (game.phase==='attack' && homeMilAtt.length===0)
-    ? [...(game.homeTeam.GK||[]),...(game.homeTeam.DEF||[])].filter(p=>!p.used).map(p=>p.cardId)
-    : []
+  const aiIsEmpty = isTeamEmpty(game.aiTeam)
+  const unusedDef = (game.homeTeam.DEF||[]).filter(p=>!p.used)
+  const unusedGk  = (game.homeTeam.GK||[]).filter(p=>!p.used)
+  let extraSelectableIds = []
+  if (game.phase==='attack' && homeMilAtt.length===0 && aiIsEmpty) {
+    extraSelectableIds = unusedDef.map(p=>p.cardId)
+    if (unusedDef.length===0) extraSelectableIds = extraSelectableIds.concat(unusedGk.map(p=>p.cardId))
+  }
 
   // Dernière action
   const lastLog  = game.log[game.log.length - 1]
@@ -857,6 +862,14 @@ function renderGame(container, game, ctx) {
   document.getElementById('btn-results')?.addEventListener('click', () => finishMatch(container, game, ctx))
   document.getElementById('btn-pass')?.addEventListener('click', () => {
     game.log.push({ text: "⏭️ Vous passez votre tour (plus d'attaquants)", type:'info' })
+    // Sécurité anti-blocage mutuel : si l'IA sera elle aussi bloquée (pas de
+    // MIL/ATT, et moi pas vide donc pas de fallback DEF/GK pour elle), le
+    // match se termine ici plutôt que de boucler indéfiniment sur PASSER.
+    if (wouldBeStuck(game.aiTeam, game.homeTeam)) {
+      game.log.push({ text: "🏁 Plus personne ne peut attaquer — match terminé.", type:'info' })
+      finishMatch(container, game, ctx)
+      return
+    }
     game.phase = 'ai-attack'
     renderGame(container, game, ctx)
     setTimeout(() => aiTurn(container, game, ctx), 800)
@@ -1043,8 +1056,9 @@ function aiTurn(container, game, ctx) {
   aiMayPlayGC(game)
   let allAi = [...(game.aiTeam.MIL||[]),...(game.aiTeam.ATT||[])].filter(p=>!p.used)
   let aiForcedNote1 = false
-  if (!allAi.length) {
-    allAi = [...(game.aiTeam.GK||[]),...(game.aiTeam.DEF||[])].filter(p=>!p.used)
+  if (!allAi.length && isTeamEmpty(game.homeTeam)) {
+    const unusedAiDef = (game.aiTeam.DEF||[]).filter(p=>!p.used)
+    allAi = unusedAiDef.length ? unusedAiDef : (game.aiTeam.GK||[]).filter(p=>!p.used)
     aiForcedNote1 = true
   }
   const selected = aiSelectPlayers(allAi, 'attack', game.difficulty)
@@ -1251,10 +1265,26 @@ function isMatchOver(game) {
   return !homeOK && !aiOK
 }
 
+// Un camp est-il définitivement bloqué (plus de MIL/ATT, et l'adversaire
+// n'est pas totalement vide donc le fallback DEF/GK note=1 est impossible) ?
+function wouldBeStuck(team, oppTeam) {
+  const milAtt = ['MIL','ATT'].some(r => (team[r]||[]).some(p=>!p.used))
+  if (milAtt) return false
+  return !isTeamEmpty(oppTeam)
+}
+
 function checkEnd(container, game, ctx) {
   if (tryLastCornerGoal(container, game, ctx)) return
-  if (isMatchOver(game)) finishMatch(container, game, ctx)
-  else { game.phase = 'attack'; renderGame(container, game, ctx) }
+  if (isMatchOver(game)) { finishMatch(container, game, ctx); return }
+  // Sécurité anti-blocage mutuel : si NI moi NI l'IA ne pouvons plus jamais
+  // attaquer (pas de MIL/ATT, adversaire pas vide pour aucun des deux côtés),
+  // le match se termine ici plutôt que de boucler indéfiniment sur PASSER.
+  if (wouldBeStuck(game.homeTeam, game.aiTeam) && wouldBeStuck(game.aiTeam, game.homeTeam)) {
+    game.log.push({ text: "🏁 Plus personne ne peut attaquer — match terminé.", type:'info' })
+    finishMatch(container, game, ctx)
+    return
+  }
+  game.phase = 'attack'; renderGame(container, game, ctx)
 }
 
 // showSubAnimation importé depuis match-engine.js

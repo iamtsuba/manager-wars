@@ -171,35 +171,35 @@ export async function renderCollection(container, ctx) {
   container.innerHTML = `
   <div class="page" style="display:flex;flex-direction:column;height:100%;overflow:hidden">
     <!-- Onglets avec compteurs -->
-    <div style="display:flex;border-bottom:2px solid var(--gray-200);background:#fff">
+    <div style="display:flex;border-bottom:2px solid var(--tile-border);background:var(--tile-bg)">
       <button class="col-tab-btn" data-tab="player" style="flex:1;padding:10px 4px;border:none;background:none;cursor:pointer;
         border-bottom:3px solid ${activeTab==='player'?'var(--green)':'transparent'};
-        color:${activeTab==='player'?'var(--green)':'var(--gray-600)'}">
+        color:${activeTab==='player'?'var(--green)':'var(--tile-fg-dim)'}">
         <div style="font-size:13px;font-weight:700">Joueurs</div>
         <div style="font-size:11px;font-weight:400;opacity:0.7">(${playerCards.length})</div>
       </button>
       <button class="col-tab-btn" data-tab="formation" style="flex:1;padding:10px 4px;border:none;background:none;cursor:pointer;
         border-bottom:3px solid ${activeTab==='formation'?'var(--green)':'transparent'};
-        color:${activeTab==='formation'?'var(--green)':'var(--gray-600)'}">
+        color:${activeTab==='formation'?'var(--green)':'var(--tile-fg-dim)'}">
         <div style="font-size:13px;font-weight:700">Formations</div>
         <div style="font-size:11px;font-weight:400;opacity:0.7">(${formCards.length})</div>
       </button>
       <button class="col-tab-btn" data-tab="gc" style="flex:1;padding:10px 4px;border:none;background:none;cursor:pointer;
         border-bottom:3px solid ${activeTab==='gc'?'var(--green)':'transparent'};
-        color:${activeTab==='gc'?'var(--green)':'var(--gray-600)'}">
+        color:${activeTab==='gc'?'var(--green)':'var(--tile-fg-dim)'}">
         <div style="font-size:13px;font-weight:700">Game Changer</div>
         <div style="font-size:11px;font-weight:400;opacity:0.7">(${gcCards.length})</div>
       </button>
       <button class="col-tab-btn" data-tab="stadium" style="flex:1;padding:10px 4px;border:none;background:none;cursor:pointer;
         border-bottom:3px solid ${activeTab==='stadium'?'#E87722':'transparent'};
-        color:${activeTab==='stadium'?'#E87722':'var(--gray-600)'}">
+        color:${activeTab==='stadium'?'#E87722':'var(--tile-fg-dim)'}">
         <div style="font-size:13px;font-weight:700">Stades</div>
         <div style="font-size:11px;font-weight:400;opacity:0.7">(${stadiumCards.length})</div>
       </button>
     </div>
 
     <!-- Filtres -->
-    <div id="col-filters" style="padding:10px 16px;background:#fff;border-bottom:1px solid var(--gray-200);display:flex;flex-direction:column;gap:8px"></div>
+    <div id="col-filters" style="padding:10px 16px;background:var(--tile-bg);border-bottom:1px solid var(--tile-border);display:flex;flex-direction:column;gap:8px"></div>
 
     <!-- Grande carte + strip -->
     <div id="col-big" style="display:flex;justify-content:center;align-items:flex-start;padding:8px 16px 4px;flex:1;overflow:visible"></div>
@@ -220,16 +220,16 @@ export async function renderCollection(container, ctx) {
           ${JOB_FILTERS.map(f => `
             <button class="filter-btn" data-job="${f}"
               style="flex-shrink:0;padding:4px 12px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;
-                border:1.5px solid ${f===activeFilter?'var(--green)':'var(--gray-200)'};
+                border:1.5px solid ${f===activeFilter?'var(--green)':'var(--tile-border)'};
                 background:${f===activeFilter?'var(--green)':'#fff'};
-                color:${f===activeFilter?'#fff':'var(--gray-600)'}">
+                color:${f===activeFilter?'#fff':'var(--tile-fg-dim)'}">
               ${f}
             </button>`).join('')}
           <button id="show-all-btn"
             style="flex-shrink:0;margin-left:auto;padding:4px 12px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;
-              border:1.5px solid ${showAll?'var(--yellow)':'var(--gray-200)'};
+              border:1.5px solid ${showAll?'var(--yellow)':'var(--tile-border)'};
               background:${showAll?'var(--yellow)':'#fff'};
-              color:${showAll?'#111':'var(--gray-600)'}; font-size:18px; padding:5px 10px">
+              color:${showAll?'#111':'var(--tile-fg-dim)'}; font-size:18px; padding:5px 10px">
             ${showAll ? '👁️' : '🚫👁️'}
           </button>
         </div>`
@@ -256,9 +256,9 @@ export async function renderCollection(container, ctx) {
         <div style="display:flex;justify-content:flex-end">
           <button id="show-all-btn"
             style="padding:4px 12px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;
-              border:1.5px solid ${showAll?'var(--yellow)':'var(--gray-200)'};
+              border:1.5px solid ${showAll?'var(--yellow)':'var(--tile-border)'};
               background:${showAll?'var(--yellow)':'#fff'};
-              color:${showAll?'#111':'var(--gray-600)'}; font-size:18px; padding:5px 10px">
+              color:${showAll?'#111':'var(--tile-fg-dim)'}; font-size:18px; padding:5px 10px">
             ${showAll ? '👁️' : '🚫👁️'}
           </button>
         </div>`
@@ -400,9 +400,9 @@ export async function renderCollection(container, ctx) {
     var id = card ? 'data-form-id="' + card.id + '"' : ''
     var fs = formation.length > 7 ? 14 : formation.length > 5 ? 16 : 19
     var owned = !!card
-    return '<div ' + id + ' style="position:relative;width:140px;border-radius:12px;border:3px solid ' + (owned?'#2a7a40':'#bbb') + ';background:#fff;display:flex;flex-direction:column;overflow:hidden;cursor:pointer;box-shadow:0 2px 10px rgba(0,0,0,.12);' + (!owned?'filter:grayscale(1);opacity:0.5':'') + '">'
+    return '<div ' + id + ' style="position:relative;width:140px;border-radius:12px;border:3px solid ' + (owned?'#2a7a40':'#bbb') + ';background:var(--tile-bg);display:flex;flex-direction:column;overflow:hidden;cursor:pointer;box-shadow:0 2px 10px rgba(0,0,0,.12);' + (!owned?'filter:grayscale(1);opacity:0.5':'') + '">'
       + badge
-      + '<div style="padding:8px 6px 6px;background:#fff;text-align:center;border-bottom:3px solid ' + (owned?'#1A6B3C':'#aaa') + ';flex-shrink:0">'
+      + '<div style="padding:8px 6px 6px;background:var(--tile-bg);text-align:center;border-bottom:3px solid ' + (owned?'#1A6B3C':'#aaa') + ';flex-shrink:0">'
       + '<div style="font-size:8px;color:#888;letter-spacing:1.5px;font-weight:700;margin-bottom:2px">FORMATION</div>'
       + '<div style="font-size:' + fs + 'px;font-weight:900;color:' + (owned?'#1A6B3C':'#aaa') + ';line-height:1">' + formation + '</div>'
       + '</div>'
@@ -420,7 +420,7 @@ export async function renderCollection(container, ctx) {
     var filter = owned ? '' : 'filter:grayscale(1);opacity:0.45;'
     var nameBg = owned ? '#1A6B3C' : '#bbb'
     var nameColor = '#fff'
-    return '<div style="display:inline-block;zoom:' + SCALE + ';line-height:0;pointer-events:none"><div style="width:' + W + 'px;height:' + H + 'px;border-radius:6px;border:' + border + ';background:#fff;display:flex;flex-direction:column;overflow:hidden;' + filter + '">'
+    return '<div style="display:inline-block;zoom:' + SCALE + ';line-height:0;pointer-events:none"><div style="width:' + W + 'px;height:' + H + 'px;border-radius:6px;border:' + border + ';background:var(--tile-bg);display:flex;flex-direction:column;overflow:hidden;' + filter + '">'
       + '<div style="height:' + nameH + 'px;background:' + nameBg + ';display:flex;align-items:center;justify-content:center;padding:0 2px;flex-shrink:0">'
       + '<span style="font-size:' + fs + 'px;font-weight:900;color:' + nameColor + ';text-align:center;overflow:hidden;white-space:nowrap;max-width:' + (W-4) + 'px">' + formation + '</span>'
       + '</div>'
@@ -432,7 +432,7 @@ export async function renderCollection(container, ctx) {
     if (showAll) {
       const list = filteredAllPlayers()
       if (!list.length) {
-        grid.innerHTML = '<div style="width:100%;text-align:center;padding:40px;color:var(--gray-600)">Aucun joueur.</div>'
+        grid.innerHTML = '<div style="width:100%;text-align:center;padding:40px;color:var(--tile-fg-dim)">Aucun joueur.</div>'
         return
       }
       // showAll : même pattern big+strip mais items = players (avec carte ou grisée)
@@ -447,7 +447,7 @@ export async function renderCollection(container, ctx) {
     } else {
       const list = filteredCards()
       if (!list.length) {
-        grid.innerHTML = '<div style="width:100%;text-align:center;padding:40px;color:var(--gray-600)">Aucune carte.<br><small>Ouvre des boosters !</small></div>'
+        grid.innerHTML = '<div style="width:100%;text-align:center;padding:40px;color:var(--tile-fg-dim)">Aucune carte.<br><small>Ouvre des boosters !</small></div>'
         return
       }
 
@@ -480,7 +480,7 @@ export async function renderCollection(container, ctx) {
     const formationsToShow = showAll ? ALL_FORMATIONS : [...ownedFormations]
 
     if (!formationsToShow.length) {
-      grid.innerHTML = '<div style="width:100%;text-align:center;padding:40px;color:var(--gray-600)">Aucune carte Formation.<br><small>Ouvre un booster Formation !</small></div>'
+      grid.innerHTML = '<div style="width:100%;text-align:center;padding:40px;color:var(--tile-fg-dim)">Aucune carte Formation.<br><small>Ouvre un booster Formation !</small></div>'
       return
     }
 
@@ -499,7 +499,7 @@ export async function renderCollection(container, ctx) {
     const typesToShow = showAll ? (allFromDB.length ? allFromDB : ALL_GC_TYPES) : [...ownedGcTypes]
 
     if (!typesToShow.length) {
-      grid.innerHTML = '<div style="width:100%;text-align:center;padding:40px;color:var(--gray-600)">Aucune carte Game Changer.<br><small>Ouvre un booster Game Changer !</small></div>'
+      grid.innerHTML = '<div style="width:100%;text-align:center;padding:40px;color:var(--tile-fg-dim)">Aucune carte Game Changer.<br><small>Ouvre un booster Game Changer !</small></div>'
       return
     }
 
@@ -545,7 +545,7 @@ export async function renderCollection(container, ctx) {
     const ORANGE = '#E87722'
     const BASE2 = import.meta.env.BASE_URL
     if (!stadiumCards.length) {
-      grid.innerHTML = '<div style="width:100%;text-align:center;padding:40px;color:var(--gray-600)">Aucune carte Stade.<br><small>Ouvre un booster Stade !</small></div>'
+      grid.innerHTML = '<div style="width:100%;text-align:center;padding:40px;color:var(--tile-fg-dim)">Aucune carte Stade.<br><small>Ouvre un booster Stade !</small></div>'
       return
     }
     // Grouper par stadium_id
@@ -620,7 +620,7 @@ export async function renderCollection(container, ctx) {
       container.querySelectorAll('.col-tab-btn').forEach(b => {
         const a = b.dataset.tab === activeTab
         b.style.borderBottomColor = a ? 'var(--green)' : 'transparent'
-        b.style.color = a ? 'var(--green)' : 'var(--gray-600)'
+        b.style.color = a ? 'var(--green)' : 'var(--tile-fg-dim)'
       })
       renderFilters()
       renderCards()
@@ -735,11 +735,11 @@ function openFormationModal(card, allFormationCards, ctx, openModal) {
 
     <!-- Marché (optionnel) -->
     ${canMarket ? `
-    <div style="margin-top:12px;border-top:1px solid var(--gray-200);padding-top:12px">
+    <div style="margin-top:12px;border-top:1px solid var(--tile-border);padding-top:12px">
       <div style="font-size:13px;font-weight:700;margin-bottom:8px">🛒 Marché des transferts</div>
       <div style="display:flex;gap:8px">
         <input type="number" id="sell-price-form" min="1" placeholder="Prix en crédits" value="${FORMATION_DIRECT_SELL_PRICE}"
-          style="flex:1;padding:8px;border:1.5px solid var(--gray-200);border-radius:8px;font-size:14px">
+          style="flex:1;padding:8px;border:1.5px solid var(--tile-border);border-radius:8px;font-size:14px">
         <button class="btn btn-primary" id="market-sell-form-btn">Mettre en vente</button>
       </div>
     </div>` : ''}
@@ -865,18 +865,18 @@ async function openCardDetail(card, allPlayerCards, countByPlayer, ctx) {
     <div style="display:flex;justify-content:space-between;align-items:flex-start;background:#f9f9f9;border-radius:8px;padding:8px 12px;gap:8px">
       <div style="flex:1;min-width:0">
         <div style="font-size:13px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${t.club_name}</div>
-        <div style="font-size:11px;color:var(--gray-600)">(${t.manager_name})</div>
+        <div style="font-size:11px;color:var(--tile-fg-dim)">(${t.manager_name})</div>
       </div>
       <div style="text-align:right;flex-shrink:0">
-        <div style="font-size:13px;font-weight:700;color:${t.source==='booster'?'var(--gray-600)':'var(--yellow)'}">${price}</div>
-        <div style="font-size:11px;color:var(--gray-600)">${date}</div>
+        <div style="font-size:13px;font-weight:700;color:${t.source==='booster'?'var(--tile-fg-dim)':'var(--yellow)'}">${price}</div>
+        <div style="font-size:11px;color:var(--tile-fg-dim)">${date}</div>
       </div>
     </div>`
   }
 
   // Un bloc par carte possédée avec checkbox de sélection
   const clubsHTML = myCardIds.length ? `
-    <div style="margin-top:16px;border-top:1px solid var(--gray-200);padding-top:14px">
+    <div style="margin-top:16px;border-top:1px solid var(--tile-border);padding-top:14px">
       <div style="font-size:13px;font-weight:700;margin-bottom:10px">🏟️ Mes exemplaires ${count>1?`(${count})`:''}</div>
       <div style="display:flex;flex-direction:column;gap:10px">
         ${samePlayerCards.map((c, i) => {
@@ -956,7 +956,7 @@ async function openCardDetail(card, allPlayerCards, countByPlayer, ctx) {
       <!-- Infos -->
       <div style="flex:1;min-width:160px;display:flex;flex-direction:column;gap:10px">
         <div>
-          <div style="font-size:11px;color:var(--gray-600);margin-bottom:2px">RARETÉ</div>
+          <div style="font-size:11px;color:var(--tile-fg-dim);margin-bottom:2px">RARETÉ</div>
           <div style="font-weight:700;color:${rarColor}">${p.rarity.toUpperCase()}</div>
           ${(p.rarity==='pepite'||p.rarity==='papyte') ? `
           <div style="margin-top:6px;background:${rarColor}18;border-left:3px solid ${rarColor};border-radius:0 6px 6px 0;padding:6px 10px">
@@ -972,11 +972,11 @@ async function openCardDetail(card, allPlayerCards, countByPlayer, ctx) {
           </div>` : ''}
         </div>
         <div>
-          <div style="font-size:11px;color:var(--gray-600);margin-bottom:2px">POSTE</div>
+          <div style="font-size:11px;color:var(--tile-fg-dim);margin-bottom:2px">POSTE</div>
           <div style="font-weight:700">${p.job}${p.job2?' / '+p.job2:''}</div>
         </div>
         <div>
-          <div style="font-size:11px;color:var(--gray-600);margin-bottom:6px">NOTES</div>
+          <div style="font-size:11px;color:var(--tile-fg-dim);margin-bottom:6px">NOTES</div>
           <div style="display:flex;align-items:center;gap:6px">
             ${[['GK',p.note_g],['DEF',p.note_d],['MIL',p.note_m],['ATT',p.note_a]].map(([j,n]) => {
               const col = JOB_COLORS[j]
@@ -994,7 +994,7 @@ async function openCardDetail(card, allPlayerCards, countByPlayer, ctx) {
           </div>
         </div>
         <div>
-          <div style="font-size:11px;color:var(--gray-600);margin-bottom:2px">EN COLLECTION</div>
+          <div style="font-size:11px;color:var(--tile-fg-dim);margin-bottom:2px">EN COLLECTION</div>
           <div style="font-weight:700;font-size:18px">×${count}</div>
         </div>
       </div>
@@ -1064,7 +1064,7 @@ async function openCardDetail(card, allPlayerCards, countByPlayer, ctx) {
       const ov = document.createElement('div')
       ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px'
       ov.innerHTML = `
-        <div style="background:#fff;border-radius:16px;padding:24px;max-width:300px;width:100%;text-align:center">
+        <div style="background:var(--tile-bg);border-radius:16px;padding:24px;max-width:300px;width:100%;text-align:center">
           <div style="font-size:40px;margin-bottom:10px">⚠️</div>
           <div style="font-size:15px;font-weight:900;color:#cc2222;margin-bottom:10px">Action impossible</div>
           <div style="font-size:13px;color:#555;line-height:1.5;margin-bottom:18px">
@@ -1093,7 +1093,7 @@ async function openCardDetail(card, allPlayerCards, countByPlayer, ctx) {
       const ov = document.createElement('div')
       ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px'
       ov.innerHTML = `
-        <div style="background:#fff;border-radius:16px;padding:24px;max-width:320px;width:100%;text-align:center;box-shadow:0 16px 48px rgba(0,0,0,0.3)">
+        <div style="background:var(--tile-bg);border-radius:16px;padding:24px;max-width:320px;width:100%;text-align:center;box-shadow:0 16px 48px rgba(0,0,0,0.3)">
           <div style="font-size:48px;margin-bottom:10px">⬆️</div>
           <div style="font-size:17px;font-weight:900;margin-bottom:6px">Évolution par fusion</div>
           <div style="font-size:13px;color:#555;margin-bottom:6px">
@@ -1107,7 +1107,7 @@ async function openCardDetail(card, allPlayerCards, countByPlayer, ctx) {
           </div>
           <div style="font-size:11px;color:#aaa;margin-bottom:18px">⚠️ Les copies sacrifiées sont définitivement supprimées</div>
           <div style="display:flex;gap:10px">
-            <button id="sac-cancel" style="flex:1;padding:12px;border-radius:10px;border:1.5px solid #ddd;background:#fff;font-size:14px;font-weight:700;cursor:pointer;color:#555">Annuler</button>
+            <button id="sac-cancel" style="flex:1;padding:12px;border-radius:10px;border:1.5px solid #ddd;background:var(--tile-bg);font-size:14px;font-weight:700;cursor:pointer;color:#555">Annuler</button>
             <button id="sac-ok" style="flex:1;padding:12px;border-radius:10px;border:none;background:#1A6B3C;color:#fff;font-size:14px;font-weight:900;cursor:pointer">⬆️ Confirmer</button>
           </div>
         </div>`

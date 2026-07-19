@@ -68,7 +68,7 @@ export async function refreshProfile() {
 const THEME_KEY = 'mw_theme'
 
 export function getTheme() {
-  return localStorage.getItem(THEME_KEY) || 'light' // par défaut : design du kit graphique
+  return localStorage.getItem(THEME_KEY) || 'dark' // par défaut : thème sombre actuel
 }
 
 export function setTheme(theme) {
@@ -332,8 +332,8 @@ function renderPublicLanding(root, { onPlay }) {
 
 // ── BOOTSTRAP ─────────────────────────────────────────────
 async function init() {
-  // Toujours mode light (le toggle dark/light a été supprimé)
-  document.documentElement.setAttribute('data-theme', 'light')
+  // Applique le thème choisi (sombre par défaut, ou la préférence sauvegardée)
+  document.documentElement.setAttribute('data-theme', getTheme())
 
   document.getElementById('modal-overlay').addEventListener('click', e => {
     if (e.target === e.currentTarget) closeModal()

@@ -13,9 +13,8 @@ export async function renderHome(container, { state, navigate, toast }) {
   <style>
     .home-dark {
       min-height: 100%;
-      background: radial-gradient(ellipse at 20% 50%, rgba(0,60,30,0.55) 0%, transparent 60%),
-                  radial-gradient(ellipse at 80% 20%, rgba(0,40,80,0.4) 0%, transparent 55%),
-                  linear-gradient(160deg, #0a0f0a 0%, #0d1a0f 40%, #080d08 100%);
+      background: var(--page-bg);
+      background-image: var(--page-gradient);
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -41,8 +40,8 @@ export async function renderHome(container, { state, navigate, toast }) {
       gap: 12px;
       box-shadow: 0 4px 20px rgba(0,0,0,0.4);
     }
-    .home-hero-info h3 { margin:0; font-size:17px; font-weight:900; color:#fff; }
-    .home-hero-info .level { font-size:11px; color:rgba(255,255,255,0.7); letter-spacing:1px; text-transform:uppercase; margin-top:2px; }
+    .home-hero-info h3 { margin:0; font-size:17px; font-weight:900; color:var(--tile-fg-on-page); }
+    .home-hero-info .level { font-size:11px; color:var(--tile-fg-dim); letter-spacing:1px; text-transform:uppercase; margin-top:2px; }
     .home-hero-btn {
       width:38px; height:38px; border-radius:50%; border:none;
       background:rgba(255,255,255,0.15); cursor:pointer;
@@ -73,17 +72,17 @@ export async function renderHome(container, { state, navigate, toast }) {
     }
     .play-tile {
       border-radius: 16px;
-      background: rgba(255,255,255,0.05);
-      border: 1px solid rgba(255,255,255,0.08);
+      background: var(--tile-bg);
+      border: 1px solid var(--tile-border);
       cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
       padding: 10px;
-      transition: transform .15s, background .15s;
+      transition: transform .15s, filter .15s;
       backdrop-filter: blur(4px);
     }
-    .play-tile:hover { background: rgba(255,255,255,0.09); }
+    .play-tile:hover { filter: brightness(1.12); }
     .play-tile:active { transform: scale(.96); }
     .play-text-overlay { max-height: 26px !important; width: auto !important; }
     .ranked-tile .play-text-overlay { max-height: 34px !important; }
@@ -98,16 +97,16 @@ export async function renderHome(container, { state, navigate, toast }) {
       padding: 4px 0;
     }
     .home-logout-btn {
-      background: rgba(255,255,255,0.07);
-      border: 1px solid rgba(255,255,255,0.12);
+      background: var(--tile-bg);
+      border: 1px solid var(--tile-border);
       border-radius: 20px;
-      color: rgba(255,255,255,0.5);
+      color: var(--tile-fg-dim);
       font-size: 12px;
       padding: 6px 18px;
       cursor: pointer;
-      transition: background .2s;
+      transition: filter .2s;
     }
-    .home-logout-btn:hover { background: rgba(255,255,255,0.12); }
+    .home-logout-btn:hover { filter: brightness(1.15); }
   </style>
 
   <div class="home-dark" id="home-dark">
@@ -365,14 +364,16 @@ async function abandonMatch(matchId, oppId, uid) {
 
 function showAbandonConfirm(onConfirm) {
   const ov = document.createElement('div')
-  ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:9000;display:flex;align-items:center;justify-content:center;padding:20px'
-  ov.innerHTML = `<div style="background:#111;border:1px solid rgba(255,255,255,0.1);border-radius:16px;padding:24px;max-width:340px;width:100%;text-align:center;color:#fff">
-    <div style="font-size:40px;margin-bottom:8px">⚠️</div>
-    <div style="font-size:17px;font-weight:900;margin-bottom:6px">Abandonner le match ?</div>
-    <div style="font-size:13px;color:rgba(255,255,255,0.6);margin-bottom:18px">Tu perdras par forfait <b>3-0</b>.</div>
-    <div style="display:flex;gap:10px">
-      <button id="ab-cancel" style="flex:1;padding:12px;border-radius:10px;border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.05);font-weight:700;cursor:pointer;color:rgba(255,255,255,0.7)">Annuler</button>
-      <button id="ab-ok" style="flex:1;padding:12px;border-radius:10px;border:none;background:#cc2222;color:#fff;font-weight:900;cursor:pointer">Abandonner</button>
+  ov.className = 'modal-overlay'
+  ov.innerHTML = `<div class="modal" style="max-width:340px">
+    <div class="modal-body" style="padding:26px 22px 20px;text-align:center">
+      <div style="font-size:40px;margin-bottom:8px">⚠️</div>
+      <div style="font-size:17px;font-weight:900;margin-bottom:6px;color:#1a1a1a">Abandonner le match ?</div>
+      <div style="font-size:13px;color:#666;margin-bottom:18px">Tu perdras par forfait <b>3-0</b>.</div>
+      <div style="display:flex;gap:10px">
+        <button id="ab-cancel" class="btn btn-ghost" style="flex:1">Annuler</button>
+        <button id="ab-ok" class="btn" style="flex:1;background:var(--danger);color:#fff;border:none;font-weight:900">Abandonner</button>
+      </div>
     </div>
   </div>`
   document.body.appendChild(ov)

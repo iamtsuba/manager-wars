@@ -449,18 +449,27 @@ function renderGame(container, game, ctx) {
   const grayedPlayers = Object.values(game.homeTeam).flat().filter(p => p.used)
   const canSub = grayedPlayers.length > 0 && availSubs.length > 0 && game.subsUsed < game.maxSubs
 
-  // Règle DEF/GK (précisée) : un défenseur ne peut attaquer (note forcée à 1)
-  // QUE si l'IA n'a plus AUCUN joueur dans sa formation. Le gardien ne peut
-  // attaquer QUE si l'IA n'a plus personne ET que je n'ai moi-même plus que
-  // lui (plus de DEF/MIL/ATT) — c'est le dernier recours absolu.
+  // Règle DEF/GK (3 paliers) :
+  //  1. DEF attaque (note=1) si l'IA n'a plus AUCUN joueur.
+  //  2. GK attaque (note=1) si l'IA n'a plus personne ET que je n'ai moi-même
+  //     plus que lui (dernier recours absolu).
+  //  3. Blocage mutuel : si NI moi NI l'IA n'avons plus de MIL/ATT (mais qu'il
+  //     reste des joueurs des deux côtés), tous mes DEF/GK deviennent
+  //     attaquables en note=1 — sinon le match resterait bloqué indéfiniment.
   const homeMilAtt = [...(game.homeTeam.MIL||[]),...(game.homeTeam.ATT||[])].filter(p=>!p.used)
-  const aiIsEmpty = isTeamEmpty(game.aiTeam)
+  const aiMilAtt   = [...(game.aiTeam.MIL||[]),...(game.aiTeam.ATT||[])].filter(p=>!p.used)
+  const aiIsEmpty  = isTeamEmpty(game.aiTeam)
+  const mutualDeadlock = homeMilAtt.length===0 && aiMilAtt.length===0 && !aiIsEmpty
   const unusedDef = (game.homeTeam.DEF||[]).filter(p=>!p.used)
   const unusedGk  = (game.homeTeam.GK||[]).filter(p=>!p.used)
   let extraSelectableIds = []
-  if (game.phase==='attack' && homeMilAtt.length===0 && aiIsEmpty) {
-    extraSelectableIds = unusedDef.map(p=>p.cardId)
-    if (unusedDef.length===0) extraSelectableIds = extraSelectableIds.concat(unusedGk.map(p=>p.cardId))
+  if (game.phase==='attack' && homeMilAtt.length===0) {
+    if (aiIsEmpty) {
+      extraSelectableIds = unusedDef.map(p=>p.cardId)
+      if (unusedDef.length===0) extraSelectableIds = extraSelectableIds.concat(unusedGk.map(p=>p.cardId))
+    } else if (mutualDeadlock) {
+      extraSelectableIds = [...unusedDef, ...unusedGk].map(p=>p.cardId)
+    }
   }
 
   // Dernière action
@@ -1056,10 +1065,17 @@ function aiTurn(container, game, ctx) {
   aiMayPlayGC(game)
   let allAi = [...(game.aiTeam.MIL||[]),...(game.aiTeam.ATT||[])].filter(p=>!p.used)
   let aiForcedNote1 = false
-  if (!allAi.length && isTeamEmpty(game.homeTeam)) {
-    const unusedAiDef = (game.aiTeam.DEF||[]).filter(p=>!p.used)
-    allAi = unusedAiDef.length ? unusedAiDef : (game.aiTeam.GK||[]).filter(p=>!p.used)
-    aiForcedNote1 = true
+  if (!allAi.length) {
+    const homeMilAttNow = [...(game.homeTeam.MIL||[]),...(game.homeTeam.ATT||[])].filter(p=>!p.used)
+    const homeIsEmptyNow = isTeamEmpty(game.homeTeam)
+    if (homeIsEmptyNow || homeMilAttNow.length===0) {
+      const unusedAiDef = (game.aiTeam.DEF||[]).filter(p=>!p.used)
+      const unusedAiGk  = (game.aiTeam.GK||[]).filter(p=>!p.used)
+      allAi = homeIsEmptyNow
+        ? (unusedAiDef.length ? unusedAiDef : unusedAiGk)   // palier 1/2 : adversaire vide
+        : [...unusedAiDef, ...unusedAiGk]                    // palier 3 : blocage mutuel
+      aiForcedNote1 = true
+    }
   }
   const selected = aiSelectPlayers(allAi, 'attack', game.difficulty)
   if (!selected.length) { checkEnd(container, game, ctx); return }
@@ -1270,7 +1286,10 @@ function isMatchOver(game) {
 function wouldBeStuck(team, oppTeam) {
   const milAtt = ['MIL','ATT'].some(r => (team[r]||[]).some(p=>!p.used))
   if (milAtt) return false
-  return !isTeamEmpty(oppTeam)
+  if (isTeamEmpty(oppTeam)) return false // palier 1/2 : adversaire vide, DEF/GK peuvent attaquer
+  const oppMilAtt = ['MIL','ATT'].some(r => (oppTeam[r]||[]).some(p=>!p.used))
+  if (!oppMilAtt) return false // palier 3 : blocage mutuel résolu, DEF/GK peuvent s'affronter en note=1
+  return true
 }
 
 function checkEnd(container, game, ctx) {

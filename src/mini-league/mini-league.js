@@ -2,14 +2,14 @@ import { supabase } from '../lib/supabase.js'
 
 const GREEN  = '#1A6B3C'
 const YELLOW = '#D4A017'
-// Palette sombre cohérente avec le reste de l'app (var(--page-bg) etc.) —
-// évite le contraste brutal blanc/vert du design précédent.
-const PANEL   = 'rgba(255,255,255,0.045)'
-const BORDER  = 'rgba(255,255,255,0.09)'
-const DIVIDER = 'rgba(255,255,255,0.08)'
-const TXT     = '#f3f5f2'
-const TXT_DIM = 'rgba(243,245,242,0.62)'
-const TXT_FAINT = 'rgba(243,245,242,0.4)'
+// Palette réactive au thème (var(--xxx)) — s'adapte automatiquement au
+// thème sombre/clair choisi dans les Réglages.
+const PANEL     = 'var(--tile-bg)'
+const BORDER    = 'var(--tile-border)'
+const DIVIDER   = 'var(--divider)'
+const TXT       = 'var(--tile-fg-on-page)'
+const TXT_DIM   = 'var(--tile-fg-dim)'
+const TXT_FAINT = 'var(--tile-fg-faint)'
 
 export async function renderMiniLeague(container, ctx) {
   container.innerHTML = '<div style="padding:40px;text-align:center;color:#aaa">⚽ Chargement...</div>'

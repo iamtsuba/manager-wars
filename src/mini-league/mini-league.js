@@ -241,12 +241,14 @@ async function joinLeague(container, ctx, leagueId, type) {
   if (typeof ctx.refreshProfile === 'function') {
     await ctx.refreshProfile()
   } else {
-    // Mise à jour locale immédiate (RPC a déjà déduit les crédits en base)
     const { data: me } = await supabase.from('users').select('credits').eq('id', uid).single()
     if (state.profile && me) state.profile.credits = me.credits
-    const credEl = document.getElementById('nav-credits')
-    if (credEl) credEl.textContent = `💰 ${(state.profile?.credits||0).toLocaleString('fr')}`
   }
+  // refreshProfile ne met à jour que state.profile en mémoire — le DOM
+  // #nav-credits n'est rafraîchi que par renderPage(), jamais appelée ici
+  // puisque openLeague() est appelé directement (pas via ctx.navigate()).
+  const credEl = document.getElementById('nav-credits')
+  if (credEl) credEl.textContent = `💰 ${(state.profile?.credits||0).toLocaleString('fr')}`
 
   toast(`✅ Inscrit ! Pot mis à jour.`, 'success')
   openLeague(container, ctx, leagueId)

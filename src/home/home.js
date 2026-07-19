@@ -262,7 +262,7 @@ async function checkUnclaimedMiniLeaguePrizes(state, toast) {
       <p style="font-size:14px;color:#555;margin:0 0 14px">Tu as terminé sur le podium de ${rows.length>1?'plusieurs mini leagues':'une mini league'} !</p>
       <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px">
         ${rows.map(r=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:#f7f7f7;border-radius:10px">
-          <span style="font-size:13px;font-weight:700">${r.mini_leagues?.name||'Mini League'}</span>
+          <span style="font-size:13px;font-weight:700;color:#1a1a1a">${r.mini_leagues?.name||'Mini League'}</span>
           <span style="font-size:13px;font-weight:900;color:#D4A017">+${(r.prize_amount||0).toLocaleString('fr')} cr.</span>
         </div>`).join('')}
       </div>

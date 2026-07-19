@@ -55,6 +55,10 @@
   --btn-primary-bg: var(--green);
   --btn-primary-fg: #fff;
   --btn-primary-bg-hover: var(--green-dark);
+  --tile-fg-dim: rgba(255,255,255,0.62);
+  --tile-fg-faint: rgba(255,255,255,0.4);
+  --divider: rgba(255,255,255,0.08);
+  --danger: #ff6b6b;
 }
 
 /* ── Thème "light" (nouveau) — pelouse vert clair, panneaux blancs,
@@ -79,6 +83,10 @@
   --btn-primary-bg: var(--yellow);
   --btn-primary-fg: #241a02;
   --btn-primary-bg-hover: var(--yellow-dark);
+  --tile-fg-dim: rgba(22,50,31,0.65);
+  --tile-fg-faint: rgba(22,50,31,0.45);
+  --divider: rgba(26,107,60,0.14);
+  --danger: #c0392b;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }

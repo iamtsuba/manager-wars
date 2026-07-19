@@ -339,7 +339,7 @@ import{s as w,l as Ht,m as Ci,F as Bi,r as Ae,j as ei,h as qi,n as Hn,o as Un,T 
         border:1.5px solid #ddd;background:#fff;
         font-size:14px;font-weight:700;cursor:pointer;color:#555;
       }
-    </style>`}const ro="2026.07.19-2346";async function en(e,{state:t,navigate:i,toast:n}){var o,a;const r=t.profile;r&&(e.innerHTML=`
+    </style>`}const ro="2026.07.19-2349";async function en(e,{state:t,navigate:i,toast:n}){var o,a;const r=t.profile;r&&(e.innerHTML=`
   <style>
     .home-dark {
       min-height: 100%;
@@ -1136,7 +1136,7 @@ import{s as w,l as Ht,m as Ci,F as Bi,r as Ae,j as ei,h as qi,n as Hn,o as Un,T 
             ${u?'<div style="font-size:10px;color:#c0392b;margin-top:4px">🚫 Toutes les cartes déjà obtenues</div>':""}
           </div>`}).join("")}
       </div>
-      <div class="card-panel" style="font-size:13px;color:var(--gray-600);line-height:1.7;margin-top:8px">
+      <div class="card-panel" style="font-size:13px;color:var(--tile-fg-dim);line-height:1.7;margin-top:8px">
         <b>📌 Rappels</b><br>
         • 1er booster Players contient toujours un Gardien.<br>
         • Game Helper : carte éphémère disparaît en fin de match.<br>
@@ -2758,7 +2758,7 @@ import{s as w,l as Ht,m as Ci,F as Bi,r as Ae,j as ei,h as qi,n as Hn,o as Un,T 
     </div>
   </div>`}Kn(Yn);const be={user:null,profile:null,page:"home",params:{}};function Ft(e,t="info",i=3e3){const n=document.getElementById("toast");n&&(n.textContent=e,n.className=`show ${t}`,clearTimeout(n._t),n._t=setTimeout(()=>{n.className=""},i))}function Yr(e,t,i=""){document.getElementById("modal-title").textContent=e,document.getElementById("modal-body").innerHTML=t,document.getElementById("modal-footer").innerHTML=i,document.getElementById("modal-overlay").classList.remove("hidden")}function ji(){document.getElementById("modal-overlay").classList.add("hidden")}async function Vt(){if(!be.user)return;const{data:e}=await w.from("users").select("*").eq("id",be.user.id).single();e&&(be.profile=e)}const Pn="mw_theme";function Gn(){return localStorage.getItem(Pn)||"dark"}function Wr(e){var t;localStorage.setItem(Pn,e),Xr(e),(t=be.profile)!=null&&t.id&&w.from("users").update({theme:e}).eq("id",be.profile.id).then(()=>{})}function Xr(e){document.documentElement.setAttribute("data-theme",e)}function Pt(e,t={}){be.page=e,be.params=t,Rn()}async function Rn(){var n,r,o,a;const e=document.getElementById("page-content");if(!e)return;document.querySelectorAll(".bottom-nav a").forEach(s=>{s.classList.toggle("active",s.dataset.page===be.page)});const t=document.getElementById("nav-credits");t&&be.profile&&(t.textContent=`💰 ${(be.profile.credits||0).toLocaleString("fr")}`);const i={state:be,navigate:Pt,toast:Ft,openModal:Yr,closeModal:ji,refreshProfile:Vt};switch(e.innerHTML='<div style="padding:40px;text-align:center;color:#aaa">⚽</div>',be.page){case"home":await en(e,i);break;case"settings":await $i(e,i);break;case"collection":await Eo(e,i);break;case"decks":await Ei(e,i);break;case"boosters":await Fo(e,i);break;case"ranked":await Kr(e,i);break;case"match":{const s=be.params&&be.params.matchMode||"vs_ai_easy";s==="random"?await Ai(e,i,!1):s==="ranked"?await Ai(e,i,!0):s==="friend"?await vr(e,i,(n=be.params)==null?void 0:n.friendId,(r=be.params)==null?void 0:r.friendName):s==="mini_league"||s==="mini-league"?await un(e,i,(o=be.params)==null?void 0:o.mlMatchId,(a=be.params)==null?void 0:a.leagueId):await Zo(e,i);break}case"market":await Rr(e,i);break;case"rankings":await Ur(e,i);break;case"matches":await Vr(e,i);break;case"friends":await to(e,i);break;case"mini-league":await kr(e,i);break;case"match-mini-league":{const s=be.params||{};await un(e,i,s.mlMatchId,s.leagueId);break}default:await en(e,i)}}function Jr(){var n,r;const e=document.getElementById("app"),t=be.profile;if(!t)return;const i="/icons/";e.innerHTML=`
     <nav class="top-nav">
-      <div class="logo" id="nav-logo" title="Manager Wars v2026.07.19-2346" style="cursor:pointer">
+      <div class="logo" id="nav-logo" title="Manager Wars v2026.07.19-2349" style="cursor:pointer">
         <img src="${i}logo-withname.png" alt="Manager Wars" style="height:48px;width:auto;display:block">
       </div>
       <div style="display:flex;align-items:center;gap:10px">

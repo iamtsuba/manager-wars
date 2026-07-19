@@ -262,9 +262,14 @@ async function _renderPvpMatchCore(container, ctx, matchId, amIHome, myGC = [], 
       <div style="font-size:18px">${gameState[myRole+'Name']} ${myScore} – ${oppScore} ${gameState[oppRole+'Name']}</div>
       ${row.forfeit?`<div style="font-size:13px;color:rgba(255,255,255,0.5)">${iWon?"L'adversaire a quitté":'Perdu par forfait'}</div>`:''}
       ${mmrHtml}
-      <button id="pvp-end-home" style="margin-top:8px;padding:14px 32px;border-radius:12px;border:none;background:#1A6B3C;color:#fff;font-size:16px;font-weight:900;cursor:pointer">${isRanked ? '⚔️ Retour au Ranked' : 'Retour à l\'accueil'}</button>`
+      <button id="pvp-end-home" style="margin-top:8px;padding:14px 32px;border-radius:12px;border:none;background:#1A6B3C;color:#fff;font-size:16px;font-weight:900;cursor:pointer">${mlLeagueId ? '🏆 Retour à la Mini League' : (isRanked ? '⚔️ Retour au Ranked' : 'Retour à l\'accueil')}</button>`
     document.body.appendChild(overlay2)
-    overlay2.querySelector('#pvp-end-home')?.addEventListener('click', () => { overlay2.remove(); _showBottomNav(container); navigate(isRanked ? 'ranked' : 'home') })
+    overlay2.querySelector('#pvp-end-home')?.addEventListener('click', () => {
+      overlay2.remove()
+      _showBottomNav(container)
+      if (mlLeagueId) navigate('mini-league', { openLeagueId: mlLeagueId })
+      else navigate(isRanked ? 'ranked' : 'home')
+    })
   }
 
   const channel = supabase.channel('pvp-match-' + matchId)

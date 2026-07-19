@@ -21,7 +21,7 @@ export async function renderFriends(container, ctx) {
         <button id="btn-add-friend" class="btn btn-primary" style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px">
           ➕ Ajouter un ami
         </button>
-        <button id="btn-accept-friend" class="btn" style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;background:#fff;border:1.5px solid var(--green,#1A6B3C);color:var(--green,#1A6B3C);font-weight:700">
+        <button id="btn-accept-friend" class="btn" style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;background:var(--tile-bg);border:1.5px solid var(--green,#1A6B3C);color:var(--green,#1A6B3C);font-weight:700">
           ✅ Accepter un ami
           <span id="pending-badge" style="display:none;background:#cc2222;color:#fff;border-radius:50%;width:18px;height:18px;font-size:11px;font-weight:900;display:flex;align-items:center;justify-content:center"></span>
         </button>
@@ -157,7 +157,7 @@ function friendCardHTML(friend, friendshipId) {
   const dot = `<div style="width:10px;height:10px;border-radius:50%;background:${isOnline?'#22c55e':'#ef4444'};border:2px solid #fff;position:absolute;bottom:1px;right:1px"></div>`
 
   return `
-    <div style="display:flex;align-items:center;gap:12px;background:#fff;border-radius:12px;padding:12px 14px;box-shadow:0 1px 6px rgba(0,0,0,0.08)">
+    <div style="display:flex;align-items:center;gap:12px;background:var(--tile-bg);border-radius:12px;padding:12px 14px;box-shadow:0 1px 6px rgba(0,0,0,0.08)">
       <div style="position:relative;width:46px;height:46px;flex-shrink:0">
         <div style="width:46px;height:46px;border-radius:50%;background:${bg};border:2.5px solid ${fg};display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:900;color:${fg}">
           ${initials}
@@ -171,9 +171,9 @@ function friendCardHTML(friend, friendshipId) {
       </div>
       <div style="display:flex;gap:8px;flex-shrink:0">
         <button data-match="${friendshipId}" data-friend-id="${friend.id}" data-friend-name="${clubName}" title="Jouer un match"
-          style="width:38px;height:38px;border-radius:50%;border:1.5px solid #ddd;background:#fff;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center">⚽</button>
+          style="width:38px;height:38px;border-radius:50%;border:1.5px solid #ddd;background:var(--tile-bg);font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center">⚽</button>
         <button data-stats="${friend.id}" data-friend-name="${clubName}" title="Voir les stats"
-          style="width:38px;height:38px;border-radius:50%;border:2px solid ${YELLOW};background:#fff;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center">📊</button>
+          style="width:38px;height:38px;border-radius:50%;border:2px solid ${YELLOW};background:var(--tile-bg);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center">📊</button>
       </div>
     </div>`
 }

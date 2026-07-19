@@ -222,46 +222,23 @@ async function joinLeague(container, ctx, leagueId, type) {
   const { toast, state } = ctx
   const uid = state.profile.id
 
-  // Charger la league
-  const { data: league } = await supabase.from('mini_leagues')
-    .select('password,status,entry_fee,pot,max_players').eq('id', leagueId).single()
-  if (!league) { toast('Mini League introuvable', 'error'); return }
-  if (league.status !== 'waiting') { toast('Cette Mini League a déjà démarré', 'warning'); return }
-
-  const { count: currentCount } = await supabase.from('mini_league_members')
-    .select('id', { count: 'exact', head: true }).eq('league_id', leagueId)
-  if (currentCount >= league.max_players) { toast('La Mini League est complète', 'warning'); return }
-
+  let pwd = null
   if (type === 'private') {
-    const pwd = await askPassword()
+    pwd = await askPassword()
     if (pwd === null) return
-    if (league.password !== pwd) { toast('Mot de passe incorrect', 'error'); return }
   }
 
-  const fee = league.entry_fee || 100
-  const { data: me } = await supabase.from('users').select('credits').eq('id', uid).single()
-  if ((me?.credits || 0) < fee) {
-    toast(`Crédits insuffisants — il te faut ${fee.toLocaleString('fr')} cr. (solde : ${(me?.credits||0).toLocaleString('fr')} cr.)`, 'error')
+  const { data: res, error } = await supabase.rpc('join_mini_league', {
+    p_league_id: leagueId, p_user_id: uid, p_password: pwd
+  })
+
+  if (error || !res?.success) {
+    console.error('[MiniLeague] join_mini_league:', error || res)
+    toast(res?.error || 'Erreur lors de l\'inscription', 'error')
     return
   }
 
-  // 1. Insérer le membre EN PREMIER (la policy pot-update exige d'être membre)
-  const { error: memberErr } = await supabase.from('mini_league_members')
-    .insert({ league_id: leagueId, user_id: uid })
-  if (memberErr) { toast('Erreur inscription : ' + memberErr.message, 'error'); return }
-
-  // 2. Déduire les crédits du joueur
-  const { error: credErr } = await supabase.from('users')
-    .update({ credits: me.credits - fee }).eq('id', uid)
-
-  // 3. Mettre à jour le pot
-  const { error: potErr } = await supabase.from('mini_leagues')
-    .update({ pot: (league.pot || 0) + fee }).eq('id', leagueId)
-
-  if (credErr || potErr) {
-    // Rollback partiel : on avertit mais on ne bloque pas (l'inscription est faite)
-    console.error('Erreur post-inscription:', credErr, potErr)
-  }
+  if (typeof ctx.refreshProfile === 'function') await ctx.refreshProfile()
 
   if (state.profile) state.profile.credits = me.credits - fee
   const credEl = document.getElementById('nav-credits')

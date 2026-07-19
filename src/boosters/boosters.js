@@ -153,7 +153,7 @@ export async function renderBoosters(container, { state, navigate, toast }) {
           </div>`
         }).join('')}
       </div>
-      <div class="card-panel" style="font-size:13px;color:var(--gray-600);line-height:1.7;margin-top:8px">
+      <div class="card-panel" style="font-size:13px;color:var(--tile-fg-dim);line-height:1.7;margin-top:8px">
         <b>📌 Rappels</b><br>
         • 1er booster Players contient toujours un Gardien.<br>
         • Game Helper : carte éphémère disparaît en fin de match.<br>

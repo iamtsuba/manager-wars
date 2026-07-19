@@ -339,7 +339,7 @@ import{s as _,l as Gt,m as Ii,F as Si,r as Se,j as Jt,h as Ai,n as An,o as Mn,T 
         border:1.5px solid #ddd;background:#fff;
         font-size:14px;font-weight:700;cursor:pointer;color:#555;
       }
-    </style>`}const Kn="2026.07.19-1642";async function Ui(e,{state:t,navigate:i,toast:n}){var o,a;const r=t.profile;r&&(e.innerHTML=`
+    </style>`}const Kn="2026.07.19-1710";async function Ui(e,{state:t,navigate:i,toast:n}){var o,a;const r=t.profile;r&&(e.innerHTML=`
   <style>
     .home-dark {
       min-height: 100%;
@@ -516,7 +516,7 @@ import{s as _,l as Gt,m as Ii,F as Si,r as Se,j as Jt,h as Ai,n as An,o as Mn,T 
       <p style="font-size:14px;color:#555;margin:0 0 14px">Tu as terminé sur le podium de ${n.length>1?"plusieurs mini leagues":"une mini league"} !</p>
       <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px">
         ${n.map(a=>{var s;return`<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:#f7f7f7;border-radius:10px">
-          <span style="font-size:13px;font-weight:700">${((s=a.mini_leagues)==null?void 0:s.name)||"Mini League"}</span>
+          <span style="font-size:13px;font-weight:700;color:#1a1a1a">${((s=a.mini_leagues)==null?void 0:s.name)||"Mini League"}</span>
           <span style="font-size:13px;font-weight:900;color:#D4A017">+${(a.prize_amount||0).toLocaleString("fr")} cr.</span>
         </div>`}).join("")}
       </div>
@@ -2718,7 +2718,7 @@ import{s as _,l as Gt,m as Ii,F as Si,r as Se,j as Jt,h as Ai,n as An,o as Mn,T 
     </div>
   </div>`}jn(Bn);const ve={user:null,profile:null,page:"home",params:{}};function Bt(e,t="info",i=3e3){const n=document.getElementById("toast");n&&(n.textContent=e,n.className=`show ${t}`,clearTimeout(n._t),n._t=setTimeout(()=>{n.className=""},i))}function jr(e,t,i=""){document.getElementById("modal-title").textContent=e,document.getElementById("modal-body").innerHTML=t,document.getElementById("modal-footer").innerHTML=i,document.getElementById("modal-overlay").classList.remove("hidden")}function Ti(){document.getElementById("modal-overlay").classList.add("hidden")}async function Ot(){if(!ve.user)return;const{data:e}=await _.from("users").select("*").eq("id",ve.user.id).single();e&&(ve.profile=e)}function Ht(e,t={}){ve.page=e,ve.params=t,In()}async function In(){var n,r,o,a;const e=document.getElementById("page-content");if(!e)return;document.querySelectorAll(".bottom-nav a").forEach(s=>{s.classList.toggle("active",s.dataset.page===ve.page)});const t=document.getElementById("nav-credits");t&&ve.profile&&(t.textContent=`💰 ${(ve.profile.credits||0).toLocaleString("fr")}`);const i={state:ve,navigate:Ht,toast:Bt,openModal:jr,closeModal:Ti,refreshProfile:Ot};switch(e.innerHTML='<div style="padding:40px;text-align:center;color:#aaa">⚽</div>',ve.page){case"home":await Ui(e,i);break;case"collection":await co(e,i);break;case"decks":await vi(e,i);break;case"boosters":await ko(e,i);break;case"ranked":await Ar(e,i);break;case"match":{const s=ve.params&&ve.params.matchMode||"vs_ai_easy";s==="random"?await Li(e,i,!1):s==="ranked"?await Li(e,i,!0):s==="friend"?await rr(e,i,(n=ve.params)==null?void 0:n.friendId,(r=ve.params)==null?void 0:r.friendName):s==="mini_league"||s==="mini-league"?await nn(e,i,(o=ve.params)==null?void 0:o.mlMatchId,(a=ve.params)==null?void 0:a.leagueId):await Fo(e,i);break}case"market":await Lr(e,i);break;case"rankings":await Sr(e,i);break;case"matches":await Mr(e,i);break;case"friends":await Nn(e,i);break;case"mini-league":await dr(e,i);break;case"match-mini-league":{const s=ve.params||{};await nn(e,i,s.mlMatchId,s.leagueId);break}default:await Ui(e,i)}}function Cr(){var n;const e=document.getElementById("app"),t=ve.profile;if(!t)return;const i="/icons/";e.innerHTML=`
     <nav class="top-nav">
-      <div class="logo" id="nav-logo" title="Manager Wars v2026.07.19-1642" style="cursor:pointer">
+      <div class="logo" id="nav-logo" title="Manager Wars v2026.07.19-1710" style="cursor:pointer">
         <img src="${i}logo-withname.png" alt="Manager Wars" style="height:48px;width:auto;display:block">
       </div>
       <div style="display:flex;align-items:center;gap:10px">

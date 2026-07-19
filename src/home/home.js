@@ -257,7 +257,7 @@ async function checkUnclaimedMiniLeaguePrizes(state, toast) {
   overlay.className = 'modal-overlay'
   overlay.style.zIndex = '2200'
   overlay.innerHTML = `<div class="modal" style="max-width:400px">
-    <div class="modal-header"><h2>🏆 Gains à récupérer</h2></div>
+    <div class="modal-header"><h2 style="color:#1A6B3C">🏆 Gains à récupérer</h2></div>
     <div class="modal-body" style="padding:18px 20px">
       <p style="font-size:14px;color:#555;margin:0 0 14px">Tu as terminé sur le podium de ${rows.length>1?'plusieurs mini leagues':'une mini league'} !</p>
       <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px">

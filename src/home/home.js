@@ -240,6 +240,55 @@ export async function renderHome(container, { state, navigate, toast }) {
   loadFriendRequestsBanner(state, toast)
   loadMatchInviteBanner(state, toast, navigate)
   loadOngoingMatchBanner(state, toast, navigate)
+  checkUnclaimedMiniLeaguePrizes(state, toast)
+}
+
+// ── Popup gains Mini League non récupérés ────────────────────────────────
+async function checkUnclaimedMiniLeaguePrizes(state, toast) {
+  const uid = state.profile.id
+  const { data: rows } = await supabase
+    .from('mini_league_members')
+    .select('league_id, prize_amount, mini_leagues(name)')
+    .eq('user_id', uid).eq('prize_claimed', false).gt('prize_amount', 0)
+  if (!rows?.length) return
+
+  const total = rows.reduce((s,r)=>s+(r.prize_amount||0),0)
+  const overlay = document.createElement('div')
+  overlay.className = 'modal-overlay'
+  overlay.style.zIndex = '2200'
+  overlay.innerHTML = `<div class="modal" style="max-width:400px">
+    <div class="modal-header"><h2>🏆 Gains à récupérer</h2></div>
+    <div class="modal-body" style="padding:18px 20px">
+      <p style="font-size:14px;color:#555;margin:0 0 14px">Tu as terminé sur le podium de ${rows.length>1?'plusieurs mini leagues':'une mini league'} !</p>
+      <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px">
+        ${rows.map(r=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:#f7f7f7;border-radius:10px">
+          <span style="font-size:13px;font-weight:700">${r.mini_leagues?.name||'Mini League'}</span>
+          <span style="font-size:13px;font-weight:900;color:#D4A017">+${(r.prize_amount||0).toLocaleString('fr')} cr.</span>
+        </div>`).join('')}
+      </div>
+      <button id="claim-all-btn" class="btn btn-primary" style="width:100%;margin-bottom:8px">💰 Tout récupérer (+${total.toLocaleString('fr')} cr.)</button>
+      <button id="claim-later-btn" class="btn btn-ghost" style="width:100%">Plus tard</button>
+    </div>
+  </div>`
+  document.body.appendChild(overlay)
+
+  overlay.querySelector('#claim-later-btn').addEventListener('click', () => overlay.remove())
+  overlay.querySelector('#claim-all-btn').addEventListener('click', async (e) => {
+    const btn = e.currentTarget
+    btn.disabled = true; btn.textContent = '...'
+    let totalClaimed = 0
+    for (const r of rows) {
+      const { data: res } = await supabase.rpc('claim_mini_league_prize', { p_league_id: r.league_id, p_user_id: uid })
+      if (res?.success && !res.already_claimed) totalClaimed += res.prize || 0
+    }
+    if (totalClaimed > 0) {
+      state.profile.credits = (state.profile.credits||0) + totalClaimed
+      const credEl = document.getElementById('nav-credits')
+      if (credEl) credEl.textContent = `💰 ${state.profile.credits.toLocaleString('fr')}`
+      toast(`💰 +${totalClaimed.toLocaleString('fr')} cr. récupérés !`, 'success')
+    }
+    overlay.remove()
+  })
 }
 
 // ── Bannière match en cours ──────────────────────────────────────────────────

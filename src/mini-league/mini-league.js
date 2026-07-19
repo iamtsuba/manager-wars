@@ -160,7 +160,7 @@ function showCreateForm(container, ctx) {
     </div></div>`
   document.body.appendChild(ov)
   ov.querySelector('#ml-form-close').addEventListener('click', () => ov.remove())
-  ov.addEventListener('click', e => { if(e.target===ov) ov.remove() })
+
   ov.querySelectorAll('input[name="ml-type"]').forEach(r => r.addEventListener('change', () => { document.getElementById('ml-pwd-block').style.display = r.value==='private'?'block':'none' }))
   ov.querySelector('#ml-create-confirm').addEventListener('click', async () => {
     const { toast } = ctx
@@ -214,7 +214,7 @@ function askPassword() {
     ov.querySelector('#pwd-cancel').addEventListener('click', () => close(null))
     ov.querySelector('#pwd-ok').addEventListener('click', () => close(input.value.trim()))
     input.addEventListener('keydown', e => { if (e.key === 'Enter') close(input.value.trim()) })
-    ov.addEventListener('click', e => { if (e.target === ov) close(null) })
+
   })
 }
 
@@ -275,7 +275,7 @@ async function leaveLeague(container, ctx, leagueId, fee) {
     document.body.appendChild(ov)
     ov.querySelector('#lv-ok').onclick = () => { ov.remove(); resolve(true) }
     ov.querySelector('#lv-cancel').onclick = () => { ov.remove(); resolve(false) }
-    ov.onclick = e => { if (e.target===ov) { ov.remove(); resolve(false) } }
+
   })
   if (!ok) return
 
@@ -519,7 +519,7 @@ async function showPrizePopup(container, ctx, league, myMembership, myPos) {
 
   document.body.appendChild(ov)
   ov.querySelector('#prize-close')?.addEventListener('click',()=>ov.remove())
-  ov.addEventListener('click',e=>{if(e.target===ov)ov.remove()})
+
 
   ov.querySelector('#claim-prize-btn')?.addEventListener('click', async(e)=>{
     const btn = e.currentTarget

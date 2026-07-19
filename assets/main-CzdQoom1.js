@@ -222,7 +222,7 @@ import{s as w,l as Ht,m as Ci,F as Bi,r as Ae,j as ei,h as qi,n as Hn,o as Un,T 
         <button id="btn-add-friend" class="btn btn-primary" style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px">
           ➕ Ajouter un ami
         </button>
-        <button id="btn-accept-friend" class="btn" style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;background:#fff;border:1.5px solid var(--green,#1A6B3C);color:var(--green,#1A6B3C);font-weight:700">
+        <button id="btn-accept-friend" class="btn" style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;background:var(--tile-bg);border:1.5px solid var(--green,#1A6B3C);color:var(--green,#1A6B3C);font-weight:700">
           ✅ Accepter un ami
           <span id="pending-badge" style="display:none;background:#cc2222;color:#fff;border-radius:50%;width:18px;height:18px;font-size:11px;font-weight:900;display:flex;align-items:center;justify-content:center"></span>
         </button>
@@ -243,7 +243,7 @@ import{s as w,l as Ht,m as Ci,F as Bi,r as Ae,j as ei,h as qi,n as Hn,o as Un,T 
     <div style="display:flex;flex-direction:column;gap:8px">
       ${y.map(({friendshipId:g,friend:m})=>io(m,g)).join("")}
     </div>`,c.querySelectorAll("[data-stats]").forEach(g=>{g.addEventListener("click",()=>oo(e,g.dataset.stats,g.dataset.friendName))}),c.querySelectorAll("[data-match]").forEach(g=>{g.addEventListener("click",async()=>{const m=g.dataset.friendId,p=g.dataset.friendName;if(typeof n!="function"){t("Erreur navigation","error");return}const u=e.user.id,{data:b}=await w.from("friend_match_invites").select("id").eq("inviter_id",m).eq("invitee_id",u).eq("status","pending").order("created_at",{ascending:!1}).limit(1).maybeSingle(),v=!!b;console.log("[Friends] clic match",{fid:m,fname:p,isAccepting:v}),n("match",{matchMode:"friend",friendId:m,friendName:p,isAccepting:v})})})}function io(e,t){const i=e.club_name||e.pseudo||"?",n=e.pseudo||"",r=(n||i).slice(0,2).toUpperCase(),o=e.club_color2||Yt,a=e.club_color1||"#ffffff",s=e.last_seen_at?new Date(e.last_seen_at):null,l=s&&Date.now()-s.getTime()<3*60*1e3;return`
-    <div style="display:flex;align-items:center;gap:12px;background:#fff;border-radius:12px;padding:12px 14px;box-shadow:0 1px 6px rgba(0,0,0,0.08)">
+    <div style="display:flex;align-items:center;gap:12px;background:var(--tile-bg);border-radius:12px;padding:12px 14px;box-shadow:0 1px 6px rgba(0,0,0,0.08)">
       <div style="position:relative;width:46px;height:46px;flex-shrink:0">
         <div style="width:46px;height:46px;border-radius:50%;background:${o};border:2.5px solid ${a};display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:900;color:${a}">
           ${r}
@@ -257,9 +257,9 @@ import{s as w,l as Ht,m as Ci,F as Bi,r as Ae,j as ei,h as qi,n as Hn,o as Un,T 
       </div>
       <div style="display:flex;gap:8px;flex-shrink:0">
         <button data-match="${t}" data-friend-id="${e.id}" data-friend-name="${i}" title="Jouer un match"
-          style="width:38px;height:38px;border-radius:50%;border:1.5px solid #ddd;background:#fff;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center">⚽</button>
+          style="width:38px;height:38px;border-radius:50%;border:1.5px solid #ddd;background:var(--tile-bg);font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center">⚽</button>
         <button data-stats="${e.id}" data-friend-name="${i}" title="Voir les stats"
-          style="width:38px;height:38px;border-radius:50%;border:2px solid ${eo};background:#fff;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center">📊</button>
+          style="width:38px;height:38px;border-radius:50%;border:2px solid ${eo};background:var(--tile-bg);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center">📊</button>
       </div>
     </div>`}function no(e,t){const i=Di();i.innerHTML=`
     <div class="popup-box">
@@ -339,7 +339,7 @@ import{s as w,l as Ht,m as Ci,F as Bi,r as Ae,j as ei,h as qi,n as Hn,o as Un,T 
         border:1.5px solid #ddd;background:#fff;
         font-size:14px;font-weight:700;cursor:pointer;color:#555;
       }
-    </style>`}const ro="2026.07.19-2351";async function en(e,{state:t,navigate:i,toast:n}){var o,a;const r=t.profile;r&&(e.innerHTML=`
+    </style>`}const ro="2026.07.19-2352";async function en(e,{state:t,navigate:i,toast:n}){var o,a;const r=t.profile;r&&(e.innerHTML=`
   <style>
     .home-dark {
       min-height: 100%;
@@ -2758,7 +2758,7 @@ import{s as w,l as Ht,m as Ci,F as Bi,r as Ae,j as ei,h as qi,n as Hn,o as Un,T 
     </div>
   </div>`}Kn(Yn);const be={user:null,profile:null,page:"home",params:{}};function Ft(e,t="info",i=3e3){const n=document.getElementById("toast");n&&(n.textContent=e,n.className=`show ${t}`,clearTimeout(n._t),n._t=setTimeout(()=>{n.className=""},i))}function Yr(e,t,i=""){document.getElementById("modal-title").textContent=e,document.getElementById("modal-body").innerHTML=t,document.getElementById("modal-footer").innerHTML=i,document.getElementById("modal-overlay").classList.remove("hidden")}function ji(){document.getElementById("modal-overlay").classList.add("hidden")}async function Vt(){if(!be.user)return;const{data:e}=await w.from("users").select("*").eq("id",be.user.id).single();e&&(be.profile=e)}const Pn="mw_theme";function Gn(){return localStorage.getItem(Pn)||"dark"}function Wr(e){var t;localStorage.setItem(Pn,e),Xr(e),(t=be.profile)!=null&&t.id&&w.from("users").update({theme:e}).eq("id",be.profile.id).then(()=>{})}function Xr(e){document.documentElement.setAttribute("data-theme",e)}function Pt(e,t={}){be.page=e,be.params=t,Rn()}async function Rn(){var n,r,o,a;const e=document.getElementById("page-content");if(!e)return;document.querySelectorAll(".bottom-nav a").forEach(s=>{s.classList.toggle("active",s.dataset.page===be.page)});const t=document.getElementById("nav-credits");t&&be.profile&&(t.textContent=`💰 ${(be.profile.credits||0).toLocaleString("fr")}`);const i={state:be,navigate:Pt,toast:Ft,openModal:Yr,closeModal:ji,refreshProfile:Vt};switch(e.innerHTML='<div style="padding:40px;text-align:center;color:#aaa">⚽</div>',be.page){case"home":await en(e,i);break;case"settings":await $i(e,i);break;case"collection":await Eo(e,i);break;case"decks":await Ei(e,i);break;case"boosters":await Fo(e,i);break;case"ranked":await Kr(e,i);break;case"match":{const s=be.params&&be.params.matchMode||"vs_ai_easy";s==="random"?await Ai(e,i,!1):s==="ranked"?await Ai(e,i,!0):s==="friend"?await vr(e,i,(n=be.params)==null?void 0:n.friendId,(r=be.params)==null?void 0:r.friendName):s==="mini_league"||s==="mini-league"?await un(e,i,(o=be.params)==null?void 0:o.mlMatchId,(a=be.params)==null?void 0:a.leagueId):await Zo(e,i);break}case"market":await Rr(e,i);break;case"rankings":await Ur(e,i);break;case"matches":await Vr(e,i);break;case"friends":await to(e,i);break;case"mini-league":await kr(e,i);break;case"match-mini-league":{const s=be.params||{};await un(e,i,s.mlMatchId,s.leagueId);break}default:await en(e,i)}}function Jr(){var n,r;const e=document.getElementById("app"),t=be.profile;if(!t)return;const i="/icons/";e.innerHTML=`
     <nav class="top-nav">
-      <div class="logo" id="nav-logo" title="Manager Wars v2026.07.19-2351" style="cursor:pointer">
+      <div class="logo" id="nav-logo" title="Manager Wars v2026.07.19-2352" style="cursor:pointer">
         <img src="${i}logo-withname.png" alt="Manager Wars" style="height:48px;width:auto;display:block">
       </div>
       <div style="display:flex;align-items:center;gap:10px">

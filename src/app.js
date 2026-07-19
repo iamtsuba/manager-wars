@@ -148,8 +148,9 @@ function renderAppShell() {
 
   app.innerHTML = `
     <nav class="top-nav">
-      <div class="logo" id="nav-logo">
+      <div class="logo" id="nav-logo" title="Manager Wars v${typeof __BUILD_TIME__ !== 'undefined' ? __BUILD_TIME__ : '—'}" style="position:relative;cursor:pointer">
         <img src="${ICON}logo-withname.png" alt="Manager Wars" style="height:48px;width:auto;display:block">
+        <span id="nav-version-tip" style="position:absolute;bottom:-20px;left:0;font-size:9px;color:rgba(255,255,255,0.3);letter-spacing:0.08em;white-space:nowrap;pointer-events:none">v${typeof __BUILD_TIME__ !== 'undefined' ? __BUILD_TIME__ : '—'}</span>
       </div>
       <div style="display:flex;align-items:center;gap:10px">
         <div id="nav-credits" class="credits">💰 ${(p.credits||0).toLocaleString('fr')}</div>

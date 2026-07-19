@@ -248,11 +248,7 @@ async function joinLeague(container, ctx, leagueId, type) {
     if (credEl) credEl.textContent = `💰 ${(state.profile?.credits||0).toLocaleString('fr')}`
   }
 
-  if (state.profile) state.profile.credits = me.credits - fee
-  const credEl = document.getElementById('nav-credits')
-  if (credEl) credEl.textContent = `💰 ${(state.profile.credits||0).toLocaleString('fr')}`
-
-  toast(`✅ Inscrit ! −${fee.toLocaleString('fr')} cr. · Pot : ${((league.pot||0)+fee).toLocaleString('fr')} cr.`, 'success')
+  toast(`✅ Inscrit ! Pot mis à jour.`, 'success')
   openLeague(container, ctx, leagueId)
 }
 

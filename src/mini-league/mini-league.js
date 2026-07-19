@@ -238,7 +238,15 @@ async function joinLeague(container, ctx, leagueId, type) {
     return
   }
 
-  if (typeof ctx.refreshProfile === 'function') await ctx.refreshProfile()
+  if (typeof ctx.refreshProfile === 'function') {
+    await ctx.refreshProfile()
+  } else {
+    // Mise à jour locale immédiate (RPC a déjà déduit les crédits en base)
+    const { data: me } = await supabase.from('users').select('credits').eq('id', uid).single()
+    if (state.profile && me) state.profile.credits = me.credits
+    const credEl = document.getElementById('nav-credits')
+    if (credEl) credEl.textContent = `💰 ${(state.profile?.credits||0).toLocaleString('fr')}`
+  }
 
   if (state.profile) state.profile.credits = me.credits - fee
   const credEl = document.getElementById('nav-credits')
@@ -251,29 +259,41 @@ async function joinLeague(container, ctx, leagueId, type) {
 async function leaveLeague(container, ctx, leagueId, fee) {
   const { toast, state } = ctx
   const uid = state.profile.id
-  if (!confirm(`Te désinscrire et récupérer ${fee.toLocaleString('fr')} cr. ?`)) return
 
-  const { data: league } = await supabase.from('mini_leagues').select('pot,status').eq('id', leagueId).single()
-  if (!league || league.status !== 'waiting') {
-    toast('Impossible — la league a déjà démarré', 'error'); return
+  const ok = await new Promise(resolve => {
+    const ov = document.createElement('div')
+    ov.className = 'modal-overlay'; ov.style.zIndex = '2100'
+    ov.innerHTML = `<div class="modal" style="max-width:360px">
+      <div class="modal-body" style="padding:22px 20px 18px;text-align:center">
+        <p style="font-size:15px;margin:0 0 18px">Te désinscrire et récupérer <strong>${fee.toLocaleString('fr')} cr.</strong> ?</p>
+        <div style="display:flex;justify-content:center;gap:10px">
+          <button class="btn btn-ghost" id="lv-cancel">Annuler</button>
+          <button class="btn btn-primary" id="lv-ok">Confirmer</button>
+        </div>
+      </div>
+    </div>`
+    document.body.appendChild(ov)
+    ov.querySelector('#lv-ok').onclick = () => { ov.remove(); resolve(true) }
+    ov.querySelector('#lv-cancel').onclick = () => { ov.remove(); resolve(false) }
+    ov.onclick = e => { if (e.target===ov) { ov.remove(); resolve(false) } }
+  })
+  if (!ok) return
+
+  const { data: res, error } = await supabase.rpc('leave_mini_league', {
+    p_league_id: leagueId, p_user_id: uid
+  })
+
+  if (error || !res?.success) {
+    toast(res?.error || 'Erreur lors de la désinscription', 'error'); return
   }
 
-  const { data: me } = await supabase.from('users').select('credits').eq('id', uid).single()
-
-  // 1. Mettre à jour le pot AVANT de supprimer le membre (RLS exige d'être membre)
-  await supabase.from('mini_leagues').update({ pot: Math.max(0, (league.pot||0) - fee) }).eq('id', leagueId)
-
-  // 2. Rembourser les crédits
-  await supabase.from('users').update({ credits: (me?.credits||0) + fee }).eq('id', uid)
-
-  // 3. Supprimer le membre
-  await supabase.from('mini_league_members').delete().eq('league_id', leagueId).eq('user_id', uid)
-
-  if (state.profile) state.profile.credits = (me?.credits||0) + fee
+  // Rafraîchir les crédits affichés
+  const refund = res.refund || fee
+  if (state.profile) state.profile.credits = (state.profile.credits||0) + refund
   const credEl = document.getElementById('nav-credits')
   if (credEl) credEl.textContent = `💰 ${(state.profile.credits||0).toLocaleString('fr')}`
 
-  toast(`↩️ Désinscrit · +${fee.toLocaleString('fr')} cr. remboursés`, 'success')
+  toast(`↩️ Désinscrit · +${refund.toLocaleString('fr')} cr. remboursés`, 'success')
   showLeagueList(container, ctx, 'waiting')
 }
 

@@ -2,6 +2,7 @@ import { supabase } from '../lib/supabase.js'
 import { renderPlayerCard } from '../components/player-card.js'
 import { FORMATION_POSITIONS } from '../match/formation-links.js'
 import { loadActiveBoosters, drawCard, rollDropRate, recordBoosterClaim } from './booster-engine.js'
+import { playSound } from '../lib/sound.js'
 
 // Toutes les formations disponibles (depuis formation-links.js)
 const ALL_FORMATIONS = () => Object.keys(FORMATION_POSITIONS)
@@ -812,9 +813,7 @@ function showBoosterAnimation(cards, booster, navigate, onClose = null) {
     // Musique Légende
     let audio = null
     if (isLeg) {
-      audio = new Audio(import.meta.env.BASE_URL + 'sounds/Legendary.mp3')
-      audio.volume = 0.8
-      audio.play().catch(() => {})
+      audio = playSound(import.meta.env.BASE_URL + 'sounds/Legendary.mp3', 0.8)
     }
 
     ov.style.display = 'flex'

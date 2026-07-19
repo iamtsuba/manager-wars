@@ -339,7 +339,7 @@ import{s as w,l as Ot,m as Mi,F as ji,r as Se,j as ei,h as Ci,n as Pn,o as Gn,T 
         border:1.5px solid #ddd;background:#fff;
         font-size:14px;font-weight:700;cursor:pointer;color:#555;
       }
-    </style>`}const eo="2026.07.19-1841";async function Qi(e,{state:t,navigate:i,toast:n}){var o,a;const r=t.profile;r&&(e.innerHTML=`
+    </style>`}const eo="2026.07.19-1842";async function Qi(e,{state:t,navigate:i,toast:n}){var o,a;const r=t.profile;r&&(e.innerHTML=`
   <style>
     .home-dark {
       min-height: 100%;
@@ -2718,7 +2718,7 @@ import{s as w,l as Ot,m as Mi,F as ji,r as Se,j as ei,h as Ci,n as Pn,o as Gn,T 
     </div>
   </div>`}Rn(On);const we={user:null,profile:null,page:"home",params:{}};function Ft(e,t="info",i=3e3){const n=document.getElementById("toast");n&&(n.textContent=e,n.className=`show ${t}`,clearTimeout(n._t),n._t=setTimeout(()=>{n.className=""},i))}function Hr(e,t,i=""){document.getElementById("modal-title").textContent=e,document.getElementById("modal-body").innerHTML=t,document.getElementById("modal-footer").innerHTML=i,document.getElementById("modal-overlay").classList.remove("hidden")}function Si(){document.getElementById("modal-overlay").classList.add("hidden")}async function Kt(){if(!we.user)return;const{data:e}=await w.from("users").select("*").eq("id",we.user.id).single();e&&(we.profile=e)}function Vt(e,t={}){we.page=e,we.params=t,qn()}async function qn(){var n,r,o,a;const e=document.getElementById("page-content");if(!e)return;document.querySelectorAll(".bottom-nav a").forEach(s=>{s.classList.toggle("active",s.dataset.page===we.page)});const t=document.getElementById("nav-credits");t&&we.profile&&(t.textContent=`💰 ${(we.profile.credits||0).toLocaleString("fr")}`);const i={state:we,navigate:Vt,toast:Ft,openModal:Hr,closeModal:Si,refreshProfile:Kt};switch(e.innerHTML='<div style="padding:40px;text-align:center;color:#aaa">⚽</div>',we.page){case"home":await Qi(e,i);break;case"collection":await bo(e,i);break;case"decks":await ki(e,i);break;case"boosters":await Co(e,i);break;case"ranked":await Nr(e,i);break;case"match":{const s=we.params&&we.params.matchMode||"vs_ai_easy";s==="random"?await Ii(e,i,!1):s==="ranked"?await Ii(e,i,!0):s==="friend"?await xr(e,i,(n=we.params)==null?void 0:n.friendId,(r=we.params)==null?void 0:r.friendName):s==="mini_league"||s==="mini-league"?await cn(e,i,(o=we.params)==null?void 0:o.mlMatchId,(a=we.params)==null?void 0:a.leagueId):await Wo(e,i);break}case"market":await Dr(e,i);break;case"rankings":await Rr(e,i);break;case"matches":await Or(e,i);break;case"friends":await Xn(e,i);break;case"mini-league":await hr(e,i);break;case"match-mini-league":{const s=we.params||{};await cn(e,i,s.mlMatchId,s.leagueId);break}default:await Qi(e,i)}}function Ur(){var n;const e=document.getElementById("app"),t=we.profile;if(!t)return;const i="/icons/";e.innerHTML=`
     <nav class="top-nav">
-      <div class="logo" id="nav-logo" title="Manager Wars v2026.07.19-1841" style="cursor:pointer">
+      <div class="logo" id="nav-logo" title="Manager Wars v2026.07.19-1842" style="cursor:pointer">
         <img src="${i}logo-withname.png" alt="Manager Wars" style="height:48px;width:auto;display:block">
       </div>
       <div style="display:flex;align-items:center;gap:10px">

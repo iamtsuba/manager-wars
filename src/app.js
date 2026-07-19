@@ -11,6 +11,7 @@ registerAvatarGenerator(generateAvatarSVG)
 import { renderAuth }       from './auth/auth.js'
 import { renderSetup }      from './auth/setup.js'
 import { renderHome }       from './home/home.js'
+import { renderSettings }   from './settings/settings.js'
 import { renderCollection } from './collection/collection.js'
 import { renderDecks }      from './decks/decks.js'
 import { renderBoosters, renderStarterOnboarding }   from './boosters/boosters.js'
@@ -111,6 +112,7 @@ async function renderPage() {
 
   switch (state.page) {
     case 'home':       await renderHome(container, ctx);       break
+    case 'settings':   await renderSettings(container, ctx);   break
     case 'collection': await renderCollection(container, ctx); break
     case 'decks':      await renderDecks(container, ctx);      break
     case 'boosters':   await renderBoosters(container, ctx);   break
@@ -155,6 +157,9 @@ function renderAppShell() {
         <div id="nav-credits" class="credits">💰 ${(p.credits||0).toLocaleString('fr')}</div>
         <button id="journal-btn" title="Journal des mises à jour" style="background:none;border:none;cursor:pointer;padding:4px;display:flex;align-items:center;justify-content:center;font-size:22px;opacity:0.8;transition:opacity .15s" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.8">
           📰
+        </button>
+        <button id="settings-btn" title="Réglages" style="background:none;border:none;cursor:pointer;padding:4px;display:flex;align-items:center;justify-content:center;font-size:22px;opacity:0.8;transition:opacity .15s" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.8">
+          ⚙️
         </button>
       </div>
     </nav>
@@ -205,6 +210,7 @@ function renderAppShell() {
   document.getElementById('nav-logo').addEventListener('click', () => navigate('home'))
   document.getElementById('nav-credits').addEventListener('click', () => navigate('boosters'))
   document.getElementById('journal-btn')?.addEventListener('click', () => showJournalPopup())
+  document.getElementById('settings-btn')?.addEventListener('click', () => navigate('settings'))
 }
 
 // ── Journal des mises à jour ───────────────────────────────

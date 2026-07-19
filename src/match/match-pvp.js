@@ -307,7 +307,14 @@ async function _renderPvpMatchCore(container, ctx, matchId, amIHome, myGC = [], 
             _goalAnimShownFor.add(gameState.round)
             const lastGoal = [...(gameState.log||[])].reverse().find(e => e.isGoal)
             const goalPlayers = (lastGoal?.homePlayers||[]).map(p=>({ name:p.name, note:p.note, portrait:p.portrait, job:p.job }))
-            showGoalAnimation(goalPlayers, newMy, newOpp, iScored, () => renderPvpScreen())
+            const isCorner = !!lastGoal?.text?.includes('DERNIER CORNER')
+            if (isCorner) {
+              playCornerTextSequence().then(() => {
+                showGoalAnimation(goalPlayers, newMy, newOpp, iScored, () => renderPvpScreen())
+              })
+            } else {
+              showGoalAnimation(goalPlayers, newMy, newOpp, iScored, () => renderPvpScreen())
+            }
             return
           }
           renderPvpScreen()
@@ -575,13 +582,19 @@ async function _renderPvpMatchCore(container, ctx, matchId, amIHome, myGC = [], 
     const activeGCs  = myGcFull.filter(gc => !myUsedGc.includes(gc.id))
     const boostAvail = gameState.boostOwner === myRole && !gameState.boostUsed
 
-    // DEF/GK attaquent dès qu'il n'y a plus de MIL/ATT (indépendamment de
-    // l'adversaire — identique à la règle élargie de match-ia.js, évite les
-    // fins de match prématurées / blocages)
-    const myMilAtt    = [...(myTeam.MIL||[]),...(myTeam.ATT||[])].filter(p=>!p.used)
-    const extraSelectableIds = (isMyAttack && myMilAtt.length===0)
-      ? [...(myTeam.GK||[]),...(myTeam.DEF||[])].filter(p=>!p.used).map(p=>p.cardId)
-      : []
+    // Règle DEF/GK (précisée) : un défenseur ne peut attaquer (note forcée à
+    // 1) QUE si l'adversaire n'a plus AUCUN joueur. Le gardien ne peut
+    // attaquer QUE si l'adversaire n'a plus personne ET que je n'ai moi-même
+    // plus que lui (plus de DEF/MIL/ATT) — dernier recours absolu.
+    const myMilAtt  = [...(myTeam.MIL||[]),...(myTeam.ATT||[])].filter(p=>!p.used)
+    const oppEmpty  = !hasAnyPlayer(oppTeam)
+    const unusedDef = (myTeam.DEF||[]).filter(p=>!p.used)
+    const unusedGk  = (myTeam.GK||[]).filter(p=>!p.used)
+    let extraSelectableIds = []
+    if (isMyAttack && myMilAtt.length===0 && oppEmpty) {
+      extraSelectableIds = unusedDef.map(p=>p.cardId)
+      if (unusedDef.length===0) extraSelectableIds = extraSelectableIds.concat(unusedGk.map(p=>p.cardId))
+    }
 
     // ── Design cartes GC (identique match-ia) ──
     function gcCardDesign(gc, w, h) {
@@ -1326,6 +1339,20 @@ async function _renderPvpMatchCore(container, ctx, matchId, amIHome, myGC = [], 
     if (onlyGKLeft(gs.p2Team) && !hasAnyPlayer(gs.p1Team)) return { side:'p2', gk:(gs.p2Team.GK||[]).find(p=>!p.used) }
     return null
   }
+  async function playCornerTextSequence() {
+    const overlay = document.createElement('div')
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.93);z-index:950;display:flex;align-items:center;justify-content:center;overflow:hidden;text-align:center;padding:24px'
+    document.body.appendChild(overlay)
+    const showText = (text, color) => new Promise(resolve => {
+      overlay.innerHTML = `<div style="font-size:32px;font-weight:900;color:${color};letter-spacing:2px;animation:lcFade 1.4s ease both">${text}</div>
+      <style>@keyframes lcFade{0%{opacity:0;transform:scale(0.8)}18%{opacity:1;transform:scale(1)}82%{opacity:1}100%{opacity:0;transform:scale(1.05)}}</style>`
+      setTimeout(resolve, 1400)
+    })
+    await showText('⚽ DERNIER CORNER', '#FFD700')
+    await showText('🧤 LE GARDIEN MONTE !', '#4fc3f7')
+    overlay.remove()
+  }
+
   async function playCornerAndPush(cornerInfo, baseState) {
     const { side, gk } = cornerInfo
     if (!gk) return
@@ -1343,17 +1370,7 @@ async function _renderPvpMatchCore(container, ctx, matchId, amIHome, myGC = [], 
     const isFinished = checkMatchEnd(newState)
     _goalAnimShownFor.add(round)
 
-    const overlay = document.createElement('div')
-    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.93);z-index:950;display:flex;align-items:center;justify-content:center;overflow:hidden;text-align:center;padding:24px'
-    document.body.appendChild(overlay)
-    const showText = (text, color) => new Promise(resolve => {
-      overlay.innerHTML = `<div style="font-size:32px;font-weight:900;color:${color};letter-spacing:2px;animation:lcFade 1.4s ease both">${text}</div>
-      <style>@keyframes lcFade{0%{opacity:0;transform:scale(0.8)}18%{opacity:1;transform:scale(1)}82%{opacity:1}100%{opacity:0;transform:scale(1.05)}}</style>`
-      setTimeout(resolve, 1400)
-    })
-    await showText('⚽ DERNIER CORNER', '#FFD700')
-    await showText('🧤 LE GARDIEN MONTE !', '#4fc3f7')
-    overlay.remove()
+    await playCornerTextSequence()
 
     const myNewScore  = side===myRole ? newScore : (baseState[myRole+'Score']||0)
     const oppNewScore = side===myRole ? (baseState[oppRole+'Score']||0) : newScore
@@ -1510,12 +1527,13 @@ async function _renderPvpMatchCore(container, ctx, matchId, amIHome, myGC = [], 
   }
   // Le rôle peut-il réellement attaquer ce tour-ci ?
   //  - oui s'il a un MIL/ATT
-  //  - oui si l'adversaire est vide ET qu'il lui reste des GK/DEF (qui obtiennent note 1)
+  //  - oui si l'ADVERSAIRE est totalement vide ET qu'il lui reste des GK/DEF (note forcée à 1)
   //  - non sinon (→ bouton PASSER)
   function canAttack(role) {
     const myT  = gameState[role+'Team']
+    const oppT = gameState[(role==='p1'?'p2':'p1')+'Team']
     if (hasAttacker(myT)) return true
-    if (onlyDefenders(myT)) return true   // def/GK → note forcée à 1, peu importe l'adversaire
+    if (onlyDefenders(myT) && !hasAnyPlayer(oppT)) return true
     return false
   }
   // Fin de match : aucun des deux ne peut plus marquer.

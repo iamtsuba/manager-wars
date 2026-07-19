@@ -78,27 +78,27 @@ async function loadMarket(container, ctx) {
   container.innerHTML = `
   <div style="height:100%;overflow-y:auto;background:var(--page-bg)">
     <!-- Header -->
-    <div style="padding:12px 16px;background:#fff;border-bottom:1px solid var(--gray-200)">
+    <div style="padding:12px 16px;background:var(--tile-bg);border-bottom:1px solid var(--tile-border)">
       <div style="font-size:18px;font-weight:900">🛒 Marché des transferts</div>
-      <div style="font-size:12px;color:var(--gray-600);margin-top:2px">${others.length} carte(s) en vente · ${(state.profile.credits||0).toLocaleString('fr')} cr.</div>
+      <div style="font-size:12px;color:var(--tile-fg-dim);margin-top:2px">${others.length} carte(s) en vente · ${(state.profile.credits||0).toLocaleString('fr')} cr.</div>
     </div>
 
     <!-- Onglets -->
-    <div style="padding:8px 16px;background:#fff;border-bottom:1px solid var(--gray-200);display:flex;gap:6px">
+    <div style="padding:8px 16px;background:var(--tile-bg);border-bottom:1px solid var(--tile-border);display:flex;gap:6px">
       <button class="mkt-tab" data-tab="buy" style="padding:6px 16px;border-radius:20px;border:1.5px solid var(--green);background:var(--green);color:#fff;font-size:13px;font-weight:700;cursor:pointer">Acheter</button>
-      <button class="mkt-tab" data-tab="mine" style="padding:6px 16px;border-radius:20px;border:1.5px solid var(--gray-200);background:#fff;color:var(--gray-600);font-size:13px;font-weight:700;cursor:pointer">Mes ventes (${myListings.length})</button>
+      <button class="mkt-tab" data-tab="mine" style="padding:6px 16px;border-radius:20px;border:1.5px solid var(--tile-border);background:var(--tile-bg);color:var(--tile-fg-dim);font-size:13px;font-weight:700;cursor:pointer">Mes ventes (${myListings.length})</button>
     </div>
 
     <!-- Filtres (onglet Acheter seulement) -->
-    <div id="mkt-filters" style="padding:10px 16px;background:#f9f9f9;border-bottom:1px solid var(--gray-200);display:flex;flex-wrap:wrap;gap:8px">
+    <div id="mkt-filters" style="padding:10px 16px;background:var(--tile-dark-bg);border-bottom:1px solid var(--tile-border);display:flex;flex-wrap:wrap;gap:8px">
       <input id="flt-name"    placeholder="🔍 Nom"         style="flex:1;min-width:110px;padding:6px 10px;border:1.5px solid #ddd;border-radius:8px;font-size:12px">
       <input id="flt-club"    placeholder="🏟️ Club"        style="flex:1;min-width:90px;padding:6px 10px;border:1.5px solid #ddd;border-radius:8px;font-size:12px">
       <input id="flt-country" placeholder="🌍 Pays"        style="flex:1;min-width:80px;padding:6px 10px;border:1.5px solid #ddd;border-radius:8px;font-size:12px">
-      <select id="flt-job" style="padding:6px 8px;border:1.5px solid #ddd;border-radius:8px;font-size:12px;background:#fff">
+      <select id="flt-job" style="padding:6px 8px;border:1.5px solid #ddd;border-radius:8px;font-size:12px;background:var(--tile-bg)">
         <option value="">Tous postes</option>
         <option>GK</option><option>DEF</option><option>MIL</option><option>ATT</option>
       </select>
-      <select id="flt-rarity" style="padding:6px 8px;border:1.5px solid #ddd;border-radius:8px;font-size:12px;background:#fff">
+      <select id="flt-rarity" style="padding:6px 8px;border:1.5px solid #ddd;border-radius:8px;font-size:12px;background:var(--tile-bg)">
         <option value="">Toutes raretés</option>
         <option value="normal">Normal</option>
         <option value="pepite">Pépite</option>
@@ -252,9 +252,9 @@ async function loadMarket(container, ctx) {
       activeTab = tab.dataset.tab
       container.querySelectorAll('.mkt-tab').forEach(t => {
         const a = t === tab
-        t.style.background  = a ? 'var(--green)' : '#fff'
-        t.style.color       = a ? '#fff' : 'var(--gray-600)'
-        t.style.borderColor = a ? 'var(--green)' : 'var(--gray-200)'
+        t.style.background  = a ? 'var(--green)' : 'var(--tile-bg)'
+        t.style.color       = a ? '#fff' : 'var(--tile-fg-dim)'
+        t.style.borderColor = a ? 'var(--green)' : 'var(--tile-border)'
       })
       renderTab()
     })
@@ -297,7 +297,7 @@ function showBuyConfirm(listing, onConfirm) {
   ov.innerHTML = `
     <div style="background:#fff;border-radius:16px;padding:24px;max-width:320px;width:100%;text-align:center">
       <div style="font-size:36px;margin-bottom:8px">🛒</div>
-      <div style="font-size:16px;font-weight:900;margin-bottom:6px">Acheter ${name} ?</div>
+      <div style="font-size:16px;font-weight:900;margin-bottom:6px;color:#1a1a1a">Acheter ${name} ?</div>
       <div style="font-size:14px;color:#D4A017;font-weight:700;margin-bottom:18px">${listing.price.toLocaleString('fr')} crédits</div>
       <div style="display:flex;gap:10px">
         <button id="buy-cancel" style="flex:1;padding:12px;border-radius:10px;border:1.5px solid #ddd;background:#fff;font-size:14px;font-weight:700;cursor:pointer;color:#555">Annuler</button>

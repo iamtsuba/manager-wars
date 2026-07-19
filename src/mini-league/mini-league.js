@@ -23,8 +23,10 @@ async function showLeagueList(container, ctx, activeTab = 'waiting') {
   const uid = state.profile.id
 
   const { data: myMemberships } = await supabase
-    .from('mini_league_members').select('league_id').eq('user_id', uid)
+    .from('mini_league_members').select('league_id, prize_amount, prize_claimed').eq('user_id', uid)
   const myLeagueIds = (myMemberships||[]).map(m => m.league_id)
+  const myPrizeMap = {}
+  ;(myMemberships||[]).forEach(m => { myPrizeMap[m.league_id] = { amount: m.prize_amount, claimed: m.prize_claimed } })
 
   const { data: publicWaiting, error: pwErr } = await supabase
     .from('mini_leagues').select('*, mini_league_members(count)')
@@ -86,7 +88,7 @@ async function showLeagueList(container, ctx, activeTab = 'waiting') {
     <div style="padding:14px 16px;display:flex;flex-direction:column;gap:10px">
       ${activeTab==='waiting' ? renderWaitingTab(myWaiting, otherPublic, uid)
         : activeTab==='active' ? renderActiveTab(myActive, uid)
-        : renderArchivedTab(myArchived, uid)}
+        : renderArchivedTab(myArchived, uid, myPrizeMap)}
     </div>
   </div>`
 
@@ -96,18 +98,38 @@ async function showLeagueList(container, ctx, activeTab = 'waiting') {
   container.querySelectorAll('[data-league-id]').forEach(card => card.addEventListener('click', () => openLeague(container, ctx, card.dataset.leagueId)))
   container.querySelectorAll('[data-join]').forEach(btn => btn.addEventListener('click', e => { e.stopPropagation(); joinLeague(container, ctx, btn.dataset.join, btn.dataset.type) }))
   container.querySelectorAll('[data-delete]').forEach(btn => btn.addEventListener('click', e => { e.stopPropagation(); deleteLeague(container, ctx, btn.dataset.delete, btn.dataset.name, activeTab) }))
+  container.querySelectorAll('[data-claim-league]').forEach(btn => btn.addEventListener('click', async e => {
+    e.stopPropagation()
+    btn.disabled = true; btn.textContent = '...'
+    const { data: res, error } = await supabase.rpc('claim_mini_league_prize', {
+      p_league_id: btn.dataset.claimLeague, p_user_id: state.profile.id
+    })
+    if (error || !res?.success) {
+      ctx.toast(res?.error || 'Erreur lors de la récupération', 'error')
+      showLeagueList(container, ctx, activeTab)
+      return
+    }
+    if (!res.already_claimed) {
+      state.profile.credits = (state.profile.credits||0) + res.prize
+      const credEl = document.getElementById('nav-credits')
+      if (credEl) credEl.textContent = `💰 ${state.profile.credits.toLocaleString('fr')}`
+      ctx.toast(`💰 +${res.prize.toLocaleString('fr')} cr. ajoutés !`, 'success')
+    }
+    showLeagueList(container, ctx, activeTab)
+  }))
 }
 
-function leagueCard(l, uid, showJoin=false) {
+function leagueCard(l, uid, showJoin=false, prize=null) {
   const isCreator = l.creator_id === uid
   const pot = l.pot || 0
   const cnt = l.mini_league_members?.[0]?.count || 0
-  return `<div data-league-id="${l.id}" style="background:${PANEL};border:1px solid ${BORDER};border-radius:12px;padding:14px 16px;cursor:pointer;margin-bottom:8px">
+  const hasUnclaimed = prize && prize.amount > 0 && !prize.claimed
+  return `<div data-league-id="${l.id}" style="background:${PANEL};border:1px solid ${hasUnclaimed?'rgba(212,160,23,0.5)':BORDER};border-radius:12px;padding:14px 16px;cursor:pointer;margin-bottom:8px">
     <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:6px">
       <div style="font-size:15px;font-weight:900;flex:1;margin-right:8px;color:${TXT}">${l.name}</div>
       ${isCreator?`<button data-delete="${l.id}" data-name="${l.name}" style="background:none;border:none;font-size:16px;cursor:pointer;color:#ff6b6b;flex-shrink:0;padding:0">🗑️</button>`:''}
     </div>
-    <div style="display:flex;flex-wrap:wrap;gap:8px;font-size:11px;color:${TXT_DIM};margin-bottom:${showJoin?'10px':'0'}">
+    <div style="display:flex;flex-wrap:wrap;gap:8px;font-size:11px;color:${TXT_DIM};margin-bottom:${(showJoin||hasUnclaimed)?'10px':'0'}">
       <span>${l.type==='private'?'🔒':'🌐'} ${l.type==='private'?'Privée':'Publique'}</span>
       <span>⚽ ${l.mode==='aller-retour'?'A-R':'Aller'}</span>
       <span>👥 ${cnt}/${l.max_players}</span>
@@ -116,6 +138,7 @@ function leagueCard(l, uid, showJoin=false) {
       ${l.current_day>0?`<span>📅 J${l.current_day}/${l.total_days}</span>`:''}
     </div>
     ${showJoin?`<button data-join="${l.id}" data-type="${l.type}" class="btn btn-primary btn-sm" style="width:100%;margin-top:6px">Rejoindre (mise : ${(l.entry_fee||100).toLocaleString('fr')} cr.)</button>`:''}
+    ${hasUnclaimed?`<button data-claim-league="${l.id}" class="btn btn-sm" style="width:100%;background:${YELLOW};color:#141000;font-weight:900;border:none">💰 Récupérer ${prize.amount.toLocaleString('fr')} cr.</button>`:''}
   </div>`
 }
 
@@ -126,7 +149,7 @@ function renderWaitingTab(myWaiting, otherPublic, uid) {
   return parts.length ? parts.join('') : `<div style="text-align:center;padding:40px;color:${TXT_FAINT}">🏆<br>Aucune mini league.<br>Crée la première !</div>`
 }
 function renderActiveTab(l,uid) { return l.length ? l.map(x=>leagueCard(x,uid)).join('') : `<div style="text-align:center;padding:40px;color:${TXT_FAINT}">Aucune mini league en cours.</div>` }
-function renderArchivedTab(l,uid) { return l.length ? l.map(x=>leagueCard(x,uid)).join('') : `<div style="text-align:center;padding:40px;color:${TXT_FAINT}">Aucune mini league archivée.</div>` }
+function renderArchivedTab(l,uid,prizeMap={}) { return l.length ? l.map(x=>leagueCard(x,uid,false,prizeMap[x.id])).join('') : `<div style="text-align:center;padding:40px;color:${TXT_FAINT}">Aucune mini league archivée.</div>` }
 
 function showCreateForm(container, ctx) {
   const ov = document.createElement('div')

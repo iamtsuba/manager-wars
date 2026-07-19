@@ -582,18 +582,27 @@ async function _renderPvpMatchCore(container, ctx, matchId, amIHome, myGC = [], 
     const activeGCs  = myGcFull.filter(gc => !myUsedGc.includes(gc.id))
     const boostAvail = gameState.boostOwner === myRole && !gameState.boostUsed
 
-    // Règle DEF/GK (précisée) : un défenseur ne peut attaquer (note forcée à
-    // 1) QUE si l'adversaire n'a plus AUCUN joueur. Le gardien ne peut
-    // attaquer QUE si l'adversaire n'a plus personne ET que je n'ai moi-même
-    // plus que lui (plus de DEF/MIL/ATT) — dernier recours absolu.
+    // Règle DEF/GK (3 paliers) :
+    //  1. DEF attaque (note=1) si l'adversaire n'a plus AUCUN joueur.
+    //  2. GK attaque (note=1) si l'adversaire n'a plus personne ET que je
+    //     n'ai moi-même plus que lui (dernier recours absolu).
+    //  3. Blocage mutuel : si NI moi NI l'adversaire n'avons plus de MIL/ATT
+    //     (mais qu'il reste des joueurs des deux côtés), tous mes DEF/GK
+    //     deviennent attaquables en note=1.
     const myMilAtt  = [...(myTeam.MIL||[]),...(myTeam.ATT||[])].filter(p=>!p.used)
+    const oppMilAtt = [...(oppTeam.MIL||[]),...(oppTeam.ATT||[])].filter(p=>!p.used)
     const oppEmpty  = !hasAnyPlayer(oppTeam)
+    const mutualDeadlock = myMilAtt.length===0 && oppMilAtt.length===0 && !oppEmpty
     const unusedDef = (myTeam.DEF||[]).filter(p=>!p.used)
     const unusedGk  = (myTeam.GK||[]).filter(p=>!p.used)
     let extraSelectableIds = []
-    if (isMyAttack && myMilAtt.length===0 && oppEmpty) {
-      extraSelectableIds = unusedDef.map(p=>p.cardId)
-      if (unusedDef.length===0) extraSelectableIds = extraSelectableIds.concat(unusedGk.map(p=>p.cardId))
+    if (isMyAttack && myMilAtt.length===0) {
+      if (oppEmpty) {
+        extraSelectableIds = unusedDef.map(p=>p.cardId)
+        if (unusedDef.length===0) extraSelectableIds = extraSelectableIds.concat(unusedGk.map(p=>p.cardId))
+      } else if (mutualDeadlock) {
+        extraSelectableIds = [...unusedDef, ...unusedGk].map(p=>p.cardId)
+      }
     }
 
     // ── Design cartes GC (identique match-ia) ──
@@ -1533,7 +1542,8 @@ async function _renderPvpMatchCore(container, ctx, matchId, amIHome, myGC = [], 
     const myT  = gameState[role+'Team']
     const oppT = gameState[(role==='p1'?'p2':'p1')+'Team']
     if (hasAttacker(myT)) return true
-    if (onlyDefenders(myT) && !hasAnyPlayer(oppT)) return true
+    if (onlyDefenders(myT) && !hasAnyPlayer(oppT)) return true      // palier 1/2 : adversaire vide
+    if (onlyDefenders(myT) && !hasAttacker(oppT) && hasAnyPlayer(oppT)) return true // palier 3 : blocage mutuel
     return false
   }
   // Fin de match : aucun des deux ne peut plus marquer.

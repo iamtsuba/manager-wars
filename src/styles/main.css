@@ -33,9 +33,9 @@
   --shadow: 0 2px 12px rgba(0,0,0,0.12);
 }
 
-/* ── Thème "light" (NOUVEAU PAR DÉFAUT — celui du kit graphique)
-   Bandeaux noirs, fond gris clair, tuiles blanches ── */
-:root, [data-theme="light"] {
+/* ── Thème "dark" (celui utilisé partout actuellement — vert émeraude sombre) ──
+   default (:root) ET [data-theme="dark"] : les deux produisent ce rendu. */
+:root, [data-theme="dark"] {
   --nav-bg: #0a0f0a;
   --nav-fg: #fff;
   --page-bg: #0d1a0f;
@@ -52,18 +52,33 @@
   --input-fg: #fff;
   --card-bg: rgba(255,255,255,0.06);
   --card-border: rgba(255,255,255,0.1);
+  --btn-primary-bg: var(--green);
+  --btn-primary-fg: #fff;
+  --btn-primary-bg-hover: var(--green-dark);
 }
 
-/* ── Thème "dark" (inversé)
-   Bandeaux gris foncé, fond noir, tuiles blanches ── */
-[data-theme="dark"] {
-  --nav-bg: #2a2a2a;
+/* ── Thème "light" (nouveau) — pelouse vert clair, panneaux blancs,
+   boutons dorés, bandeaux haut/bas noirs ── */
+[data-theme="light"] {
+  --nav-bg: #0a0a0a;
   --nav-fg: #fff;
-  --page-bg: #0a0a0a;
-  --tile-bg: #fff;
-  --tile-fg: var(--gray-800);
-  --tile-fg-on-page: #fff;
-  --tile-dark-bg: #000;
+  --page-bg: #e6f7e9;
+  --page-gradient: radial-gradient(ellipse at 15% 0%, rgba(26,107,60,0.12) 0%, transparent 55%),
+                   radial-gradient(ellipse at 85% 100%, rgba(212,160,23,0.10) 0%, transparent 55%),
+                   linear-gradient(160deg, #f3fbf4 0%, #e6f7e9 45%, #d7f0dc 100%);
+  --tile-bg: #ffffff;
+  --tile-border: rgba(26,107,60,0.16);
+  --tile-fg: #16321f;
+  --tile-fg-on-page: #16321f;
+  --tile-dark-bg: rgba(0,0,0,0.05);
+  --input-bg: #ffffff;
+  --input-border: rgba(26,107,60,0.22);
+  --input-fg: #16321f;
+  --card-bg: #ffffff;
+  --card-border: rgba(26,107,60,0.16);
+  --btn-primary-bg: var(--yellow);
+  --btn-primary-fg: #241a02;
+  --btn-primary-bg-hover: var(--yellow-dark);
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -85,8 +100,8 @@ body {
   transition: background .15s, transform .1s;
 }
 .btn:active { transform: scale(0.98); }
-.btn-primary { background: var(--green); color: #fff; }
-.btn-primary:hover { background: var(--green-dark); }
+.btn-primary { background: var(--btn-primary-bg, var(--green)); color: var(--btn-primary-fg, #fff); }
+.btn-primary:hover { background: var(--btn-primary-bg-hover, var(--green-dark)); }
 .btn-yellow { background: var(--yellow); color: #fff; }
 .btn-yellow:hover { background: var(--yellow-dark); }
 .btn-danger { background: #c0392b; color: #fff; }

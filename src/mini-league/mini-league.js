@@ -10,6 +10,11 @@ const DIVIDER   = 'var(--divider)'
 const TXT       = 'var(--tile-fg-on-page)'
 const TXT_DIM   = 'var(--tile-fg-dim)'
 const TXT_FAINT = 'var(--tile-fg-faint)'
+// Texte sur les bandeaux nav-bg (toujours noirs par design) — reste clair
+// quel que soit le thème, contrairement à TXT/TXT_DIM ci-dessus.
+const NAV_TXT       = 'var(--nav-fg,#fff)'
+const NAV_TXT_DIM   = 'rgba(255,255,255,0.62)'
+const NAV_TXT_FAINT = 'rgba(255,255,255,0.4)'
 
 export async function renderMiniLeague(container, ctx) {
   container.innerHTML = '<div style="padding:40px;text-align:center;color:#aaa">⚽ Chargement...</div>'
@@ -74,16 +79,16 @@ async function showLeagueList(container, ctx, activeTab = 'waiting') {
   <div style="height:100%;overflow-y:auto;background:var(--page-bg)">
     <div style="padding:14px 16px;background:var(--nav-bg,#0d1a0f);border-bottom:1px solid ${DIVIDER};display:flex;align-items:center;justify-content:space-between">
       <div>
-        <div style="font-size:18px;font-weight:900;color:${TXT}">🏆 Mini League</div>
-        <div style="font-size:12px;color:${TXT_DIM}">Championnats 3 à 8 joueurs</div>
+        <div style="font-size:18px;font-weight:900;color:${NAV_TXT}">🏆 Mini League</div>
+        <div style="font-size:12px;color:${NAV_TXT_DIM}">Championnats 3 à 8 joueurs</div>
       </div>
       <div style="display:flex;align-items:center;gap:8px">
-        <button id="ml-refresh-list" title="Actualiser" style="background:rgba(255,255,255,0.06);border:1px solid ${BORDER};border-radius:8px;width:36px;height:36px;font-size:16px;cursor:pointer;color:${TXT}">🔄</button>
+        <button id="ml-refresh-list" title="Actualiser" style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.15);border-radius:8px;width:36px;height:36px;font-size:16px;cursor:pointer;color:${NAV_TXT}">🔄</button>
         <button id="ml-create-btn" class="btn btn-primary">+ Créer</button>
       </div>
     </div>
     <div style="display:flex;background:var(--nav-bg,#0d1a0f);border-bottom:1px solid ${DIVIDER}">
-      ${tabs.map(t => `<button class="ml-tab" data-tab="${t.key}" style="flex:1;padding:11px 4px;border:none;border-bottom:2px solid ${activeTab===t.key?GREEN:'transparent'};background:none;font-size:12px;font-weight:${activeTab===t.key?'900':'600'};color:${activeTab===t.key?'#4ade80':TXT_FAINT};cursor:pointer">${t.label}${t.count?` (${t.count})`:''}</button>`).join('')}
+      ${tabs.map(t => `<button class="ml-tab" data-tab="${t.key}" style="flex:1;padding:11px 4px;border:none;border-bottom:2px solid ${activeTab===t.key?GREEN:'transparent'};background:none;font-size:12px;font-weight:${activeTab===t.key?'900':'600'};color:${activeTab===t.key?'#4ade80':NAV_TXT_FAINT};cursor:pointer">${t.label}${t.count?` (${t.count})`:''}</button>`).join('')}
     </div>
     <div style="padding:14px 16px;display:flex;flex-direction:column;gap:10px">
       ${activeTab==='waiting' ? renderWaitingTab(myWaiting, otherPublic, uid)
@@ -359,11 +364,11 @@ export async function openLeague(container, ctx, leagueId) {
   container.innerHTML = `
   <div style="height:100%;overflow-y:auto;background:var(--page-bg)">
     <div style="padding:14px 16px;background:var(--nav-bg,#0d1a0f);border-bottom:1px solid ${DIVIDER};display:flex;align-items:center;gap:10px">
-      <button id="ml-back" style="background:none;border:none;font-size:20px;cursor:pointer;color:${TXT}">‹</button>
-      <button id="ml-refresh" title="Actualiser" style="background:rgba(255,255,255,0.06);border:1px solid ${BORDER};border-radius:8px;width:32px;height:32px;font-size:15px;cursor:pointer;color:${TXT};flex-shrink:0">🔄</button>
+      <button id="ml-back" style="background:none;border:none;font-size:20px;cursor:pointer;color:${NAV_TXT}">‹</button>
+      <button id="ml-refresh" title="Actualiser" style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.15);border-radius:8px;width:32px;height:32px;font-size:15px;cursor:pointer;color:${NAV_TXT};flex-shrink:0">🔄</button>
       <div style="flex:1">
-        <div style="font-size:16px;font-weight:900;color:${TXT}">${league.name}</div>
-        <div style="font-size:11px;color:${TXT_DIM}">${league.mode==='aller-retour'?'Aller-Retour':'Aller'} · max ${league.max_players} · 💰 ${fee} cr./joueur</div>
+        <div style="font-size:16px;font-weight:900;color:${NAV_TXT}">${league.name}</div>
+        <div style="font-size:11px;color:${NAV_TXT_DIM}">${league.mode==='aller-retour'?'Aller-Retour':'Aller'} · max ${league.max_players} · 💰 ${fee} cr./joueur</div>
       </div>
       <div style="text-align:right;flex-shrink:0">
         <div style="font-size:11px;font-weight:700;padding:4px 10px;border-radius:12px;background:${league.status==='active'?'rgba(74,222,128,0.16)':league.status==='finished'?'rgba(168,85,247,0.16)':'rgba(212,160,23,0.16)'};color:${league.status==='active'?'#4ade80':league.status==='finished'?'#c084fc':'#eab308'}">

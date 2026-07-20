@@ -84,9 +84,9 @@ export async function renderRankings(container, ctx) {
             <div style="font-size:11px;color:var(--tile-fg-dim)">${u.club_name}</div>
           </div>
           <div style="text-align:right;flex-shrink:0">
-            <div style="font-size:16px;font-weight:900;color:var(--green)">${u.win_pct}%</div>
+            <div style="font-size:16px;font-weight:900;color:#D4A017" title="Score de classement — tient compte du nombre de matchs joués">📊 ${u.wilson_score}</div>
             <div style="font-size:10px;color:var(--tile-fg-dim)">${u.wins}/${u.total} V</div>
-            <div style="font-size:9px;color:#D4A017;font-weight:700;margin-top:2px" title="Score de classement — tient compte du nombre de matchs joués">📊 ${u.wilson_score}</div>
+            <div style="font-size:9px;color:var(--green);font-weight:700;margin-top:2px">${u.win_pct}%</div>
           </div>
         </div>
       `).join('') : '<div style="text-align:center;color:var(--tile-fg-dim);padding:40px">Aucun match random joué pour l\'instant.</div>'

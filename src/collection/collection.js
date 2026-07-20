@@ -324,17 +324,31 @@ export async function renderCollection(container, ctx) {
 
     function repaint() {
       // Ratios exacts demandés (sans espace vide entre les zones) :
-      //  Mobile : carte 19%→55% (36) / bande 55%→82% (27)
-      //  PC     : carte 16%→66% (50) / bande 66%→87% (21)
+      //  Mobile : carte 19%→55% (ratio 36/63) / bande 55%→82% (ratio 27/63)
+      //  PC     : carte 16%→66% (ratio 50/71) / bande 66%→87% (ratio 21/71)
       const isDesktop = window.innerWidth >= 768
       const bigZoneEl = document.getElementById('col-big')
       const gridWrapEl = document.getElementById('col-grid')?.parentElement || null
-      if (bigZoneEl) {
-        bigZoneEl.style.flex = isDesktop ? '50 1 0%' : '36 1 0%'
+      const pageEl = bigZoneEl ? bigZoneEl.closest('.page') : null
+
+      if (bigZoneEl && gridWrapEl && pageEl) {
+        // Hauteur déjà occupée par tout ce qui n'est PAS zone 5/6 (onglets,
+        // recherche, filtres) : mesurée directement, aucune supposition.
+        let usedH = 0
+        Array.from(pageEl.children).forEach(function(child) {
+          if (child !== bigZoneEl && child !== gridWrapEl) usedH += child.offsetHeight
+        })
+        const availH = Math.max(0, pageEl.clientHeight - usedH)
+        const ratio5 = isDesktop ? 50 / 71 : 36 / 63
+        const zone5H = Math.round(availH * ratio5)
+        const zone6H = Math.max(0, availH - zone5H)
+
+        bigZoneEl.style.flex = 'none'
+        bigZoneEl.style.height = zone5H + 'px'
         bigZoneEl.style.minHeight = '0'
-      }
-      if (gridWrapEl) {
-        gridWrapEl.style.flex = isDesktop ? '21 1 0%' : '27 1 0%'
+
+        gridWrapEl.style.flex = 'none'
+        gridWrapEl.style.height = zone6H + 'px'
         gridWrapEl.style.minHeight = '0'
         gridWrapEl.style.display = 'flex'
         gridWrapEl.style.overflow = 'hidden'
@@ -348,10 +362,11 @@ export async function renderCollection(container, ctx) {
         gridEl.style.alignItems = 'center'
         gridEl.style.width      = '100%'
       }
-      bigZone.innerHTML = '<div id="big-card-inner" style="display:inline-block;transform-origin:top center">' + renderBigFn(items[sel]) + '</div>'
+      bigZone.innerHTML = '<div id="big-card-inner" style="display:inline-block;transform-origin:center center">' + renderBigFn(items[sel]) + '</div>'
       var bigEl = bigZone.querySelector('[data-card-id],[data-form-id],[data-gc-id]')
       if (bigEl) bigEl.addEventListener('click', function() { onBigClick(items[sel]) })
-      // Auto-scale pour que la carte remplisse toute la zone disponible (5)
+      // Auto-scale pour que la carte remplisse EXACTEMENT la zone 5 (déjà
+      // fixée en px ci-dessus, donc pas de re-mesure hasardeuse nécessaire).
       requestAnimationFrame(function() {
         var inner = document.getElementById('big-card-inner')
         if (!inner || !bigZone) return
@@ -386,17 +401,22 @@ export async function renderCollection(container, ctx) {
         })
       })
 
-      // Remplit exactement la hauteur de la zone 6 (bande de mini-cartes),
-      // pas un zoom fixe arbitraire.
+      // Remplit EXACTEMENT la hauteur de la zone 6 (déjà fixée en px
+      // ci-dessus) — mesure la carte à zoom neutre (1) pour calculer le
+      // facteur exact, plutôt que de re-dériver depuis un zoom déjà appliqué
+      // (source d'erreur d'arrondi qui laissait un espace résiduel).
       requestAnimationFrame(function() {
-        var zoomWrap = grid.querySelector('.col-mini-item > div[style*="zoom"]')
-        if (!zoomWrap || !grid.clientHeight) return
-        var currentZoom = parseFloat(zoomWrap.style.zoom) || 1
-        var naturalH = zoomWrap.offsetHeight / currentZoom
+        var zoneH = gridEl ? gridEl.clientHeight : 0
+        var firstWrap = grid.querySelector('.col-mini-item > div')
+        if (!zoneH || !firstWrap) return
+        var prevZoom = firstWrap.style.zoom
+        firstWrap.style.zoom = '1'
+        var naturalH = firstWrap.offsetHeight
+        firstWrap.style.zoom = prevZoom
         if (naturalH <= 0) return
-        var targetZoom = (grid.clientHeight - 4) / naturalH
-        grid.querySelectorAll('.col-mini-item > div[style*="zoom"]').forEach(function(w) {
-          w.style.zoom = targetZoom.toFixed(3)
+        var targetZoom = zoneH / naturalH
+        grid.querySelectorAll('.col-mini-item > div').forEach(function(w) {
+          w.style.zoom = targetZoom.toFixed(4)
         })
       })
     }

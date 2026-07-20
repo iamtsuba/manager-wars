@@ -496,7 +496,7 @@ export async function renderCollection(container, ctx) {
     var nameColor = '#fff'
     return '<div style="display:inline-block;zoom:' + SCALE + ';line-height:0;pointer-events:none"><div style="width:' + W + 'px;height:' + H + 'px;border-radius:6px;border:' + border + ';background:var(--tile-bg);display:flex;flex-direction:column;overflow:hidden;' + filter + '">'
       + '<div style="height:' + nameH + 'px;background:' + nameBg + ';display:flex;align-items:center;justify-content:center;padding:0 2px;flex-shrink:0">'
-      + '<span style="font-size:' + fs + 'px;font-weight:900;color:' + nameColor + ';text-align:center;overflow:hidden;white-space:nowrap;max-width:' + (W-4) + 'px">' + formation + '</span>'
+      + '<span style="font-size:' + fs + 'px;font-weight:900;color:' + nameColor + ';text-align:center;overflow:hidden;white-space:nowrap;max-width:' + (W-4) + 'px;line-height:1.2;display:inline-block">' + formation + '</span>'
       + '</div>'
       + '<div style="height:' + fieldH + 'px;overflow:hidden;flex-shrink:0">' + svg + '</div>'
       + '</div></div>'
@@ -582,6 +582,7 @@ export async function renderCollection(container, ctx) {
     renderBigAndStrip(
       gcItems,
       ({type, gc, def, owned, card}) => {
+        const displayName = def?.name || type
         const count  = owned ? gcCards.filter(c=>c.gc_type===type).length : 0
         const badge  = count>1?`<div style="position:absolute;top:8px;right:8px;background:#3d0a7a;color:#fff;border-radius:10px;font-size:10px;font-weight:700;padding:2px 8px;z-index:3">×${count}</div>`:''
         const isUltra= def?.gc_type==='ultra_game_changer'
@@ -594,7 +595,7 @@ export async function renderCollection(container, ctx) {
         if (owned && card) return `<div data-gc-id="${card.id}" data-gc-type="${type}" style="position:relative;width:140px;border-radius:12px;border:3px solid ${bord};background:${bg};display:flex;flex-direction:column;overflow:hidden;box-shadow:0 0 24px ${bord}66;cursor:pointer">
           ${badge}
           <div style="padding:10px 12px;background:rgba(255,255,255,0.14);text-align:center">
-            <div style="font-size:${type.length>14?10:13}px;font-weight:900;color:#fff;letter-spacing:.5px;text-transform:uppercase">${type}</div>
+            <div style="font-size:${displayName.length>14?10:13}px;font-weight:900;color:#fff;letter-spacing:.5px;text-transform:uppercase">${displayName}</div>
             <div style="font-size:8px;color:rgba(255,255,255,0.55);margin-top:2px">${isUltra?'💎 ULTRA GC':'⚡ GAME CHANGER'}</div>
           </div>
           <div style="height:150px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.06)">
@@ -605,12 +606,12 @@ export async function renderCollection(container, ctx) {
           </div>
         </div>`
         return `<div style="width:140px;border-radius:12px;border:2px solid #ddd;background:#f0f0f0;display:flex;flex-direction:column;overflow:hidden;filter:grayscale(1);opacity:0.5">
-          <div style="padding:10px 12px;background:rgba(0,0,0,0.05);text-align:center"><div style="font-size:13px;font-weight:900;color:#888;text-transform:uppercase">${type}</div></div>
+          <div style="padding:10px 12px;background:rgba(0,0,0,0.05);text-align:center"><div style="font-size:13px;font-weight:900;color:#888;text-transform:uppercase">${displayName}</div></div>
           <div style="height:150px;display:flex;align-items:center;justify-content:center"><span style="font-size:64px">${gc.icon}</span></div>
           <div style="padding:10px;background:rgba(0,0,0,0.05);text-align:center"><div style="font-size:11px;color:#aaa">Non possédée</div></div>
         </div>`
       },
-      ({type, gc, def, owned}) => { const _s=window.innerWidth>=768?0.76:0.54; const BG2={purple:'linear-gradient(160deg,#4a0a8a,#7a28b8)',light_blue:'linear-gradient(160deg,#006080,#00bcd4)'},bo2={purple:'#9b59b6',light_blue:'#00bcd4'}; const bg2=BG2[def?.color]||BG2.purple,bor2=bo2[def?.color]||bo2.purple,imgU=def?.image_url?`${import.meta.env.BASE_URL}icons/${def.image_url}`:null; const GH=Math.round(140*657/507); if(owned){ return `<div style="display:inline-block;zoom:${_s};line-height:0;pointer-events:none"><div style="width:140px;height:${GH}px;border-radius:8px;background:${bg2};border:1px solid ${bor2};display:flex;flex-direction:column;overflow:hidden"><div style="height:34px;background:rgba(255,255,255,0.15);display:flex;align-items:center;justify-content:center"><span style="font-size:10px;font-weight:900;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:130px">${type}</span></div><div style="flex:1;display:flex;align-items:center;justify-content:center;min-height:0">${imgU?`<img src="${imgU}" style="max-width:110px;max-height:100px;object-fit:contain">`:`<span style="font-size:28px">${gc.icon}</span>`}</div><div style="height:30px;display:flex;align-items:center;justify-content:center;padding:0 4px"><span style="font-size:8px;color:rgba(255,255,255,0.7);text-align:center;line-height:1.2">${(def?.effect||gc.desc||'').slice(0,26)}</span></div></div></div>` } return `<div style="display:inline-block;zoom:${_s};line-height:0;pointer-events:none"><div style="width:140px;height:${GH}px;border-radius:8px;background:#eee;border:1px solid #ddd;display:flex;flex-direction:column;align-items:center;justify-content:center;filter:grayscale(1);opacity:0.45"><span style="font-size:24px">${gc.icon}</span><span style="font-size:9px;color:#aaa;margin-top:4px;text-align:center;padding:0 6px">${type}</span></div></div>` },
+      ({type, gc, def, owned}) => { const _s=window.innerWidth>=768?0.76:0.54; const displayName=def?.name||type; const BG2={purple:'linear-gradient(160deg,#4a0a8a,#7a28b8)',light_blue:'linear-gradient(160deg,#006080,#00bcd4)'},bo2={purple:'#9b59b6',light_blue:'#00bcd4'}; const bg2=BG2[def?.color]||BG2.purple,bor2=bo2[def?.color]||bo2.purple,imgU=def?.image_url?`${import.meta.env.BASE_URL}icons/${def.image_url}`:null; const GH=Math.round(140*657/507); if(owned){ return `<div style="display:inline-block;zoom:${_s};line-height:0;pointer-events:none"><div style="width:140px;height:${GH}px;border-radius:8px;background:${bg2};border:1px solid ${bor2};display:flex;flex-direction:column;overflow:hidden"><div style="height:34px;background:rgba(255,255,255,0.15);display:flex;align-items:center;justify-content:center"><span style="font-size:10px;font-weight:900;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:130px;line-height:1.2;display:inline-block">${displayName}</span></div><div style="flex:1;display:flex;align-items:center;justify-content:center;min-height:0">${imgU?`<img src="${imgU}" style="max-width:110px;max-height:100px;object-fit:contain">`:`<span style="font-size:28px;line-height:1">${gc.icon}</span>`}</div><div style="height:30px;display:flex;align-items:center;justify-content:center;padding:0 4px"><span style="font-size:8px;color:rgba(255,255,255,0.7);text-align:center;line-height:1.2;display:inline-block">${(def?.effect||gc.desc||'').slice(0,26)}</span></div></div></div>` } return `<div style="display:inline-block;zoom:${_s};line-height:0;pointer-events:none"><div style="width:140px;height:${GH}px;border-radius:8px;background:#eee;border:1px solid #ddd;display:flex;flex-direction:column;align-items:center;justify-content:center;filter:grayscale(1);opacity:0.45"><span style="font-size:24px;line-height:1">${gc.icon}</span><span style="font-size:9px;color:#aaa;margin-top:4px;text-align:center;padding:0 6px;line-height:1.2;display:inline-block">${displayName}</span></div></div>` },
       ({type, owned, def}) => { if (owned) openGCModal(type, def, openModal) },
       '#7a28b8',
       5
@@ -671,13 +672,13 @@ export async function renderCollection(container, ctx) {
         return `<div style="display:inline-block;zoom:${_s};line-height:0;pointer-events:none">
           <div style="width:140px;height:${SH}px;border-radius:8px;background:linear-gradient(160deg,${ORANGE},#c45a00);border:1px solid #c45a00;display:flex;flex-direction:column;overflow:hidden">
             <div style="height:36px;background:rgba(0,0,0,0.25);display:flex;align-items:center;justify-content:center;flex-direction:column;padding:2px 6px">
-              <div style="font-size:6px;font-weight:700;color:rgba(255,255,255,0.6);letter-spacing:1px">🏟️ STADE</div>
-              <div style="font-size:9px;font-weight:900;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:130px;margin-top:1px">${name}</div>
+              <div style="font-size:6px;font-weight:700;color:rgba(255,255,255,0.6);letter-spacing:1px;line-height:1.2">🏟️ STADE</div>
+              <div style="font-size:9px;font-weight:900;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:130px;margin-top:1px;line-height:1.2;display:inline-block">${name}</div>
             </div>
             <div style="flex:1;display:flex;align-items:center;justify-content:center;min-height:0">${imgHTML}</div>
             <div style="height:42px;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(0,0,0,0.3);padding:3px;gap:2px">
-              <div style="font-size:8px;font-weight:700;color:rgba(255,255,255,0.9);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:126px;text-align:center">${label}</div>
-              <div style="font-size:10px;font-weight:900;color:#FFD700">+10 ⭐</div>
+              <div style="font-size:8px;font-weight:700;color:rgba(255,255,255,0.9);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:126px;text-align:center;line-height:1.2">${label}</div>
+              <div style="font-size:10px;font-weight:900;color:#FFD700;line-height:1.2">+10 ⭐</div>
             </div>
           </div>
         </div>`

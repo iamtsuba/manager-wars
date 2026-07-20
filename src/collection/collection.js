@@ -191,8 +191,8 @@ export async function renderCollection(container, ctx) {
         <div style="font-size:11px;font-weight:400;opacity:0.7">(${gcCards.length})</div>
       </button>
       <button class="col-tab-btn" data-tab="stadium" style="flex:1;padding:10px 4px;border:none;background:none;cursor:pointer;
-        border-bottom:3px solid ${activeTab==='stadium'?'#E87722':'transparent'};
-        color:${activeTab==='stadium'?'#E87722':'var(--tile-fg-dim)'}">
+        border-bottom:3px solid ${activeTab==='stadium'?'#4FC3F7':'transparent'};
+        color:${activeTab==='stadium'?'#4FC3F7':'var(--tile-fg-dim)'}">
         <div style="font-size:13px;font-weight:700">Stades</div>
         <div style="font-size:11px;font-weight:400;opacity:0.7">(${stadiumCards.length})</div>
       </button>
@@ -619,7 +619,7 @@ export async function renderCollection(container, ctx) {
   }
 
   function renderStadiumGrid(grid) {
-    const ORANGE = '#E87722'
+    const STAD_COLOR = '#4FC3F7'
     const BASE2 = import.meta.env.BASE_URL
     if (!stadiumCards.length) {
       grid.innerHTML = '<div style="width:100%;text-align:center;padding:40px;color:var(--tile-fg-dim)">Aucune carte Stade.<br><small>Ouvre un booster Stade !</small></div>'
@@ -645,7 +645,7 @@ export async function renderCollection(container, ctx) {
           ? `<img src="${imgUrl}" style="width:90px;height:90px;object-fit:contain;border-radius:4px" onerror="this.style.display='none'">`
           : `<div style="font-size:56px">🏟️</div>`
         const badge = count>1 ? `<div style="position:absolute;top:8px;right:8px;background:#333;color:#fff;border-radius:10px;font-size:10px;font-weight:700;padding:2px 8px;z-index:3">×${count}</div>` : ''
-        return `<div style="position:relative;width:140px;border-radius:12px;border:3px solid #c45a00;background:linear-gradient(160deg,${ORANGE},#c45a00);display:flex;flex-direction:column;overflow:hidden;box-shadow:0 0 24px ${ORANGE}66">
+        return `<div style="position:relative;width:140px;border-radius:12px;border:3px solid #0288D1;background:linear-gradient(160deg,${STAD_COLOR},#0288D1);display:flex;flex-direction:column;overflow:hidden;box-shadow:0 0 24px ${STAD_COLOR}66">
           ${badge}
           <div style="padding:8px 10px;background:rgba(0,0,0,0.25);text-align:center">
             <div style="font-size:8px;font-weight:900;color:rgba(255,255,255,0.65);letter-spacing:1px">🏟️ STADE</div>
@@ -670,7 +670,7 @@ export async function renderCollection(container, ctx) {
           : '<span style="font-size:22px">🏟️</span>'
         const SH = Math.round(140*657/507)
         return `<div style="display:inline-block;zoom:${_s};line-height:0;pointer-events:none">
-          <div style="width:140px;height:${SH}px;border-radius:8px;background:linear-gradient(160deg,${ORANGE},#c45a00);border:1px solid #c45a00;display:flex;flex-direction:column;overflow:hidden">
+          <div style="width:140px;height:${SH}px;border-radius:8px;background:linear-gradient(160deg,${STAD_COLOR},#0288D1);border:1px solid #0288D1;display:flex;flex-direction:column;overflow:hidden">
             <div style="height:36px;background:rgba(0,0,0,0.25);display:flex;align-items:center;justify-content:center;flex-direction:column;padding:2px 6px">
               <div style="font-size:6px;font-weight:700;color:rgba(255,255,255,0.6);letter-spacing:1px;line-height:1.2">🏟️ STADE</div>
               <div style="font-size:9px;font-weight:900;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:130px;margin-top:1px;line-height:1.2;display:inline-block">${name}</div>
@@ -684,7 +684,7 @@ export async function renderCollection(container, ctx) {
         </div>`
       },
       null,
-      ORANGE,
+      STAD_COLOR,
       5
     )
   }

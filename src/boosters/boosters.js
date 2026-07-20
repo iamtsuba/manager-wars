@@ -471,22 +471,19 @@ async function openGCBooster(profile, count, cost) {
     .select('id,name,gc_type,color,effect,image_url').eq('is_active', true)
   const pool = dbGC?.length ? dbGC : Object.keys(GC_DEFS).map(name => ({ name, gc_type:'game_changer' }))
 
-  const inserts = Array.from({ length: count }, () => {
-    const pick = pool[Math.floor(Math.random() * pool.length)]
-    return {
-      owner_id:         profile.id,
-      card_type:        'game_changer',
-      gc_type:          pick.name,                // nom = identifiant de l'effet
-      gc_definition_id: pick.id || null,          // référence DB si dispo
-    }
-  })
+  const picks = Array.from({ length: count }, () => pool[Math.floor(Math.random() * pool.length)])
+  const inserts = picks.map(pick => ({
+    owner_id:         profile.id,
+    card_type:        'game_changer',
+    gc_type:          pick.name,                // nom = identifiant de l'effet
+    gc_definition_id: pick.id || null,          // référence DB si dispo
+  }))
   const { data: created, error: gcErr } = await supabase.from('cards').insert(inserts).select()
   if (gcErr) console.error('[Booster GC] Erreur insert:', gcErr.message, gcErr)
-  // Attacher la définition complète pour le visuel
-  const withDefs = (created||[]).map(card => {
-    const def = dbGC?.find(d => d.name === card.gc_type || d.id === card.gc_definition_id)
-    return { ...card, _gcDef: def || null }
-  })
+  // Attacher directement la définition RÉELLEMENT piochée (pool), pas une
+  // re-recherche dans dbGC qui peut être vide si le fallback a été utilisé
+  // — c'était le bug : image/description jamais affichées côté révélation.
+  const withDefs = (created||[]).map((card, i) => ({ ...card, _gcDef: picks[i] || null }))
   return withDefs
 }
 
@@ -1061,7 +1058,7 @@ function buildCardFace(card) {
     const imgUrl = def?.image_url
       ? `${import.meta.env.BASE_URL}icons/${def.image_url}`
       : (def?.club?.logo_url || (def?.country_code ? `https://flagsapi.com/${def.country_code.slice(0,2).toUpperCase()}/flat/64.png` : null))
-    return `<div style="width:160px;height:230px;background:linear-gradient(160deg,#E87722,#c45a00);border-radius:14px;border:3px solid #c45a00;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 0 24px rgba(232,119,34,0.6)">
+    return `<div style="width:160px;height:230px;background:linear-gradient(160deg,#4FC3F7,#0288D1);border-radius:14px;border:3px solid #0288D1;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 0 24px rgba(79,195,247,0.6)">
       <div style="padding:8px 10px;background:rgba(0,0,0,0.25);text-align:center;flex-shrink:0">
         <div style="font-size:7px;font-weight:700;color:rgba(255,255,255,0.65);letter-spacing:1px">🏟️ STADE</div>
         <div style="font-size:${name.length>16?9:11}px;font-weight:900;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:2px">${name}</div>

@@ -203,6 +203,7 @@ export async function renderCollection(container, ctx) {
 
     <!-- Grande carte + strip -->
     <div id="col-big" style="display:flex;justify-content:center;align-items:center;padding:0 16px;overflow:visible"></div>
+    <div id="col-gap" style="flex-shrink:0;height:0"></div>
     <div style="flex-shrink:0;padding:0">
       <div id="col-grid" style="display:flex;overflow-x:auto;gap:8px;padding:0 16px;-webkit-overflow-scrolling:touch;scrollbar-width:none;align-items:center"></div>
     </div>
@@ -315,7 +316,7 @@ export async function renderCollection(container, ctx) {
   }
 
   // ── Affichage big card + strip mini ─────────────────────
-  function renderBigAndStrip(items, renderBigFn, renderMiniFn, onBigClick, borderColor) {
+  function renderBigAndStrip(items, renderBigFn, renderMiniFn, onBigClick, borderColor, gapPercent = 0) {
     borderColor = borderColor || '#7a28b8'
     const grid    = document.getElementById('col-grid')
     const bigZone = document.getElementById('col-big')
@@ -328,6 +329,7 @@ export async function renderCollection(container, ctx) {
       //  PC     : carte 16%→66% (ratio 50/71) / bande 66%→87% (ratio 21/71)
       const isDesktop = window.innerWidth >= 768
       const bigZoneEl = document.getElementById('col-big')
+      const gapEl = document.getElementById('col-gap')
       const gridWrapEl = document.getElementById('col-grid')?.parentElement || null
       const pageEl = bigZoneEl ? bigZoneEl.closest('.page') : null
 
@@ -336,12 +338,16 @@ export async function renderCollection(container, ctx) {
         // recherche, filtres) : mesurée directement, aucune supposition.
         let usedH = 0
         Array.from(pageEl.children).forEach(function(child) {
-          if (child !== bigZoneEl && child !== gridWrapEl) usedH += child.offsetHeight
+          if (child !== bigZoneEl && child !== gridWrapEl && child !== gapEl) usedH += child.offsetHeight
         })
-        const availH = Math.max(0, pageEl.clientHeight - usedH)
+        const totalAvailH = Math.max(0, pageEl.clientHeight - usedH)
+        const gapH = Math.round(totalAvailH * (gapPercent / 100))
+        const availH = Math.max(0, totalAvailH - gapH)
         const ratio5 = isDesktop ? 50 / 71 : 45 / 63
         const zone5H = Math.round(availH * ratio5)
         const zone6H = Math.max(0, availH - zone5H)
+
+        if (gapEl) gapEl.style.height = gapH + 'px'
 
         bigZoneEl.style.flex = 'none'
         bigZoneEl.style.height = zone5H + 'px'
@@ -558,7 +564,8 @@ export async function renderCollection(container, ctx) {
       ({formation, card, owned}) => renderFormationCard(formation, owned ? card : null, owned ? formCards.filter(c=>c.formation===formation).length : 0),
       ({formation, owned}) => miniFormationCard(formation, owned),
       ({card, owned}) => { if (owned && card) openFormationModal(card, formCards, ctx, openModal) },
-      '#1A6B3C'
+      '#1A6B3C',
+      5
     )
   }
 
@@ -605,7 +612,8 @@ export async function renderCollection(container, ctx) {
       },
       ({type, gc, def, owned}) => { const _s=window.innerWidth>=768?0.76:0.54; const BG2={purple:'linear-gradient(160deg,#4a0a8a,#7a28b8)',light_blue:'linear-gradient(160deg,#006080,#00bcd4)'},bo2={purple:'#9b59b6',light_blue:'#00bcd4'}; const bg2=BG2[def?.color]||BG2.purple,bor2=bo2[def?.color]||bo2.purple,imgU=def?.image_url?`${import.meta.env.BASE_URL}icons/${def.image_url}`:null; const GH=Math.round(140*657/507); if(owned){ return `<div style="display:inline-block;zoom:${_s};line-height:0;pointer-events:none"><div style="width:140px;height:${GH}px;border-radius:8px;background:${bg2};border:1px solid ${bor2};display:flex;flex-direction:column;overflow:hidden"><div style="height:34px;background:rgba(255,255,255,0.15);display:flex;align-items:center;justify-content:center"><span style="font-size:10px;font-weight:900;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:130px">${type}</span></div><div style="flex:1;display:flex;align-items:center;justify-content:center;min-height:0">${imgU?`<img src="${imgU}" style="max-width:110px;max-height:100px;object-fit:contain">`:`<span style="font-size:28px">${gc.icon}</span>`}</div><div style="height:30px;display:flex;align-items:center;justify-content:center;padding:0 4px"><span style="font-size:8px;color:rgba(255,255,255,0.7);text-align:center;line-height:1.2">${(def?.effect||gc.desc||'').slice(0,26)}</span></div></div></div>` } return `<div style="display:inline-block;zoom:${_s};line-height:0;pointer-events:none"><div style="width:140px;height:${GH}px;border-radius:8px;background:#eee;border:1px solid #ddd;display:flex;flex-direction:column;align-items:center;justify-content:center;filter:grayscale(1);opacity:0.45"><span style="font-size:24px">${gc.icon}</span><span style="font-size:9px;color:#aaa;margin-top:4px;text-align:center;padding:0 6px">${type}</span></div></div>` },
       ({type, owned, def}) => { if (owned) openGCModal(type, def, openModal) },
-      '#7a28b8'
+      '#7a28b8',
+      5
     )
   }
 
@@ -675,7 +683,8 @@ export async function renderCollection(container, ctx) {
         </div>`
       },
       null,
-      ORANGE
+      ORANGE,
+      5
     )
   }
 

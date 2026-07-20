@@ -480,9 +480,9 @@ export async function renderCollection(container, ctx) {
 
   function miniFormationCard(formation, owned) {
     var SCALE = window.innerWidth >= 768 ? 0.76 : 0.54
-    var W = 140, H = 305
-    var nameH = Math.round(H*0.22), fieldH = H - nameH
-    var fs = formation.length > 7 ? 10 : 13
+    var W = 140, H = Math.round(140 * 657 / 507) // même ratio que la carte joueur
+    var nameH = Math.round(H*0.28), fieldH = H - nameH
+    var fs = formation.length > 7 ? 9 : 11
     var svg = formFieldSVG(formation, W, fieldH)
     var border = owned ? '1.5px solid #2a7a40' : '1px solid #ddd'
     var filter = owned ? '' : 'filter:grayscale(1);opacity:0.45;'
@@ -603,7 +603,7 @@ export async function renderCollection(container, ctx) {
           <div style="padding:10px;background:rgba(0,0,0,0.05);text-align:center"><div style="font-size:11px;color:#aaa">Non possédée</div></div>
         </div>`
       },
-      ({type, gc, def, owned}) => { const _s=window.innerWidth>=768?0.76:0.54; const BG2={purple:'linear-gradient(160deg,#4a0a8a,#7a28b8)',light_blue:'linear-gradient(160deg,#006080,#00bcd4)'},bo2={purple:'#9b59b6',light_blue:'#00bcd4'}; const bg2=BG2[def?.color]||BG2.purple,bor2=bo2[def?.color]||bo2.purple,imgU=def?.image_url?`${import.meta.env.BASE_URL}icons/${def.image_url}`:null; if(owned){ return `<div style="display:inline-block;zoom:${_s};line-height:0;pointer-events:none"><div style="width:140px;height:310px;border-radius:8px;background:${bg2};border:1px solid ${bor2};display:flex;flex-direction:column;overflow:hidden"><div style="height:56px;background:rgba(255,255,255,0.15);display:flex;align-items:center;justify-content:center"><span style="font-size:13px;font-weight:900;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:130px">${type}</span></div><div style="flex:1;display:flex;align-items:center;justify-content:center">${imgU?`<img src="${imgU}" style="max-width:130px;max-height:190px;object-fit:contain">`:`<span style="font-size:48px">${gc.icon}</span>`}</div><div style="height:54px;display:flex;align-items:center;justify-content:center;padding:0 4px"><span style="font-size:10px;color:rgba(255,255,255,0.7);text-align:center">${(def?.effect||gc.desc||'').slice(0,30)}</span></div></div></div>` } return `<div style="display:inline-block;zoom:${_s};line-height:0;pointer-events:none"><div style="width:140px;height:310px;border-radius:8px;background:#eee;border:1px solid #ddd;display:flex;flex-direction:column;align-items:center;justify-content:center;filter:grayscale(1);opacity:0.45"><span style="font-size:36px">${gc.icon}</span><span style="font-size:12px;color:#aaa;margin-top:6px;text-align:center;padding:0 6px">${type}</span></div></div>` },
+      ({type, gc, def, owned}) => { const _s=window.innerWidth>=768?0.76:0.54; const BG2={purple:'linear-gradient(160deg,#4a0a8a,#7a28b8)',light_blue:'linear-gradient(160deg,#006080,#00bcd4)'},bo2={purple:'#9b59b6',light_blue:'#00bcd4'}; const bg2=BG2[def?.color]||BG2.purple,bor2=bo2[def?.color]||bo2.purple,imgU=def?.image_url?`${import.meta.env.BASE_URL}icons/${def.image_url}`:null; const GH=Math.round(140*657/507); if(owned){ return `<div style="display:inline-block;zoom:${_s};line-height:0;pointer-events:none"><div style="width:140px;height:${GH}px;border-radius:8px;background:${bg2};border:1px solid ${bor2};display:flex;flex-direction:column;overflow:hidden"><div style="height:34px;background:rgba(255,255,255,0.15);display:flex;align-items:center;justify-content:center"><span style="font-size:10px;font-weight:900;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:130px">${type}</span></div><div style="flex:1;display:flex;align-items:center;justify-content:center;min-height:0">${imgU?`<img src="${imgU}" style="max-width:110px;max-height:100px;object-fit:contain">`:`<span style="font-size:28px">${gc.icon}</span>`}</div><div style="height:30px;display:flex;align-items:center;justify-content:center;padding:0 4px"><span style="font-size:8px;color:rgba(255,255,255,0.7);text-align:center;line-height:1.2">${(def?.effect||gc.desc||'').slice(0,26)}</span></div></div></div>` } return `<div style="display:inline-block;zoom:${_s};line-height:0;pointer-events:none"><div style="width:140px;height:${GH}px;border-radius:8px;background:#eee;border:1px solid #ddd;display:flex;flex-direction:column;align-items:center;justify-content:center;filter:grayscale(1);opacity:0.45"><span style="font-size:24px">${gc.icon}</span><span style="font-size:9px;color:#aaa;margin-top:4px;text-align:center;padding:0 6px">${type}</span></div></div>` },
       ({type, owned, def}) => { if (owned) openGCModal(type, def, openModal) },
       '#7a28b8'
     )
@@ -657,18 +657,19 @@ export async function renderCollection(container, ctx) {
         ? `${BASE2}icons/${def.image_url}`
         : (def?.club?.logo_url || (def?.country_code ? `https://flagsapi.com/${def.country_code.slice(0,2).toUpperCase()}/flat/64.png` : null))
         const imgHTML = imgUrl
-          ? `<img src="${imgUrl}" style="width:64px;height:64px;object-fit:contain;border-radius:4px" onerror="this.style.display='none'">`
-          : '<span style="font-size:32px">🏟️</span>'
+          ? `<img src="${imgUrl}" style="width:44px;height:44px;object-fit:contain;border-radius:4px" onerror="this.style.display='none'">`
+          : '<span style="font-size:22px">🏟️</span>'
+        const SH = Math.round(140*657/507)
         return `<div style="display:inline-block;zoom:${_s};line-height:0;pointer-events:none">
-          <div style="width:140px;height:310px;border-radius:8px;background:linear-gradient(160deg,${ORANGE},#c45a00);border:1px solid #c45a00;display:flex;flex-direction:column;overflow:hidden">
-            <div style="height:48px;background:rgba(0,0,0,0.25);display:flex;align-items:center;justify-content:center;flex-direction:column;padding:4px 6px">
-              <div style="font-size:7px;font-weight:700;color:rgba(255,255,255,0.6);letter-spacing:1px">🏟️ STADE</div>
-              <div style="font-size:12px;font-weight:900;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:130px;margin-top:2px">${name}</div>
+          <div style="width:140px;height:${SH}px;border-radius:8px;background:linear-gradient(160deg,${ORANGE},#c45a00);border:1px solid #c45a00;display:flex;flex-direction:column;overflow:hidden">
+            <div style="height:36px;background:rgba(0,0,0,0.25);display:flex;align-items:center;justify-content:center;flex-direction:column;padding:2px 6px">
+              <div style="font-size:6px;font-weight:700;color:rgba(255,255,255,0.6);letter-spacing:1px">🏟️ STADE</div>
+              <div style="font-size:9px;font-weight:900;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:130px;margin-top:1px">${name}</div>
             </div>
-            <div style="flex:1;display:flex;align-items:center;justify-content:center">${imgHTML}</div>
-            <div style="height:60px;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(0,0,0,0.3);padding:4px;gap:4px">
-              <div style="font-size:11px;font-weight:700;color:rgba(255,255,255,0.9);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:126px;text-align:center">${label}</div>
-              <div style="font-size:13px;font-weight:900;color:#FFD700">+10 ⭐</div>
+            <div style="flex:1;display:flex;align-items:center;justify-content:center;min-height:0">${imgHTML}</div>
+            <div style="height:42px;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(0,0,0,0.3);padding:3px;gap:2px">
+              <div style="font-size:8px;font-weight:700;color:rgba(255,255,255,0.9);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:126px;text-align:center">${label}</div>
+              <div style="font-size:10px;font-weight:900;color:#FFD700">+10 ⭐</div>
             </div>
           </div>
         </div>`

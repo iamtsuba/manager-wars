@@ -23,6 +23,12 @@ export async function renderRankings(container, ctx) {
   const podiumFg = i => i<3 ? '#000' : '#fff'
 
   function renderTab() {
+    const legendEl = document.getElementById('rankings-legend')
+    if (legendEl) {
+      legendEl.innerHTML = activeTab==='random'
+        ? `<div style="font-size:11px;color:var(--tile-fg-dim);text-align:center;margin-bottom:10px">📊 = score de classement fiable (tient compte du nombre de matchs joués, pas seulement du %)</div>`
+        : ''
+    }
     const listEl = document.getElementById('rankings-list')
     if (!listEl) return
 
@@ -80,6 +86,7 @@ export async function renderRankings(container, ctx) {
           <div style="text-align:right;flex-shrink:0">
             <div style="font-size:16px;font-weight:900;color:var(--green)">${u.win_pct}%</div>
             <div style="font-size:10px;color:var(--tile-fg-dim)">${u.wins}/${u.total} V</div>
+            <div style="font-size:9px;color:#D4A017;font-weight:700;margin-top:2px" title="Score de classement — tient compte du nombre de matchs joués">📊 ${u.wilson_score}</div>
           </div>
         </div>
       `).join('') : '<div style="text-align:center;color:var(--tile-fg-dim);padding:40px">Aucun match random joué pour l\'instant.</div>'
@@ -103,6 +110,7 @@ export async function renderRankings(container, ctx) {
         <button id="tab-mini-league" style="${tabStyle(activeTab==='mini-league')}">🏆 Mini Leagues</button>
         <button id="tab-random" style="${tabStyle(activeTab==='random')}">🎲 Random</button>
       </div>
+      <div id="rankings-legend"></div>
       <div id="rankings-list" style="display:flex;flex-direction:column;gap:8px"></div>
     </div>
   </div>`

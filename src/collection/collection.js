@@ -339,7 +339,7 @@ export async function renderCollection(container, ctx) {
           if (child !== bigZoneEl && child !== gridWrapEl) usedH += child.offsetHeight
         })
         const availH = Math.max(0, pageEl.clientHeight - usedH)
-        const ratio5 = isDesktop ? 50 / 71 : 36 / 63
+        const ratio5 = isDesktop ? 50 / 71 : 45 / 63
         const zone5H = Math.round(availH * ratio5)
         const zone6H = Math.max(0, availH - zone5H)
 

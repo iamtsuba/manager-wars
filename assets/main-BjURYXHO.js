@@ -339,7 +339,7 @@ import{s as w,l as Ht,m as Ci,F as Bi,r as Ae,j as ei,h as qi,n as Hn,o as Un,T 
         border:1.5px solid #ddd;background:#fff;
         font-size:14px;font-weight:700;cursor:pointer;color:#555;
       }
-    </style>`}const ro="2026.07.19-2352";async function en(e,{state:t,navigate:i,toast:n}){var o,a;const r=t.profile;r&&(e.innerHTML=`
+    </style>`}const ro="2026.07.20-0829";async function en(e,{state:t,navigate:i,toast:n}){var o,a;const r=t.profile;r&&(e.innerHTML=`
   <style>
     .home-dark {
       min-height: 100%;
@@ -570,33 +570,33 @@ import{s as w,l as Ht,m as Ci,F as Bi,r as Ae,j as ei,h as qi,n as Hn,o as Un,T 
   </div>`,document.body.appendChild(i),i.querySelectorAll(".diff-card").forEach(r=>{r.addEventListener("mouseenter",()=>{r.style.transform="translateY(-1px)",r.style.boxShadow="0 6px 16px -6px rgba(0,0,0,0.18)"}),r.addEventListener("mouseleave",()=>{r.style.transform="",r.style.boxShadow=""})});const n=()=>i.remove();document.getElementById("diff-cancel").addEventListener("click",n),i.addEventListener("click",r=>{r.target===i&&n()}),i.querySelectorAll("[data-mode]").forEach(r=>{r.addEventListener("click",()=>{n(),e("match",{matchMode:r.dataset.mode})})})}const hn="mw_sound_muted";function ki(){return localStorage.getItem(hn)==="1"}function uo(e){localStorage.setItem(hn,e?"1":"0")}function fo(e,t=1){if(ki())return null;try{const i=new Audio(e);return i.volume=t,i.play().catch(()=>{}),i}catch{return null}}async function $i(e,t){const{navigate:i}=t,n=Gn(),r=ki();e.innerHTML=`
   <div style="height:100%;overflow-y:auto;background:var(--page-bg)">
     <div style="padding:14px 16px;background:var(--nav-bg,#0d1a0f);border-bottom:1px solid rgba(255,255,255,0.08);display:flex;align-items:center;gap:10px">
-      <button id="settings-back" style="background:none;border:none;font-size:20px;cursor:pointer;color:#f3f5f2">‹</button>
-      <div style="font-size:18px;font-weight:900;color:#f3f5f2">⚙️ Réglages</div>
+      <button id="settings-back" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--nav-fg,#fff)">‹</button>
+      <div style="font-size:18px;font-weight:900;color:var(--nav-fg,#fff)">⚙️ Réglages</div>
     </div>
 
     <div style="padding:16px;display:flex;flex-direction:column;gap:14px;max-width:520px;margin:0 auto">
 
-      <div style="background:rgba(255,255,255,0.045);border:1px solid rgba(255,255,255,0.09);border-radius:14px;padding:18px">
-        <div style="font-size:14px;font-weight:900;color:#f3f5f2;margin-bottom:4px">🎨 Apparence</div>
-        <div style="font-size:12px;color:rgba(243,245,242,0.6);margin-bottom:14px">Choisis le thème de l'application.</div>
+      <div style="background:var(--tile-bg);border:1px solid var(--tile-border);border-radius:14px;padding:18px">
+        <div style="font-size:14px;font-weight:900;color:var(--tile-fg-on-page);margin-bottom:4px">🎨 Apparence</div>
+        <div style="font-size:12px;color:var(--tile-fg-dim);margin-bottom:14px">Choisis le thème de l'application.</div>
         <div style="display:flex;gap:10px">
-          <button data-theme-choice="dark" style="flex:1;padding:14px;border-radius:12px;cursor:pointer;text-align:center;border:2px solid ${n==="dark"?"#D4A017":"rgba(255,255,255,0.15)"};background:${n==="dark"?"rgba(212,160,23,0.12)":"rgba(255,255,255,0.03)"}">
+          <button data-theme-choice="dark" style="flex:1;padding:14px;border-radius:12px;cursor:pointer;text-align:center;border:2px solid ${n==="dark"?"#D4A017":"var(--tile-border)"};background:${n==="dark"?"rgba(212,160,23,0.12)":"transparent"}">
             <div style="font-size:22px;margin-bottom:6px">🌙</div>
-            <div style="font-size:13px;font-weight:700;color:#f3f5f2">Sombre</div>
+            <div style="font-size:13px;font-weight:700;color:var(--tile-fg-on-page)">Sombre</div>
           </button>
-          <button data-theme-choice="light" style="flex:1;padding:14px;border-radius:12px;cursor:pointer;text-align:center;border:2px solid ${n==="light"?"#D4A017":"rgba(255,255,255,0.15)"};background:${n==="light"?"rgba(212,160,23,0.12)":"rgba(255,255,255,0.03)"}">
+          <button data-theme-choice="light" style="flex:1;padding:14px;border-radius:12px;cursor:pointer;text-align:center;border:2px solid ${n==="light"?"#D4A017":"var(--tile-border)"};background:${n==="light"?"rgba(212,160,23,0.12)":"transparent"}">
             <div style="font-size:22px;margin-bottom:6px">☀️</div>
-            <div style="font-size:13px;font-weight:700;color:#f3f5f2">Clair</div>
+            <div style="font-size:13px;font-weight:700;color:var(--tile-fg-on-page)">Clair</div>
           </button>
         </div>
       </div>
 
-      <div style="background:rgba(255,255,255,0.045);border:1px solid rgba(255,255,255,0.09);border-radius:14px;padding:18px;display:flex;align-items:center;justify-content:space-between;gap:14px">
+      <div style="background:var(--tile-bg);border:1px solid var(--tile-border);border-radius:14px;padding:18px;display:flex;align-items:center;justify-content:space-between;gap:14px">
         <div>
-          <div style="font-size:14px;font-weight:900;color:#f3f5f2">🔊 Son</div>
-          <div style="font-size:12px;color:rgba(243,245,242,0.6);margin-top:2px">Musiques et effets sonores de l'app.</div>
+          <div style="font-size:14px;font-weight:900;color:var(--tile-fg-on-page)">🔊 Son</div>
+          <div style="font-size:12px;color:var(--tile-fg-dim);margin-top:2px">Musiques et effets sonores de l'app.</div>
         </div>
-        <button id="sound-toggle" role="switch" aria-checked="${!r}" style="flex-shrink:0;width:52px;height:30px;border-radius:999px;border:none;cursor:pointer;position:relative;background:${r?"rgba(255,255,255,0.15)":"#1A6B3C"};transition:background .2s">
+        <button id="sound-toggle" role="switch" aria-checked="${!r}" style="flex-shrink:0;width:52px;height:30px;border-radius:999px;border:none;cursor:pointer;position:relative;background:${r?"var(--tile-border)":"#1A6B3C"};transition:background .2s">
           <span style="position:absolute;top:3px;left:${r?"3px":"25px"};width:24px;height:24px;border-radius:50%;background:#fff;transition:left .2s;box-shadow:0 1px 3px rgba(0,0,0,0.3)"></span>
         </button>
       </div>
@@ -2758,7 +2758,7 @@ import{s as w,l as Ht,m as Ci,F as Bi,r as Ae,j as ei,h as qi,n as Hn,o as Un,T 
     </div>
   </div>`}Kn(Yn);const be={user:null,profile:null,page:"home",params:{}};function Ft(e,t="info",i=3e3){const n=document.getElementById("toast");n&&(n.textContent=e,n.className=`show ${t}`,clearTimeout(n._t),n._t=setTimeout(()=>{n.className=""},i))}function Yr(e,t,i=""){document.getElementById("modal-title").textContent=e,document.getElementById("modal-body").innerHTML=t,document.getElementById("modal-footer").innerHTML=i,document.getElementById("modal-overlay").classList.remove("hidden")}function ji(){document.getElementById("modal-overlay").classList.add("hidden")}async function Vt(){if(!be.user)return;const{data:e}=await w.from("users").select("*").eq("id",be.user.id).single();e&&(be.profile=e)}const Pn="mw_theme";function Gn(){return localStorage.getItem(Pn)||"dark"}function Wr(e){var t;localStorage.setItem(Pn,e),Xr(e),(t=be.profile)!=null&&t.id&&w.from("users").update({theme:e}).eq("id",be.profile.id).then(()=>{})}function Xr(e){document.documentElement.setAttribute("data-theme",e)}function Pt(e,t={}){be.page=e,be.params=t,Rn()}async function Rn(){var n,r,o,a;const e=document.getElementById("page-content");if(!e)return;document.querySelectorAll(".bottom-nav a").forEach(s=>{s.classList.toggle("active",s.dataset.page===be.page)});const t=document.getElementById("nav-credits");t&&be.profile&&(t.textContent=`💰 ${(be.profile.credits||0).toLocaleString("fr")}`);const i={state:be,navigate:Pt,toast:Ft,openModal:Yr,closeModal:ji,refreshProfile:Vt};switch(e.innerHTML='<div style="padding:40px;text-align:center;color:#aaa">⚽</div>',be.page){case"home":await en(e,i);break;case"settings":await $i(e,i);break;case"collection":await Eo(e,i);break;case"decks":await Ei(e,i);break;case"boosters":await Fo(e,i);break;case"ranked":await Kr(e,i);break;case"match":{const s=be.params&&be.params.matchMode||"vs_ai_easy";s==="random"?await Ai(e,i,!1):s==="ranked"?await Ai(e,i,!0):s==="friend"?await vr(e,i,(n=be.params)==null?void 0:n.friendId,(r=be.params)==null?void 0:r.friendName):s==="mini_league"||s==="mini-league"?await un(e,i,(o=be.params)==null?void 0:o.mlMatchId,(a=be.params)==null?void 0:a.leagueId):await Zo(e,i);break}case"market":await Rr(e,i);break;case"rankings":await Ur(e,i);break;case"matches":await Vr(e,i);break;case"friends":await to(e,i);break;case"mini-league":await kr(e,i);break;case"match-mini-league":{const s=be.params||{};await un(e,i,s.mlMatchId,s.leagueId);break}default:await en(e,i)}}function Jr(){var n,r;const e=document.getElementById("app"),t=be.profile;if(!t)return;const i="/icons/";e.innerHTML=`
     <nav class="top-nav">
-      <div class="logo" id="nav-logo" title="Manager Wars v2026.07.19-2352" style="cursor:pointer">
+      <div class="logo" id="nav-logo" title="Manager Wars v2026.07.20-0829" style="cursor:pointer">
         <img src="${i}logo-withname.png" alt="Manager Wars" style="height:48px;width:auto;display:block">
       </div>
       <div style="display:flex;align-items:center;gap:10px">

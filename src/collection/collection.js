@@ -208,6 +208,34 @@ export async function renderCollection(container, ctx) {
     </div>
   </div>`
 
+  // Sur PC (souris sans molette horizontale/tactile) il n'y a sinon aucun
+  // moyen de faire défiler la bande de cartes du bas : convertit la molette
+  // verticale en défilement horizontal + permet de glisser à la souris.
+  ;(function enableHorizontalScroll(id) {
+    const el = document.getElementById(id)
+    if (!el) return
+    el.addEventListener('wheel', (e) => {
+      if (Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return // laisse le scroll horizontal natif (trackpad) tranquille
+      e.preventDefault()
+      el.scrollLeft += e.deltaY
+    }, { passive: false })
+    let isDown = false, startX = 0, startScroll = 0, dragging = false, justDragged = false
+    el.addEventListener('mousedown', (e) => { isDown = true; dragging = false; startX = e.pageX; startScroll = el.scrollLeft })
+    window.addEventListener('mouseup', () => { isDown = false; if (dragging) { el.style.cursor = ''; justDragged = true }; dragging = false })
+    window.addEventListener('mousemove', (e) => {
+      if (!isDown) return
+      const delta = e.pageX - startX
+      if (!dragging && Math.abs(delta) < 6) return // en dessous du seuil : laisse passer comme un clic normal
+      dragging = true
+      el.style.cursor = 'grabbing'
+      e.preventDefault()
+      el.scrollLeft = startScroll - delta
+    })
+    el.addEventListener('click', (e) => {
+      if (justDragged) { e.stopPropagation(); e.preventDefault(); justDragged = false }
+    }, true)
+  })('col-grid')
+
   // ── Rendu de la barre de filtres (dépend de l'onglet) ───
   function renderFilters() {
     const bar = document.getElementById('col-filters')

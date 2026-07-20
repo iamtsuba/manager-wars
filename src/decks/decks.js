@@ -316,13 +316,13 @@ function renderBuilder(container, builder, ctx) {
           <div style="display:flex;flex-direction:column;gap:6px;align-items:center" id="subs-list">
             ${subPlayers.map(card => {
               const p = { ...card.player, _evolution_bonus: card.evolution_bonus || 0 }
-              return `<div style="position:relative;flex-shrink:0;overflow:visible">
-                ${renderPlayerCard({ ...p, _evolution_bonus: p._evolution_bonus||0 }, { width: 60, showStad: true, stadDef: _stadDef })}
+              return `<div style="position:relative;flex-shrink:0;overflow:visible;padding-bottom:24px">
+                ${renderPlayerCard({ ...p, _evolution_bonus: p._evolution_bonus||0 }, { width: 100, showStad: true, stadDef: _stadDef })}
                 <button data-remove-sub="${card.id}"
-                  style="position:absolute;top:-6px;right:-6px;width:18px;height:18px;background:#c0392b;border:none;border-radius:50%;color:#fff;font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;padding:0;z-index:10">✕</button>
+                  style="position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:20px;height:20px;background:#c0392b;border:none;border-radius:50%;color:#fff;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;padding:0;z-index:10">✕</button>
               </div>`
             }).join('')}
-            ${builder.subs.length < 5 ? `<div id="add-sub-btn" style="width:60px;height:77px;border:2px dashed rgba(255,255,255,0.3);border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:18px;color:rgba(255,255,255,0.4);cursor:pointer">+</div>` : ''}
+            ${builder.subs.length < 5 ? `<div id="add-sub-btn" style="width:100px;height:130px;border:2px dashed rgba(255,255,255,0.3);border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:18px;color:rgba(255,255,255,0.4);cursor:pointer">+</div>` : ''}
           </div>
         </div>
 
@@ -378,13 +378,13 @@ function renderBuilder(container, builder, ctx) {
             <div style="display:flex;gap:4px;align-items:center;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;-ms-overflow-style:none" id="subs-list" class="no-scrollbar">
               ${subPlayers.map(card => {
                 const p = { ...card.player, _evolution_bonus: card.evolution_bonus || 0 }
-                return `<div style="position:relative;flex-shrink:0;overflow:visible">
-                  ${renderPlayerCard({ ...p, _evolution_bonus: p._evolution_bonus||0 }, { width: 58, showStad: true, stadDef: _stadDef })}
+                return `<div style="position:relative;flex-shrink:0;overflow:visible;padding-bottom:20px">
+                  ${renderPlayerCard({ ...p, _evolution_bonus: p._evolution_bonus||0 }, { width: 50, showStad: true, stadDef: _stadDef })}
                   <button data-remove-sub="${card.id}"
-                    style="position:absolute;top:-5px;right:-5px;width:15px;height:15px;background:#c0392b;border:none;border-radius:50%;color:#fff;font-size:9px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;padding:0;z-index:10">✕</button>
+                    style="position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:16px;height:16px;background:#c0392b;border:none;border-radius:50%;color:#fff;font-size:9px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;padding:0;z-index:10">✕</button>
                 </div>`
               }).join('')}
-              ${builder.subs.length < 5 ? `<div id="add-sub-btn" style="width:37px;height:47px;border:2px dashed rgba(255,255,255,0.3);border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:16px;color:rgba(255,255,255,0.4);cursor:pointer;flex-shrink:0">+</div>` : ''}
+              ${builder.subs.length < 5 ? `<div id="add-sub-btn" style="width:50px;height:65px;border:2px dashed rgba(255,255,255,0.3);border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:16px;color:rgba(255,255,255,0.4);cursor:pointer;flex-shrink:0">+</div>` : ''}
             </div>
           </div>
           <!-- Formation mobile -->
@@ -551,9 +551,11 @@ function renderDeckField(container, builder, positions, ctx) {
         { ...p, _evolution_bonus: p._evolution_bonus||0 },
         { width: CARD_W, showStad: true, stadDef, role }
       )
-      const stadIcon = hasStad ? `<div style="position:absolute;top:-18px;left:0;right:0;text-align:center;font-size:14px;z-index:5;line-height:1">🏟️</div>` : ''
+      const stadLogo = hasStad ? (stadDef.club?.logo_url || stadDef.image_url || null) : null
+      const badgeSize = Math.round(CARD_W * 0.34)
+      const stadBadge = hasStad ? `<div style="position:absolute;top:2px;right:2px;width:${badgeSize}px;height:${badgeSize}px;border-radius:50%;background:rgba(0,0,0,0.6);border:1.5px solid #4FC3F7;display:flex;align-items:center;justify-content:center;overflow:hidden;z-index:6">${stadLogo ? `<img src="${stadLogo}" style="width:100%;height:100%;object-fit:cover">` : `<span style="font-size:${Math.round(badgeSize*0.6)}px;line-height:1">🏟️</span>`}</div>` : ''
       cardsHtml += `<div style="position:absolute;left:${left}px;top:${top}px;cursor:pointer;z-index:2;position:absolute" class="deck-slot-hit" data-pos="${pos}">
-        <div style="position:relative">${stadIcon}${cardHtml}</div>
+        <div style="position:relative">${cardHtml}${stadBadge}</div>
       </div>`
     } else {
       const role = pos.replace(/\d+/, '')

@@ -202,9 +202,9 @@ export async function renderCollection(container, ctx) {
     <div id="col-filters" style="padding:10px 16px;background:var(--tile-bg);border-bottom:1px solid var(--tile-border);display:flex;flex-direction:column;gap:8px"></div>
 
     <!-- Grande carte + strip -->
-    <div id="col-big" style="display:flex;justify-content:center;align-items:flex-start;padding:8px 16px 4px;flex:1;overflow:visible"></div>
+    <div id="col-big" style="display:flex;justify-content:center;align-items:center;padding:0 16px;overflow:visible"></div>
     <div style="flex-shrink:0;padding:0">
-      <div id="col-grid" style="display:flex;overflow-x:auto;gap:8px;padding:8px 16px;-webkit-overflow-scrolling:touch;scrollbar-width:none"></div>
+      <div id="col-grid" style="display:flex;overflow-x:auto;gap:8px;padding:0 16px;-webkit-overflow-scrolling:touch;scrollbar-width:none;align-items:center"></div>
     </div>
   </div>`
 
@@ -323,40 +323,46 @@ export async function renderCollection(container, ctx) {
     var sel = 0
 
     function repaint() {
-      // Patch desktop : agrandir la zone carte + fixer la hauteur de la strip
+      // Ratios exacts demandés (sans espace vide entre les zones) :
+      //  Mobile : carte 19%→55% (36) / bande 55%→82% (27)
+      //  PC     : carte 16%→66% (50) / bande 66%→87% (21)
       const isDesktop = window.innerWidth >= 768
       const bigZoneEl = document.getElementById('col-big')
-      const gridEl    = document.getElementById('col-grid')
-      if (isDesktop && bigZoneEl) {
-        bigZoneEl.style.minHeight = '420px'
-        bigZoneEl.style.flex     = '1 1 auto'
+      const gridWrapEl = document.getElementById('col-grid')?.parentElement || null
+      if (bigZoneEl) {
+        bigZoneEl.style.flex = isDesktop ? '50 1 0%' : '36 1 0%'
+        bigZoneEl.style.minHeight = '0'
       }
-      if (isDesktop && gridEl) {
-        // 310 × 0.76 + padding = environ 252px
-        gridEl.style.height     = Math.round(310 * 0.76 + 16) + 'px'
+      if (gridWrapEl) {
+        gridWrapEl.style.flex = isDesktop ? '21 1 0%' : '27 1 0%'
+        gridWrapEl.style.minHeight = '0'
+        gridWrapEl.style.display = 'flex'
+        gridWrapEl.style.overflow = 'hidden'
+      }
+      const gridEl = document.getElementById('col-grid')
+      if (gridEl) {
+        gridEl.style.height     = '100%'
         gridEl.style.flexShrink = '0'
         gridEl.style.overflowX  = 'auto'
         gridEl.style.overflowY  = 'hidden'
         gridEl.style.alignItems = 'center'
-        gridEl.style.padding    = '8px 16px'
+        gridEl.style.width      = '100%'
       }
       bigZone.innerHTML = '<div id="big-card-inner" style="display:inline-block;transform-origin:top center">' + renderBigFn(items[sel]) + '</div>'
       var bigEl = bigZone.querySelector('[data-card-id],[data-form-id],[data-gc-id]')
       if (bigEl) bigEl.addEventListener('click', function() { onBigClick(items[sel]) })
-      // Auto-scale pour que la carte rentre dans la zone disponible
+      // Auto-scale pour que la carte remplisse toute la zone disponible (5)
       requestAnimationFrame(function() {
         var inner = document.getElementById('big-card-inner')
-        var strip = document.getElementById('col-grid')
         if (!inner || !bigZone) return
-        var availH = bigZone.clientHeight - 8
-        var availW   = bigZone.clientWidth - 24
-        var cardH    = inner.offsetHeight
-        var cardW    = inner.offsetWidth
+        var availH = bigZone.clientHeight
+        var availW = bigZone.clientWidth - 16
+        var cardH  = inner.offsetHeight
+        var cardW  = inner.offsetWidth
         if (cardH > 0 && cardW > 0 && availH > 40) {
-          var maxScale = isDesktop ? 2.2 : 1.6   // mobile : agrandir la carte centrale
-          var scale = Math.min(availH / cardH, availW / cardW, maxScale)
+          var scale = Math.min(availH / cardH, availW / cardW)
           inner.style.transform = 'scale(' + scale.toFixed(3) + ')'
-          inner.style.transformOrigin = 'top center'
+          inner.style.transformOrigin = 'center center'
         }
       })
 
@@ -377,6 +383,20 @@ export async function renderCollection(container, ctx) {
           sel = Number(el.dataset.idx)
           repaint()
           el.scrollIntoView({ behavior:'smooth', block:'nearest', inline:'center' })
+        })
+      })
+
+      // Remplit exactement la hauteur de la zone 6 (bande de mini-cartes),
+      // pas un zoom fixe arbitraire.
+      requestAnimationFrame(function() {
+        var zoomWrap = grid.querySelector('.col-mini-item > div[style*="zoom"]')
+        if (!zoomWrap || !grid.clientHeight) return
+        var currentZoom = parseFloat(zoomWrap.style.zoom) || 1
+        var naturalH = zoomWrap.offsetHeight / currentZoom
+        if (naturalH <= 0) return
+        var targetZoom = (grid.clientHeight - 4) / naturalH
+        grid.querySelectorAll('.col-mini-item > div[style*="zoom"]').forEach(function(w) {
+          w.style.zoom = targetZoom.toFixed(3)
         })
       })
     }

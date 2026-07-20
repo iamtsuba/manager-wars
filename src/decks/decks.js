@@ -291,6 +291,7 @@ function renderBuilder(container, builder, ctx) {
   const allUsed    = [...Object.values(builder.slots), ...builder.subs]
 
   container.innerHTML = `
+  <style>.no-scrollbar::-webkit-scrollbar{display:none}</style>
   <div style="height:100%;overflow:hidden;background:var(--page-bg)">
     <div class="page-header" style="display:flex;align-items:center;gap:8px;padding:6px 12px;min-height:0">
       <button class="btn-icon" id="builder-back" style="font-size:16px">←</button>
@@ -374,22 +375,22 @@ function renderBuilder(container, builder, ctx) {
           <!-- Remplaçants mobile -->
           <div style="flex:1;min-width:0">
             <div style="font-size:10px;font-weight:700;margin-bottom:6px;color:rgba(255,255,255,0.6);letter-spacing:1px;text-transform:uppercase">Remplaçants (${builder.subs.length}/5)</div>
-            <div style="display:flex;gap:4px;align-items:center;flex-wrap:nowrap;overflow-x:auto" id="subs-list">
+            <div style="display:flex;gap:4px;align-items:center;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;-ms-overflow-style:none" id="subs-list" class="no-scrollbar">
               ${subPlayers.map(card => {
                 const p = { ...card.player, _evolution_bonus: card.evolution_bonus || 0 }
                 return `<div style="position:relative;flex-shrink:0;overflow:visible">
-                  ${renderPlayerCard({ ...p, _evolution_bonus: p._evolution_bonus||0 }, { width: 44, showStad: true, stadDef: _stadDef })}
+                  ${renderPlayerCard({ ...p, _evolution_bonus: p._evolution_bonus||0 }, { width: 58, showStad: true, stadDef: _stadDef })}
                   <button data-remove-sub="${card.id}"
                     style="position:absolute;top:-5px;right:-5px;width:15px;height:15px;background:#c0392b;border:none;border-radius:50%;color:#fff;font-size:9px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;padding:0;z-index:10">✕</button>
                 </div>`
               }).join('')}
-              ${builder.subs.length < 5 ? `<div id="add-sub-btn" style="width:28px;height:36px;border:2px dashed rgba(255,255,255,0.3);border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:16px;color:rgba(255,255,255,0.4);cursor:pointer;flex-shrink:0">+</div>` : ''}
+              ${builder.subs.length < 5 ? `<div id="add-sub-btn" style="width:37px;height:47px;border:2px dashed rgba(255,255,255,0.3);border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:16px;color:rgba(255,255,255,0.4);cursor:pointer;flex-shrink:0">+</div>` : ''}
             </div>
           </div>
           <!-- Formation mobile -->
           <div style="flex-shrink:0;text-align:center">
             <div style="font-size:10px;font-weight:700;margin-bottom:6px;color:rgba(255,255,255,0.6);letter-spacing:1px;text-transform:uppercase">⚽</div>
-            <div id="formation-mobile-btn" style="cursor:pointer;width:50px;height:65px;border-radius:6px;background:#1a3a6b;border:2px solid #555;display:flex;align-items:center;justify-content:center">
+            <div id="formation-mobile-btn" style="cursor:pointer;width:50px;height:65px;border-radius:6px;background:#1A6B3C;border:2px solid #2ecc71;display:flex;align-items:center;justify-content:center">
               <span style="font-size:11px;font-weight:900;color:#fff;text-align:center">${builder.formation}</span>
             </div>
           </div>
@@ -399,12 +400,11 @@ function renderBuilder(container, builder, ctx) {
             <div id="add-stad-btn" style="cursor:pointer">
               ${_selStadCard ? (() => {
                 const def = builder.stadDefMap[_selStadCard.stadium_id]
-                const logo = def?.club?.logo_url || null
-                return `<div style="width:50px;height:65px;border-radius:6px;background:linear-gradient(135deg,#1a3a6b,#0a1a3a);border:2px solid #4fc3f7;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px">
-                  ${logo ? `<img src="${logo}" style="width:26px;height:26px;object-fit:contain">` : `<span style="font-size:18px">🏟️</span>`}
-                  <span style="font-size:14px;font-weight:700;color:#E87722;text-align:center;padding:0 2px">${(def?.name||'Stade').slice(0,10)}</span>
+                const logo = def?.club?.logo_url || def?.image_url || null
+                return `<div style="width:50px;height:65px;border-radius:6px;background:linear-gradient(135deg,#4FC3F7,#0288D1);border:2px solid #4fc3f7;display:flex;align-items:center;justify-content:center">
+                  ${logo ? `<img src="${logo}" style="width:34px;height:34px;object-fit:contain">` : `<span style="font-size:24px">🏟️</span>`}
                 </div>`
-              })() : `<div style="width:50px;height:65px;border:2px dashed rgba(255,165,0,0.4);border-radius:6px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px">
+              })() : `<div style="width:50px;height:65px;border:2px dashed rgba(79,195,247,0.5);border-radius:6px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px">
                 <span style="font-size:18px">🏟️</span>
                 <span style="font-size:8px;color:rgba(255,255,255,0.4)">+</span>
               </div>`}

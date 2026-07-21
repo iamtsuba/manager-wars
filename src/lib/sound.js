@@ -21,3 +21,32 @@ export function playSound(url, volume = 1) {
     return audio
   } catch { return null }
 }
+
+// ── Musique de fond (boucle) ──────────────────────────────────
+// Instance unique partagée : permet de la démarrer dans un fichier
+// (ex: écran de révélation adverse) et de l'arrêter depuis un autre
+// (ex: fin de match, abandon), quel que soit le mode (IA/PvP/mini-league).
+let _bgmAudio = null
+let _bgmUrl = null
+
+export function playBGM(url, volume = 0.3) {
+  if (_bgmAudio && _bgmUrl === url && !_bgmAudio.paused) return // déjà en cours
+  stopBGM()
+  if (isSoundMuted()) return
+  try {
+    const audio = new Audio(url)
+    audio.loop = true
+    audio.volume = volume
+    audio.play().catch(() => {})
+    _bgmAudio = audio
+    _bgmUrl = url
+  } catch {}
+}
+
+export function stopBGM() {
+  if (_bgmAudio) {
+    try { _bgmAudio.pause(); _bgmAudio.currentTime = 0 } catch {}
+  }
+  _bgmAudio = null
+  _bgmUrl = null
+}

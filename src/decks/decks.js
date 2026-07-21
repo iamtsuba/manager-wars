@@ -1,6 +1,7 @@
 import { supabase } from '../lib/supabase.js'
 import { renderPlayerCard } from '../components/player-card.js'
 import { FORMATION_LINKS, FORMATION_POSITIONS, computeLinks, linkColor, getActiveLinks } from '../match/formation-links.js'
+import { renderStadiumCard } from '../components/special-cards.js'
 
 // ── Modales in-app (remplacent prompt()/confirm() natifs du navigateur) ──
 function showPromptModal(title, defaultValue = '') {
@@ -346,12 +347,9 @@ function renderBuilder(container, builder, ctx) {
             <div id="add-stad-btn-pc" style="cursor:pointer;margin:0 auto;width:fit-content">
               ${_selStadCard ? (() => {
                 const def = builder.stadDefMap[_selStadCard.stadium_id]
-                const logo = def?.club?.logo_url || null
-                return `<div style="width:100px;height:130px;border-radius:8px;background:linear-gradient(135deg,#1a3a6b,#0a1a3a);border:2px solid #4fc3f7;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px">
-                  ${logo ? `<img src="${logo}" style="width:48px;height:48px;object-fit:contain">` : `<span style="font-size:36px">🏟️</span>`}
-                  <span style="font-size:10px;font-weight:700;color:#E87722;text-align:center;padding:0 4px">${(def?.name||'Stade').slice(0,14)}</span>
-                </div>`
-              })() : `<div style="width:100px;height:130px;border:2px dashed rgba(255,165,0,0.4);border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px">
+                const logo = def?.club?.logo_url || def?.image_url || null
+                return renderStadiumCard(def?.name || 'Stade', logo, '+10 ⭐', { width: 100 })
+              })() : `<div style="width:100px;height:171px;border:2px dashed rgba(79,195,247,0.4);border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px">
                 <span style="font-size:36px">🏟️</span>
                 <span style="font-size:10px;color:rgba(255,255,255,0.4)">Ajouter</span>
               </div>`}
@@ -401,10 +399,8 @@ function renderBuilder(container, builder, ctx) {
               ${_selStadCard ? (() => {
                 const def = builder.stadDefMap[_selStadCard.stadium_id]
                 const logo = def?.club?.logo_url || def?.image_url || null
-                return `<div style="width:50px;height:65px;border-radius:6px;background:linear-gradient(135deg,#4FC3F7,#0288D1);border:2px solid #4fc3f7;display:flex;align-items:center;justify-content:center">
-                  ${logo ? `<img src="${logo}" style="width:34px;height:34px;object-fit:contain">` : `<span style="font-size:24px">🏟️</span>`}
-                </div>`
-              })() : `<div style="width:50px;height:65px;border:2px dashed rgba(79,195,247,0.5);border-radius:6px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px">
+                return renderStadiumCard(def?.name || 'Stade', logo, '+10⭐', { width: 50 })
+              })() : `<div style="width:50px;height:85px;border:2px dashed rgba(79,195,247,0.5);border-radius:6px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px">
                 <span style="font-size:18px">🏟️</span>
                 <span style="font-size:8px;color:rgba(255,255,255,0.4)">+</span>
               </div>`}

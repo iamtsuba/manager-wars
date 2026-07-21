@@ -28,7 +28,7 @@ async function load(container) {
   container.innerHTML = `
     <div style="padding:20px;max-width:820px;margin:0 auto">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
-        <h2 style="font-size:20px;font-weight:900">🏟️ Stades</h2>
+        <h2 style="font-size:20px;font-weight:900;color:#1a1a1a">🏟️ Stades</h2>
         <button id="st-add-btn" class="btn btn-primary">+ Créer un stade</button>
       </div>
 
@@ -105,17 +105,22 @@ async function load(container) {
 }
 
 function stadRowHTML(s) {
-  const logo = s.club?.logo_url
-    ? `<img src="${s.club.logo_url}" style="width:32px;height:32px;object-fit:contain">`
-    : `<span style="font-size:20px">🌍</span>`
+  let logo
+  if (s.club?.logo_url) {
+    logo = `<img src="${s.club.logo_url}" style="width:32px;height:32px;object-fit:contain">`
+  } else if (s.country_code) {
+    logo = `<img src="https://flagsapi.com/${s.country_code.slice(0,2).toUpperCase()}/flat/32.png" style="width:32px;height:24px;object-fit:contain;border-radius:3px" onerror="this.style.display='none'">`
+  } else {
+    logo = `<span style="font-size:20px">🌍</span>`
+  }
   return `
     <div style="background:#fff;border-radius:10px;padding:12px 16px;box-shadow:0 1px 4px rgba(0,0,0,0.08);display:flex;align-items:center;gap:12px">
       <div style="width:40px;height:40px;border-radius:8px;background:#4FC3F7;display:flex;align-items:center;justify-content:center;flex-shrink:0">
         ${logo}
       </div>
       <div style="flex:1">
-        <div style="font-size:14px;font-weight:900">${s.name}</div>
-        <div style="font-size:11px;color:#aaa">${s.club?.encoded_name || s.country_code || '—'}</div>
+        <div style="font-size:14px;font-weight:900;color:#1a1a1a">${s.name}</div>
+        <div style="font-size:11px;color:#888">${s.club?.encoded_name || s.country_code || '—'}</div>
       </div>
       <button data-edit="${s.id}" class="btn btn-ghost btn-sm">✏️</button>
       <button data-delete="${s.id}" class="btn btn-ghost btn-sm" style="color:#cc2222">🗑️</button>

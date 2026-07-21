@@ -603,7 +603,7 @@ function renderGame(container, game, ctx) {
             <div style="font-size:${Math.round(h*0.09)}px;color:#000;font-weight:900">+${game.boostCard?.value}</div>
           </div>`
 
-      const gcMiniPC = (gc, isBoost) => isBoost ? boostCardDesign(130, 222) : gcCardDesign(gc, 130, 222)
+      const gcMiniPC = (gc, isBoost) => isBoost ? boostCardDesign(95, 162) : gcCardDesign(gc, 95, 162)
       const gcMiniMob = (gc, isBoost) => isBoost ? boostCardDesign(68, 116) : gcCardDesign(gc, 68, 116)
 
       // ─── Bouton action ────────────────────────────────────

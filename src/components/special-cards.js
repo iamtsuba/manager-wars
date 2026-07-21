@@ -37,12 +37,12 @@ export function renderGCCard(name, imageUrl, fallbackIcon, description, opts = {
   const { width = 140, onClick } = opts
   const height = Math.round(width * RATIO)
   const z = ZONES.gc
-  const nameFs = Math.max(8, Math.round(width * (name && name.length > 14 ? 0.058 : 0.072)))
+  const nameFs = Math.max(7, Math.round(width * (name && name.length > 14 ? 0.044 : 0.056)))
   const descFs = Math.max(7, Math.round(width * 0.056))
   return `<div class="special-card special-card-gc" style="position:relative;width:${width}px;height:${height}px;flex-shrink:0;${onClick ? 'cursor:pointer' : ''}">
     <img src="${tplUrl('gc')}" style="position:absolute;inset:0;width:100%;height:100%;z-index:0;pointer-events:none" alt="">
-    <div style="position:absolute;left:16%;right:16%;top:${z.name.top}%;height:${z.name.height}%;display:flex;align-items:center;justify-content:center;z-index:1;overflow:hidden">
-      <span style="font-size:${nameFs}px;font-weight:900;color:#fff;text-transform:uppercase;letter-spacing:.5px;text-align:center;line-height:1.15;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%">${name || ''}</span>
+    <div style="position:absolute;left:14%;right:14%;top:${z.name.top}%;height:${z.name.height}%;display:flex;align-items:center;justify-content:center;z-index:1;overflow:hidden">
+      <span style="font-size:${nameFs}px;font-weight:900;color:#fff;text-transform:uppercase;letter-spacing:.3px;text-align:center;line-height:1.15;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;max-width:100%">${name || ''}</span>
     </div>
     <div style="position:absolute;left:8%;right:8%;top:${z.body.top}%;height:${z.body.height}%;display:flex;align-items:center;justify-content:center;z-index:1">
       ${imageUrl
@@ -96,8 +96,9 @@ export function renderFormationCard(formationName, formationPositions, opts = {}
   const dots = Object.entries(pos).map(([slot, p]) => {
     const role = slot.replace(/\d+/, '')
     const color = ROLE_COLORS[role] || '#888'
+    const yAdj = (role === 'ATT' || role === 'MIL') ? Math.min(1, p.y + 0.10) : p.y
     const leftPct = z.pitch.left + p.x * z.pitch.width
-    const topPct  = z.pitch.top  + p.y * z.pitch.height
+    const topPct  = z.pitch.top  + yAdj * z.pitch.height
     return `<div style="position:absolute;left:${leftPct}%;top:${topPct}%;width:${dotSize}px;height:${dotSize}px;border-radius:50%;background:${color};border:1.5px solid rgba(255,255,255,0.85);transform:translate(-50%,-50%);box-shadow:0 1px 3px rgba(0,0,0,0.5)"></div>`
   }).join('')
   return `<div class="special-card special-card-formation" style="position:relative;width:${width}px;height:${height}px;flex-shrink:0;${onClick ? 'cursor:pointer' : ''}">

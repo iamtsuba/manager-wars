@@ -50,3 +50,26 @@ export function stopBGM() {
   _bgmAudio = null
   _bgmUrl = null
 }
+
+// ── Son "urgent" (ex: chrono critique en jeu) ─────────────────
+// Piste séparée de la BGM : les deux peuvent jouer en même temps
+// (l'urgent se superpose à la musique de fond, ne la coupe pas).
+let _urgentAudio = null
+
+export function playUrgentSound(url, volume = 0.6) {
+  stopUrgentSound()
+  if (isSoundMuted()) return
+  try {
+    const audio = new Audio(url)
+    audio.volume = volume
+    audio.play().catch(() => {})
+    _urgentAudio = audio
+  } catch {}
+}
+
+export function stopUrgentSound() {
+  if (_urgentAudio) {
+    try { _urgentAudio.pause(); _urgentAudio.currentTime = 0 } catch {}
+  }
+  _urgentAudio = null
+}

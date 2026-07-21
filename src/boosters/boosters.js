@@ -3,6 +3,7 @@ import { renderPlayerCard } from '../components/player-card.js'
 import { FORMATION_POSITIONS } from '../match/formation-links.js'
 import { loadActiveBoosters, drawCard, rollDropRate, recordBoosterClaim } from './booster-engine.js'
 import { playSound } from '../lib/sound.js'
+import { getPortrait } from '../lib/portrait.js'
 import { renderGCCard, renderStadiumCard, renderFormationCard } from '../components/special-cards.js'
 
 // Toutes les formations disponibles (depuis formation-links.js)
@@ -21,13 +22,6 @@ const GC_DEFS = {
   'Vol de note':    { icon:'🎯', desc:'-1 à la prochaine action IA.' },
   'Gel':            { icon:'❄️', desc:'Bloque le meilleur attaquant IA.' },
   'Remplacement+':  { icon:'🔄', desc:'+1 remplacement pour ce match.' },
-}
-
-function getPortrait(p) {
-  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
-  if (!supabaseUrl || !p?.skin || !p?.hair) return null
-  const key = p.hair === 'chauve' ? `${p.skin}-chauve-rase` : `${p.skin}-${p.hair}-${p.hair_length}`
-  return `${supabaseUrl}/storage/v1/object/public/assets/tetes/${key}.png`
 }
 
 const JOB_COLORS = { GK:'#111', DEF:'#bb2020', MIL:'#D4A017', ATT:'#1A6B3C' }
@@ -796,7 +790,7 @@ function showBoosterAnimation(cards, booster, navigate, onClose = null) {
     const p        = card.player
     const flagUrl  = `https://flagsapi.com/${p.country_code}/flat/64.png`
     const clubLogo = p.clubs?.logo_url
-    const faceUrl  = p.face ? (import.meta.env.BASE_URL + p.face.replace(/^public\//, '').replace(/^\//, '')) : null
+    const faceUrl  = getPortrait(p)
     const job      = p.job || 'ATT'
     const noteVal  = Number(job==='GK'?p.note_g:job==='DEF'?p.note_d:job==='MIL'?p.note_m:p.note_a) || 0
     const evo      = card.evolution_bonus || 0

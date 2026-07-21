@@ -19,7 +19,7 @@ import { renderPlayerCard } from '../components/player-card.js'
 import { buildTeamSVG, renderTeam, getPortrait, renderMiniCardHTML } from './match-shared.js'
 import { getNoteForRole } from './game-logic.js'
 import { linkColor } from './formation-links.js'
-import { playBGM } from '../lib/sound.js'
+import { playBGM, playSound } from '../lib/sound.js'
 
 const BASE = import.meta.env.BASE_URL
 
@@ -236,6 +236,7 @@ export function renderLogEntry(entry) {
 // ── Animation but ──────────────────────────────────────────
 
 export function showGoalAnimation(scoringPlayers, homeScore, aiScore, homeScored, onDone) {
+  playSound(`${import.meta.env.BASE_URL}sounds/goal.mp3`, 0.7)
   const existing = document.getElementById('goal-anim-overlay')
   if (existing) existing.remove()
 

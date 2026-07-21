@@ -6,6 +6,7 @@ import {
 } from './game-logic.js'
 import { FORMATION_LINKS, FORMATION_POSITIONS, linkColor, getActiveLinks } from './formation-links.js'
 import { isAdjacent } from './game-logic.js'
+import { renderGCCard } from '../components/special-cards.js'
 
 // ═══════════════════════════════════════════════════════════
 // match-shared.js — Code 100% commun entre Match vs IA et Match Random.
@@ -224,24 +225,15 @@ export function showGCSelection(container, gcCards, onConfirm) {
 
   function gcCardHTML(card, selected) {
     const def  = card._gcDef
-    const BG   = { purple:'linear-gradient(135deg,#3d0a7a,#7a28b8)', light_blue:'linear-gradient(135deg,#006080,#00bcd4)' }
-    const BORD = { purple:'#9b59b6', light_blue:'#00bcd4' }
-    const bg   = BG[def?.color]   || BG.purple
-    const bord = BORD[def?.color] || BORD.purple
+    const name = def?.name || card.gc_type
+    const imgUrl = def?.image_url ? `${import.meta.env.BASE_URL}icons/${def.image_url}` : null
+    const inner = renderGCCard(name, imgUrl, '⚡', def?.effect || '', { width: 100 })
     return `<div class="gc-select-card" data-id="${card.id}"
-      style="width:100px;border-radius:10px;border:3px solid ${selected?'#FFD700':bord};background:${bg};
-        display:flex;flex-direction:column;overflow:hidden;cursor:pointer;flex-shrink:0;position:relative;
-        box-shadow:${selected?'0 0 18px #FFD700':'0 2px 8px rgba(0,0,0,0.4)'};
+      style="position:relative;flex-shrink:0;cursor:pointer;border-radius:10px;
+        outline:${selected?'3px solid #FFD700':'none'};
+        box-shadow:${selected?'0 0 18px #FFD700':'none'};
         transform:${selected?'scale(1.06)':'scale(1)'};transition:all 0.15s">
-      <div style="padding:5px 6px;background:rgba(255,255,255,0.12);text-align:center;min-height:32px;display:flex;align-items:center;justify-content:center">
-        <span style="font-size:${(def?.name||card.gc_type).length>12?8:10}px;font-weight:900;color:#fff;line-height:1.2;text-align:center">${def?.name||card.gc_type}</span>
-      </div>
-      <div style="height:70px;display:flex;align-items:center;justify-content:center;padding:4px">
-        ${def?.image_url ? `<img src="${import.meta.env.BASE_URL}icons/${def.image_url}" style="max-height:62px;max-width:88px;object-fit:contain">` : `<span style="font-size:32px">⚡</span>`}
-      </div>
-      <div style="padding:5px 6px;background:rgba(0,0,0,0.35);text-align:center;min-height:36px;display:flex;align-items:center;justify-content:center">
-        <span style="font-size:8px;color:rgba(255,255,255,0.85);line-height:1.3">${(def?.effect||'').slice(0,50)}</span>
-      </div>
+      ${inner}
       ${selected ? '<div style="position:absolute;top:4px;right:4px;width:20px;height:20px;background:#FFD700;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900;color:#000;z-index:2">✓</div>' : ''}
     </div>`
   }

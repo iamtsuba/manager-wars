@@ -186,10 +186,8 @@ label { font-size: 12px; font-weight: 500; color: var(--gray-600);
 table { width: 100%; border-collapse: collapse; font-size: 13px; }
 th { text-align: left; padding: 8px 12px; border-bottom: 2px solid var(--gray-200);
      font-size: 11px; text-transform: uppercase; letter-spacing: .4px; color: var(--gray-600); }
-td { padding: 8px 12px; border-bottom: 1px solid var(--gray-200); vertical-align: middle; }
-tr:hover td { background: rgba(255,255,255,0.05); }
-th { color: rgba(255,255,255,0.6); border-bottom-color: rgba(255,255,255,0.1); }
-td { border-bottom-color: rgba(255,255,255,0.06); color: #fff; }
+td { padding: 8px 12px; border-bottom: 1px solid var(--gray-200); vertical-align: middle; color: #1a1a1a; }
+tr:hover td { background: rgba(0,0,0,0.03); }
 
 /* ── Toast ── */
 #toast {

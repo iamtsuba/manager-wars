@@ -380,7 +380,7 @@ async function openMixedBooster(profile, booster) {
         }).then(()=>{}).catch(()=>{})
       }
     } else if (rate.card_type === 'game_changer') {
-      const { data: dbGC2 } = await supabase.from('gc_definitions').select('id,name').eq('is_active',true).eq('gc_type','game_changer')
+      const { data: dbGC2 } = await supabase.from('gc_definitions').select('id,name,color,effect,image_url,gc_type').eq('is_active',true).eq('gc_type','game_changer')
       const gcPool = dbGC2?.length ? dbGC2 : [{name:'Ressusciter'},{name:'Double attaque'},{name:'Bouclier'},{name:'Vol de note'},{name:'Gel'}]
       // Sans doublons : exclure les GC déjà possédés
       const gcFiltered = !allowDup ? gcPool.filter(g => !ownedGCTypes.has(g.name)) : gcPool
@@ -388,8 +388,8 @@ async function openMixedBooster(profile, booster) {
       const gcPick = gcFiltered[Math.floor(Math.random()*gcFiltered.length)]
       const gc_type = gcPick.name
       const { data: card } = await supabase.from('cards')
-        .insert({ owner_id:profile.id, card_type:'game_changer', gc_type }).select().single()
-      if (card) results.push(card)
+        .insert({ owner_id:profile.id, card_type:'game_changer', gc_type, gc_definition_id: gcPick.id || null }).select().single()
+      if (card) results.push({ ...card, _gcDef: gcPick })
     } else if (rate.card_type === 'formation') {
       const formations = ALL_FORMATIONS()
       const formPool = !allowDup ? formations.filter(f => !ownedFormations.has(f)) : formations

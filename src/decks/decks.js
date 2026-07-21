@@ -318,12 +318,12 @@ function renderBuilder(container, builder, ctx) {
             ${subPlayers.map(card => {
               const p = { ...card.player, _evolution_bonus: card.evolution_bonus || 0 }
               return `<div style="position:relative;flex-shrink:0;overflow:visible;padding-bottom:24px">
-                ${renderPlayerCard({ ...p, _evolution_bonus: p._evolution_bonus||0 }, { width: 100, showStad: true, stadDef: _stadDef })}
+                ${renderPlayerCard({ ...p, _evolution_bonus: p._evolution_bonus||0 }, { width: 132, showStad: true, stadDef: _stadDef })}
                 <button data-remove-sub="${card.id}"
                   style="position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:20px;height:20px;background:#c0392b;border:none;border-radius:50%;color:#fff;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;padding:0;z-index:10">✕</button>
               </div>`
             }).join('')}
-            ${builder.subs.length < 5 ? `<div id="add-sub-btn" style="width:100px;height:130px;border:2px dashed rgba(255,255,255,0.3);border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:18px;color:rgba(255,255,255,0.4);cursor:pointer">+</div>` : ''}
+            ${builder.subs.length < 5 ? `<div id="add-sub-btn" style="width:132px;height:171px;border:2px dashed rgba(255,255,255,0.3);border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:18px;color:rgba(255,255,255,0.4);cursor:pointer">+</div>` : ''}
           </div>
         </div>
 
@@ -377,12 +377,12 @@ function renderBuilder(container, builder, ctx) {
               ${subPlayers.map(card => {
                 const p = { ...card.player, _evolution_bonus: card.evolution_bonus || 0 }
                 return `<div style="position:relative;flex-shrink:0;overflow:visible;padding-bottom:20px">
-                  ${renderPlayerCard({ ...p, _evolution_bonus: p._evolution_bonus||0 }, { width: 50, showStad: true, stadDef: _stadDef })}
+                  ${renderPlayerCard({ ...p, _evolution_bonus: p._evolution_bonus||0 }, { width: 66, showStad: true, stadDef: _stadDef })}
                   <button data-remove-sub="${card.id}"
                     style="position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:16px;height:16px;background:#c0392b;border:none;border-radius:50%;color:#fff;font-size:9px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;padding:0;z-index:10">✕</button>
                 </div>`
               }).join('')}
-              ${builder.subs.length < 5 ? `<div id="add-sub-btn" style="width:50px;height:65px;border:2px dashed rgba(255,255,255,0.3);border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:16px;color:rgba(255,255,255,0.4);cursor:pointer;flex-shrink:0">+</div>` : ''}
+              ${builder.subs.length < 5 ? `<div id="add-sub-btn" style="width:66px;height:85px;border:2px dashed rgba(255,255,255,0.3);border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:16px;color:rgba(255,255,255,0.4);cursor:pointer;flex-shrink:0">+</div>` : ''}
             </div>
           </div>
           <!-- Formation mobile -->

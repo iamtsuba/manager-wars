@@ -3,6 +3,7 @@ import { renderPlayerCard } from '../components/player-card.js'
 import { FORMATION_POSITIONS } from '../match/formation-links.js'
 import { loadActiveBoosters, drawCard, rollDropRate, recordBoosterClaim } from './booster-engine.js'
 import { playSound } from '../lib/sound.js'
+import { renderGCCard, renderStadiumCard, renderFormationCard } from '../components/special-cards.js'
 
 // Toutes les formations disponibles (depuis formation-links.js)
 const ALL_FORMATIONS = () => Object.keys(FORMATION_POSITIONS)
@@ -1015,40 +1016,15 @@ function buildCardFace(card) {
 
   if (card.card_type === 'game_changer') {
     const def  = card._gcDef
-    const isUltra = def?.gc_type === 'ultra_game_changer'
-    const BG   = { purple:'linear-gradient(160deg,#4a0a8a,#7a28b8)', light_blue:'linear-gradient(160deg,#006080,#00bcd4)' }
-    const BORD = { purple:'#b06ce0', light_blue:'#00d4ef' }
-    const bg   = BG[def?.color]   || BG.purple
-    const bord = BORD[def?.color] || BORD.purple
     const name   = def?.name   || card.gc_type || 'Game Changer'
     const effect = def?.effect || GC_DEFS[card.gc_type]?.desc || ''
     const imgUrl = def?.image_url ? `${import.meta.env.BASE_URL}icons/${def.image_url}` : null
     const fallback = GC_DEFS[card.gc_type]?.icon || '⚡'
-    return `<div style="width:170px;height:240px;background:${bg};border-radius:14px;border:3px solid ${bord};display:flex;flex-direction:column;overflow:hidden;box-shadow:0 0 24px ${bord}88;flex-shrink:0">
-      <!-- Barre nom (haut, fond légèrement clair) -->
-      <div style="padding:8px 10px;background:rgba(255,255,255,0.14);text-align:center;flex-shrink:0">
-        <div style="font-size:${name.length>14?9:11}px;font-weight:900;color:#fff;letter-spacing:.5px;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${name}</div>
-        <div style="font-size:7px;color:rgba(255,255,255,0.55);margin-top:1px">${isUltra?'💎 ULTRA GAME CHANGER':'⚡ GAME CHANGER'}</div>
-      </div>
-      <!-- Image (grand, carré centré) -->
-      <div style="flex:1;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.06);margin:0">
-        ${imgUrl
-          ? `<img src="${imgUrl}" style="max-width:120px;max-height:120px;width:auto;height:auto;object-fit:contain;border-radius:6px">`
-          : `<span style="font-size:56px">${fallback}</span>`}
-      </div>
-      <!-- Barre effet (bas, fond sombre) -->
-      <div style="padding:8px 10px;background:rgba(0,0,0,0.38);text-align:center;flex-shrink:0">
-        <div style="font-size:10px;color:rgba(255,255,255,0.9);line-height:1.4;font-weight:500">${effect.slice(0,55)}</div>
-      </div>
-    </div>`
+    return renderGCCard(name, imgUrl, fallback, effect, { width: 170 })
   }
 
   if (card.card_type === 'formation') {
-    return `<div style="width:140px;height:200px;background:linear-gradient(135deg,#1A6B3C,#2a8f52);border-radius:12px;border:3px solid #2a8f52;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:16px">
-      <div style="font-size:40px">🏟️</div>
-      <div style="font-size:8px;background:rgba(255,255,255,0.2);color:#fff;padding:2px 8px;border-radius:10px;letter-spacing:.5px">FORMATION</div>
-      <div style="font-weight:900;font-size:22px;color:#fff">${card.formation}</div>
-    </div>`
+    return renderFormationCard(card.formation, FORMATION_POSITIONS[card.formation], { width: 160 })
   }
 
   if (card.card_type === 'stadium') {
@@ -1058,19 +1034,8 @@ function buildCardFace(card) {
     const imgUrl = def?.image_url
       ? `${import.meta.env.BASE_URL}icons/${def.image_url}`
       : (def?.club?.logo_url || (def?.country_code ? `https://flagsapi.com/${def.country_code.slice(0,2).toUpperCase()}/flat/64.png` : null))
-    return `<div style="width:160px;height:230px;background:linear-gradient(160deg,#4FC3F7,#0288D1);border-radius:14px;border:3px solid #0288D1;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 0 24px rgba(79,195,247,0.6)">
-      <div style="padding:8px 10px;background:rgba(0,0,0,0.25);text-align:center;flex-shrink:0">
-        <div style="font-size:7px;font-weight:700;color:rgba(255,255,255,0.65);letter-spacing:1px">🏟️ STADE</div>
-        <div style="font-size:${name.length>16?9:11}px;font-weight:900;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:2px">${name}</div>
-      </div>
-      <div style="flex:1;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.08)">
-        ${imgUrl ? `<img src="${imgUrl}" style="max-width:100px;max-height:100px;object-fit:contain;border-radius:6px">` : '<span style="font-size:52px">🏟️</span>'}
-      </div>
-      <div style="padding:8px 10px;background:rgba(0,0,0,0.3);text-align:center;flex-shrink:0">
-        <div style="font-size:11px;color:rgba(255,255,255,0.85);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${label}</div>
-        <div style="font-size:12px;font-weight:900;color:#FFD700;margin-top:2px">+10 ⭐ joueurs alliés</div>
-      </div>
-    </div>`
+    const desc = `${label}<br>+10 ⭐ joueurs alliés`
+    return renderStadiumCard(name, imgUrl, desc, { width: 170 })
   }
   return '<div style="width:140px;height:200px;background:#333;border-radius:12px"></div>'
 }

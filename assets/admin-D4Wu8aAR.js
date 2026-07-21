@@ -194,10 +194,10 @@ import{s as E,r as De,g as Pe,K as Ee,D as S,S as et,a as j,H as tt,R as nt,e as
       <button class="btn btn-primary" id="add-club-btn" style="white-space:nowrap">+ Club</button>
     </div>
     <div id="clubs-list" style="display:flex;flex-direction:column;gap:8px"></div>`,c(re),document.getElementById("search-clubs").addEventListener("input",l=>{const g=l.target.value.toLowerCase();c(re.filter(r=>r.real_name.toLowerCase().includes(g)||r.encoded_name.toLowerCase().includes(g)))}),document.getElementById("add-club-btn").addEventListener("click",()=>Ie(null,e,t));function c(l){const g=document.getElementById("clubs-list");if(!l.length){g.innerHTML='<p style="color:var(--gray-600);padding:20px">Aucun club.</p>';return}g.innerHTML=l.map(r=>{const f=Ve(r),s=Pe(f,r.id).replace("<svg ",'<svg style="width:40px;height:48px" '),a=r.logo_url?`<img src="${r.logo_url}" style="width:40px;height:40px;object-fit:contain;border-radius:8px">`:`<div style="width:40px;height:40px;background:linear-gradient(135deg,${f.color1},${f.color2});border-radius:8px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:10px;font-weight:900">${r.encoded_name.slice(0,3)}</div>`,o=n[r.id]||0;return`
-        <div class="card-panel" style="display:flex;align-items:center;gap:10px;padding:10px 12px">
+        <div class="card-panel" style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,0.08)">
           ${a}
           <div style="flex:1;min-width:0">
-            <div style="font-weight:900;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.real_name}</div>
+            <div style="font-weight:900;font-size:14px;color:#1a1a1a;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.real_name}</div>
             <div style="display:flex;align-items:center;gap:6px;margin-top:2px">
               <img src="https://flagsapi.com/${r.country_code}/flat/24.png" style="height:12px" onerror="this.style.display='none'">
               <span style="font-size:11px;color:var(--gray-600);font-family:monospace">${r.encoded_name} · ${r.country_code}</span>

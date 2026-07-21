@@ -33,7 +33,7 @@ import {
 } from './match-shared.js'
 import { renderPlayerCard } from '../components/player-card.js'
 import { renderGCCard } from '../components/special-cards.js'
-import { stopBGM } from '../lib/sound.js'
+import { stopBGM, playUrgentSound, stopUrgentSound } from '../lib/sound.js'
 
 const BASE = import.meta.env.BASE_URL
 // histPlayer importé depuis match-engine.js (aliasé _histPlayer)
@@ -282,6 +282,7 @@ async function _renderPvpMatchCore(container, ctx, matchId, amIHome, myGC = [], 
         if (row.status === 'finished' || row.forfeit) {
           if (_pvpEnded) return; _pvpEnded = true
           if (_localTimerInt) { clearInterval(_localTimerInt); _localTimerInt = null }
+          stopUrgentSound()
           if (row.game_state) gameState = row.game_state
           showPvpEndScreen(row); return
         }
@@ -336,6 +337,7 @@ async function _renderPvpMatchCore(container, ctx, matchId, amIHome, myGC = [], 
   async function forfeitMatch() {
     if (_pvpEnded) return; _pvpEnded = true
     stopBGM()
+    stopUrgentSound()
     if (_localTimerInt) { clearInterval(_localTimerInt); _localTimerInt = null }
     const winnerId = amIHome ? match.away_id : match.home_id
     const winnerRole = amIHome ? 'p2' : 'p1'
@@ -893,6 +895,7 @@ async function _renderPvpMatchCore(container, ctx, matchId, amIHome, myGC = [], 
 
     // ── Timer local (hors gameState) ──
     if (_localTimerInt) { clearInterval(_localTimerInt); _localTimerInt = null }
+    stopUrgentSound()
     if ((isMyAttack||isMyDefense) && !_pvpEnded) {
       let remaining=30, phase2=false
       const timerEl = () => document.getElementById('pvp-timer')
@@ -901,9 +904,10 @@ async function _renderPvpMatchCore(container, ctx, matchId, amIHome, myGC = [], 
       _localTimerInt = setInterval(() => {
         remaining--
         if (remaining<0) {
-          if(!phase2){phase2=true;remaining=15;paint()}
+          if(!phase2){phase2=true;remaining=15;paint();playUrgentSound(`${import.meta.env.BASE_URL}sounds/timer-urgent.mp3`, 0.6)}
           else {
             clearInterval(_localTimerInt);_localTimerInt=null
+            stopUrgentSound()
             // Si l'action attendue est seulement PASSER (aucun attaquant), auto-passer au lieu de forfait
             if (isMyAttack && !canAttack(myRole)) pvpPassTurn()
             else forfeitMatch()
@@ -1533,6 +1537,7 @@ async function _renderPvpMatchCore(container, ctx, matchId, amIHome, myGC = [], 
   // Termine le match en DB : statut + winner + scores (home=p1, away=p2)
   async function finishMatch(finalState) {
     stopBGM()
+    stopUrgentSound()
     try {
       const winnerId = computeWinnerId(finalState)
       const loserId  = winnerId ? (match.home_id === winnerId ? match.away_id : match.home_id) : null

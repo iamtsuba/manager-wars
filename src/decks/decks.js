@@ -318,12 +318,12 @@ function renderBuilder(container, builder, ctx) {
             ${subPlayers.map(card => {
               const p = { ...card.player, _evolution_bonus: card.evolution_bonus || 0 }
               return `<div style="position:relative;flex-shrink:0;overflow:visible;padding-bottom:24px">
-                ${renderPlayerCard({ ...p, _evolution_bonus: p._evolution_bonus||0 }, { width: 132, showStad: true, stadDef: _stadDef })}
+                ${renderPlayerCard({ ...p, _evolution_bonus: p._evolution_bonus||0 }, { width: 90, showStad: true, stadDef: _stadDef })}
                 <button data-remove-sub="${card.id}"
                   style="position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:20px;height:20px;background:#c0392b;border:none;border-radius:50%;color:#fff;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;padding:0;z-index:10">✕</button>
               </div>`
             }).join('')}
-            ${builder.subs.length < 5 ? `<div id="add-sub-btn" style="width:132px;height:171px;border:2px dashed rgba(255,255,255,0.3);border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:18px;color:rgba(255,255,255,0.4);cursor:pointer">+</div>` : ''}
+            ${builder.subs.length < 5 ? `<div id="add-sub-btn" style="width:90px;height:117px;border:2px dashed rgba(255,255,255,0.3);border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:18px;color:rgba(255,255,255,0.4);cursor:pointer">+</div>` : ''}
           </div>
         </div>
 
@@ -548,7 +548,7 @@ function renderDeckField(container, builder, positions, ctx) {
         { width: CARD_W, showStad: true, stadDef, role }
       )
       const stadLogo = hasStad ? (stadDef.club?.logo_url || stadDef.image_url || null) : null
-      const badgeSize = Math.round(CARD_W * 0.34)
+      const badgeSize = Math.round(CARD_W * (isDesktopRDF ? 0.578 : 0.34)) // PC : +70% (demande explicite)
       const stadBadge = hasStad ? `<div style="position:absolute;top:2px;right:2px;width:${badgeSize}px;height:${badgeSize}px;border-radius:50%;background:rgba(0,0,0,0.6);border:1.5px solid #4FC3F7;display:flex;align-items:center;justify-content:center;overflow:hidden;z-index:6">${stadLogo ? `<img src="${stadLogo}" style="width:100%;height:100%;object-fit:cover">` : `<span style="font-size:${Math.round(badgeSize*0.6)}px;line-height:1">🏟️</span>`}</div>` : ''
       cardsHtml += `<div style="position:absolute;left:${left}px;top:${top}px;cursor:pointer;z-index:2;position:absolute" class="deck-slot-hit" data-pos="${pos}">
         <div style="position:relative">${cardHtml}${stadBadge}</div>

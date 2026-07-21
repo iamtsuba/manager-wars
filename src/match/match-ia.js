@@ -12,6 +12,7 @@ import {
   calcMidfieldDuel, resolveDuel, aiSelectPlayers, getRewards
 } from './game-logic.js'
 import { FORMATION_LINKS, FORMATION_POSITIONS, linkColor, getActiveLinks } from './formation-links.js'
+import { renderGCCard } from '../components/special-cards.js'
 import {
   showMsg, getPortrait, playerFromCard, getColsForLine, buildTeam, rollBoost, applyStadiumBonus, applyStadiumBonusToSubs,
   _hideBottomNav, _showBottomNav, renderDeckSelect, showGCSelection,
@@ -584,26 +585,12 @@ function renderGame(container, game, ctx) {
       // ─── Design Collection pour les cartes GC ────────────────
       const gcCardDesign = (gc, w, h) => {
         const def    = (game.gcDefs||[]).find(d => d.name === gc.gc_type)
-        const bg     = ({purple:'linear-gradient(160deg,#4a0a8a,#7a28b8)',light_blue:'linear-gradient(160deg,#006080,#00bcd4)'})[def?.color] || 'linear-gradient(160deg,#4a0a8a,#7a28b8)'
-        const bord   = ({purple:'#b06ce0',light_blue:'#00d4ef'})[def?.color] || '#b06ce0'
         const name   = def?.name || gc.gc_type
         const effect = def?.effect || GC_DEFS[gc.gc_type]?.desc || ''
         const imgUrl = def?.image_url ? `${import.meta.env.BASE_URL}icons/${def.image_url}` : null
         const icon   = GC_DEFS[gc.gc_type]?.icon || '⚡'
-        const nameH  = Math.round(h * 0.22), effH = Math.round(h * 0.22), imgH = h - nameH - effH
-        const fs     = name.length > 12 ? 7 : 9
-        return `<div class="gc-mini" data-gc-id="${gc.id}" data-gc-type="${gc.gc_type}"
-          style="box-sizing:border-box;width:${w}px;height:${h}px;border-radius:10px;border:2px solid ${bord};background:${bg};display:flex;flex-direction:column;overflow:hidden;cursor:pointer;flex-shrink:0">
-          <div style="height:${nameH}px;background:rgba(255,255,255,0.14);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0 3px">
-            <span style="font-size:${fs}px;font-weight:900;color:#fff;text-align:center;line-height:1.1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:${w-6}px">${name}</span>
-            <span style="font-size:6px;color:rgba(255,255,255,0.45)">⚡ GC</span>
-          </div>
-          <div style="height:${imgH}px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.06)">
-            ${imgUrl ? `<img src="${imgUrl}" style="max-width:${w-10}px;max-height:${imgH-6}px;object-fit:contain">` : `<span style="font-size:${Math.round(imgH*.55)}px">${icon}</span>`}
-          </div>
-          <div style="height:${effH}px;background:rgba(0,0,0,0.38);display:flex;align-items:center;justify-content:center;padding:0 3px">
-            <span style="font-size:6px;color:rgba(255,255,255,0.9);text-align:center;line-height:1.25">${effect.slice(0,38)}</span>
-          </div>
+        return `<div class="gc-mini" data-gc-id="${gc.id}" data-gc-type="${gc.gc_type}" style="flex-shrink:0;cursor:pointer">
+          ${renderGCCard(name, imgUrl, icon, effect, { width: w })}
         </div>`
       }
 
@@ -615,8 +602,8 @@ function renderGame(container, game, ctx) {
             <div style="font-size:${Math.round(h*0.09)}px;color:#000;font-weight:900">+${game.boostCard?.value}</div>
           </div>`
 
-      const gcMiniPC = (gc, isBoost) => isBoost ? boostCardDesign(130, 175) : gcCardDesign(gc, 130, 175)
-      const gcMiniMob = (gc, isBoost) => isBoost ? boostCardDesign(68, 95) : gcCardDesign(gc, 68, 95)
+      const gcMiniPC = (gc, isBoost) => isBoost ? boostCardDesign(130, 222) : gcCardDesign(gc, 130, 222)
+      const gcMiniMob = (gc, isBoost) => isBoost ? boostCardDesign(68, 116) : gcCardDesign(gc, 68, 116)
 
       // ─── Bouton action ────────────────────────────────────
       const btnStyle = _pc
@@ -1461,8 +1448,6 @@ function openSubstitution(container, game, ctx, preferredSubId = null, preferred
 function openGCDetail(gcId, gcType, container, game, ctx) {
   const dbDef = (game.gcDefs||[]).find(d => d.name === gcType)
   const legDef = GC_DEFS[gcType] || { icon:'⚡', desc:'Carte spéciale.' }
-  const bg     = ({purple:'linear-gradient(160deg,#4a0a8a,#7a28b8)',light_blue:'linear-gradient(160deg,#006080,#00bcd4)'})[dbDef?.color] || 'linear-gradient(160deg,#4a0a8a,#7a28b8)'
-  const bord   = ({purple:'#b06ce0',light_blue:'#00d4ef'})[dbDef?.color] || '#b06ce0'
   const name   = dbDef?.name || gcType
   const effect = dbDef?.effect || legDef.desc
   const imgUrl = dbDef?.image_url ? `${import.meta.env.BASE_URL}icons/${dbDef.image_url}` : null
@@ -1470,19 +1455,7 @@ function openGCDetail(gcId, gcType, container, game, ctx) {
   const overlay = document.createElement('div')
   overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.88);z-index:750;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:24px'
   overlay.innerHTML = `
-    <!-- Carte design Collection -->
-    <div style="width:190px;border-radius:16px;border:3px solid ${bord};background:${bg};display:flex;flex-direction:column;overflow:hidden;box-shadow:0 0 40px ${bord}66">
-      <div style="padding:10px;background:rgba(255,255,255,0.14);text-align:center">
-        <div style="font-size:${name.length>14?11:14}px;font-weight:900;color:#fff;letter-spacing:.5px;text-transform:uppercase">${name}</div>
-        <div style="font-size:8px;color:rgba(255,255,255,0.5);margin-top:2px">⚡ GAME CHANGER</div>
-      </div>
-      <div style="height:160px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.06)">
-        ${imgUrl ? `<img src="${imgUrl}" style="max-width:150px;max-height:150px;object-fit:contain">` : `<span style="font-size:72px">${icon}</span>`}
-      </div>
-      <div style="padding:10px;background:rgba(0,0,0,0.38);text-align:center">
-        <div style="font-size:12px;color:rgba(255,255,255,0.92);line-height:1.5">${effect}</div>
-      </div>
-    </div>
+    ${renderGCCard(name, imgUrl, icon, effect, { width: 190 })}
     <!-- Boutons -->
     <div style="display:flex;gap:12px;width:190px">
       <button id="gc-back" style="flex:1;padding:13px;border-radius:12px;border:1px solid rgba(255,255,255,0.3);background:transparent;color:#fff;font-size:14px;cursor:pointer">Retour</button>

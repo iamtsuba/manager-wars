@@ -1,4 +1,5 @@
 import { supabase } from '../../lib/supabase.js'
+import { renderGCCard } from '../../components/special-cards.js'
 
 const GC_TYPES = [
   { value: 'game_changer',       label: '⚡ Game Changer',       border: '#7a28b8', bg: 'linear-gradient(135deg,#4a0080,#7a28b8)' },
@@ -34,24 +35,9 @@ export async function renderGCCards(container) {
   // ── Carte preview ─────────────────────────────────────────
   function cardPreview(c, size = 130) {
     if (!c) return ''
-    const def   = GC_TYPES.find(t => t.value === c.gc_type) || GC_TYPES[0]
-    const color = GC_COLORS.find(cl => cl.value === c.color) || GC_COLORS[0]
-    const imgH  = Math.round(size * 0.55)
-    const nameH = Math.round(size * 0.15)
-    const botH  = Math.round(size * 0.3)
-    return `<div style="width:${size}px;height:${Math.round(size*1.4)}px;border-radius:10px;border:3px solid ${color.hex};background:${def.bg};display:flex;flex-direction:column;overflow:hidden;box-shadow:0 0 16px ${color.hex}55;flex-shrink:0">
-      <div style="height:${nameH}px;background:rgba(255,255,255,0.12);display:flex;align-items:center;justify-content:center;padding:0 4px">
-        <span style="font-size:${Math.max(8,Math.round(size/11))}px;font-weight:900;color:#fff;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%">${c.name||'?'}</span>
-      </div>
-      <div style="flex:1;display:flex;align-items:center;justify-content:center;padding:4px">
-        ${c.image_url
-          ? `<img src="${import.meta.env.BASE_URL}icons/${c.image_url}" style="max-height:${imgH}px;max-width:90%;object-fit:contain">`
-          : `<div style="font-size:${Math.round(size*0.3)}px">${def.label.split(' ')[0]}</div>`}
-      </div>
-      <div style="height:${botH}px;background:rgba(0,0,0,0.35);display:flex;align-items:center;justify-content:center;padding:4px 6px">
-        <span style="font-size:${Math.max(7,Math.round(size/13))}px;color:rgba(255,255,255,0.85);text-align:center;line-height:1.3">${(c.effect||'').slice(0,60)}${(c.effect||'').length>60?'…':''}</span>
-      </div>
-    </div>`
+    const def = GC_TYPES.find(t => t.value === c.gc_type) || GC_TYPES[0]
+    const imgUrl = c.image_url ? `${import.meta.env.BASE_URL}icons/${c.image_url}` : null
+    return renderGCCard(c.name || '?', imgUrl, def.label.split(' ')[0], c.effect || '', { width: size })
   }
 
   // ── Liste gauche ──────────────────────────────────────────
@@ -106,7 +92,7 @@ export async function renderGCCards(container) {
       ${isMobile() ? `<button id="btn-gc-back" style="margin-bottom:12px;background:#eee;border:none;border-radius:8px;padding:8px 14px;font-size:13px;cursor:pointer">← Retour</button>` : ''}
 
       <!-- Preview -->
-      <div style="display:flex;justify-content:center;margin-bottom:16px;padding:20px;background:${def.bg};border-radius:12px">
+      <div style="display:flex;justify-content:center;margin-bottom:16px;padding:20px;background:#1a1a2e;border-radius:12px">
         ${cardPreview(sel, isMobile() ? 120 : 150)}
       </div>
 

@@ -1,7 +1,7 @@
 import { supabase } from '../../lib/supabase.js'
+import { renderStadiumCard } from '../../components/special-cards.js'
 
 const BASE = import.meta.env.BASE_URL
-const ORANGE = '#E87722'
 
 const COUNTRIES = [
   ['MA','Maroc'],['FR','France'],['AR','Argentine'],['PT','Portugal'],['BR','Brésil'],
@@ -110,7 +110,7 @@ function stadRowHTML(s) {
     : `<span style="font-size:20px">🌍</span>`
   return `
     <div style="background:#fff;border-radius:10px;padding:12px 16px;box-shadow:0 1px 4px rgba(0,0,0,0.08);display:flex;align-items:center;gap:12px">
-      <div style="width:40px;height:40px;border-radius:8px;background:${ORANGE};display:flex;align-items:center;justify-content:center;flex-shrink:0">
+      <div style="width:40px;height:40px;border-radius:8px;background:#4FC3F7;display:flex;align-items:center;justify-content:center;flex-shrink:0">
         ${logo}
       </div>
       <div style="flex:1">
@@ -145,38 +145,18 @@ function updatePreview() {
   const clubLogoOpt = clubSel?.options[clubIdx]?.getAttribute?.('data-logo') || ''
 
   // Image centrale : priorité image manuelle → logo club → drapeau pays
-  let imgHTML
+  let imgUrl = null
   if (imgFile) {
-    imgHTML = `<img src="${BASE}icons/${imgFile}" style="width:64px;height:64px;object-fit:contain;display:block;margin:0 auto">`
+    imgUrl = `${BASE}icons/${imgFile}`
   } else if (clubLogoOpt) {
-    imgHTML = `<img src="${clubLogoOpt}" style="width:64px;height:64px;object-fit:contain;display:block;margin:0 auto" onerror="this.style.display='none'">`
+    imgUrl = clubLogoOpt
   } else if (country) {
-    const flagUrl = `https://flagsapi.com/${$country.toLowerCase().slice(0,2).toUpperCase()}/flat/64.png`
-    imgHTML = `<img src="${flagUrl}" style="width:80px;height:60px;object-fit:contain;display:block;margin:0 auto;border-radius:4px">`
-  } else {
-    imgHTML = `<div style="font-size:36px;text-align:center">🏟️</div>`
+    imgUrl = `https://flagsapi.com/${country.toLowerCase().slice(0,2).toUpperCase()}/flat/64.png`
   }
 
   const label = clubName || (country ? country : '—')
-  document.getElementById('st-preview-card').innerHTML = renderStadiumCardHTML(name, imgHTML, label, true)
+  document.getElementById('st-preview-card').innerHTML = renderStadiumCard(name, imgUrl, `${label}<br>+10 ⭐`, { width: 140 })
 }
-
-function renderStadiumCardHTML(name, imgHTML, label, fullSize=false) {
-  const W = fullSize ? 140 : 140
-  return `<div style="width:${W}px;background:linear-gradient(160deg,${ORANGE},#c45a00);border-radius:12px;padding:6px;display:flex;flex-direction:column;gap:0;box-shadow:0 4px 12px rgba(232,119,34,0.4);font-family:Arial,sans-serif">
-    <div style="text-align:center;font-size:8px;font-weight:900;color:rgba(255,255,255,0.7);letter-spacing:1px;text-transform:uppercase;margin-bottom:2px">🏟️ STADE</div>
-    <div style="background:rgba(0,0,0,0.25);border-radius:6px;padding:4px 6px;text-align:center;margin-bottom:4px">
-      <div style="font-size:9px;font-weight:900;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${name}</div>
-    </div>
-    <div style="flex:1;display:flex;align-items:center;justify-content:center;min-height:80px;padding:4px 0">${imgHTML}</div>
-    <div style="background:rgba(0,0,0,0.3);border-radius:6px;padding:4px 6px;text-align:center;margin-top:4px">
-      <div style="font-size:8px;color:rgba(255,255,255,0.8);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${label}</div>
-      <div style="font-size:10px;font-weight:900;color:#FFD700;margin-top:1px">+10 ⭐</div>
-    </div>
-  </div>`
-}
-
-export { renderStadiumCardHTML, ORANGE }
 
 async function saveForm(container) {
   const id      = document.getElementById('st-id').value

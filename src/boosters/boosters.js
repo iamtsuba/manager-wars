@@ -801,7 +801,7 @@ function showBoosterAnimation(cards, booster, navigate, onClose = null) {
     const noteVal  = Number(job==='GK'?p.note_g:job==='DEF'?p.note_d:job==='MIL'?p.note_m:p.note_a) || 0
     const evo      = card.evolution_bonus || 0
     const mainNote = noteVal + evo
-    const isLeg    = p.rarity === 'legende'
+    const isLeg    = p.rarity === 'legende' || mainNote >= 18
     const isHot    = mainNote >= 18
 
     const ov    = document.getElementById('walkout-overlay')

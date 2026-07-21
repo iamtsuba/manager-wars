@@ -13,7 +13,7 @@ import {
 } from './game-logic.js'
 import { FORMATION_LINKS, FORMATION_POSITIONS, linkColor, getActiveLinks } from './formation-links.js'
 import { renderGCCard } from '../components/special-cards.js'
-import { stopBGM } from '../lib/sound.js'
+import { stopBGM, playUrgentSound, stopUrgentSound } from '../lib/sound.js'
 import {
   showMsg, getPortrait, playerFromCard, getColsForLine, buildTeam, rollBoost, applyStadiumBonus, applyStadiumBonusToSubs,
   _hideBottomNav, _showBottomNav, renderDeckSelect, showGCSelection,
@@ -800,6 +800,7 @@ function renderGame(container, game, ctx) {
 
   // ── CHRONO (point 7) ─────────────────────────────────────
   if (game._timerInt) { clearInterval(game._timerInt); game._timerInt = null }
+  stopUrgentSound()
   const isPlayerTurn = (game.phase === 'attack' || game.phase === 'defense')
   if (isPlayerTurn) {
     let phase2 = false           // false = 30s vert, true = 15s rouge
@@ -818,9 +819,10 @@ function renderGame(container, game, ctx) {
     game._timerInt = setInterval(() => {
       remaining--
       if (remaining < 0) {
-        if (!phase2) { phase2 = true; remaining = 15; paint() }
+        if (!phase2) { phase2 = true; remaining = 15; paint(); playUrgentSound(`${import.meta.env.BASE_URL}sounds/timer-urgent.mp3`, 0.6) }
         else {
           clearInterval(game._timerInt); game._timerInt = null
+          stopUrgentSound()
           // Forfait
           game.homeScore = 0; game.aiScore = 3
           const ov = document.createElement('div')
@@ -918,6 +920,7 @@ function updateLastPlayer(game, ctx, playerId) {
 
 function confirmAttack(container, game, ctx) {
   if (game._timerInt) { clearInterval(game._timerInt); game._timerInt = null }
+  stopUrgentSound()
   updateLastPlayer(game, ctx, ctx.state.profile.id)
   // Re-piocher les objets joueurs À JOUR (boost inclus) depuis game.homeTeam.
   // Les DEF/GK ne sont sélectionnables en attaque que via le fallback (plus de
@@ -943,6 +946,7 @@ function confirmAttack(container, game, ctx) {
 
 function confirmDefense(container, game, ctx) {
   if (game._timerInt) { clearInterval(game._timerInt); game._timerInt = null }
+  stopUrgentSound()
   updateLastPlayer(game, ctx, ctx.state.profile.id)
   // Re-piocher les objets joueurs À JOUR (boost inclus) depuis game.homeTeam.
   const homeSt = game.stadiumDef || null
@@ -1702,6 +1706,7 @@ function useBoost(container, game, ctx) {
 
 async function finishMatch(container, game, ctx) {
   stopBGM()
+  stopUrgentSound()
   if (game._timerInt) { clearInterval(game._timerInt); game._timerInt = null }
   game.phase = 'finished'
   const { state } = ctx

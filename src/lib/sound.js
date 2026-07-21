@@ -1,22 +1,38 @@
 // src/lib/sound.js — Gestion centralisée du son de l'app.
-// Toute lecture de son doit passer par playSound() pour respecter le
-// réglage ON/OFF choisi par l'utilisateur (page Réglages).
+// Toute lecture de son doit passer par playSound()/playBGM()/playUrgentSound()
+// pour respecter le volume choisi par l'utilisateur (page Réglages).
 
-const SOUND_KEY = 'mw_sound_muted'
+const VOLUME_KEY = 'mw_sound_volume' // 0-100
 
+export function getVolume() {
+  const v = localStorage.getItem(VOLUME_KEY)
+  if (v === null) return 100
+  const n = parseInt(v, 10)
+  return Number.isFinite(n) ? Math.max(0, Math.min(100, n)) : 100
+}
+
+export function setVolume(pct) {
+  localStorage.setItem(VOLUME_KEY, String(Math.max(0, Math.min(100, Math.round(pct)))))
+}
+
+// Rétro-compatibilité : "muet" = volume à 0.
 export function isSoundMuted() {
-  return localStorage.getItem(SOUND_KEY) === '1'
+  return getVolume() === 0
 }
 
 export function setSoundMuted(muted) {
-  localStorage.setItem(SOUND_KEY, muted ? '1' : '0')
+  setVolume(muted ? 0 : 100)
+}
+
+function scaled(base) {
+  return Math.max(0, Math.min(1, base * (getVolume() / 100)))
 }
 
 export function playSound(url, volume = 1) {
   if (isSoundMuted()) return null
   try {
     const audio = new Audio(url)
-    audio.volume = volume
+    audio.volume = scaled(volume)
     audio.play().catch(() => {})
     return audio
   } catch { return null }
@@ -28,15 +44,20 @@ export function playSound(url, volume = 1) {
 // (ex: fin de match, abandon), quel que soit le mode (IA/PvP/mini-league).
 let _bgmAudio = null
 let _bgmUrl = null
+let _bgmBaseVolume = 0.3
 
 export function playBGM(url, volume = 0.3) {
-  if (_bgmAudio && _bgmUrl === url && !_bgmAudio.paused) return // déjà en cours
+  _bgmBaseVolume = volume
+  if (_bgmAudio && _bgmUrl === url && !_bgmAudio.paused) {
+    _bgmAudio.volume = scaled(_bgmBaseVolume) // suit un éventuel changement de volume en cours de lecture
+    return
+  }
   stopBGM()
   if (isSoundMuted()) return
   try {
     const audio = new Audio(url)
     audio.loop = true
-    audio.volume = volume
+    audio.volume = scaled(volume)
     audio.play().catch(() => {})
     _bgmAudio = audio
     _bgmUrl = url
@@ -61,7 +82,7 @@ export function playUrgentSound(url, volume = 0.6) {
   if (isSoundMuted()) return
   try {
     const audio = new Audio(url)
-    audio.volume = volume
+    audio.volume = scaled(volume)
     audio.play().catch(() => {})
     _urgentAudio = audio
   } catch {}

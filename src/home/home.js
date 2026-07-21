@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase.js'
 import { showPendingPopup } from '../friends/friends.js'
+import { stopBGM } from '../lib/sound.js'
 
 const APP_VERSION = (typeof __BUILD_TIME__ !== 'undefined' && __BUILD_TIME__)
   ? __BUILD_TIME__
@@ -346,6 +347,7 @@ async function loadOngoingMatchBanner(state, toast, navigate) {
 }
 
 async function abandonMatch(matchId, oppId, uid) {
+  stopBGM()
   const { data: m } = await supabase.from('matches').select('home_id, away_id, game_state, mode').eq('id', matchId).single()
   if (!m) return
   const amIHome = m.home_id === uid

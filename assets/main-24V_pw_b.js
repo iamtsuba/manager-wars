@@ -339,7 +339,7 @@ import{s as v,n as Ut,o as Fi,F as Pi,l as di,k as Jt,r as ze,j as zt,p as Li,h 
         border:1.5px solid #ddd;background:#fff;
         font-size:14px;font-weight:700;cursor:pointer;color:#555;
       }
-    </style>`}const po="2026.07.21-1210";async function rn(e,{state:t,navigate:i,toast:n}){var o,a;const r=t.profile;r&&(e.innerHTML=`
+    </style>`}const po="2026.07.21-1211";async function rn(e,{state:t,navigate:i,toast:n}){var o,a;const r=t.profile;r&&(e.innerHTML=`
   <style>
     .home-dark {
       min-height: 100%;
@@ -928,11 +928,11 @@ import{s as v,n as Ut,o as Fi,F as Pi,l as di,k as Jt,r as ze,j as zt,p as Li,h 
           <div style="font-size:11px;font-weight:700;color:rgba(255,255,255,0.6);letter-spacing:1px;text-transform:uppercase;text-align:center;margin-top:8px">Remplaçants<br>(${t.subs.length}/5)</div>
           <div style="display:flex;flex-direction:column;gap:6px;align-items:center" id="subs-list">
             ${c.map(u=>{const b={...u.player,_evolution_bonus:u.evolution_bonus||0};return`<div style="position:relative;flex-shrink:0;overflow:visible;padding-bottom:24px">
-                ${ze({...b,_evolution_bonus:b._evolution_bonus||0},{width:100,showStad:!0,stadDef:d})}
+                ${ze({...b,_evolution_bonus:b._evolution_bonus||0},{width:132,showStad:!0,stadDef:d})}
                 <button data-remove-sub="${u.id}"
                   style="position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:20px;height:20px;background:#c0392b;border:none;border-radius:50%;color:#fff;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;padding:0;z-index:10">✕</button>
               </div>`}).join("")}
-            ${t.subs.length<5?'<div id="add-sub-btn" style="width:100px;height:130px;border:2px dashed rgba(255,255,255,0.3);border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:18px;color:rgba(255,255,255,0.4);cursor:pointer">+</div>':""}
+            ${t.subs.length<5?'<div id="add-sub-btn" style="width:132px;height:171px;border:2px dashed rgba(255,255,255,0.3);border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:18px;color:rgba(255,255,255,0.4);cursor:pointer">+</div>':""}
           </div>
         </div>
 
@@ -980,11 +980,11 @@ import{s as v,n as Ut,o as Fi,F as Pi,l as di,k as Jt,r as ze,j as zt,p as Li,h 
             <div style="font-size:10px;font-weight:700;margin-bottom:6px;color:rgba(255,255,255,0.6);letter-spacing:1px;text-transform:uppercase">Remplaçants (${t.subs.length}/5)</div>
             <div style="display:flex;gap:4px;align-items:center;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;-ms-overflow-style:none" id="subs-list" class="no-scrollbar">
               ${c.map(u=>{const b={...u.player,_evolution_bonus:u.evolution_bonus||0};return`<div style="position:relative;flex-shrink:0;overflow:visible;padding-bottom:20px">
-                  ${ze({...b,_evolution_bonus:b._evolution_bonus||0},{width:50,showStad:!0,stadDef:d})}
+                  ${ze({...b,_evolution_bonus:b._evolution_bonus||0},{width:66,showStad:!0,stadDef:d})}
                   <button data-remove-sub="${u.id}"
                     style="position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:16px;height:16px;background:#c0392b;border:none;border-radius:50%;color:#fff;font-size:9px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;padding:0;z-index:10">✕</button>
                 </div>`}).join("")}
-              ${t.subs.length<5?'<div id="add-sub-btn" style="width:50px;height:65px;border:2px dashed rgba(255,255,255,0.3);border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:16px;color:rgba(255,255,255,0.4);cursor:pointer;flex-shrink:0">+</div>':""}
+              ${t.subs.length<5?'<div id="add-sub-btn" style="width:66px;height:85px;border:2px dashed rgba(255,255,255,0.3);border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:16px;color:rgba(255,255,255,0.4);cursor:pointer;flex-shrink:0">+</div>':""}
             </div>
           </div>
           <!-- Formation mobile -->
@@ -2687,7 +2687,7 @@ import{s as v,n as Ut,o as Fi,F as Pi,l as di,k as Jt,r as ze,j as zt,p as Li,h 
     </div>
   </div>`}Jn(Zn);const be={user:null,profile:null,page:"home",params:{}};function Pt(e,t="info",i=3e3){const n=document.getElementById("toast");n&&(n.textContent=e,n.className=`show ${t}`,clearTimeout(n._t),n._t=setTimeout(()=>{n.className=""},i))}function ea(e,t,i=""){document.getElementById("modal-title").textContent=e,document.getElementById("modal-body").innerHTML=t,document.getElementById("modal-footer").innerHTML=i,document.getElementById("modal-overlay").classList.remove("hidden")}function Di(){document.getElementById("modal-overlay").classList.add("hidden")}async function Wt(){if(!be.user)return;const{data:e}=await v.from("users").select("*").eq("id",be.user.id).single();e&&(be.profile=e)}const Hn="mw_theme";function Un(){return localStorage.getItem(Hn)||"dark"}function ta(e){var t;localStorage.setItem(Hn,e),ia(e),(t=be.profile)!=null&&t.id&&v.from("users").update({theme:e}).eq("id",be.profile.id).then(()=>{})}function ia(e){document.documentElement.setAttribute("data-theme",e)}function Gt(e,t={}){be.page=e,be.params=t,Kn()}async function Kn(){var n,r,o,a;const e=document.getElementById("page-content");if(!e)return;document.querySelectorAll(".bottom-nav a").forEach(s=>{s.classList.toggle("active",s.dataset.page===be.page)});const t=document.getElementById("nav-credits");t&&be.profile&&(t.textContent=`💰 ${(be.profile.credits||0).toLocaleString("fr")}`);const i={state:be,navigate:Gt,toast:Pt,openModal:ea,closeModal:Di,refreshProfile:Wt};switch(e.innerHTML='<div style="padding:40px;text-align:center;color:#aaa">⚽</div>',be.page){case"home":await rn(e,i);break;case"settings":await Ii(e,i);break;case"collection":await zo(e,i);break;case"decks":await Si(e,i);break;case"boosters":await Oo(e,i);break;case"ranked":await Qr(e,i);break;case"match":{const s=be.params&&be.params.matchMode||"vs_ai_easy";s==="random"?await Bi(e,i,!1):s==="ranked"?await Bi(e,i,!0):s==="friend"?await Er(e,i,(n=be.params)==null?void 0:n.friendId,(r=be.params)==null?void 0:r.friendName):s==="mini_league"||s==="mini-league"?await xn(e,i,(o=be.params)==null?void 0:o.mlMatchId,(a=be.params)==null?void 0:a.leagueId):await or(e,i);break}case"market":await Vr(e,i);break;case"rankings":await Jr(e,i);break;case"matches":await Zr(e,i);break;case"friends":await ao(e,i);break;case"mini-league":await Sr(e,i);break;case"match-mini-league":{const s=be.params||{};await xn(e,i,s.mlMatchId,s.leagueId);break}default:await rn(e,i)}}function na(){var n,r;const e=document.getElementById("app"),t=be.profile;if(!t)return;const i="/icons/";e.innerHTML=`
     <nav class="top-nav">
-      <div class="logo" id="nav-logo" title="Manager Wars v2026.07.21-1210" style="cursor:pointer">
+      <div class="logo" id="nav-logo" title="Manager Wars v2026.07.21-1211" style="cursor:pointer">
         <img src="${i}logo-withname.png" alt="Manager Wars" style="height:48px;width:auto;display:block">
       </div>
       <div style="display:flex;align-items:center;gap:10px">

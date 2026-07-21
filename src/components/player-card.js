@@ -129,7 +129,7 @@ export function renderPlayerCard(p, opts = {}) {
   const noteW    = ax(309)
 
   // Drapeaux/logo : alignés sur le centre de la note (y centre note = 390+90=480)
-  const rectH    = ax(85)
+  const rectH    = ax(170) // x2 (demande explicite) — position recalculée pour rester centrée
   const rectW    = ax(95)
   const rectY    = ax(435)
   const rectLX   = ax(38)    // moins collé au bord
@@ -141,7 +141,7 @@ export function renderPlayerCard(p, opts = {}) {
 
   <img src="${tmpl}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:fill" draggable="false">
 
-  ${stadB > 0 ? `<div style="position:absolute;left:${ax(253) - rectH/2}px;top:${ax(572)}px;width:${rectH}px;height:${rectH}px;z-index:10;display:flex;align-items:center;justify-content:center">
+  ${stadB > 0 ? `<div style="position:absolute;left:${ax(253) - rectH/2}px;top:${ax(572) - ax(42.5)}px;width:${rectH}px;height:${rectH}px;z-index:10;display:flex;align-items:center;justify-content:center">
     <div style="position:relative;width:100%;height:100%;display:flex;align-items:center;justify-content:center">
       <div style="position:absolute;inset:-40%;border-radius:50%;background:radial-gradient(ellipse,rgba(30,144,255,0.65) 0%,transparent 68%);pointer-events:none"></div>
       <svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" style="position:relative;z-index:1;width:90%;height:90%;display:block">

@@ -205,21 +205,22 @@ td { border-bottom-color: rgba(255,255,255,0.06); color: #fff; }
 
 /* ── Modal ── */
 .modal-overlay {
-  position: fixed; inset: 0; background: rgba(0,0,0,0.45);
+  position: fixed; inset: 0; background: #26262b;
   display: flex; align-items: center; justify-content: center;
   z-index: 1000; padding: 16px;
 }
 .modal-overlay.hidden { display: none; }
 .modal {
-  background: transparent; border-radius: var(--radius-lg);
+  background: #fff; border-radius: var(--radius-lg);
   width: 100%; max-width: 540px; max-height: 90vh;
-  overflow-y: auto; box-shadow: 0 8px 40px rgba(0,0,0,0.2);
+  overflow-y: auto; box-shadow: 0 8px 40px rgba(0,0,0,0.5);
 }
 .modal-header {
-  padding: 16px 20px; border-bottom: 1px solid var(--gray-200);
+  padding: 16px 20px; background: #1A6B3C; border-bottom: none;
   display: flex; justify-content: space-between; align-items: center;
 }
-.modal-header h2 { font-size: 16px; font-weight: 600; color: var(--gray-800, #1a1a1a); }
+.modal-header h2 { font-size: 16px; font-weight: 600; color: #fff; }
+.modal-header .btn-ghost { color: #fff; border-color: rgba(255,255,255,0.4); }
 .modal-body { padding: 20px; }
 .modal-footer {
   padding: 12px 20px; border-top: 1px solid var(--gray-200);

@@ -174,7 +174,7 @@ async function runGenSquad(clubId, countryCode, toast) {
   // Charger le manifest des faces
   let manifest = {}
   try {
-    const r = await fetch(BASE + 'faces-manifest.json')
+    const r = await fetch(import.meta.env.BASE_URL + 'faces-manifest.json')
     manifest = await r.json()
   } catch(e) { console.warn('Manifest faces non chargé') }
 

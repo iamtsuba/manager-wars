@@ -33,6 +33,7 @@ import {
 } from './match-shared.js'
 import { renderPlayerCard } from '../components/player-card.js'
 import { renderGCCard } from '../components/special-cards.js'
+import { stopBGM } from '../lib/sound.js'
 
 const BASE = import.meta.env.BASE_URL
 // histPlayer importé depuis match-engine.js (aliasé _histPlayer)
@@ -171,6 +172,7 @@ async function _renderPvpMatchCore(container, ctx, matchId, amIHome, myGC = [], 
   const _gcAnimShownFor = new Set()    // séquences GC dont l'animation a déjà été montrée localement
 
   async function showPvpEndScreen(row) {
+    stopBGM()
     try { supabase.removeChannel(channel) } catch {}
     const myScore  = gameState[myRole+'Score']||0
     const oppScore = gameState[oppRole+'Score']||0
@@ -333,6 +335,7 @@ async function _renderPvpMatchCore(container, ctx, matchId, amIHome, myGC = [], 
 
   async function forfeitMatch() {
     if (_pvpEnded) return; _pvpEnded = true
+    stopBGM()
     if (_localTimerInt) { clearInterval(_localTimerInt); _localTimerInt = null }
     const winnerId = amIHome ? match.away_id : match.home_id
     const winnerRole = amIHome ? 'p2' : 'p1'
@@ -1529,6 +1532,7 @@ async function _renderPvpMatchCore(container, ctx, matchId, amIHome, myGC = [], 
 
   // Termine le match en DB : statut + winner + scores (home=p1, away=p2)
   async function finishMatch(finalState) {
+    stopBGM()
     try {
       const winnerId = computeWinnerId(finalState)
       const loserId  = winnerId ? (match.home_id === winnerId ? match.away_id : match.home_id) : null

@@ -1,12 +1,12 @@
 // src/settings/settings.js — Page Réglages (thème, son, déconnexion)
 import { supabase } from '../lib/supabase.js'
 import { getTheme, setTheme } from '../app.js'
-import { isSoundMuted, setSoundMuted } from '../lib/sound.js'
+import { getVolume, setVolume, playSound } from '../lib/sound.js'
 
 export async function renderSettings(container, ctx) {
   const { navigate } = ctx
   const theme = getTheme()
-  const muted = isSoundMuted()
+  const volume = getVolume()
 
   container.innerHTML = `
   <div style="height:100%;overflow-y:auto;background:var(--page-bg)">
@@ -32,13 +32,16 @@ export async function renderSettings(container, ctx) {
         </div>
       </div>
 
-      <div style="background:var(--tile-bg);border:1px solid var(--tile-border);border-radius:14px;padding:18px;display:flex;align-items:center;justify-content:space-between;gap:14px">
-        <div>
+      <div style="background:var(--tile-bg);border:1px solid var(--tile-border);border-radius:14px;padding:18px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
           <div style="font-size:14px;font-weight:900;color:var(--tile-fg-on-page)">🔊 Son</div>
-          <div style="font-size:12px;color:var(--tile-fg-dim);margin-top:2px">Musiques et effets sonores de l'app.</div>
+          <div id="volume-label" style="font-size:14px;font-weight:900;color:#D4A017">${volume}%</div>
         </div>
-        <button id="sound-toggle" role="switch" aria-checked="${!muted}" style="flex-shrink:0;width:52px;height:30px;border-radius:999px;border:none;cursor:pointer;position:relative;background:${muted?'var(--tile-border)':'#1A6B3C'};transition:background .2s">
-          <span style="position:absolute;top:3px;left:${muted?'3px':'25px'};width:24px;height:24px;border-radius:50%;background:#fff;transition:left .2s;box-shadow:0 1px 3px rgba(0,0,0,0.3)"></span>
+        <div style="font-size:12px;color:var(--tile-fg-dim);margin-bottom:14px">Musiques et effets sonores de l'app.</div>
+        <input id="volume-slider" type="range" min="0" max="100" step="5" value="${volume}"
+          style="width:100%;accent-color:#1A6B3C;cursor:pointer;margin-bottom:14px">
+        <button id="volume-test" class="btn" style="width:100%;padding:11px;border-radius:10px;border:1.5px solid var(--tile-border);background:transparent;color:var(--tile-fg-on-page);font-weight:700;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px">
+          🎵 Tester le son
         </button>
       </div>
 
@@ -58,9 +61,16 @@ export async function renderSettings(container, ctx) {
     })
   })
 
-  container.querySelector('#sound-toggle').addEventListener('click', () => {
-    setSoundMuted(!isSoundMuted())
-    renderSettings(container, ctx)
+  const slider = container.querySelector('#volume-slider')
+  const label  = container.querySelector('#volume-label')
+  let _testAudio = null
+  slider.addEventListener('input', () => {
+    setVolume(Number(slider.value))
+    label.textContent = `${slider.value}%`
+    if (_testAudio) _testAudio.volume = Math.max(0, Math.min(1, Number(slider.value) / 100))
+  })
+  container.querySelector('#volume-test').addEventListener('click', () => {
+    _testAudio = playSound(`${import.meta.env.BASE_URL}sounds/match-opening.mp3`, 1)
   })
 
   container.querySelector('#settings-logout').addEventListener('click', async () => {

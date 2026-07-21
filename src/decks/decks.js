@@ -549,7 +549,7 @@ function renderDeckField(container, builder, positions, ctx) {
       )
       const stadLogo = hasStad ? (stadDef.club?.logo_url || stadDef.image_url || null) : null
       const badgeSize = Math.round(CARD_W * (isDesktopRDF ? 0.578 : 0.34)) // PC : +70% (demande explicite)
-      const stadBadge = hasStad ? `<div style="position:absolute;top:2px;right:2px;width:${badgeSize}px;height:${badgeSize}px;border-radius:50%;background:rgba(0,0,0,0.6);border:1.5px solid #4FC3F7;display:flex;align-items:center;justify-content:center;overflow:hidden;z-index:6">${stadLogo ? `<img src="${stadLogo}" style="width:100%;height:100%;object-fit:cover">` : `<span style="font-size:${Math.round(badgeSize*0.6)}px;line-height:1">🏟️</span>`}</div>` : ''
+      const stadBadge = ''
       cardsHtml += `<div style="position:absolute;left:${left}px;top:${top}px;cursor:pointer;z-index:2;position:absolute" class="deck-slot-hit" data-pos="${pos}">
         <div style="position:relative">${cardHtml}${stadBadge}</div>
       </div>`

@@ -631,7 +631,7 @@ async function _renderPvpMatchCore(container, ctx, matchId, amIHome, myGC = [], 
       </div>`
     }
 
-    const gcMiniPC  = (gc, isBoost) => isBoost ? boostCardDesign(130,222) : gcCardDesign(gc,130,222)
+    const gcMiniPC  = (gc, isBoost) => isBoost ? boostCardDesign(95,162) : gcCardDesign(gc,95,162)
     const gcMiniMob = (gc, isBoost) => isBoost ? boostCardDesign(68,116)  : gcCardDesign(gc,68,116)
 
     // ── Bouton action (identique match-ia) ──

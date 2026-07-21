@@ -32,6 +32,7 @@ import {
   buildTeamSVG, renderTeam, renderMiniPlayer, loadMatchSetup, FORMATIONS, JOB_COLORS,
 } from './match-shared.js'
 import { renderPlayerCard } from '../components/player-card.js'
+import { renderGCCard } from '../components/special-cards.js'
 
 const BASE = import.meta.env.BASE_URL
 // histPlayer importé depuis match-engine.js (aliasé _histPlayer)
@@ -605,29 +606,15 @@ async function _renderPvpMatchCore(container, ctx, matchId, amIHome, myGC = [], 
       }
     }
 
-    // ── Design cartes GC (identique match-ia) ──
+    // ── Design cartes GC (module partagé) ──
     function gcCardDesign(gc, w, h) {
       const def    = gc._gcDef
-      const bg     = ({purple:'linear-gradient(160deg,#4a0a8a,#7a28b8)',light_blue:'linear-gradient(160deg,#006080,#00bcd4)'})[def?.color] || 'linear-gradient(160deg,#4a0a8a,#7a28b8)'
-      const bord   = ({purple:'#b06ce0',light_blue:'#00d4ef'})[def?.color] || '#b06ce0'
       const name   = def?.name || gc.gc_type
       const effect = def?.effect || GC_DEFS[gc.gc_type]?.desc || ''
       const imgUrl = def?.image_url ? `${import.meta.env.BASE_URL}icons/${def.image_url}` : null
       const icon   = GC_DEFS[gc.gc_type]?.icon || '⚡'
-      const nameH  = Math.round(h*0.22), effH = Math.round(h*0.22), imgH = h-nameH-effH
-      const fs     = name.length > 12 ? 7 : 9
-      return `<div class="pvp-gc-mini" data-gc-id="${gc.id}" data-gc-type="${gc.gc_type}"
-        style="box-sizing:border-box;width:${w}px;height:${h}px;border-radius:10px;border:2px solid ${bord};background:${bg};display:flex;flex-direction:column;overflow:hidden;cursor:pointer;flex-shrink:0">
-        <div style="height:${nameH}px;background:rgba(255,255,255,0.14);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0 3px">
-          <span style="font-size:${fs}px;font-weight:900;color:#fff;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:${w-6}px">${name}</span>
-          <span style="font-size:6px;color:rgba(255,255,255,0.45)">⚡ GC</span>
-        </div>
-        <div style="height:${imgH}px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.06)">
-          ${imgUrl ? `<img src="${imgUrl}" style="max-width:${w-10}px;max-height:${imgH-6}px;object-fit:contain">` : `<span style="font-size:${Math.round(imgH*.55)}px">${icon}</span>`}
-        </div>
-        <div style="height:${effH}px;background:rgba(0,0,0,0.38);display:flex;align-items:center;justify-content:center;padding:0 3px">
-          <span style="font-size:6px;color:rgba(255,255,255,0.9);text-align:center;line-height:1.25">${effect.slice(0,38)}</span>
-        </div>
+      return `<div class="pvp-gc-mini" data-gc-id="${gc.id}" data-gc-type="${gc.gc_type}" style="flex-shrink:0;cursor:pointer">
+        ${renderGCCard(name, imgUrl, icon, effect, { width: w })}
       </div>`
     }
 
@@ -639,8 +626,8 @@ async function _renderPvpMatchCore(container, ctx, matchId, amIHome, myGC = [], 
       </div>`
     }
 
-    const gcMiniPC  = (gc, isBoost) => isBoost ? boostCardDesign(130,175) : gcCardDesign(gc,130,175)
-    const gcMiniMob = (gc, isBoost) => isBoost ? boostCardDesign(68,95)  : gcCardDesign(gc,68,95)
+    const gcMiniPC  = (gc, isBoost) => isBoost ? boostCardDesign(130,222) : gcCardDesign(gc,130,222)
+    const gcMiniMob = (gc, isBoost) => isBoost ? boostCardDesign(68,116)  : gcCardDesign(gc,68,116)
 
     // ── Bouton action (identique match-ia) ──
     const btnStyle = _pc
@@ -1047,7 +1034,6 @@ async function _renderPvpMatchCore(container, ctx, matchId, amIHome, myGC = [], 
   // Animation d'une carte Game Changer (visible par les 2 joueurs)
   function pvpShowGCAnimation(gcType, byRole, callback) {
     const def = (gameState.gcDefs||[]).find(d => d.name===gcType || d.name?.toLowerCase().trim()===gcType?.toLowerCase().trim())
-    const bg   = ({purple:'linear-gradient(160deg,#4a0a8a,#7a28b8)',light_blue:'linear-gradient(160deg,#006080,#00bcd4)'})[def?.color] || 'linear-gradient(160deg,#4a0a8a,#7a28b8)'
     const bord = ({purple:'#b06ce0',light_blue:'#00d4ef'})[def?.color] || '#b06ce0'
     const name = def?.name || gcType
     const effect = def?.effect || GC_DEFS[gcType]?.desc || ''
@@ -1060,21 +1046,12 @@ async function _renderPvpMatchCore(container, ctx, matchId, amIHome, myGC = [], 
     overlay.innerHTML = `
       <style>
         @keyframes gcFlipIn{0%{transform:perspective(800px) rotateY(90deg) scale(.7);opacity:0}55%{transform:perspective(800px) rotateY(-12deg) scale(1.08);opacity:1}100%{transform:perspective(800px) rotateY(0) scale(1);opacity:1}}
-        @keyframes gcGlow{0%,100%{box-shadow:0 0 30px ${bord}66}50%{box-shadow:0 0 60px ${bord}cc}}
+        @keyframes gcGlow{0%,100%{filter:drop-shadow(0 0 20px ${bord}66)}50%{filter:drop-shadow(0 0 40px ${bord}cc)}}
         @keyframes gcLabel{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
       </style>
       <div style="font-size:11px;color:${bord};letter-spacing:3px;text-transform:uppercase;font-weight:700;animation:gcLabel .4s ease both">${byName} joue une carte</div>
-      <div style="width:200px;border-radius:18px;border:3px solid ${bord};background:${bg};display:flex;flex-direction:column;overflow:hidden;animation:gcFlipIn .7s cubic-bezier(.34,1.56,.64,1) both,gcGlow 1.8s ease infinite .7s">
-        <div style="padding:12px;background:rgba(255,255,255,0.14);text-align:center">
-          <div style="font-size:${name.length>14?12:15}px;font-weight:900;color:#fff;letter-spacing:.5px;text-transform:uppercase">${name}</div>
-          <div style="font-size:8px;color:rgba(255,255,255,0.5);margin-top:2px">⚡ GAME CHANGER</div>
-        </div>
-        <div style="height:170px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.06)">
-          ${imgUrl ? `<img src="${imgUrl}" style="max-width:160px;max-height:160px;object-fit:contain">` : `<span style="font-size:76px">${icon}</span>`}
-        </div>
-        <div style="padding:12px;background:rgba(0,0,0,0.38);text-align:center">
-          <div style="font-size:12px;color:rgba(255,255,255,0.92);line-height:1.5">${effect}</div>
-        </div>
+      <div style="animation:gcFlipIn .7s cubic-bezier(.34,1.56,.64,1) both,gcGlow 1.8s ease infinite .7s">
+        ${renderGCCard(name, imgUrl, icon, effect, { width: 200 })}
       </div>
       <div style="font-size:11px;color:rgba(255,255,255,0.3);margin-top:4px;animation:gcLabel .3s ease 1.2s both">Appuyer pour continuer</div>`
     document.body.appendChild(overlay)
@@ -1088,26 +1065,13 @@ async function _renderPvpMatchCore(container, ctx, matchId, amIHome, myGC = [], 
     const myGcFull=gameState['gcCardsFull_'+myRole]||[]
     const card=myGcFull.find(c=>c.id===gcId)
     const def=card?._gcDef
-    const bg=({purple:'linear-gradient(160deg,#4a0a8a,#7a28b8)',light_blue:'linear-gradient(160deg,#006080,#00bcd4)'})[def?.color]||'linear-gradient(160deg,#4a0a8a,#7a28b8)'
-    const bord=({purple:'#b06ce0',light_blue:'#00d4ef'})[def?.color]||'#b06ce0'
     const name=def?.name||gcType, effect=def?.effect||GC_DEFS[gcType]?.desc||'Carte spéciale.'
     const imgUrl=def?.image_url?`${import.meta.env.BASE_URL}icons/${def.image_url}`:null
     const icon=GC_DEFS[gcType]?.icon||'⚡'
     const overlay=document.createElement('div')
     overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.88);z-index:750;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:24px'
     overlay.innerHTML=`
-      <div style="width:190px;border-radius:16px;border:3px solid ${bord};background:${bg};display:flex;flex-direction:column;overflow:hidden;box-shadow:0 0 40px ${bord}66">
-        <div style="padding:10px;background:rgba(255,255,255,0.14);text-align:center">
-          <div style="font-size:${name.length>14?11:14}px;font-weight:900;color:#fff;letter-spacing:.5px;text-transform:uppercase">${name}</div>
-          <div style="font-size:8px;color:rgba(255,255,255,0.5);margin-top:2px">⚡ GAME CHANGER</div>
-        </div>
-        <div style="height:160px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.06)">
-          ${imgUrl?`<img src="${imgUrl}" style="max-width:150px;max-height:150px;object-fit:contain">`:`<span style="font-size:72px">${icon}</span>`}
-        </div>
-        <div style="padding:10px;background:rgba(0,0,0,0.38);text-align:center">
-          <div style="font-size:12px;color:rgba(255,255,255,0.92);line-height:1.5">${effect}</div>
-        </div>
-      </div>
+      ${renderGCCard(name, imgUrl, icon, effect, { width: 190 })}
       <div style="display:flex;gap:12px;width:190px">
         <button id="pvp-gc-back" style="flex:1;padding:13px;border-radius:12px;border:1px solid rgba(255,255,255,0.3);background:transparent;color:#fff;font-size:14px;cursor:pointer">Retour</button>
         <button id="pvp-gc-use" style="flex:1;padding:13px;border-radius:12px;border:none;background:#FFD700;color:#000;font-size:14px;font-weight:900;cursor:pointer">Utiliser ⚡</button>

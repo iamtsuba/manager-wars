@@ -19,6 +19,7 @@ import { renderPlayerCard } from '../components/player-card.js'
 import { buildTeamSVG, renderTeam, getPortrait, renderMiniCardHTML } from './match-shared.js'
 import { getNoteForRole } from './game-logic.js'
 import { linkColor } from './formation-links.js'
+import { playBGM } from '../lib/sound.js'
 
 const BASE = import.meta.env.BASE_URL
 
@@ -96,6 +97,7 @@ export function renderMatchField(game, selectedIds = [], extraSelectableIds = []
 // ── Révélation équipe adverse ──────────────────────────────
 
 export function renderOpponentReveal(team, formation, stadiumDef, label = 'Adversaire') {
+  playBGM(`${import.meta.env.BASE_URL}sounds/match-opening.mp3`, 0.3)
   const W = svgW(), H = svgH()
   const stadLabel = stadiumDef
     ? `<div style="font-size:12px;color:#D4A017;margin-bottom:8px">

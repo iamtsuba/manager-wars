@@ -3,6 +3,7 @@ import { renderPlayerCard } from '../components/player-card.js'
 import { GC_DEFS } from '../match/game-logic.js'
 import { FORMATION_LINKS, FORMATION_POSITIONS } from '../match/formation-links.js'
 import { EVOLUTIVE_RULES, currentSecondaryNote, getBaseMainNote } from '../match/evolutive-cards.js'
+import { renderGCCard, renderStadiumCard, renderFormationCard as renderFormationCardTpl } from '../components/special-cards.js'
 
 // ── Constantes ─────────────────────────────────────────────
 const RAR_COLORS  = { normal:'#ccc', pepite:'#D4A017', papyte:'#909090', legende:'#7a28b8' }
@@ -471,35 +472,17 @@ export async function renderCollection(container, ctx) {
 
   function renderFormationCard(formation, card, count) {
     var badge = count>1 ? '<div style="position:absolute;top:4px;right:4px;background:#0a3d1e;color:#fff;border-radius:10px;font-size:9px;font-weight:700;padding:1px 6px;z-index:3">×' + count + '</div>' : ''
-    var id = card ? 'data-form-id="' + card.id + '"' : ''
-    var fs = formation.length > 7 ? 14 : formation.length > 5 ? 16 : 19
     var owned = !!card
-    return '<div ' + id + ' style="position:relative;width:140px;border-radius:12px;border:3px solid ' + (owned?'#2a7a40':'#bbb') + ';background:var(--tile-bg);display:flex;flex-direction:column;overflow:hidden;cursor:pointer;box-shadow:0 2px 10px rgba(0,0,0,.12);' + (!owned?'filter:grayscale(1);opacity:0.5':'') + '">'
-      + badge
-      + '<div style="padding:8px 6px 6px;background:var(--tile-bg);text-align:center;border-bottom:3px solid ' + (owned?'#1A6B3C':'#aaa') + ';flex-shrink:0">'
-      + '<div style="font-size:8px;color:#888;letter-spacing:1.5px;font-weight:700;margin-bottom:2px">FORMATION</div>'
-      + '<div style="font-size:' + fs + 'px;font-weight:900;color:' + (owned?'#1A6B3C':'#aaa') + ';line-height:1">' + formation + '</div>'
-      + '</div>'
-      + '<div style="flex:1;overflow:hidden;background:' + (owned?'#1A6B3C':'#ccc') + '">' + formFieldSVG(formation, 140, 220) + '</div>'
-      + '</div>'
+    var html = renderFormationCardTpl(formation, FORMATION_POSITIONS[formation], { width: 160 })
+    if (!owned) html = '<div style="filter:grayscale(1);opacity:0.5">' + html + '</div>'
+    return '<div ' + (card ? 'data-form-id="' + card.id + '"' : '') + ' style="position:relative;cursor:pointer">' + badge + html + '</div>'
   }
 
   function miniFormationCard(formation, owned) {
     var SCALE = window.innerWidth >= 768 ? 0.76 : 0.54
-    var W = 140, H = Math.round(140 * 657 / 507) // même ratio que la carte joueur
-    var nameH = Math.round(H*0.28), fieldH = H - nameH
-    var fs = formation.length > 7 ? 9 : 11
-    var svg = formFieldSVG(formation, W, fieldH)
-    var border = owned ? '1.5px solid #2a7a40' : '1px solid #ddd'
-    var filter = owned ? '' : 'filter:grayscale(1);opacity:0.45;'
-    var nameBg = owned ? '#1A6B3C' : '#bbb'
-    var nameColor = '#fff'
-    return '<div style="display:inline-block;zoom:' + SCALE + ';line-height:0;pointer-events:none"><div style="width:' + W + 'px;height:' + H + 'px;border-radius:6px;border:' + border + ';background:var(--tile-bg);display:flex;flex-direction:column;overflow:hidden;' + filter + '">'
-      + '<div style="height:' + nameH + 'px;background:' + nameBg + ';display:flex;align-items:center;justify-content:center;padding:0 2px;flex-shrink:0">'
-      + '<span style="font-size:' + fs + 'px;font-weight:900;color:' + nameColor + ';text-align:center;overflow:hidden;white-space:nowrap;max-width:' + (W-4) + 'px;line-height:1.2;display:inline-block">' + formation + '</span>'
-      + '</div>'
-      + '<div style="height:' + fieldH + 'px;overflow:hidden;flex-shrink:0">' + svg + '</div>'
-      + '</div></div>'
+    var html = renderFormationCardTpl(formation, FORMATION_POSITIONS[formation], { width: 140 })
+    if (!owned) html = '<div style="filter:grayscale(1);opacity:0.45">' + html + '</div>'
+    return '<div style="display:inline-block;zoom:' + SCALE + ';line-height:0;pointer-events:none">' + html + '</div>'
   }
 
   function renderPlayerGrid(grid) {
@@ -585,33 +568,21 @@ export async function renderCollection(container, ctx) {
         const displayName = def?.name || type
         const count  = owned ? gcCards.filter(c=>c.gc_type===type).length : 0
         const badge  = count>1?`<div style="position:absolute;top:8px;right:8px;background:#3d0a7a;color:#fff;border-radius:10px;font-size:10px;font-weight:700;padding:2px 8px;z-index:3">×${count}</div>`:''
-        const isUltra= def?.gc_type==='ultra_game_changer'
-        const BG  = {purple:'linear-gradient(160deg,#4a0a8a,#7a28b8)',light_blue:'linear-gradient(160deg,#006080,#00bcd4)'}
-        const BORD= {purple:'#b06ce0',light_blue:'#00d4ef'}
-        const bg   = BG[def?.color]  ||BG.purple
-        const bord = BORD[def?.color]||BORD.purple
         const effect = def?.effect||gc.desc||''
         const imgUrl = def?.image_url ? `${import.meta.env.BASE_URL}icons/${def.image_url}` : (def?.club?.logo_url || (def?.country_code ? `https://flagsapi.com/${def.country_code.slice(0,2).toUpperCase()}/flat/64.png` : null))
-        if (owned && card) return `<div data-gc-id="${card.id}" data-gc-type="${type}" style="position:relative;width:140px;border-radius:12px;border:3px solid ${bord};background:${bg};display:flex;flex-direction:column;overflow:hidden;box-shadow:0 0 24px ${bord}66;cursor:pointer">
-          ${badge}
-          <div style="padding:10px 12px;background:rgba(255,255,255,0.14);text-align:center">
-            <div style="font-size:${displayName.length>14?10:13}px;font-weight:900;color:#fff;letter-spacing:.5px;text-transform:uppercase">${displayName}</div>
-            <div style="font-size:8px;color:rgba(255,255,255,0.55);margin-top:2px">${isUltra?'💎 ULTRA GC':'⚡ GAME CHANGER'}</div>
-          </div>
-          <div style="height:150px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.06)">
-            ${imgUrl?`<img src="${imgUrl}" style="max-width:120px;max-height:120px;object-fit:contain;border-radius:6px">`:`<span style="font-size:64px">${gc.icon}</span>`}
-          </div>
-          <div style="padding:10px 12px;background:rgba(0,0,0,0.35);text-align:center">
-            <div style="font-size:11px;color:rgba(255,255,255,0.9);line-height:1.4">${effect.slice(0,60)}</div>
-          </div>
-        </div>`
-        return `<div style="width:140px;border-radius:12px;border:2px solid #ddd;background:#f0f0f0;display:flex;flex-direction:column;overflow:hidden;filter:grayscale(1);opacity:0.5">
-          <div style="padding:10px 12px;background:rgba(0,0,0,0.05);text-align:center"><div style="font-size:13px;font-weight:900;color:#888;text-transform:uppercase">${displayName}</div></div>
-          <div style="height:150px;display:flex;align-items:center;justify-content:center"><span style="font-size:64px">${gc.icon}</span></div>
-          <div style="padding:10px;background:rgba(0,0,0,0.05);text-align:center"><div style="font-size:11px;color:#aaa">Non possédée</div></div>
-        </div>`
+        let html = renderGCCard(displayName, imgUrl, gc.icon, effect, { width: 160, onClick: owned })
+        if (!owned) html = `<div style="filter:grayscale(1);opacity:0.5">${html}</div>`
+        return `<div ${owned&&card?`data-gc-id="${card.id}" data-gc-type="${type}"`:''} style="position:relative">${badge}${html}</div>`
       },
-      ({type, gc, def, owned}) => { const _s=window.innerWidth>=768?0.76:0.54; const displayName=def?.name||type; const BG2={purple:'linear-gradient(160deg,#4a0a8a,#7a28b8)',light_blue:'linear-gradient(160deg,#006080,#00bcd4)'},bo2={purple:'#9b59b6',light_blue:'#00bcd4'}; const bg2=BG2[def?.color]||BG2.purple,bor2=bo2[def?.color]||bo2.purple,imgU=def?.image_url?`${import.meta.env.BASE_URL}icons/${def.image_url}`:null; const GH=Math.round(140*657/507); if(owned){ return `<div style="display:inline-block;zoom:${_s};line-height:0;pointer-events:none"><div style="width:140px;height:${GH}px;border-radius:8px;background:${bg2};border:1px solid ${bor2};display:flex;flex-direction:column;overflow:hidden"><div style="height:34px;background:rgba(255,255,255,0.15);display:flex;align-items:center;justify-content:center"><span style="font-size:10px;font-weight:900;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:130px;line-height:1.2;display:inline-block">${displayName}</span></div><div style="flex:1;display:flex;align-items:center;justify-content:center;min-height:0">${imgU?`<img src="${imgU}" style="max-width:110px;max-height:100px;object-fit:contain">`:`<span style="font-size:28px;line-height:1">${gc.icon}</span>`}</div><div style="height:30px;display:flex;align-items:center;justify-content:center;padding:0 4px"><span style="font-size:8px;color:rgba(255,255,255,0.7);text-align:center;line-height:1.2;display:inline-block">${(def?.effect||gc.desc||'').slice(0,26)}</span></div></div></div>` } return `<div style="display:inline-block;zoom:${_s};line-height:0;pointer-events:none"><div style="width:140px;height:${GH}px;border-radius:8px;background:#eee;border:1px solid #ddd;display:flex;flex-direction:column;align-items:center;justify-content:center;filter:grayscale(1);opacity:0.45"><span style="font-size:24px;line-height:1">${gc.icon}</span><span style="font-size:9px;color:#aaa;margin-top:4px;text-align:center;padding:0 6px;line-height:1.2;display:inline-block">${displayName}</span></div></div>` },
+      ({type, gc, def, owned}) => {
+        const _s = window.innerWidth>=768?0.76:0.54
+        const displayName = def?.name || type
+        const effect = def?.effect||gc.desc||''
+        const imgU = def?.image_url?`${import.meta.env.BASE_URL}icons/${def.image_url}`:null
+        let html = renderGCCard(displayName, imgU, gc.icon, effect, { width: 140 })
+        if (!owned) html = `<div style="filter:grayscale(1);opacity:0.45">${html}</div>`
+        return `<div style="display:inline-block;zoom:${_s};line-height:0;pointer-events:none">${html}</div>`
+      },
       ({type, owned, def}) => { if (owned) openGCModal(type, def, openModal) },
       '#7a28b8',
       5
@@ -641,47 +612,19 @@ export async function renderCollection(container, ctx) {
         const imgUrl = def?.image_url
         ? `${BASE2}icons/${def.image_url}`
         : (def?.club?.logo_url || (def?.country_code ? `https://flagsapi.com/${def.country_code.slice(0,2).toUpperCase()}/flat/64.png` : null))
-        const imgHTML = imgUrl
-          ? `<img src="${imgUrl}" style="width:90px;height:90px;object-fit:contain;border-radius:4px" onerror="this.style.display='none'">`
-          : `<div style="font-size:56px">🏟️</div>`
         const badge = count>1 ? `<div style="position:absolute;top:8px;right:8px;background:#333;color:#fff;border-radius:10px;font-size:10px;font-weight:700;padding:2px 8px;z-index:3">×${count}</div>` : ''
-        return `<div style="position:relative;width:140px;border-radius:12px;border:3px solid #0288D1;background:linear-gradient(160deg,${STAD_COLOR},#0288D1);display:flex;flex-direction:column;overflow:hidden;box-shadow:0 0 24px ${STAD_COLOR}66">
-          ${badge}
-          <div style="padding:8px 10px;background:rgba(0,0,0,0.25);text-align:center">
-            <div style="font-size:8px;font-weight:900;color:rgba(255,255,255,0.65);letter-spacing:1px">🏟️ STADE</div>
-            <div style="font-size:12px;font-weight:900;color:#fff;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${name}</div>
-          </div>
-          <div style="height:140px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.08)">${imgHTML}</div>
-          <div style="padding:8px 12px;background:rgba(0,0,0,0.3);text-align:center">
-            <div style="font-size:11px;color:rgba(255,255,255,0.85);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${label}</div>
-            <div style="font-size:13px;font-weight:900;color:#FFD700;margin-top:2px">+10 ⭐ joueurs alliés</div>
-          </div>
-        </div>`
+        const desc = `${label}<br>+10 ⭐ joueurs alliés`
+        return `<div style="position:relative">${badge}${renderStadiumCard(name, imgUrl, desc, { width: 160 })}</div>`
       },
-      ({ def, count }) => {
+      ({ def }) => {
         const _s = window.innerWidth>=768 ? 0.76 : 0.54
         const name  = def?.name || '?'
         const label = def?.club?.encoded_name || def?.country_code || '—'
         const imgUrl = def?.image_url
         ? `${BASE2}icons/${def.image_url}`
         : (def?.club?.logo_url || (def?.country_code ? `https://flagsapi.com/${def.country_code.slice(0,2).toUpperCase()}/flat/64.png` : null))
-        const imgHTML = imgUrl
-          ? `<img src="${imgUrl}" style="width:44px;height:44px;object-fit:contain;border-radius:4px" onerror="this.style.display='none'">`
-          : '<span style="font-size:22px">🏟️</span>'
-        const SH = Math.round(140*657/507)
-        return `<div style="display:inline-block;zoom:${_s};line-height:0;pointer-events:none">
-          <div style="width:140px;height:${SH}px;border-radius:8px;background:linear-gradient(160deg,${STAD_COLOR},#0288D1);border:1px solid #0288D1;display:flex;flex-direction:column;overflow:hidden">
-            <div style="height:36px;background:rgba(0,0,0,0.25);display:flex;align-items:center;justify-content:center;flex-direction:column;padding:2px 6px">
-              <div style="font-size:6px;font-weight:700;color:rgba(255,255,255,0.6);letter-spacing:1px;line-height:1.2">🏟️ STADE</div>
-              <div style="font-size:9px;font-weight:900;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:130px;margin-top:1px;line-height:1.2;display:inline-block">${name}</div>
-            </div>
-            <div style="flex:1;display:flex;align-items:center;justify-content:center;min-height:0">${imgHTML}</div>
-            <div style="height:42px;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(0,0,0,0.3);padding:3px;gap:2px">
-              <div style="font-size:8px;font-weight:700;color:rgba(255,255,255,0.9);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:126px;text-align:center;line-height:1.2">${label}</div>
-              <div style="font-size:10px;font-weight:900;color:#FFD700;line-height:1.2">+10 ⭐</div>
-            </div>
-          </div>
-        </div>`
+        const desc = `${label}<br>+10 ⭐`
+        return `<div style="display:inline-block;zoom:${_s};line-height:0;pointer-events:none">${renderStadiumCard(name, imgUrl, desc, { width: 140 })}</div>`
       },
       null,
       STAD_COLOR,
@@ -716,31 +659,13 @@ export async function renderCollection(container, ctx) {
 // ── Modal Game Changer ────────────────────────────────────
 function openGCModal(gcType, def, openModal) {
   const fallback = GC_DEFS[gcType] || { icon:'⚡', desc:'Effet spécial.' }
-  const isUltra = def?.gc_type === 'ultra_game_changer'
-  const BG   = { purple:'linear-gradient(160deg,#4a0a8a,#7a28b8)', light_blue:'linear-gradient(160deg,#006080,#00bcd4)' }
-  const BORD = { purple:'#b06ce0', light_blue:'#00d4ef' }
-  const bg   = BG[def?.color]   || BG.purple
-  const bord = BORD[def?.color] || BORD.purple
   const name   = def?.name   || gcType
   const effect = def?.effect || fallback.desc
   const imgUrl = def?.image_url ? `${import.meta.env.BASE_URL}icons/${def.image_url}` : null
 
   openModal('Game Changer',
     `<div style="display:flex;flex-direction:column;align-items:center;gap:16px;padding:8px">
-      <div style="background:${bg};border-radius:16px;border:2px solid ${bord};
-        padding:0;text-align:center;color:#fff;width:100%;max-width:280px;overflow:hidden;display:flex;flex-direction:column">
-        <div style="padding:12px;background:rgba(255,255,255,0.14)">
-          <div style="font-size:9px;background:rgba(255,255,255,0.2);padding:2px 10px;border-radius:10px;display:inline-block;letter-spacing:.5px;margin-bottom:6px">${isUltra?'💎 ULTRA GC':'⚡ GAME CHANGER'}</div>
-          <div style="font-size:20px;font-weight:900">${name}</div>
-        </div>
-        <div style="height:160px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.06)">
-          ${imgUrl ? `<img src="${imgUrl}" style="max-width:150px;max-height:150px;object-fit:contain">` : `<span style="font-size:64px">${fallback.icon}</span>`}
-        </div>
-      </div>
-      <div style="background:#f9f0ff;border-radius:10px;padding:14px 16px;width:100%">
-        <div style="font-size:12px;font-weight:700;color:#7a28b8;margin-bottom:6px">EFFET</div>
-        <div style="font-size:14px;color:#333">${effect}</div>
-      </div>
+      ${renderGCCard(name, imgUrl, fallback.icon, effect, { width: 200 })}
       <div style="background:#fff3cd;border-radius:10px;padding:10px 14px;width:100%">
         <div style="font-size:12px;color:#856404">⚠️ Cette carte est à <b>usage unique</b>. Une fois jouée en match, elle est définitivement supprimée de ta collection.</div>
       </div>

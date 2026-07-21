@@ -70,7 +70,7 @@ function ethnieForCountry(cc) {
   return 'Europeans'
 }
 
-function generateSquad(clubId, countryCode) {
+function generateSquad(clubId, countryCode, usedSurnamesGlobal = new Set()) {
   const FIRSTNAMES = [
     'Lucas','Mateo','Rafael','Carlos','Luis','Diego','Andre','Paulo','Marco','Stefan',
     'Ahmed','Omar','Yusuf','Mamadou','Ibrahima','Cheikh','Moussa','Kofi','Emeka','Tunde',
@@ -80,13 +80,39 @@ function generateSquad(clubId, countryCode) {
     'João','Gabriel','Felipe','Roberto','César','Miguel','Ivan','Luca','Federico','Sergio',
   ]
   const SURNAMES = [
+    // Portugais / Brésiliens
     'Silva','Santos','Costa','Pereira','Oliveira','Mendes','Ferreira','Alves',
+    'Souza','Rodrigues','Almeida','Carvalho','Gomes','Ribeiro','Araujo','Barbosa',
+    'Nascimento','Cardoso','Correia','Teixeira','Machado','Vieira','Monteiro','Cunha',
+    // Ouest-Africains
     'Diallo','Traore','Coulibaly','Bah','Konaté','Touré','Camara','Barry','Diop',
-    'Müller','Schmidt','Schneider','Fischer','Weber','Richter','Bauer',
+    'Ndiaye','Sow','Cissé','Fofana','Keita','Sylla','Kane','Diarra','Sanogo',
+    'Baldé','Diakité','Kouyaté','Sissoko','Doumbia','Sarr','Mbaye','Fall',
+    // Allemands
+    'Müller','Schmidt','Schneider','Fischer','Weber','Richter','Bauer','Wolf',
+    'Schröder','Neumann','Schwarz','Zimmermann','Braun','Krüger','Hofmann','Klein',
+    // Est-asiatiques
     'Nakamura','Tanaka','Suzuki','Kim','Park','Lee','Chen','Wang','Liu',
+    'Sato','Yamamoto','Watanabe','Ito','Yamada','Choi','Jung','Kang','Zhang','Huang',
+    // Anglo-saxons
     'Johnson','Williams','Brown','Davis','Wilson','Moore','Martinez','Lopez',
+    'Taylor','Anderson','Thomas','Jackson','White','Harris','Clark','Lewis','Walker',
+    // Français
     'Dubois','Martin','Bernard','Thomas','Petit','Dupont','Moreau','Laurent',
+    'Robert','Simon','Michel','Leroy','Roux','David','Bertrand','Morel','Fournier',
+    'Girard','Bonnet','Rousseau','Fontaine','Chevalier','Muller','Faure','Blanc',
+    // Hispanophones
     'Garcia','Fernandez','Rodriguez','Gonzalez','Hernandez','López','Sánchez',
+    'Ramirez','Torres','Flores','Rivera','Gomez','Diaz','Reyes','Morales','Ortiz',
+    // Italiens
+    'Rossi','Russo','Ferrari','Esposito','Bianchi','Romano','Ricci','Marino',
+    'Greco','Bruno','Gallo','Conti','Deluca','Mancini','Costa','Giordano',
+    // Néerlandais / Scandinaves
+    'De Jong','Van Dijk','Bakker','Jansen','Visser','Smit','Meijer','Bos',
+    'Andersen','Hansen','Nielsen','Pedersen','Larsen','Johansson','Karlsson',
+    // Arabes / Nord-Africains
+    'Benali','Amrani','Bouazza','Cherif','Haddad','Meziane','Belkacem','Rahmani',
+    'Boumediene','Yacoub','Saidi','Zidane','Belhadj','Tazi','Idrissi',
   ]
 
   // 20 slots : 2 GK, 8 DEF, 6 MIL, 4 ATT
@@ -113,6 +139,16 @@ function generateSquad(clubId, countryCode) {
   for (let i = isNativeArr.length-1; i>0; i--) {
     const j = Math.floor(Math.random()*(i+1));
     [isNativeArr[i],isNativeArr[j]] = [isNativeArr[j],isNativeArr[i]]
+  }
+
+  const usedSurnamesInSquad = new Set()
+  function pickUniqueSurname() {
+    const fullyFresh = SURNAMES.filter(s => !usedSurnamesInSquad.has(s) && !usedSurnamesGlobal.has(s))
+    const avail = fullyFresh.length ? fullyFresh : SURNAMES.filter(s => !usedSurnamesInSquad.has(s))
+    const pool = avail.length ? avail : SURNAMES // si vraiment épuisé (effectif très grand), on retombe sur le pool complet
+    const s = pick(pool)
+    usedSurnamesInSquad.add(s)
+    return s
   }
 
   return slots.map((job, idx) => {
@@ -147,14 +183,12 @@ function generateSquad(clubId, countryCode) {
     }
 
     const rarity = pepites.has(idx) ? 'pepite' : papytes.has(idx) ? 'papyte' : 'normal'
-    const surnameReal    = pick(SURNAMES)
-    const surnameEncoded = surnameReal.toUpperCase()
+    const surnameReal = pickUniqueSurname()
 
     return {
       job, job2,
       firstname: pick(FIRSTNAMES),
       surname_real: surnameReal,
-      surname_real: surnameEncoded,
       country_code: cc,
       club_id: clubId,
       note_g, note_d, note_m, note_a,
@@ -169,7 +203,11 @@ function generateSquad(clubId, countryCode) {
 
 // ── Génération effectif (réutilisable) ────────────────────
 async function runGenSquad(clubId, countryCode, toast) {
-  const squad = generateSquad(clubId, countryCode)
+  // Noms déjà présents en base : à éviter en priorité pour limiter les doublons
+  const { data: usedSurnamesData } = await supabase.from('players').select('surname_real').not('surname_real', 'is', null)
+  const usedSurnamesGlobal = new Set((usedSurnamesData || []).map(r => r.surname_real).filter(Boolean))
+
+  const squad = generateSquad(clubId, countryCode, usedSurnamesGlobal)
 
   // Charger le manifest des faces
   let manifest = {}

@@ -57,19 +57,7 @@ export function showMsg(container, icon, msg, btnLabel, btnFn) {
   document.getElementById('msg-btn')?.addEventListener('click', btnFn)
 }
 
-export function getPortrait(p) {
-  // Priorité : champ face (public/faces/...)
-  if (p?.face) {
-    const base = (typeof import.meta !== 'undefined' ? import.meta.env?.BASE_URL : null) || '/'
-    const f = p.face.replace(/^public\//, '').replace(/^\//, '')
-    return base + f
-  }
-  // Fallback ancien système skin/hair
-  const url = typeof import.meta !== 'undefined' ? import.meta.env?.VITE_SUPABASE_URL : ''
-  if (!url || !p?.skin || !p?.hair) return null
-  const key = p.hair === 'chauve' ? `${p.skin}-chauve-rase` : `${p.skin}-${p.hair}-${p.hair_length}`
-  return `${url}/storage/v1/object/public/assets/tetes/${key}.png`
-}
+export { getPortrait } from '../lib/portrait.js'
 
 export function playerFromCard(card, position) {
   const p = card.player

@@ -286,10 +286,10 @@ function renderClubs(container, helpers, countMap = {}) {
         : `<div style="width:40px;height:40px;background:linear-gradient(135deg,${kit.color1},${kit.color2});border-radius:8px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:10px;font-weight:900">${c.encoded_name.slice(0,3)}</div>`
       const nbPlayers = countMap[c.id] || 0
       return `
-        <div class="card-panel" style="display:flex;align-items:center;gap:10px;padding:10px 12px">
+        <div class="card-panel" style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,0.08)">
           ${logo}
           <div style="flex:1;min-width:0">
-            <div style="font-weight:900;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${c.real_name}</div>
+            <div style="font-weight:900;font-size:14px;color:#1a1a1a;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${c.real_name}</div>
             <div style="display:flex;align-items:center;gap:6px;margin-top:2px">
               <img src="https://flagsapi.com/${c.country_code}/flat/24.png" style="height:12px" onerror="this.style.display='none'">
               <span style="font-size:11px;color:var(--gray-600);font-family:monospace">${c.encoded_name} · ${c.country_code}</span>

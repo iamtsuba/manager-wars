@@ -13,7 +13,7 @@ import {
 } from './game-logic.js'
 import { FORMATION_LINKS, FORMATION_POSITIONS, linkColor, getActiveLinks } from './formation-links.js'
 import { renderGCCard } from '../components/special-cards.js'
-import { stopBGM, playUrgentSound, stopUrgentSound } from '../lib/sound.js'
+import { stopBGM, playBGM, playUrgentSound, stopUrgentSound } from '../lib/sound.js'
 import {
   showMsg, getPortrait, playerFromCard, getColsForLine, buildTeam, rollBoost, applyStadiumBonus, applyStadiumBonusToSubs,
   _hideBottomNav, _showBottomNav, renderDeckSelect, showGCSelection,
@@ -203,6 +203,7 @@ function generateFakeAITeam(formation) {
 }
 
 function showOpponentReveal(container, game, ctx) {
+  playBGM(`${import.meta.env.BASE_URL}sounds/match-opening.mp3`, 0.3)
   const stadSVG = `<div style="position:relative;width:22px;height:22px;flex-shrink:0;display:flex;align-items:center;justify-content:center">
     <div style="position:absolute;inset:-6px;border-radius:50%;background:radial-gradient(ellipse,rgba(30,144,255,0.6) 0%,transparent 68%);pointer-events:none"></div>
     <svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" style="position:relative;z-index:1;width:22px;height:22px;display:block">

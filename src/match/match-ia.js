@@ -13,6 +13,7 @@ import {
 } from './game-logic.js'
 import { FORMATION_LINKS, FORMATION_POSITIONS, linkColor, getActiveLinks } from './formation-links.js'
 import { renderGCCard } from '../components/special-cards.js'
+import { stopBGM } from '../lib/sound.js'
 import {
   showMsg, getPortrait, playerFromCard, getColsForLine, buildTeam, rollBoost, applyStadiumBonus, applyStadiumBonusToSubs,
   _hideBottomNav, _showBottomNav, renderDeckSelect, showGCSelection,
@@ -1700,6 +1701,7 @@ function useBoost(container, game, ctx) {
 // showGoalAnimation importé depuis match-engine.js
 
 async function finishMatch(container, game, ctx) {
+  stopBGM()
   if (game._timerInt) { clearInterval(game._timerInt); game._timerInt = null }
   game.phase = 'finished'
   const { state } = ctx

@@ -225,12 +225,7 @@ Cette action est irréversible.`))return;const i=document.getElementById("fix-ol
             <button class="btn btn-ghost btn-sm" data-edit="${o.id}">✏️</button>
             <button class="btn btn-danger btn-sm" data-del="${o.id}">🗑️</button>
           </div>
-        </div>`}).join(""),y.querySelectorAll("[data-gen]").forEach(o=>{o.addEventListener("click",()=>{const c=o.dataset.gen,l=o.dataset.name,a=o.dataset.cc;m(`
-          <div style="display:flex;flex-direction:column;gap:16px">
-            <div>
-              <div style="font-size:17px;font-weight:900;margin-bottom:4px">⚽ Générer l'effectif</div>
-              <div style="font-size:13px;color:#666"><strong>${l}</strong> — 20 joueurs</div>
-            </div>
+        </div>`}).join(""),y.querySelectorAll("[data-gen]").forEach(o=>{o.addEventListener("click",()=>{const c=o.dataset.gen,l=o.dataset.name,a=o.dataset.cc;m(`⚽ Générer — ${l}`,`<div style="display:flex;flex-direction:column;gap:14px">
             <div style="font-size:12px;color:#888;background:#f8f8f8;border-radius:8px;padding:10px;line-height:1.6">
               Distribution : 55% note 1–4 · 20% note 5–10 · 10% note 11–14 · 10% note 15–17 · 5% note 18–20<br>
               2 pépites + 2 papytes · 50% nationalité du club
@@ -239,15 +234,13 @@ Cette action est irréversible.`))return;const i=document.getElementById("fix-ol
               <input type="checkbox" id="qg-strong" style="width:18px;height:18px;accent-color:#D4A017;flex-shrink:0">
               <div>
                 <div style="font-weight:700">💪 Équipe Forte</div>
-                <div style="font-size:11px;color:#888;margin-top:1px">10 joueurs avec une note entre 15 et 20 garantis</div>
+                <div style="font-size:11px;color:#888;margin-top:2px">10 joueurs avec une note entre 15 et 20 garantis</div>
               </div>
             </label>
-            <div style="display:flex;gap:10px;margin-top:4px">
-              <button id="qg-cancel" class="btn btn-ghost" style="flex:1">Annuler</button>
-              <button id="qg-ok" class="btn btn-primary" style="flex:1">⚽ Générer</button>
-            </div>
-          </div>
-        `),setTimeout(()=>{var p,s;(p=document.getElementById("qg-cancel"))==null||p.addEventListener("click",()=>d()),(s=document.getElementById("qg-ok"))==null||s.addEventListener("click",async()=>{var E;const h=((E=document.getElementById("qg-strong"))==null?void 0:E.checked)??!1;d(),o.disabled=!0,o.textContent="⏳",await Ve(c,a,i,h),ce(e,t)})},50)})}),y.querySelectorAll("[data-edit]").forEach(o=>{const c=re.find(l=>l.id===o.dataset.edit);o.addEventListener("click",()=>Be(c,e,t))}),y.querySelectorAll("[data-del]").forEach(o=>{o.addEventListener("click",async()=>{if(!confirm("Supprimer ce club ?"))return;const{error:c}=await w.from("clubs").delete().eq("id",o.dataset.del);c?i(c.message,"error"):(i("Club supprimé","success"),ce(e,t))})})}}function Be(e,t,n){const{toast:i,openModal:m,closeModal:d}=n,u=!!e,r=e?Je(e):{...M},y=Object.entries(_e).map(([c,l])=>`<option value="${c}" ${r.style===c?"selected":""}>${l.label}</option>`).join(""),o=Ue.map(c=>`<option value="${c}" ${((e==null?void 0:e.country_code)||"FR")===c?"selected":""}>${c}</option>`).join("");m(u?`✏️ ${e.real_name}`:"➕ Nouveau club",`<div style="display:flex;flex-direction:column;gap:14px">
+          </div>`,`<div style="display:flex;gap:10px;width:100%">
+            <button id="qg-cancel" class="btn btn-ghost" style="flex:1">Annuler</button>
+            <button id="qg-ok" class="btn btn-primary" style="flex:1">⚽ Générer</button>
+          </div>`),setTimeout(()=>{var p,s;(p=document.getElementById("qg-cancel"))==null||p.addEventListener("click",()=>d()),(s=document.getElementById("qg-ok"))==null||s.addEventListener("click",async()=>{var E;const h=((E=document.getElementById("qg-strong"))==null?void 0:E.checked)??!1;d(),o.disabled=!0,o.textContent="⏳",await Ve(c,a,i,h),ce(e,t)})},50)})}),y.querySelectorAll("[data-edit]").forEach(o=>{const c=re.find(l=>l.id===o.dataset.edit);o.addEventListener("click",()=>Be(c,e,t))}),y.querySelectorAll("[data-del]").forEach(o=>{o.addEventListener("click",async()=>{if(!confirm("Supprimer ce club ?"))return;const{error:c}=await w.from("clubs").delete().eq("id",o.dataset.del);c?i(c.message,"error"):(i("Club supprimé","success"),ce(e,t))})})}}function Be(e,t,n){const{toast:i,openModal:m,closeModal:d}=n,u=!!e,r=e?Je(e):{...M},y=Object.entries(_e).map(([c,l])=>`<option value="${c}" ${r.style===c?"selected":""}>${l.label}</option>`).join(""),o=Ue.map(c=>`<option value="${c}" ${((e==null?void 0:e.country_code)||"FR")===c?"selected":""}>${c}</option>`).join("");m(u?`✏️ ${e.real_name}`:"➕ Nouveau club",`<div style="display:flex;flex-direction:column;gap:14px">
 
       <!-- Identité -->
       <div class="form-group">

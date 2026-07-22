@@ -749,11 +749,12 @@ function showBoosterAnimation(cards, booster, navigate, onClose = null) {
     const firstSeen = !seen.has(idx)
     seen.add(idx)
 
-    // Note principale (poste affiché) pour décider du walkout
+    // Note principale (poste affiché) pour décider du walkout — inclut evolution_bonus
     let mainNote = 0
     if (card.card_type === 'player' && card.player) {
       const p = card.player, j = p.job || 'ATT'
-      mainNote = Number(j==='GK'?p.note_g : j==='DEF'?p.note_d : j==='MIL'?p.note_m : p.note_a) || 0
+      const baseNote = Number(j==='GK'?p.note_g : j==='DEF'?p.note_d : j==='MIL'?p.note_m : p.note_a) || 0
+      mainNote = baseNote + (card.evolution_bonus || 0)
     }
 
     const paint = (withFireworks) => {

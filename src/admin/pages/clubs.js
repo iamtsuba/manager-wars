@@ -106,145 +106,190 @@ function pickNoteByDistribution(strong, idx) {
 }
 
 function generateSquad(clubId, countryCode, usedSurnamesGlobal = new Set(), strong = false) {
-  const FIRSTNAMES = [
-    'Lucas','Mateo','Rafael','Carlos','Luis','Diego','Andre','Paulo','Marco','Stefan',
-    'Ahmed','Omar','Yusuf','Mamadou','Ibrahima','Cheikh','Moussa','Kofi','Emeka','Tunde',
-    'Ryota','Kenji','Hiroshi','Jae','Sung','Wei','Ming','Van','Duc','Sorn',
-    'James','Ryan','Tyler','Kevin','Nathan','Liam','Noah','Ethan','Oliver','Hugo',
-    'Alexis','Théo','Antoine','Kylian','Rayan','Axel','Tom','Paul','Enzo','Léo',
-    'João','Gabriel','Felipe','Roberto','César','Miguel','Ivan','Luca','Federico','Sergio',
-  ]
-  const SURNAMES = [
-    'Silva','Santos','Costa','Pereira','Oliveira','Mendes','Ferreira','Alves',
-    'Souza','Rodrigues','Almeida','Carvalho','Gomes','Ribeiro','Araujo','Barbosa',
-    'Nascimento','Cardoso','Correia','Teixeira','Machado','Vieira','Monteiro','Cunha',
-    'Barros','Freitas','Melo','Pinto','Moura','Cavalcanti','Batista','Nunes',
-    'Lima','Rocha','Azevedo','Marques','Castro','Reis','Fonseca','Andrade',
-    'Braga','Peixoto','Coelho','Amaral','Guimaraes','Pires','Salgado','Xavier',
-    'Assuncao','Brito','Vasconcelos','Tavares','Duarte','Bastos','Neves','Figueiredo',
-    'Sales','Farias','Siqueira','Camargo','Prado','Miranda','Ramos','Correa',
-    'Gaspar','Leite','Pacheco','Sequeira','Marcelino','Antunes','Esteves','Rodriguez',
-    'Godinho','Faria','Sardinha','Cordeiro','Aguiar','Salvador','Sarmento','Nogueira',
-    'Pimentel','Simoes','Loureiro','Abreu','Sepulveda','Quaresma','Portela','Valente',
-    'Franco','Pina','Camilo','Falcao','Serra','Trindade','Belo','Cabral',
-    'Vidal','Sanches','Furtado','Guerreiro','Delgado','Coutinho','Vale','Marreiros',
-    'Bento','Salavessa','Domingues','Diallo','Traore','Coulibaly','Bah','Konate',
-    'Toure','Camara','Barry','Diop','Ndiaye','Sow','Cisse','Fofana',
-    'Keita','Sylla','Kane','Diarra','Sanogo','Balde','Diakite','Kouyate',
-    'Sissoko','Doumbia','Sarr','Mbaye','Fall','Toumbou','Coumbassa','Faye',
-    'Gueye','Thiam','Sarré','Kaba','Dabo','Sacko','Kourouma','Konde',
-    'Sangare','Sanou','Toubali','Bangoura','Kante','Samake','Nikiema','Ouedraogo',
-    'Zongo','Sawadogo','Compaore','Kabore','Tapsoba','Kagambega','Yameogo','Some',
-    'Kienou','Dembele','Bamba','Mendy','Djalo','Konte','Diabate','Doumbouya',
-    'Fadiga','Tounkara','Cheikh','Dieng','Diagne','Mbengue','Sagna','Sy',
-    'Ba','Wade','Niang','Diedhiou','Sonko','Dieye','Diatta','Mane',
-    'Coly','Badiane','Ndour','Faty','Seck','Kone','Berthe','Sidibe',
-    'Yattara','Cissoko','Bagayoko','Diakhate','Thioune','Bocoum','Guisse','Muller',
-    'Schmidt','Schneider','Fischer','Weber','Richter','Bauer','Wolf','Schroder',
-    'Neumann','Schwarz','Zimmermann','Braun','Kruger','Hofmann','Klein','Wagner',
-    'Becker','Hoffmann','Koch','Bergmann','Lange','Schulze','Krause','Meyer',
-    'Werner','Krämer','Schulz','Lehmann','Kaiser','Herrmann','Konig','Walter',
-    'Mayer','Huber','Kaufmann','Vogel','Friedrich','Keller','Gunther','Frank',
-    'Berger','Winkler','Roth','Beck','Lorenz','Baumann','Franke','Albrecht',
-    'Winter','Peters','Vogt','Jager','Simon','Ludwig','Bohm','Horn',
-    'Winkelmann','Fuchs','Sommer','Graf','Ebert','Stein','Wilhelm','Seidel',
-    'Heinrich','Brandt','Haas','Schuster','Kramer','Sauer','Busch','Voigt',
-    'Thomas','Peter','Arnold','Hartmann','Dietrich','Zimmer','Herzog','Pohl',
-    'Sturm','Hartung','Vogler','Reichert','Kessler','Bock','Nakamura','Tanaka',
-    'Suzuki','Kim','Park','Lee','Chen','Wang','Liu','Sato',
-    'Yamamoto','Watanabe','Ito','Yamada','Choi','Jung','Kang','Zhang',
-    'Huang','Yamaguchi','Saito','Matsumoto','Inoue','Kimura','Hayashi','Shimizu',
-    'Yamazaki','Mori','Abe','Ikeda','Hashimoto','Yamashita','Ishikawa','Nakajima',
-    'Ono','Maeda','Fujita','Goto','Okada','Hasegawa','Murakami','Kondo',
-    'Ishii','Sakamoto','Endo','Aoki','Fujii','Nishimura','Fukuda','Ota',
-    'Han','Yoon','Cho','Song','Shin','Yoo','Jang','Lim',
-    'Oh','Seo','Kwon','Hwang','Ahn','Yang','Zhao','Zhou',
-    'Wu','Xu','Sun','Zhu','Ma','Guo','He','Lin',
-    'Takahashi','Kobayashi','Kato','Yoshida','Sasaki','Yamaoka','Miura','Okamoto',
-    'Matsuda','Nakagawa','Ogawa','Uchida','Kubo','Miyazaki','Shimada','Yoshikawa',
-    'Yokoyama','Miyamoto','Sakai','Chiba','Kudo','Baek','Nam','Bae',
-    'Ha','Ko','Moon','Yu','Woo','Gu','Cha','Chu',
-    'Peng','Lu','Xie','Tang','Feng','Deng','Cao','Cai',
-    'Jiang','Yuan','Pan','Du','Dai','Fan','Kikuchi','Anzai',
-    'Uehara','Oda','Kawai','Noda','Xiao','Jin','Qian','Yan',
-    'Johnson','Williams','Brown','Davis','Wilson','Moore','Martinez','Lopez',
-    'Taylor','Anderson','Jackson','White','Harris','Clark','Lewis','Walker',
-    'Hall','Allen','Young','King','Wright','Scott','Green','Baker',
-    'Adams','Nelson','Carter','Mitchell','Roberts','Turner','Phillips','Campbell',
-    'Parker','Evans','Edwards','Collins','Stewart','Morris','Murphy','Cook',
-    'Rogers','Morgan','Peterson','Cooper','Reed','Bailey','Bell','Gray',
-    'Howard','Ward','Cox','Diaz','Richardson','Wood','Watson','Brooks',
-    'Bennett','James','Reyes','Cruz','Hughes','Price','Myers','Long',
-    'Foster','Sanders','Ross','Henderson','Coleman','Jenkins','Perry','Powell',
-    'Sullivan','Russell','Hayes','Kelly','Simpson','Patterson','Ellis','Fisher',
-    'Hunter','Grant','Mason','Barnes','Ryan','Palmer','Hamilton','George',
-    'Freeman','Wells','Webb','Gordon','Burns','Marshall','Owens','Ford',
-    'Snyder','Fox','Warren','Payne','Rice','Weaver','Butler','Simmons',
-    'Boyd','Craig','Stone','Franklin','Vasquez','Stephens','Wallace','Woods',
-    'Elliott','Chapman','Dunn','Perkins','Hudson','Spencer','Gardner','Stevens',
-    'Tucker','Porter','Hicks','Crawford','Dubois','Martin','Bernard','Petit',
-    'Dupont','Moreau','Laurent','Robert','Michel','Leroy','Roux','David',
-    'Bertrand','Morel','Fournier','Girard','Bonnet','Rousseau','Fontaine','Chevalier',
-    'Blanc','Guerin','Boyer','Garnier','Chevallier','Francois','Legrand','Gauthier',
-    'Garcia','Perrin','Robin','Clement','Morin','Nicolas','Henry','Roussel',
-    'Mathieu','Gautier','Masson','Marchand','Duval','Denis','Dumont','Marie',
-    'Lemaire','Noel','Dufour','Meunier','Brun','Blanchard','Giraud','Joly',
-    'Riviere','Lucas','Brunet','Gaillard','Barbier','Arnaud','Martel','Rolland',
-    'Renaud','Roger','Roche','Fabre','Aubert','Poulain','Guyot','Lefebvre',
-    'Leclerc','Michaud','Colin','Charpentier','Renard','Legros','Caron','Picard',
-    'Roy','Guillot','Regnier','Marechal','Perrot','Antoine','Poirier','Voisin',
-    'Prevost','Adam','Lecomte','Marty','Charles','Rousset','Chauvin','Jacquet',
-    'Lambert','Bouvier','Beaumont','Roulet','Chartier','Deschamps','Lecoq','Perret',
-    'Charrier','Sauvage','Rivet','Dumas','Bourgeois','Blondel','Payet','Isambert',
-    'Auger','Lemoine','Millet','Guillon','Aubry','Humbert','Constant','Gilbert',
-    'Renou','Barre','Vallet','Cardon','Fernandez','Gonzalez','Hernandez','Sanchez',
-    'Ramirez','Torres','Flores','Rivera','Gomez','Morales','Ortiz','Gutierrez',
-    'Chavez','Ruiz','Alvarez','Mendoza','Vazquez','Romero','Herrera','Medina',
-    'Aguilar','Vargas','Guzman','Munoz','Salazar','Soto','Contreras','Rojas',
-    'Nunez','Vega','Guerrero','Rios','Acosta','Fuentes','Cabrera','Espinoza',
-    'Mendez','Molina','Cortez','Suarez','Pena','Cervantes','Estrada','Ochoa',
-    'Bravo','Padilla','Carrillo','Escobar','Marin','Ibarra','Salinas','Mora',
-    'Trejo','Cardenas','Aguirre','Villanueva','Villalobos','Solis','Robles','Beltran',
-    'Camacho','Zamora','Valdez','Meza','Avila','Lara','Segura','Cano',
-    'Prieto','Cabello','Pardo','Serrano','Nieto','Crespo','Gil','Iglesias',
-    'Santana','Gallego','Zapata','Paredes','Nava','Barrera','Montes','Peralta',
-    'Cortes','Galvan','Rosales','Maldonado','Rossi','Russo','Ferrari','Esposito',
-    'Bianchi','Romano','Ricci','Marino','Greco','Bruno','Gallo','Conti',
-    'Deluca','Mancini','Giordano','Rizzo','Lombardi','Moretti','Barone','Fontana',
-    'Santoro','Mariani','Rinaldi','Caruso','Ferrara','Galli','Martini','Leone',
-    'Longo','Gentile','Martinelli','Vitale','Lombardo','Coppola','Deangelis','Marchetti',
-    'Parisi','Villa','Conte','Ferro','Fabbri','Bianco','Marini','Grasso',
-    'Valentini','Messina','Sala','Farina','Rizzi','Monti','Cattaneo','Morelli',
-    'Amato','Fiore','Colombo','Testa','Riva','Barbieri','Fiorentino','Sarti',
-    'Piras','Neri','Palumbo','Sanna','Grieco','Sartori','Basile','Bernardi',
-    'Marchi','Ferretti','Milani','Guerra','Silvestri','Cocco','Ferraro','Damico',
-    'Vitali','Basso','Guerrini','Carbone','Ruggiero','Piazza','Rossetti','Cristofaro',
-    'Palma','Franchini','Bruni','Villani','Marconi','Sforza','Sarno','Damato',
-    'Angeli','Bosco','Ferri','Grimaldi','Costantini','Marchese','Iannotti','Palermo',
-    'Vitiello','Damiani','Orlando','De Jong','Van Dijk','Bakker','Jansen','Visser',
-    'Smit','Meijer','Bos','Andersen','Hansen','Nielsen','Pedersen','Larsen',
-    'Johansson','Karlsson','Vermeulen','Van Den Berg','Van Der Meer','Dekker','Brouwer','Mulder',
-    'De Groot','Hoekstra','Van Leeuwen','Vos','Peeters','De Boer','Kok','Andersson',
-    'Eriksson','Persson','Lindqvist','Gustafsson','Olsen','Berg','Jorgensen','Sorensen',
-    'Rasmussen','Christiansen','Poulsen','Madsen','Kristensen','Van Der Berg','Klaassen','Van Der Linden',
-    'Postma','Vink','Terpstra','Schouten','Van Zanten','Hendriks','Van Der Laan','Wolters',
-    'Blom','Van Vliet','Van Der Velde','Hermansen','Bergstrom','Lindberg','Holm','Nystrom',
-    'Blomqvist','Sandberg','Wikstrom','Forsberg','Dahl','Falk','Ostergaard','Mortensen',
-    'Simonsen','Thomsen','Iversen','Kristiansen','Vermeer','Willems','Aarts','Sondergaard',
-    'Frandsen','Bang','Lindholm','Berglund','Wikman','Backstrom','Benali','Amrani',
-    'Bouazza','Cherif','Haddad','Meziane','Belkacem','Rahmani','Boumediene','Yacoub',
-    'Saidi','Zidane','Belhadj','Tazi','Idrissi','Alaoui','Bennani','Chraibi',
-    'Fassi','Kadiri','Lahlou','Naciri','Sbai','Skalli','Tahiri','Zniber',
-    'Boukhris','Chakroun','Gharbi','Jendoubi','Karoui','Mansouri','Sassi','Toumi',
-    'Zaidi','Ayari','Bouazizi','Chaabane','Dhaouadi','Ghannouchi','Hammami','Jemai',
-    'Khedher','Mabrouk','Nasri','Ouali','Rekik','Sahli','Zaoui','Amrouche',
-    'Boudiaf','Cherki','Guessab','Hamdi','Jaber','Karim','Lakhal','Mahjoub',
-    'Nabil','Rezki','Sahnoun','Talbi','Zerrouki','Achour','Bakri','Chaouch',
-    'Djaballah','Ferhat','Gacem','Hachani','Islah','Jemili','Khaldi','Larbi',
-    'Mokrani','Nadir','Ouahes','Riahi','Salhi','Taleb','Wahabi','Zeroual',
-    'Aissa','Belaid','Chami','Djelloul','Fekih','Guerfi','Bouzid','Chettouh',
-    'Djebbari','Ferjani','Guenaoui','Hallaoui','Khemiri','Mejri','Ouarda','Selmi',
-  ]
+
+  // ── Pools de prénoms et noms par zone géographique ─────────────────────────
+  const NAMES_BY_ZONE = {
+    FR: {
+      first: ['Lucas','Tom','Hugo','Théo','Antoine','Kylian','Rayan','Axel','Paul','Enzo',
+              'Léo','Mathis','Nathan','Alexis','Ethan','Maxime','Julien','Baptiste','Nicolas','Pierre',
+              'Clément','Adrien','Valentin','Dylan','Loïc','Quentin','Florian','Kevin','Corentin','Raphaël'],
+      last:  ['Martin','Bernard','Petit','Dupont','Moreau','Laurent','Robert','Michel','Leroy','Roux',
+              'David','Bertrand','Morel','Fournier','Girard','Bonnet','Rousseau','Fontaine','Chevalier','Blanc',
+              'Garnier','Boyer','Gauthier','Garcia','Perrin','Robin','Clément','Morin','Nicolas','Henry',
+              'Lemaire','Noël','Dufour','Meunier','Brun','Blanchard','Giraud','Joly','Rivière','Brunet']
+    },
+    ES: {
+      first: ['Carlos','Miguel','Javier','Alejandro','Sergio','David','Diego','Pablo','Álvaro','Marcos',
+              'Adrián','Rubén','Iker','Raúl','Fernando','Roberto','Víctor','Iván','Gonzalo','Antonio',
+              'Manuel','Jesús','Josué','Rodrigo','Cristian','Héctor','Óscar','Mario','Daniel','Jorge'],
+      last:  ['García','Rodríguez','Martínez','López','Sánchez','González','Pérez','Hernández','Jiménez','Díaz',
+              'Torres','Ramírez','Flores','Rivera','Gómez','Morales','Álvarez','Romero','Herrera','Medina',
+              'Aguilar','Vargas','Guzmán','Muñoz','Salazar','Soto','Contreras','Rojas','Ramos','Ortiz']
+    },
+    PT: {
+      first: ['João','Pedro','Diogo','Rúben','Bruno','Tiago','André','Ricardo','Luís','Gonçalo',
+              'Nuno','Mário','Fábio','Rui','Miguel','Sérgio','Hugo','Filipe','Paulo','Vítor'],
+      last:  ['Silva','Santos','Costa','Pereira','Oliveira','Mendes','Ferreira','Alves','Carvalho','Gomes',
+              'Ribeiro','Araújo','Barbosa','Cardoso','Correia','Teixeira','Machado','Vieira','Monteiro','Cunha',
+              'Pinto','Melo','Barros','Freitas','Fonseca','Andrade','Castro','Neves','Figueiredo','Duarte']
+    },
+    BR: {
+      first: ['Gabriel','Lucas','Mateus','Gustavo','Felipe','Rodrigo','Thiago','Rafael','Bruno','Diego',
+              'Leonardo','Eduardo','Victor','Pedro','Carlos','Alexandre','André','Paulo','Danilo','Marcelo'],
+      last:  ['Silva','Santos','Oliveira','Souza','Lima','Ferreira','Costa','Nascimento','Alves','Pereira',
+              'Rodrigues','Almeida','Nunes','Melo','Barbosa','Rocha','Brito','Castro','Carvalho','Gomes',
+              'Lopes','Ramos','Mendes','Cavalcanti','Batista','Azevedo','Campos','Freitas','Reis','Andrade']
+    },
+    AR: {
+      first: ['Lionel','Sergio','Rodrigo','Nicolás','Ezequiel','Gonzalo','Federico','Mauro','Pablo','Diego',
+              'Lucas','Matías','Alejandro','Maximiliano','Emiliano','Marcos','Lautaro','Ángel','Leandro','Julián'],
+      last:  ['González','Rodríguez','Martínez','García','López','Pérez','Sánchez','Romero','Torres','Flores',
+              'Díaz','Gómez','Alvarez','Ruiz','Castro','Herrera','Cabrera','Medina','Ferreyra','Suárez']
+    },
+    IT: {
+      first: ['Marco','Luca','Alessandro','Matteo','Davide','Andrea','Francesco','Federico','Lorenzo','Riccardo',
+              'Stefano','Simone','Roberto','Nicola','Giovanni','Antonio','Emanuele','Daniele','Alberto','Giorgio'],
+      last:  ['Rossi','Russo','Ferrari','Esposito','Bianchi','Romano','Ricci','Marino','Greco','Bruno',
+              'Gallo','Conti','De Luca','Mancini','Giordano','Rizzo','Lombardi','Moretti','Fontana','Rinaldi']
+    },
+    DE: {
+      first: ['Lukas','Max','Jonas','Florian','Tobias','Stefan','Markus','Sebastian','Niklas','Leon',
+              'Tim','Felix','Alexander','Philipp','Christian','Thomas','Michael','Jan','Moritz','Fabian'],
+      last:  ['Müller','Schmidt','Schneider','Fischer','Weber','Richter','Bauer','Wolf','Schröder','Neumann',
+              'Schwarz','Zimmermann','Braun','Krüger','Hofmann','Wagner','Becker','Koch','Lehmann','Kaiser']
+    },
+    GB: {
+      first: ['James','Harry','Oliver','Jack','George','Charlie','William','Thomas','Alfie','Edward',
+              'Ryan','Liam','Noah','Ethan','Kyle','Jordan','Callum','Aaron','Declan','Connor'],
+      last:  ['Smith','Jones','Williams','Brown','Taylor','Davies','Evans','Wilson','Thomas','Roberts',
+              'Johnson','Walker','Wright','Robinson','White','Thompson','Hughes','Edwards','Green','Hall']
+    },
+    MA: {
+      first: ['Yassine','Karim','Mehdi','Amine','Hamza','Bilal','Soufiane','Rachid','Omar','Mohammed',
+              'Zakaria','Ilyas','Ayoub','Saad','Khalid','Adil','Tarik','Hicham','Reda','Nabil'],
+      last:  ['Benali','Amrani','Bouazza','Cherif','Haddad','Meziane','Belkacem','Rahmani','Saidi','Zidane',
+              'Belhadj','Tazi','Idrissi','Alaoui','Bennani','Fassi','Lahlou','Naciri','Tahiri','Zniber']
+    },
+    DZ: {
+      first: ['Yacine','Riyad','Sofiane','Haris','Adem','Islam','Bilal','Omar','Nassim','Mehdi',
+              'Ryad','Zinedine','Youssef','Farid','Karim','Mourad','Walid','Anes','Ferhat','Djamel'],
+      last:  ['Amrouche','Boudiaf','Cherki','Guessab','Hamdi','Jaber','Lakhal','Mahjoub','Rezki','Sahnoun',
+              'Talbi','Zerrouki','Achour','Bakri','Chaouch','Djaballah','Ferhat','Gacem','Khaldi','Larbi']
+    },
+    SN: {
+      first: ['Sadio','Ismaïla','Cheikhou','Gana','Famara','Mbaye','Pape','Aliou','Moussa','Sidy',
+              'Idrissa','Lamine','Bamba','Fallou','Abdou','Diallo','Mamadou','Souleymane','Oumar','Cheikh'],
+      last:  ['Diallo','Traoré','Coulibaly','Bah','Konaté','Touré','Camara','Barry','Diop','Ndiaye',
+              'Sow','Cissé','Fofana','Keita','Sylla','Kane','Diarra','Sanogo','Baldé','Kouyaté']
+    },
+    CI: {
+      first: ['Didier','Wilfried','Serge','Jonathan','Franck','Maxwel','Salomon','Gervinho','Nicolas','Maxime',
+              'Ismael','Romaric','Abdul','Cheick','Arouna','Kolo','Yaya','Geoffroy','Siaka','Adama'],
+      last:  ['Drogba','Zaha','Gnagnon','Koné','Touré','Bamba','Diomandé','Konaté','Coulibaly','Fofana',
+              'Traoré','Doumbia','Sanogo','Diabaté','Kalou','Bakayoko','Gradel','Seri','Aurier','Haller']
+    },
+    CM: {
+      first: ['Samuel','Alex','Karl','Fabrice','Cédric','Nicolas','Georges','André','Joël','Roger',
+              'François','Jean','Patrick','Thierry','Eric','Benjamin','Aristide','Clinton','Clinton','Stéphane'],
+      last:  ['Eto'o','Song','Choupo-Moting','Aboubakar','Bassogog','Kunde','Toko','Nkoudou','Ngadeu','Oyongo',
+              'Fai','Zambo','Mokoena','Ekambi','Tchamba','Mbida','Biya','Kameni','Meyong','Webo']
+    },
+    NG: {
+      first: ['Kelechi','Ahmed','Victor','John','Emmanuel','Samuel','Moses','Ola','Chukwuemeka','Odion',
+              'Sunday','Chidi','Nnamdi','Chisom','Tunde','Emeka','Obinna','Uchenna','Ifeanyi','Segun'],
+      last:  ['Osimhen','Iheanacho','Musa','Onyekuru','Iwobi','Ndidi','Nwankwo','Obi','Mikel','Martins',
+              'Okocha','Yekini','Amunike','Babangida','Fash','Lawal','Onuoha','Taiwo','Ayodele','Ameobi']
+    },
+    JP: {
+      first: ['Ryota','Kenji','Hiroshi','Takumi','Yuto','Daichi','Shinji','Makoto','Koji','Naoki',
+              'Yuya','Shoya','Ryo','Shu','Atsuto','Masato','Hotaru','Genki','Ko','Ritsu'],
+      last:  ['Nakamura','Tanaka','Suzuki','Sato','Yamamoto','Watanabe','Ito','Yamada','Saito','Matsumoto',
+              'Inoue','Kimura','Hayashi','Shimizu','Yamazaki','Mori','Abe','Ikeda','Kato','Honda']
+    },
+    KR: {
+      first: ['Heung','Son','Ji','Sung','Jae','Young','Kang','Hyun','Woo','Tae',
+              'Seung','Min','Jun','Dong','Chang','Sang','Yo','Hee','Jin','Bum'],
+      last:  ['Kim','Park','Lee','Choi','Jung','Kang','Cho','Yoon','Lim','Oh',
+              'Han','Seo','Kwon','Hwang','Ahn','Yang','Shin','Yoo','Jang','Song']
+    },
+    MX: {
+      first: ['Carlos','Hirving','Andrés','Javier','Miguel','Raúl','Héctor','Diego','Jorge','Luis',
+              'Rodolfo','Erick','Jonathan','Néstor','Tecatito','Chicharito','Oswaldo','Oribe','Uriel','Giovanni'],
+      last:  ['Hernández','Lozano','Guardado','Vela','Morales','Jiménez','Reyes','Corona','Herrera','Rodríguez',
+              'Ochoa','Chicharito','Flores','Domínguez','Araujo','Álvarez','Pineda','Sánchez','Antuna','Meza']
+    },
+    _DEFAULT_EUROPE: {
+      first: ['Stefan','Ivan','Luca','Marco','Andrei','Cristian','Bogdan','Mircea','Adrian','Florin',
+              'Dušan','Aleksandar','Nikola','Nemanja','Marko','Filip','Milan','Branislav','Radomir','Dejan'],
+      last:  ['Popescu','Ionescu','Stan','Marin','Stoica','Popa','Radu','Constantin','Barbu','Dobre',
+              'Petrović','Marković','Nikolić','Jovanović','Popović','Stanković','Đorđević','Lukić','Simić','Ilić']
+    },
+    _DEFAULT_AFRIQUE: {
+      first: ['Mamadou','Ibrahima','Moussa','Seydou','Boubacar','Oumar','Modibo','Adama','Bakary','Abdoulaye',
+              'Lamine','Ousmane','Sekou','Demba','Tidiane','Amadou','Issiaka','Siaka','Fode','Samba'],
+      last:  ['Diallo','Traoré','Coulibaly','Koné','Doumbia','Kouyaté','Bah','Konaté','Touré','Camara',
+              'Sylla','Keita','Diakité','Sangaré','Sanou','Sidibé','Bathily','Niakaté','Dioumassi','Sissoko']
+    },
+    _DEFAULT_ASIE: {
+      first: ['Wei','Ming','Jae','Van','Duc','Sorn','Ali','Hassan','Reza','Arman',
+              'Yusuf','Tariq','Faris','Khalid','Saad','Rashid','Nasser','Walid','Ziad','Adel'],
+      last:  ['Zhang','Wang','Liu','Chen','Yang','Huang','Zhou','Wu','Xu','Sun',
+              'Al-Rashidi','Al-Dosari','Al-Harthi','Al-Balushi','Al-Farsi','Al-Shamsi','Al-Neyadi','Al-Breiki','Al-Hammadi','Al-Mansouri']
+    },
+    _DEFAULT_AMERIQUE: {
+      first: ['James','Ryan','Tyler','Kevin','Nathan','Liam','Noah','Ethan','Oliver','Marcus',
+              'Jordan','Andre','Devonte','Malik','Tyrone','Jamal','Darius','DeShawn','Brandon','Cody'],
+      last:  ['Johnson','Williams','Brown','Davis','Wilson','Moore','Martinez','Lopez','Taylor','Anderson',
+              'Jackson','White','Harris','Clark','Lewis','Walker','Hall','Allen','Young','King']
+    }
+  }
+
+  // Mapping country_code → zone de noms
+  const CC_TO_ZONE = {
+    FR:'FR', BE:'FR', CH:'FR', MC:'FR', LU:'FR',
+    ES:'ES', MX:'MX', CO:'ES', VE:'ES', PE:'ES', CL:'ES', EC:'ES', UY:'ES', PY:'ES', BO:'ES', CR:'ES', PA:'ES', HN:'ES', GT:'ES', SV:'ES', NI:'ES', DO:'ES', CU:'ES',
+    PT:'PT', AO:'PT', MZ:'PT', CV:'PT',
+    BR:'BR',
+    AR:'AR',
+    IT:'IT', SM:'IT',
+    DE:'DE', AT:'DE',
+    GB:'GB', IE:'GB', AU:'GB', NZ:'GB', CA:'GB',
+    MA:'MA', TN:'DZ', LY:'DZ',
+    DZ:'DZ',
+    SN:'SN', ML:'SN', GN:'SN', GW:'SN', GM:'SN', MR:'SN',
+    CI:'CI', BF:'CI', TG:'CI', BJ:'CI', GH:'CI',
+    CM:'CM', GA:'CM', CG:'CM', CD:'CM',
+    NG:'NG',
+    JP:'JP',
+    KR:'KR',
+    MX:'MX',
+    // Fallbacks
+    PL:'_DEFAULT_EUROPE', CZ:'_DEFAULT_EUROPE', SK:'_DEFAULT_EUROPE', HU:'_DEFAULT_EUROPE',
+    HR:'_DEFAULT_EUROPE', RS:'_DEFAULT_EUROPE', SI:'_DEFAULT_EUROPE', RO:'_DEFAULT_EUROPE',
+    BG:'_DEFAULT_EUROPE', GR:'_DEFAULT_EUROPE', TR:'_DEFAULT_EUROPE', RU:'_DEFAULT_EUROPE',
+    UA:'_DEFAULT_EUROPE', NL:'_DEFAULT_EUROPE', DK:'_DEFAULT_EUROPE', SE:'_DEFAULT_EUROPE',
+    NO:'_DEFAULT_EUROPE', FI:'_DEFAULT_EUROPE', AL:'_DEFAULT_EUROPE',
+    EG:'_DEFAULT_AFRIQUE', ZA:'_DEFAULT_AFRIQUE', KE:'_DEFAULT_AFRIQUE',
+    ET:'_DEFAULT_AFRIQUE', TZ:'_DEFAULT_AFRIQUE', UG:'_DEFAULT_AFRIQUE',
+    CN:'_DEFAULT_ASIE', VN:'_DEFAULT_ASIE', TH:'_DEFAULT_ASIE', ID:'_DEFAULT_ASIE',
+    PH:'_DEFAULT_ASIE', IN:'_DEFAULT_ASIE', PK:'_DEFAULT_ASIE', BD:'_DEFAULT_ASIE',
+    IR:'_DEFAULT_ASIE', SA:'_DEFAULT_ASIE', AE:'_DEFAULT_ASIE', QA:'_DEFAULT_ASIE',
+    KW:'_DEFAULT_ASIE', IQ:'_DEFAULT_ASIE', SY:'_DEFAULT_ASIE', JO:'_DEFAULT_ASIE',
+    US:'_DEFAULT_AMERIQUE',
+  }
+
+  function getZone(cc) {
+    return CC_TO_ZONE[cc] || '_DEFAULT_EUROPE'
+  }
+  function pickFirstname(cc) {
+    const zone = getZone(cc)
+    const pool = (NAMES_BY_ZONE[zone] || NAMES_BY_ZONE['_DEFAULT_EUROPE']).first
+    return pick(pool)
+  }
+  function getSurnamePool(cc) {
+    const zone = getZone(cc)
+    return (NAMES_BY_ZONE[zone] || NAMES_BY_ZONE['_DEFAULT_EUROPE']).last
+  }
 
   // 20 slots : 2 GK, 8 DEF, 6 MIL, 4 ATT
   const slots = [
@@ -273,10 +318,11 @@ function generateSquad(clubId, countryCode, usedSurnamesGlobal = new Set(), stro
   }
 
   const usedSurnamesInSquad = new Set()
-  function pickUniqueSurname() {
-    const fullyFresh = SURNAMES.filter(s => !usedSurnamesInSquad.has(s) && !usedSurnamesGlobal.has(s))
-    const avail = fullyFresh.length ? fullyFresh : SURNAMES.filter(s => !usedSurnamesInSquad.has(s))
-    const pool = avail.length ? avail : SURNAMES // si vraiment épuisé (effectif très grand), on retombe sur le pool complet
+  function pickUniqueSurname(cc) {
+    const basePool = getSurnamePool(cc)
+    const fullyFresh = basePool.filter(s => !usedSurnamesInSquad.has(s) && !usedSurnamesGlobal.has(s))
+    const avail = fullyFresh.length ? fullyFresh : basePool.filter(s => !usedSurnamesInSquad.has(s))
+    const pool = avail.length ? avail : basePool
     const s = pick(pool)
     usedSurnamesInSquad.add(s)
     return s
@@ -314,11 +360,11 @@ function generateSquad(clubId, countryCode, usedSurnamesGlobal = new Set(), stro
     }
 
     const rarity = pepites.has(idx) ? 'pepite' : papytes.has(idx) ? 'papyte' : 'normal'
-    const surnameReal = pickUniqueSurname()
+    const surnameReal = pickUniqueSurname(cc)
 
     return {
       job, job2,
-      firstname: pick(FIRSTNAMES),
+      firstname: pickFirstname(cc),
       surname_real: surnameReal,
       country_code: cc,
       club_id: clubId,

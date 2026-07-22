@@ -1,6 +1,6 @@
 import { supabase } from '../../lib/supabase.js'
 import { renderPlayerCard } from '../../components/player-card.js'
-import { ALL_CONTINENTS, listContinentFiles, getPortrait } from '../../lib/portrait.js'
+import { ALL_CONTINENTS, listContinentFiles, getPortrait, assignFace } from '../../lib/portrait.js'
 
 const BASE = import.meta.env.BASE_URL
 const RARITY_LABELS = { normal:'Normal', pepite:'Pépite', papyte:'Papyte', legende:'Légende' }
@@ -22,6 +22,41 @@ function mainNote(p) {
   if (p.job === 'DEF') return p.note_d || 0
   if (p.job === 'MIL') return p.note_m || 0
   return p.note_a || 0
+}
+
+async function runFixOldFaces(container, helpers) {
+  const { toast } = helpers
+  if (!confirm('Réattribuer une nouvelle photo à tous les joueurs ayant encore l\'ancien format de chemin (public/faces/...) ?\n\nCette action est irréversible.')) return
+
+  const btn = document.getElementById('fix-old-faces-btn')
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ En cours...' }
+
+  try {
+    // 1) Joueurs concernés : ancien format de chemin
+    const { data: oldFacePlayers, error: eSel } = await supabase
+      .from('players').select('id, country_code, face')
+      .like('face', 'public/faces/%')
+    if (eSel) { toast(eSel.message, 'error'); return }
+    if (!oldFacePlayers?.length) { toast('Aucun joueur avec l\'ancien format — rien à faire ✅', 'success'); return }
+
+    // 2) Faces déjà correctement utilisées (nouveau format) — à éviter en priorité
+    const { data: usedFacesData } = await supabase.from('players').select('face').not('face', 'is', null)
+    const usedSet = new Set((usedFacesData || []).map(r => r.face).filter(f => f && !f.startsWith('public/faces/')))
+
+    let fixed = 0, failed = 0
+    for (const p of oldFacePlayers) {
+      const newPath = await assignFace(p.country_code, usedSet)
+      if (!newPath) { failed++; continue }
+      const { error: eUpd } = await supabase.from('players').update({ face: newPath }).eq('id', p.id)
+      if (eUpd) { failed++; continue }
+      usedSet.add(newPath)
+      fixed++
+    }
+
+    toast(`${fixed} photo(s) réattribuée(s)${failed ? `, ${failed} échec(s)` : ''} ✅`, failed ? 'error' : 'success')
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '🖼️ Réattribuer anciennes photos' }
+  }
 }
 
 export async function pagePlayers(container, helpers) {
@@ -70,6 +105,7 @@ function renderPage(container, players, clubs, helpers, savedFilters = null) {
           ${Object.entries(RARITY_LABELS).map(([k,v]) => `<option value="${k}">${v}</option>`).join('')}
         </select>
         <button class="btn btn-primary" id="add-player-btn" style="white-space:nowrap">+ Joueur</button>
+        <button class="btn btn-ghost" id="fix-old-faces-btn" style="white-space:nowrap">🖼️ Réattribuer anciennes photos</button>
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         <select id="filter-club" style="flex:1;min-width:140px">
@@ -205,6 +241,7 @@ function renderPage(container, players, clubs, helpers, savedFilters = null) {
   loadPlayers(container, helpers, filters)
   })
   document.getElementById('add-player-btn').addEventListener('click', () => openPlayerModal(null, clubs, container, helpers))
+  document.getElementById('fix-old-faces-btn').addEventListener('click', () => runFixOldFaces(container, helpers))
 }
 
 // ── Modal Card Builder ────────────────────────────────────

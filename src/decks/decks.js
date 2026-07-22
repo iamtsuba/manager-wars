@@ -2,6 +2,7 @@ import { supabase } from '../lib/supabase.js'
 import { renderPlayerCard } from '../components/player-card.js'
 import { FORMATION_LINKS, FORMATION_POSITIONS, computeLinks, linkColor, getActiveLinks } from '../match/formation-links.js'
 import { renderStadiumCard } from '../components/special-cards.js'
+import { getPortrait } from '../lib/portrait.js'
 
 // ── Modales in-app (remplacent prompt()/confirm() natifs du navigateur) ──
 function showPromptModal(title, defaultValue = '') {
@@ -83,12 +84,6 @@ const FORMATIONS = {
 }
 const JOB_COLORS = { GK:'#111', DEF:'#bb2020', MIL:'#D4A017', ATT:'#1A6B3C' }
 
-function getPortrait(p) {
-  const url = typeof import.meta !== 'undefined' ? import.meta.env?.VITE_SUPABASE_URL : ''
-  if (!url || !p?.skin || !p?.hair) return null
-  const key = p.hair === 'chauve' ? `${p.skin}-chauve-rase` : `${p.skin}-${p.hair}-${p.hair_length}`
-  return `${url}/storage/v1/object/public/assets/tetes/${key}.png`
-}
 
 function flagImgUrl(code) {
   if (!code || code.length < 2) return null

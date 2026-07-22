@@ -879,47 +879,32 @@ async function openCardDetail(card, allPlayerCards, countByPlayer, ctx) {
       <!-- Grille de mini-cartes (copies uniquement, l'exemplaire 1 = carte principale affichée en haut) -->
       <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
         ${samePlayerCards.filter(c => c.id !== card.id).map((c, i) => {
-          const hist       = transfersByCard[c.id] || []
-          const isForSale  = c.is_for_sale
-          const lastClub   = hist.length ? hist[hist.length-1] : null
-          const cEvo       = c.evolution_bonus || 0
-          const cNote      = getNote(p, p.job) + cEvo
-          const isEvol     = p.rarity === 'pepite' || p.rarity === 'papyte'
-          const jobColor   = JOB_COLORS[p.job] || '#1A6B3C'
-          const rarColor   = RAR_COLORS[p.rarity] || '#ccc'
-          const srcLabel   = lastClub ? (lastClub.source === 'booster' ? 'Booster' : lastClub.price ? lastClub.price.toLocaleString('fr')+' cr.' : '—') : '—'
-          const dateLabel  = lastClub ? new Date(lastClub.transferred_at).toLocaleDateString('fr',{day:'2-digit',month:'2-digit',year:'numeric'}) : ''
-          const clubLabel  = lastClub ? lastClub.club_name : ''
+          const hist      = transfersByCard[c.id] || []
+          const isForSale = c.is_for_sale
+          const lastClub  = hist.length ? hist[hist.length-1] : null
+          const cEvo      = c.evolution_bonus || 0
+          const srcLabel  = lastClub ? (lastClub.source === 'booster' ? 'Booster' : lastClub.price ? lastClub.price.toLocaleString('fr')+' cr.' : '—') : '—'
+          const dateLabel = lastClub ? new Date(lastClub.transferred_at).toLocaleDateString('fr',{day:'2-digit',month:'2-digit',year:'numeric'}) : ''
+          // Carte joueur avec evolution_bonus propre à cet exemplaire
+          const cardHtml  = renderPlayerCard({ ...p, _evolution_bonus: cEvo }, { width: 70 })
           return `
             <div class="exemplaire-row" data-card-id="${c.id}" data-card-idx="${i}"
-              style="position:relative;cursor:${isForSale?'not-allowed':'pointer'};opacity:${isForSale?0.55:1};transition:transform .1s">
-              <!-- Checkbox cachée, positionnée sur la carte -->
+              style="position:relative;cursor:${isForSale?'not-allowed':'pointer'};opacity:${isForSale?0.55:1};transition:transform .1s,box-shadow .1s">
+              <!-- Checkbox cachée -->
               <input type="checkbox" class="expl-check"
                 data-id="${c.id}" data-evo="${cEvo}" data-note="${getNote(p,p.job)}"
                 ${isForSale?'disabled':''}
-                style="position:absolute;top:6px;left:6px;width:16px;height:16px;z-index:2;accent-color:#1A6B3C;cursor:pointer">
-              <!-- Mini-carte -->
-              <div class="expl-mini-card" style="
-                border-radius:8px;border:2.5px solid ${rarColor};background:${jobColor};
-                padding:4px 4px 6px;display:flex;flex-direction:column;align-items:center;gap:3px;
-                position:relative;overflow:hidden">
-                <!-- Overlay sélection -->
-                <div class="expl-sel-overlay" style="display:none;position:absolute;inset:0;background:rgba(26,107,60,0.35);border-radius:6px;pointer-events:none;z-index:1"></div>
-                <!-- Nom -->
-                <div style="font-size:8px;font-weight:900;color:#fff;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;width:100%;padding:0 2px;text-transform:uppercase;letter-spacing:.3px;z-index:0">
-                  ${(p.surname_real||'').slice(0,8)}
-                </div>
-                <!-- Portrait placeholder -->
-                <div style="width:100%;aspect-ratio:1;background:rgba(0,0,0,0.3);border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:18px;z-index:0">
-                  👤
-                </div>
-                <!-- Note + evo badge -->
-                <div style="font-size:14px;font-weight:900;color:#fff;z-index:0">${cNote}</div>
-                ${cEvo > 0 ? `<div style="position:absolute;bottom:20px;right:3px;background:#D4A017;color:#000;font-size:7px;font-weight:900;border-radius:3px;padding:1px 3px;z-index:2">+${cEvo}</div>` : ''}
-                <!-- Label en vente -->
-                ${isForSale ? `<div style="position:absolute;top:0;right:0;background:#e67e22;color:#fff;font-size:6px;font-weight:900;padding:2px 4px;border-radius:0 6px 0 4px;z-index:2">VENTE</div>` : ''}
+                style="display:none">
+              <!-- Vraie carte joueur -->
+              <div class="expl-mini-card" style="position:relative;border-radius:8px;overflow:hidden">
+                <!-- Overlay vert sélection -->
+                <div class="expl-sel-overlay" style="display:none;position:absolute;inset:0;background:rgba(26,107,60,0.38);border-radius:8px;pointer-events:none;z-index:10;box-shadow:inset 0 0 0 3px #1A6B3C"></div>
+                <!-- Checkmark -->
+                <div class="expl-sel-check" style="display:none;position:absolute;top:4px;left:4px;width:18px;height:18px;background:#1A6B3C;border-radius:50%;z-index:11;align-items:center;justify-content:center;font-size:11px;color:#fff;font-weight:900">✓</div>
+                ${cardHtml}
+                ${isForSale ? `<div style="position:absolute;top:0;right:0;background:#e67e22;color:#fff;font-size:6px;font-weight:900;padding:2px 4px;border-radius:0 6px 0 4px;z-index:12">VENTE</div>` : ''}
               </div>
-              <!-- Source + date sous la carte -->
+              <!-- Source + date -->
               <div style="font-size:9px;color:#888;text-align:center;margin-top:3px;line-height:1.3">
                 ${srcLabel}${dateLabel?`<br>${dateLabel}`:''}
               </div>
@@ -1066,11 +1051,11 @@ async function openCardDetail(card, allPlayerCards, countByPlayer, ctx) {
       // Mettre en surbrillance la mini-carte
       const row = cb.closest('.exemplaire-row')
       if (row) {
-        const miniCard = row.querySelector('.expl-mini-card')
         const overlay  = row.querySelector('.expl-sel-overlay')
-        if (miniCard) miniCard.style.border = cb.checked ? '2.5px solid #1A6B3C' : `2.5px solid ${RAR_COLORS[p.rarity]||'#ccc'}`
-        if (overlay)  overlay.style.display = cb.checked ? 'block' : 'none'
-        row.style.transform = cb.checked ? 'scale(1.04)' : 'scale(1)'
+        const checkmark = row.querySelector('.expl-sel-check')
+        if (overlay)  overlay.style.display  = cb.checked ? 'block' : 'none'
+        if (checkmark) { checkmark.style.display = cb.checked ? 'flex' : 'none' }
+        row.style.transform = cb.checked ? 'scale(1.05)' : 'scale(1)'
       }
       updatePanel()
     })

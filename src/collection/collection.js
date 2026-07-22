@@ -424,7 +424,7 @@ export async function renderCollection(container, ctx) {
     repaint()
   }
 
-  function miniPlayerCard(card) {
+  function miniPlayerCard(card, count) {
     var SCALE = window.innerWidth >= 768 ? 0.76 : 0.54
     var inner
     if (!card || card._fake) {
@@ -434,8 +434,12 @@ export async function renderCollection(container, ctx) {
     } else {
       inner = renderCard(card, '')
     }
+    var cnt = count || (card && !card._fake ? countByPlayer[card.player && card.player.id] || 1 : 0)
+    var badge = cnt > 0
+      ? '<div style="position:absolute;top:6px;right:6px;background:#1A6B3C;color:#fff;border-radius:10px;font-size:11px;font-weight:900;padding:2px 7px;z-index:3;box-shadow:0 1px 4px rgba(0,0,0,0.4)">×' + cnt + '</div>'
+      : ''
     // zoom affecte le layout → wrapper s'adapte automatiquement à la vraie taille de la carte
-    return '<div style="display:inline-block;zoom:' + SCALE + ';pointer-events:none;line-height:0">' + inner + '</div>'
+    return '<div style="display:inline-block;position:relative;zoom:' + SCALE + ';pointer-events:none;line-height:0">' + badge + inner + '</div>'
   }
 
   // ── SVG terrain formation ────────────────────────────────

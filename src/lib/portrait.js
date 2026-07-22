@@ -54,13 +54,19 @@ export function getPortrait(p) {
 // ── Listing des fichiers d'un dossier (cache mémoire, un seul appel réseau par continent) ──
 const _listCache = {}
 export async function listContinentFiles(continent) {
-  if (_listCache[continent]) return _listCache[continent]
-  const { data, error } = await supabase.storage.from(BUCKET).list(continent, { limit: 1000 })
-  if (error) { console.warn('[portrait] liste bucket échouée pour', continent, error.message); return [] }
+  // Ne retourne le cache que s'il est non vide (permet retry si erreur précédente)
+  if (_listCache[continent]?.length) return _listCache[continent]
+  const { data, error } = await supabase.storage.from(BUCKET).list(continent, { limit: 1000, offset: 0 })
+  if (error) {
+    console.error('[portrait] liste bucket échouée pour', continent, error)
+    return []
+  }
+  console.log('[portrait] bucket faces/' + continent + ' → ' + (data?.length ?? 0) + ' entrées brutes', (data||[]).slice(0,3).map(f => f.name))
   const files = (data || [])
-    .filter(f => /\.(png|jpe?g|webp)$/i.test(f.name))
+    .filter(f => f.name && /\.(png|jpe?g|webp)$/i.test(f.name))
     .map(f => f.name)
-  _listCache[continent] = files
+  console.log('[portrait] fichiers images valides:', files.length, files.slice(0,3))
+  if (files.length) _listCache[continent] = files  // ne cache que si résultat non vide
   return files
 }
 

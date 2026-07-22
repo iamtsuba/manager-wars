@@ -32,6 +32,21 @@ async function runFixOldFaces(container, helpers) {
   if (btn) { btn.disabled = true; btn.textContent = '⏳ En cours...' }
 
   try {
+    // Diagnostic : vérifier que le listing du bucket fonctionne AVANT de traiter les joueurs
+    const diag = {}
+    for (const continent of ALL_CONTINENTS) {
+      const { data, error } = await supabase.storage.from('faces').list(continent, { limit: 1000 })
+      diag[continent] = error ? `ERREUR: ${error.message}` : `${(data||[]).length} fichier(s)`
+    }
+    console.log('[Diagnostic bucket faces]', diag)
+    const anyOk = Object.values(diag).some(v => /^\d+ fichier/.test(v) && !v.startsWith('0 '))
+    if (!anyOk) {
+      alert('Aucun fichier trouvé dans le bucket pour aucun continent.\n\nDétail par dossier :\n' +
+        Object.entries(diag).map(([k,v]) => `${k} : ${v}`).join('\n') +
+        '\n\nVérifie dans Supabase que les noms de dossiers correspondent exactement (accents, majuscules, espaces).')
+      return
+    }
+
     // 1) Joueurs concernés : ancien format de chemin
     const { data: oldFacePlayers, error: eSel } = await supabase
       .from('players').select('id, country_code, face')
@@ -44,16 +59,18 @@ async function runFixOldFaces(container, helpers) {
     const usedSet = new Set((usedFacesData || []).map(r => r.face).filter(f => f && !f.startsWith('public/faces/')))
 
     let fixed = 0, failed = 0
+    const failReasons = []
     for (const p of oldFacePlayers) {
       const newPath = await assignFace(p.country_code, usedSet)
-      if (!newPath) { failed++; continue }
+      if (!newPath) { failed++; failReasons.push(`joueur ${p.id} (pays ${p.country_code}) : aucun fichier disponible pour son continent`); continue }
       const { error: eUpd } = await supabase.from('players').update({ face: newPath }).eq('id', p.id)
-      if (eUpd) { failed++; continue }
+      if (eUpd) { failed++; failReasons.push(`joueur ${p.id} : ${eUpd.message}`); continue }
       usedSet.add(newPath)
       fixed++
     }
 
-    toast(`${fixed} photo(s) réattribuée(s)${failed ? `, ${failed} échec(s)` : ''} ✅`, failed ? 'error' : 'success')
+    if (failed) console.warn('[Réattribution photos] échecs détaillés:', failReasons)
+    toast(`${fixed} photo(s) réattribuée(s)${failed ? `, ${failed} échec(s) — voir console` : ''} ✅`, failed && !fixed ? 'error' : 'success')
   } finally {
     if (btn) { btn.disabled = false; btn.textContent = '🖼️ Réattribuer anciennes photos' }
   }

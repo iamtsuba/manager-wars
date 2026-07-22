@@ -71,7 +71,41 @@ function ethnieForCountry(cc) {
   return 'Europeans'
 }
 
-function generateSquad(clubId, countryCode, usedSurnamesGlobal = new Set()) {
+// ── Distribution des notes lors de la génération d'équipe ─
+// Normal : 55% note 1-4 · 20% note 5-10 · 10% note 11-14 · 10% note 15-17 · 5% note 18-20
+// Fort   : 10 joueurs forcés note 15-20, les 10 autres selon distribution normale
+const NOTE_DISTRIBUTION = [
+  { min: 1,  max: 4,  pct: 55 },
+  { min: 5,  max: 10, pct: 20 },
+  { min: 11, max: 14, pct: 10 },
+  { min: 15, max: 17, pct: 10 },
+  { min: 18, max: 20, pct: 5  },
+]
+function rollNoteByDistribution() {
+  const r = Math.random() * 100
+  let cum = 0
+  for (const tier of NOTE_DISTRIBUTION) {
+    cum += tier.pct
+    if (r < cum) return rand(tier.min, tier.max)
+  }
+  return rand(1, 4)
+}
+// Indices des 10 joueurs "forts" (pré-calculés) pour le mode Équipe Forte
+function buildStrongSet() {
+  const all = Array.from({length:20}, (_,i) => i)
+  all.sort(() => Math.random() - 0.5)
+  return new Set(all.slice(0, 10))
+}
+let _strongSet = null
+function pickNoteByDistribution(strong, idx) {
+  if (strong) {
+    if (!_strongSet) _strongSet = buildStrongSet()
+    if (_strongSet.has(idx)) return rand(15, 20)
+  }
+  return rollNoteByDistribution()
+}
+
+function generateSquad(clubId, countryCode, usedSurnamesGlobal = new Set(), strong = false) {
   const FIRSTNAMES = [
     'Lucas','Mateo','Rafael','Carlos','Luis','Diego','Andre','Paulo','Marco','Stefan',
     'Ahmed','Omar','Yusuf','Mamadou','Ibrahima','Cheikh','Moussa','Kofi','Emeka','Tunde',
@@ -254,7 +288,7 @@ function generateSquad(clubId, countryCode, usedSurnamesGlobal = new Set()) {
     const hair = hairForCountry(cc)
     const len  = pick(ALL_LENGTHS)
 
-    const note     = rand(1, 20)
+    const note     = pickNoteByDistribution(strong, idx)
     const hasDual  = dualIdxs.has(idx)
     const noteSec  = hasDual ? Math.max(0, note - 2) : 0
 
@@ -299,12 +333,13 @@ function generateSquad(clubId, countryCode, usedSurnamesGlobal = new Set()) {
 }
 
 // ── Génération effectif (réutilisable) ────────────────────
-async function runGenSquad(clubId, countryCode, toast) {
+async function runGenSquad(clubId, countryCode, toast, strong = false) {
+  _strongSet = null  // reset pour chaque nouvelle génération
   // Noms déjà présents en base : à éviter en priorité pour limiter les doublons
   const { data: usedSurnamesData } = await supabase.from('players').select('surname_real').not('surname_real', 'is', null)
   const usedSurnamesGlobal = new Set((usedSurnamesData || []).map(r => r.surname_real).filter(Boolean))
 
-  const squad = generateSquad(clubId, countryCode, usedSurnamesGlobal)
+  const squad = generateSquad(clubId, countryCode, usedSurnamesGlobal, strong)
 
   // Charger les faces déjà utilisées en base (nouveau système : bucket Supabase "faces/{continent}/...")
   const { data: usedFacesData } = await supabase.from('players').select('face').not('face', 'is', null)
@@ -426,9 +461,31 @@ function renderClubs(container, helpers, countMap = {}) {
 
     el.querySelectorAll('[data-gen]').forEach(btn => {
       btn.addEventListener('click', async () => {
-        if (!confirm(`Générer 20 joueurs pour ${btn.dataset.name} ?`)) return
+        // Mini-popup avec option Équipe Forte
+        const ov = document.createElement('div')
+        ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px'
+        ov.innerHTML = `
+          <div style="background:#fff;border-radius:16px;padding:24px;max-width:320px;width:100%;box-shadow:0 16px 48px rgba(0,0,0,0.3)">
+            <div style="font-size:17px;font-weight:900;margin-bottom:6px">⚽ Générer l'effectif</div>
+            <div style="font-size:13px;color:#555;margin-bottom:16px"><strong>${btn.dataset.name}</strong> — 20 joueurs</div>
+            <label style="display:flex;align-items:center;gap:10px;font-size:13px;cursor:pointer;padding:10px;background:rgba(212,160,23,0.08);border-radius:8px;border:1px solid rgba(212,160,23,0.3);margin-bottom:16px">
+              <input type="checkbox" id="quick-gen-strong" style="width:16px;height:16px;accent-color:#D4A017">
+              💪 Équipe Forte <span style="font-size:11px;color:#888">(10 joueurs note 15–20)</span>
+            </label>
+            <div style="display:flex;gap:10px">
+              <button id="qg-cancel" style="flex:1;padding:10px;border-radius:8px;border:1.5px solid #ddd;background:#fff;font-size:14px;font-weight:700;cursor:pointer;color:#555">Annuler</button>
+              <button id="qg-ok" style="flex:1;padding:10px;border-radius:8px;border:none;background:#1A6B3C;color:#fff;font-size:14px;font-weight:900;cursor:pointer">Générer</button>
+            </div>
+          </div>`
+        document.body.appendChild(ov)
+        const strong = await new Promise(resolve => {
+          ov.querySelector('#qg-cancel').onclick = () => { ov.remove(); resolve(null) }
+          ov.querySelector('#qg-ok').onclick     = () => { const s = ov.querySelector('#quick-gen-strong').checked; ov.remove(); resolve(s) }
+          ov.onclick = e => { if (e.target === ov) { ov.remove(); resolve(null) } }
+        })
+        if (strong === null) return
         btn.disabled = true; btn.textContent = '⏳'
-        await runGenSquad(btn.dataset.gen, btn.dataset.cc, toast)
+        await runGenSquad(btn.dataset.gen, btn.dataset.cc, toast, strong)
         loadClubs(container, helpers)
       })
     })
@@ -533,7 +590,11 @@ function openClubModal(club, container, helpers) {
           <input type="checkbox" id="m-gen-squad" style="width:16px;height:16px">
           ⚽ Générer 20 joueurs (2 GK · 8 DEF · 6 MIL · 4 ATT)
         </label>
-        <div style="font-size:11px;color:var(--gray-600);padding-left:4px">50% nationalité du club · notes 0–20 · physique adapté au pays · 2 pépites + 2 papytes</div>
+        <label id="m-gen-strong-label" style="display:none;align-items:center;gap:8px;font-size:13px;cursor:pointer;padding:8px;background:rgba(212,160,23,0.08);border-radius:8px;border:1px solid rgba(212,160,23,0.35);margin-left:12px">
+          <input type="checkbox" id="m-gen-strong" style="width:16px;height:16px;accent-color:#D4A017">
+          💪 Équipe Forte <span style="font-size:11px;color:#888;font-weight:400">(10 joueurs note 15–20 garantis)</span>
+        </label>
+        <div style="font-size:11px;color:var(--gray-600);padding-left:4px">Distribution : 55% note 1–4 · 20% note 5–10 · 10% note 11–14 · 10% note 15–17 · 5% note 18–20 · 2 pépites + 2 papytes</div>
       </div>` : ''}
 
       <div id="m-error" style="color:#bb2020;font-size:13px;min-height:16px"></div>
@@ -593,6 +654,20 @@ function openClubModal(club, container, helpers) {
 
     // Save
     document.getElementById('m-save')?.addEventListener('click', () => saveClub(club, isEdit, container, helpers))
+
+    // Afficher/masquer la coche "Équipe Forte" selon l'état de "Générer joueurs"
+    const squadCb  = document.getElementById('m-gen-squad')
+    const strongLbl = document.getElementById('m-gen-strong-label')
+    function toggleStrongLabel() {
+      if (!strongLbl) return
+      strongLbl.style.display = squadCb?.checked ? 'flex' : 'none'
+      if (!squadCb?.checked) {
+        const strongCb = document.getElementById('m-gen-strong')
+        if (strongCb) strongCb.checked = false
+      }
+    }
+    squadCb?.addEventListener('change', toggleStrongLabel)
+    toggleStrongLabel()
   }, 50)
 }
 
@@ -625,6 +700,7 @@ async function saveClub(club, isEdit, container, helpers) {
   const logoUrl     = document.getElementById('m-logo')?.value.trim() || null
   const genStadium  = document.getElementById('m-gen-stadium')?.checked ?? false
   const genSquad    = document.getElementById('m-gen-squad')?.checked   ?? false
+  const genStrong   = document.getElementById('m-gen-strong')?.checked  ?? false
   const k = getKit()
 
   if (!realName)    { errEl.textContent = 'Le nom du club est requis.';  return }
@@ -666,7 +742,7 @@ async function saveClub(club, isEdit, container, helpers) {
     // Génération effectif
     if (genSquad) {
       btn.textContent = '⚽ Génération des joueurs…'
-      await runGenSquad(clubId, countryCode, toast)
+      await runGenSquad(clubId, countryCode, toast, genStrong)
     }
   }
 

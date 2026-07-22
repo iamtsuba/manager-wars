@@ -875,10 +875,10 @@ async function openCardDetail(card, allPlayerCards, countByPlayer, ctx) {
   // Un bloc par carte possédée avec checkbox de sélection
   const clubsHTML = myCardIds.length ? `
     <div style="margin-top:16px;border-top:1px solid var(--tile-border);padding-top:14px">
-      <div style="font-size:13px;font-weight:700;margin-bottom:10px">🏟️ Mes exemplaires ${count>1?`(${count})`:''}</div>
-      <!-- Grille de mini-cartes -->
+      ${(count-1) > 0 ? `<div style="font-size:13px;font-weight:700;margin-bottom:10px">🗂️ Copies (${count-1})</div>` : '<div style="font-size:12px;color:#aaa;margin-bottom:6px;font-style:italic">Aucune copie à sacrifier</div>'}
+      <!-- Grille de mini-cartes (copies uniquement, l'exemplaire 1 = carte principale affichée en haut) -->
       <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
-        ${samePlayerCards.map((c, i) => {
+        ${samePlayerCards.filter(c => c.id !== card.id).map((c, i) => {
           const hist       = transfersByCard[c.id] || []
           const isForSale  = c.is_for_sale
           const lastClub   = hist.length ? hist[hist.length-1] : null

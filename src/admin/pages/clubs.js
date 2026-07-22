@@ -460,33 +460,45 @@ function renderClubs(container, helpers, countMap = {}) {
     }).join('')
 
     el.querySelectorAll('[data-gen]').forEach(btn => {
-      btn.addEventListener('click', async () => {
-        // Mini-popup avec option Équipe Forte
-        const ov = document.createElement('div')
-        ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px'
-        ov.innerHTML = `
-          <div style="background:#fff;border-radius:16px;padding:24px;max-width:320px;width:100%;box-shadow:0 16px 48px rgba(0,0,0,0.3)">
-            <div style="font-size:17px;font-weight:900;margin-bottom:6px">⚽ Générer l'effectif</div>
-            <div style="font-size:13px;color:#555;margin-bottom:16px"><strong>${btn.dataset.name}</strong> — 20 joueurs</div>
-            <label style="display:flex;align-items:center;gap:10px;font-size:13px;cursor:pointer;padding:10px;background:rgba(212,160,23,0.08);border-radius:8px;border:1px solid rgba(212,160,23,0.3);margin-bottom:16px">
-              <input type="checkbox" id="quick-gen-strong" style="width:16px;height:16px;accent-color:#D4A017">
-              💪 Équipe Forte <span style="font-size:11px;color:#888">(10 joueurs note 15–20)</span>
-            </label>
-            <div style="display:flex;gap:10px">
-              <button id="qg-cancel" style="flex:1;padding:10px;border-radius:8px;border:1.5px solid #ddd;background:#fff;font-size:14px;font-weight:700;cursor:pointer;color:#555">Annuler</button>
-              <button id="qg-ok" style="flex:1;padding:10px;border-radius:8px;border:none;background:#1A6B3C;color:#fff;font-size:14px;font-weight:900;cursor:pointer">Générer</button>
+      btn.addEventListener('click', () => {
+        const clubId   = btn.dataset.gen
+        const clubName = btn.dataset.name
+        const cc       = btn.dataset.cc
+
+        openModal(`
+          <div style="display:flex;flex-direction:column;gap:16px">
+            <div>
+              <div style="font-size:17px;font-weight:900;margin-bottom:4px">⚽ Générer l'effectif</div>
+              <div style="font-size:13px;color:#666"><strong>${clubName}</strong> — 20 joueurs</div>
             </div>
-          </div>`
-        document.body.appendChild(ov)
-        const strong = await new Promise(resolve => {
-          ov.querySelector('#qg-cancel').onclick = () => { ov.remove(); resolve(null) }
-          ov.querySelector('#qg-ok').onclick     = () => { const s = ov.querySelector('#quick-gen-strong').checked; ov.remove(); resolve(s) }
-          ov.onclick = e => { if (e.target === ov) { ov.remove(); resolve(null) } }
-        })
-        if (strong === null) return
-        btn.disabled = true; btn.textContent = '⏳'
-        await runGenSquad(btn.dataset.gen, btn.dataset.cc, toast, strong)
-        loadClubs(container, helpers)
+            <div style="font-size:12px;color:#888;background:#f8f8f8;border-radius:8px;padding:10px;line-height:1.6">
+              Distribution : 55% note 1–4 · 20% note 5–10 · 10% note 11–14 · 10% note 15–17 · 5% note 18–20<br>
+              2 pépites + 2 papytes · 50% nationalité du club
+            </div>
+            <label style="display:flex;align-items:center;gap:10px;font-size:14px;cursor:pointer;padding:12px;background:rgba(212,160,23,0.08);border-radius:10px;border:1.5px solid rgba(212,160,23,0.35)">
+              <input type="checkbox" id="qg-strong" style="width:18px;height:18px;accent-color:#D4A017;flex-shrink:0">
+              <div>
+                <div style="font-weight:700">💪 Équipe Forte</div>
+                <div style="font-size:11px;color:#888;margin-top:1px">10 joueurs avec une note entre 15 et 20 garantis</div>
+              </div>
+            </label>
+            <div style="display:flex;gap:10px;margin-top:4px">
+              <button id="qg-cancel" class="btn btn-ghost" style="flex:1">Annuler</button>
+              <button id="qg-ok" class="btn btn-primary" style="flex:1">⚽ Générer</button>
+            </div>
+          </div>
+        `)
+
+        setTimeout(() => {
+          document.getElementById('qg-cancel')?.addEventListener('click', () => closeModal())
+          document.getElementById('qg-ok')?.addEventListener('click', async () => {
+            const strong = document.getElementById('qg-strong')?.checked ?? false
+            closeModal()
+            btn.disabled = true; btn.textContent = '⏳'
+            await runGenSquad(clubId, cc, toast, strong)
+            loadClubs(container, helpers)
+          })
+        }, 50)
       })
     })
     el.querySelectorAll('[data-edit]').forEach(btn => {

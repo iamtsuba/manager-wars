@@ -465,12 +465,9 @@ function renderClubs(container, helpers, countMap = {}) {
         const clubName = btn.dataset.name
         const cc       = btn.dataset.cc
 
-        openModal(`
-          <div style="display:flex;flex-direction:column;gap:16px">
-            <div>
-              <div style="font-size:17px;font-weight:900;margin-bottom:4px">⚽ Générer l'effectif</div>
-              <div style="font-size:13px;color:#666"><strong>${clubName}</strong> — 20 joueurs</div>
-            </div>
+        openModal(
+          `⚽ Générer — ${clubName}`,
+          `<div style="display:flex;flex-direction:column;gap:14px">
             <div style="font-size:12px;color:#888;background:#f8f8f8;border-radius:8px;padding:10px;line-height:1.6">
               Distribution : 55% note 1–4 · 20% note 5–10 · 10% note 11–14 · 10% note 15–17 · 5% note 18–20<br>
               2 pépites + 2 papytes · 50% nationalité du club
@@ -479,15 +476,15 @@ function renderClubs(container, helpers, countMap = {}) {
               <input type="checkbox" id="qg-strong" style="width:18px;height:18px;accent-color:#D4A017;flex-shrink:0">
               <div>
                 <div style="font-weight:700">💪 Équipe Forte</div>
-                <div style="font-size:11px;color:#888;margin-top:1px">10 joueurs avec une note entre 15 et 20 garantis</div>
+                <div style="font-size:11px;color:#888;margin-top:2px">10 joueurs avec une note entre 15 et 20 garantis</div>
               </div>
             </label>
-            <div style="display:flex;gap:10px;margin-top:4px">
-              <button id="qg-cancel" class="btn btn-ghost" style="flex:1">Annuler</button>
-              <button id="qg-ok" class="btn btn-primary" style="flex:1">⚽ Générer</button>
-            </div>
-          </div>
-        `)
+          </div>`,
+          `<div style="display:flex;gap:10px;width:100%">
+            <button id="qg-cancel" class="btn btn-ghost" style="flex:1">Annuler</button>
+            <button id="qg-ok" class="btn btn-primary" style="flex:1">⚽ Générer</button>
+          </div>`
+        )
 
         setTimeout(() => {
           document.getElementById('qg-cancel')?.addEventListener('click', () => closeModal())

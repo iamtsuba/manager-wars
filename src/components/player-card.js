@@ -2,6 +2,7 @@
  * player-card.js — Composant universel carte joueur Manager Wars
  * Template 507x657px — positions mesurées au pixel
  */
+import { getPortrait } from '../lib/portrait.js'
 
 const BASE = import.meta.env.BASE_URL
 
@@ -17,12 +18,6 @@ const JOB_ACCENT = {
   DEF: '#e03030',
   MIL: '#D4A017',
   ATT: '#3fbf5f',
-}
-
-function getFaceUrl(p) {
-  if (!p?.face) return null
-  const f = p.face.replace(/^public\//, '').replace(/^\//, '')
-  return BASE + f
 }
 
 function getFlagUrl(code) {
@@ -92,7 +87,7 @@ export function renderPlayerCard(p, opts = {}) {
   const job2      = (!forceRole && p.job2 && p.job2 !== job) ? p.job2 : null
   const job2Note  = job2 ? getNoteForJob(p, job2, evo) + extraNote + stadB : null
 
-  const faceUrl     = getFaceUrl(p)
+  const faceUrl     = getPortrait(p)
   const flagUrl     = getFlagUrl(p.country_code)
   const clubLogoUrl = getClubLogoUrl(p)
   const firstname   = (p.firstname || '').toUpperCase()

@@ -887,7 +887,7 @@ async function openCardDetail(card, allPlayerCards, countByPlayer, ctx) {
             <div data-card-id="${c.id}" data-card-idx="${i}" class="exemplaire-row"
               style="border:2px solid #eee;border-radius:10px;padding:10px;cursor:pointer;transition:border-color .15s;${isForSale?'opacity:0.6':''}">
               <div style="display:flex;align-items:center;gap:10px">
-                <input type="checkbox" class="expl-check" data-id="${c.id}" ${isForSale?'disabled':''} style="width:18px;height:18px;cursor:pointer;accent-color:#1A6B3C;flex-shrink:0">
+                <input type="checkbox" class="expl-check" data-id="${c.id}" data-evo="${c.evolution_bonus||0}" data-note="${getNote(p,p.job)}" ${isForSale?'disabled':''} style="width:18px;height:18px;cursor:pointer;accent-color:#1A6B3C;flex-shrink:0">
                 <div style="flex:1;min-width:0">
                   <div style="font-size:12px;font-weight:700">Exemplaire ${i+1}${noteLabel}${isForSale?' 🏷️ En vente':''}</div>
                   ${lastClub?`<div style="font-size:11px;color:#888;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
@@ -1008,15 +1008,31 @@ async function openCardDetail(card, allPlayerCards, countByPlayer, ctx) {
   // ── Logique de sélection des exemplaires ──────────────────────────────────
   let selectedCardIds = new Set()
 
+  // Calcule le bonus total apporté par les cartes sacrifiées (nouveau système)
+  function computeBonus() {
+    let total = 0
+    document.querySelectorAll('.expl-check:checked').forEach(cb => {
+      const id = cb.dataset.id
+      if (id === card.id) return  // la carte cible ne se sacrifie pas
+      const evo  = Number(cb.dataset.evo)  || 0
+      const note = Number(cb.dataset.note) || 0
+      total += note + evo
+    })
+    return total
+  }
+
   const updatePanel = () => {
     const n = selectedCardIds.size
     const panel = document.getElementById('sell-action-panel')
     if (!panel) return
     panel.style.display = n > 0 ? 'block' : 'none'
     document.getElementById('sell-selected-count').textContent = n
-    // Mettre à jour le texte du bouton Évoluer avec le nombre de cartes
+    // Bouton Évoluer : affiche le gain calculé
     const evolveBtn = document.getElementById('evolve-btn')
-    if (evolveBtn) evolveBtn.textContent = `⬆️ Évoluer ${n > 1 ? '(+'+n+')' : ''}`
+    if (evolveBtn) {
+      const bonus = computeBonus()
+      evolveBtn.textContent = bonus > 0 ? `⬆️ Évoluer (+${bonus})` : '⬆️ Évoluer'
+    }
   }
 
   // Checkboxes
@@ -1077,14 +1093,15 @@ async function openCardDetail(card, allPlayerCards, countByPlayer, ctx) {
       return
     }
     const idsToDelete = ids.filter(id => id !== card.id)
-    const bonusPerCopy = p.rarity === 'legende' ? 2 : 1  // légende +2, autres +1
-    const bonusGained = (idsToDelete.length || 1) * bonusPerCopy
+    if (!idsToDelete.length) { toast('Sélectionne des copies à sacrifier', 'warning'); return }
 
-    if (!idsToDelete.length && ids.length === 1 && ids[0] === card.id) {
-      // Cas : seul exemplaire sélectionné = la carte principale → +1 sans suppression
-    } else if (!idsToDelete.length) {
-      toast('Sélectionne des copies à sacrifier', 'warning'); return
-    }
+    // Nouveau système : chaque copie sacrifiée apporte (note_poste + evolution_bonus)
+    const bonusGained = idsToDelete.reduce((sum, id) => {
+      const cb = document.querySelector(`.expl-check[data-id="${id}"]`)
+      const evo  = cb ? Number(cb.dataset.evo)  || 0 : 0
+      const note = cb ? Number(cb.dataset.note) || 0 : 0
+      return sum + note + evo
+    }, 0)
 
     // Popup de confirmation de sacrifice
     const confirmed = await new Promise(resolve => {
@@ -1099,9 +1116,10 @@ async function openCardDetail(card, allPlayerCards, countByPlayer, ctx) {
           </div>
           <div style="background:#f0fdf4;border-radius:10px;padding:12px;margin-bottom:16px;font-size:13px;color:#333">
             🗑️ <strong>${idsToDelete.length}</strong> copie${idsToDelete.length>1?'s':''} sacrifiée${idsToDelete.length>1?'s':''}<br>
-            📈 Note : <strong>${note1+(card.evolution_bonus||0)}</strong> → <strong style="color:#1A6B3C">${note1+(card.evolution_bonus||0)+idsToDelete.length*bonusPerCopy}</strong>
-            ${note2&&note2>0 ? `<br>📈 Note 2 : <strong>${note2+(card.evolution_bonus||0)}</strong> → <strong style="color:#1A6B3C">${note2+(card.evolution_bonus||0)+idsToDelete.length*bonusPerCopy}</strong>` : ''}
-            ${p.rarity==='legende'?`<br><span style="color:#7a28b8;font-size:11px;font-weight:700">✨ Légende : +${bonusPerCopy} par copie sacrifiée</span>`:''}
+            ⬆️ Bonus gagné : <strong style="color:#1A6B3C">+${bonusGained}</strong> <span style="font-size:11px;color:#888">(Σ note + évolution de chaque copie)</span><br>
+            📈 Évolution : <strong>${card.evolution_bonus||0}</strong> → <strong style="color:#1A6B3C">${(card.evolution_bonus||0)+bonusGained}</strong><br>
+            📊 Note finale : <strong>${note1}</strong> → <strong style="color:#1A6B3C">${note1+bonusGained}</strong>
+            ${note2&&note2>0 ? `<br>📊 Note 2 finale : <strong>${note2}</strong> → <strong style="color:#1A6B3C">${note2+bonusGained}</strong>` : ''}
           </div>
           <div style="font-size:11px;color:#aaa;margin-bottom:18px">⚠️ Les copies sacrifiées sont définitivement supprimées</div>
           <div style="display:flex;gap:10px">
@@ -1128,15 +1146,14 @@ async function openCardDetail(card, allPlayerCards, countByPlayer, ctx) {
       if (delErr) { toast('Erreur suppression : ' + delErr.message, 'error'); return }
     }
 
-    // 2. Ajouter le bonus à la carte principale
-    const newEvo = (card.evolution_bonus || 0) + idsToDelete.length * bonusPerCopy
+    // 2. Ajouter le bonus à la carte principale (nouveau système : Σ note+evo des copies)
+    const newEvo = (card.evolution_bonus || 0) + bonusGained
     const { error: evoErr } = await supabase.from('cards')
       .update({ evolution_bonus: newEvo })
       .eq('id', card.id)
     if (evoErr) { toast('Erreur évolution : ' + evoErr.message, 'error'); return }
 
-    const mainNoteAfter = note1 + newEvo
-    toast(`⬆️ ${p.firstname} ${p.surname_real} : note ${note1+card.evolution_bonus||note1} → ${mainNoteAfter}${idsToDelete.length?` · ${idsToDelete.length} copie${idsToDelete.length>1?'s':''} sacrifiée${idsToDelete.length>1?'s':''}`:''} !`, 'success', 4000)
+    toast(`⬆️ ${p.firstname} ${p.surname_real} : note ${note1} → ${note1 + newEvo} (+${bonusGained}) !`, 'success', 4000)
     closeModal()
     navigate('collection')
   })

@@ -4,6 +4,7 @@ import { GC_DEFS } from '../match/game-logic.js'
 import { FORMATION_LINKS, FORMATION_POSITIONS } from '../match/formation-links.js'
 import { EVOLUTIVE_RULES, currentSecondaryNote, getBaseMainNote } from '../match/evolutive-cards.js'
 import { renderGCCard, renderStadiumCard, renderFormationCard as renderFormationCardTpl } from '../components/special-cards.js'
+import { getPortrait } from '../lib/portrait.js'
 
 // ── Constantes ─────────────────────────────────────────────
 const RAR_COLORS  = { normal:'#ccc', pepite:'#D4A017', papyte:'#909090', legende:'#7a28b8' }
@@ -41,13 +42,6 @@ const COUNTRY_NAMES = {
   CM:'CAMEROUN', SN:'SENEGAL', NG:'NIGERIA', DK:'DANEMARK',
   NL:'PAYS-BAS', BE:'BELGIQUE', CI:"CÔTE D'IVOIRE",
   AL:'ALBANIE', HR:'CROATIE', RS:'SERBIE', TR:'TURQUIE',
-}
-
-function getPortrait(p) {
-  const url = import.meta.env.VITE_SUPABASE_URL
-  if (!url || !p?.skin || !p?.hair) return null
-  const key = p.hair === 'chauve' ? `${p.skin}-chauve-rase` : `${p.skin}-${p.hair}-${p.hair_length}`
-  return `${url}/storage/v1/object/public/assets/tetes/${key}.png`
 }
 
 function getNote(p, job) {

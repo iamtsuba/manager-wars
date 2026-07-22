@@ -886,22 +886,24 @@ async function openCardDetail(card, allPlayerCards, countByPlayer, ctx) {
           const srcLabel  = lastClub ? (lastClub.source === 'booster' ? 'Booster' : lastClub.price ? lastClub.price.toLocaleString('fr')+' cr.' : '—') : '—'
           const dateLabel = lastClub ? new Date(lastClub.transferred_at).toLocaleDateString('fr',{day:'2-digit',month:'2-digit',year:'numeric'}) : ''
           // Carte joueur avec evolution_bonus propre à cet exemplaire
-          const cardHtml  = renderPlayerCard({ ...p, _evolution_bonus: cEvo }, { width: 70 })
+          const CARD_W    = 80
+          const CARD_H    = Math.round(CARD_W * 657 / 507)
+          const cardHtml  = renderPlayerCard({ ...p, _evolution_bonus: cEvo }, { width: CARD_W })
           return `
             <div class="exemplaire-row" data-card-id="${c.id}" data-card-idx="${i}"
-              style="position:relative;cursor:${isForSale?'not-allowed':'pointer'};opacity:${isForSale?0.55:1};transition:transform .1s,box-shadow .1s">
+              style="position:relative;cursor:${isForSale?'not-allowed':'pointer'};opacity:${isForSale?0.55:1};transition:transform .1s">
               <!-- Checkbox cachée -->
               <input type="checkbox" class="expl-check"
                 data-id="${c.id}" data-evo="${cEvo}" data-note="${getNote(p,p.job)}"
                 ${isForSale?'disabled':''}
                 style="display:none">
-              <!-- Vraie carte joueur -->
-              <div class="expl-mini-card" style="position:relative;border-radius:8px;overflow:hidden">
-                <!-- Overlay vert sélection -->
-                <div class="expl-sel-overlay" style="display:none;position:absolute;inset:0;background:rgba(26,107,60,0.38);border-radius:8px;pointer-events:none;z-index:10;box-shadow:inset 0 0 0 3px #1A6B3C"></div>
-                <!-- Checkmark -->
-                <div class="expl-sel-check" style="display:none;position:absolute;top:4px;left:4px;width:18px;height:18px;background:#1A6B3C;border-radius:50%;z-index:11;align-items:center;justify-content:center;font-size:11px;color:#fff;font-weight:900">✓</div>
+              <!-- Wrapper exactement aux dimensions de la carte -->
+              <div class="expl-mini-card" style="position:relative;width:${CARD_W}px;height:${CARD_H}px;border-radius:8px;overflow:hidden">
                 ${cardHtml}
+                <!-- Overlay vert sélection — couvre toute la carte -->
+                <div class="expl-sel-overlay" style="display:none;position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(26,107,60,0.38);pointer-events:none;z-index:10;box-shadow:inset 0 0 0 3px #1A6B3C;border-radius:8px"></div>
+                <!-- Checkmark -->
+                <div class="expl-sel-check" style="display:none;position:absolute;top:5px;left:5px;width:20px;height:20px;background:#1A6B3C;border-radius:50%;z-index:11;align-items:center;justify-content:center;font-size:12px;color:#fff;font-weight:900">✓</div>
                 ${isForSale ? `<div style="position:absolute;top:0;right:0;background:#e67e22;color:#fff;font-size:6px;font-weight:900;padding:2px 4px;border-radius:0 6px 0 4px;z-index:12">VENTE</div>` : ''}
               </div>
               <!-- Source + date -->

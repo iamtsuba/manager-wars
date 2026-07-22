@@ -1,18 +1,19 @@
 import { supabase } from '../../lib/supabase.js'
 import { renderPlayerCard } from '../../components/player-card.js'
+import { ALL_CONTINENTS, listContinentFiles, getPortrait } from '../../lib/portrait.js'
 
 const BASE = import.meta.env.BASE_URL
 const RARITY_LABELS = { normal:'Normal', pepite:'Pépite', papyte:'Papyte', legende:'Légende' }
 const JOB_COLORS    = { GK:'#aaaaaa', DEF:'#bb2020', MIL:'#D4A017', ATT:'#1A6B3C' }
 
-// Manifeste des faces (chargé une fois)
+// Manifeste des faces (chargé une fois, construit à partir du bucket Supabase "faces")
 let FACES_MANIFEST = null
 async function getFacesManifest() {
   if (FACES_MANIFEST) return FACES_MANIFEST
-  try {
-    const r = await fetch(BASE + 'faces-manifest.json')
-    FACES_MANIFEST = await r.json()
-  } catch { FACES_MANIFEST = {} }
+  FACES_MANIFEST = {}
+  for (const continent of ALL_CONTINENTS) {
+    FACES_MANIFEST[continent] = await listContinentFiles(continent)
+  }
   return FACES_MANIFEST
 }
 
@@ -214,14 +215,15 @@ async function openPlayerModal(player, clubs, container, helpers) {
 
   // Faces déjà utilisées
   const { data: usedFaces } = await supabase.from('players').select('face').not('face', 'is', null)
-  const usedSet = new Set((usedFaces || []).map(r => r.face ? r.face.replace('public/faces/', '') : null).filter(Boolean))
+  const usedSet = new Set((usedFaces || []).map(r => r.face).filter(Boolean))
   if (player?.face) usedSet.delete(player.face) // permettre de réutiliser la face actuelle
 
   const clubOpts = `<option value="">— Club —</option>` +
     clubs.map(c => `<option value="${c.id}" ${player?.club_id === c.id ? 'selected' : ''}>${c.encoded_name}</option>`).join('')
 
+  const currentContinent = player?.face ? player.face.split('/')[0] : ''
   const folderOpts = Object.keys(manifest).map(f =>
-    `<option value="${f}" ${(player?.ethnie === f || (!player?.ethnie && player?.face?.startsWith(f))) ? 'selected' : ''}>${f}</option>`
+    `<option value="${f}" ${currentContinent === f ? 'selected' : ''}>${f}</option>`
   ).join('')
 
   openModal(
@@ -318,7 +320,7 @@ async function openPlayerModal(player, clubs, container, helpers) {
           <div style="font-weight:700;font-size:13px;margin-bottom:8px">🧑 Physique</div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
             <div class="form-group">
-              <label>Ethnie</label>
+              <label>Continent</label>
               <select id="pm-folder">
                 <option value="">— Choisir —</option>
                 ${folderOpts}
@@ -346,8 +348,8 @@ async function openPlayerModal(player, clubs, container, helpers) {
   )
 
   setTimeout(() => {
-    // Chemin court (sans 'public/faces/') pour les comparaisons internes
-    let currentFace = player?.face ? player.face.replace('public/faces/', '') : null
+    // Chemin propre (Continent/fichier.png) pour les comparaisons internes
+    let currentFace = player?.face || null
 
     function refreshCard() {
       const wrap = document.getElementById('card-preview')
@@ -379,7 +381,7 @@ async function openPlayerModal(player, clubs, container, helpers) {
         country_code: cc,
         club_id: cid,
         note_g: ng, note_d: nd, note_m: nm2, note_a: na,
-        face: currentFace ? 'faces/' + currentFace : null,
+        face: currentFace || null,
         clubs: selClub ? { encoded_name: selClub.encoded_name, logo_url: selClub.logo_url } : null,
       }
       wrap.innerHTML = renderPlayerCard(p, { width: 160 })
@@ -410,8 +412,9 @@ async function openPlayerModal(player, clubs, container, helpers) {
       grid.innerHTML = avail.map(f => {
         const path = folder + '/' + f
         const isSel = currentFace === path
+        const imgUrl = getPortrait({ face: path })
         return `<div data-face="${path}" style="cursor:pointer;border:2px solid ${isSel?'#4fc3f7':'transparent'};border-radius:6px;overflow:hidden;width:52px;height:52px;flex-shrink:0;background:#222">
-          <img src="${BASE}faces/${path}" style="width:52px;height:52px;object-fit:cover" onerror="this.parentElement.style.display='none'">
+          <img src="${imgUrl}" style="width:52px;height:52px;object-fit:cover" onerror="this.parentElement.style.display='none'">
         </div>`
       }).join('')
 
@@ -432,7 +435,7 @@ async function openPlayerModal(player, clubs, container, helpers) {
     }
 
     // Init dossier si joueur existant
-    const initFolder = player?.ethnie || (player?.face ? player.face.replace('public/faces/', '').split('/')[0] : '')
+    const initFolder = player?.face ? player.face.split('/')[0] : ''
     if (initFolder && manifest[initFolder]) {
       document.getElementById('pm-folder').value = initFolder
       loadFacesGrid(initFolder)
@@ -478,7 +481,7 @@ function getFormData(face) {
     note_min:        parseInt(g('pm-nmin')) || null,
     note_max:        parseInt(g('pm-nmax')) || null,
     sell_price:      parseInt(g('pm-price')) || 0,
-    face:            face ? 'public/faces/' + face : null,
+    face:            face || null,
     ethnie:          g('pm-folder') || null,
     is_active:       true,
   }

@@ -1,6 +1,7 @@
 import { supabase } from '../../lib/supabase.js'
 import { encodeVowels } from '../../components/card.js'
 import { generateKitPreviewSVG, KIT_STYLES, DEFAULT_KIT } from '../../components/avatar.js'
+import { assignFace } from '../../lib/portrait.js'
 
 // ── Physiques par pays ────────────────────────────────────
 const COUNTRY_SKIN = {
@@ -305,34 +306,16 @@ async function runGenSquad(clubId, countryCode, toast) {
 
   const squad = generateSquad(clubId, countryCode, usedSurnamesGlobal)
 
-  // Charger le manifest des faces
-  let manifest = {}
-  try {
-    const r = await fetch(import.meta.env.BASE_URL + 'faces-manifest.json')
-    manifest = await r.json()
-  } catch(e) { console.warn('Manifest faces non chargé') }
-
-  // Charger les faces déjà utilisées en base
+  // Charger les faces déjà utilisées en base (nouveau système : bucket Supabase "faces/{continent}/...")
   const { data: usedFacesData } = await supabase.from('players').select('face').not('face', 'is', null)
   const usedFaces = new Set((usedFacesData || []).map(r => r.face).filter(Boolean))
 
-  // Attribuer une face unique à chaque joueur selon son ethnie
+  // Attribuer une face unique à chaque joueur selon son pays (→ continent → bucket)
   const usedInBatch = new Set()
   for (const p of squad) {
-    const ethnie = p._ethnie || 'Europeans'
-    const files = manifest[ethnie] || []
-    // Mélanger pour un choix aléatoire
-    const shuffled = [...files].sort(() => Math.random() - 0.5)
-    const available = shuffled.find(f => {
-      const fullPath = 'public/faces/' + ethnie + '/' + f
-      return !usedFaces.has(fullPath) && !usedInBatch.has(fullPath)
-    })
-    if (available) {
-      const fullPath = 'public/faces/' + ethnie + '/' + available
-      p.face = fullPath
-      usedInBatch.add(fullPath)
-    }
-    // Nettoyer _ethnie (pas en base)
+    const path = await assignFace(p.country_code, new Set([...usedFaces, ...usedInBatch]))
+    if (path) { p.face = path; usedInBatch.add(path) }
+    // Nettoyer _ethnie (obsolète, plus utilisé)
     delete p._ethnie
   }
 

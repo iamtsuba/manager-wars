@@ -6,15 +6,13 @@ const BASE = import.meta.env.BASE_URL
 const RARITY_LABELS = { normal:'Normal', pepite:'Pépite', papyte:'Papyte', legende:'Légende' }
 const JOB_COLORS    = { GK:'#aaaaaa', DEF:'#bb2020', MIL:'#D4A017', ATT:'#1A6B3C' }
 
-// Manifeste des faces (chargé une fois, construit à partir du bucket Supabase "faces")
-let FACES_MANIFEST = null
+// Manifeste des faces — rechargé à chaque ouverture de modal pour éviter le cache vide
 async function getFacesManifest() {
-  if (FACES_MANIFEST) return FACES_MANIFEST
-  FACES_MANIFEST = {}
+  const manifest = {}
   for (const continent of ALL_CONTINENTS) {
-    FACES_MANIFEST[continent] = await listContinentFiles(continent)
+    manifest[continent] = await listContinentFiles(continent)
   }
-  return FACES_MANIFEST
+  return manifest
 }
 
 function mainNote(p) {

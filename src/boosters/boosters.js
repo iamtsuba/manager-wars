@@ -778,7 +778,7 @@ function showBoosterAnimation(cards, booster, navigate, onClose = null) {
     }
 
     // WALKOUT (style FIFA) : drapeau → club → carte + feu d'artifice
-    if (firstSeen && (card.player?.rarity === 'legende' || mainNote >= 8) && card.card_type === 'player' && card.player) {
+    if (firstSeen && (card.player?.rarity === 'legende' || mainNote >= 18) && card.card_type === 'player' && card.player) {
       playWalkout(card, () => paint(true))
     } else {
       paint(false)

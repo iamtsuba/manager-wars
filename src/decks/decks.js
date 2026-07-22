@@ -383,7 +383,7 @@ function renderBuilder(container, builder, ctx) {
           <!-- Formation mobile -->
           <div style="flex-shrink:0;text-align:center">
             <div style="font-size:10px;font-weight:700;margin-bottom:6px;color:rgba(255,255,255,0.6);letter-spacing:1px;text-transform:uppercase">⚽</div>
-            <div id="formation-mobile-btn" style="cursor:pointer;width:50px;height:65px;border-radius:6px;background:#1A6B3C;border:2px solid #2ecc71;display:flex;align-items:center;justify-content:center">
+            <div id="formation-mobile-btn" style="cursor:pointer;width:66px;height:86px;border-radius:6px;background:#1A6B3C;border:2px solid #2ecc71;display:flex;align-items:center;justify-content:center">
               <span style="font-size:11px;font-weight:900;color:#fff;text-align:center">${builder.formation}</span>
             </div>
           </div>
@@ -394,8 +394,8 @@ function renderBuilder(container, builder, ctx) {
               ${_selStadCard ? (() => {
                 const def = builder.stadDefMap[_selStadCard.stadium_id]
                 const logo = def?.club?.logo_url || def?.image_url || null
-                return renderStadiumCard(def?.name || 'Stade', logo, '+10⭐', { width: 50 })
-              })() : `<div style="width:50px;height:85px;border:2px dashed rgba(79,195,247,0.5);border-radius:6px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px">
+                return renderStadiumCard(def?.name || 'Stade', logo, '+10⭐', { width: 66 })
+              })() : `<div style="width:66px;height:86px;border:2px dashed rgba(79,195,247,0.5);border-radius:6px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px">
                 <span style="font-size:18px">🏟️</span>
                 <span style="font-size:8px;color:rgba(255,255,255,0.4)">+</span>
               </div>`}

@@ -2,7 +2,6 @@ import { supabase } from '../lib/supabase.js'
 import { renderPlayerCard } from '../components/player-card.js'
 import { GC_DEFS } from '../match/game-logic.js'
 import { FORMATION_LINKS, FORMATION_POSITIONS } from '../match/formation-links.js'
-import { EVOLUTIVE_RULES, currentSecondaryNote, getBaseMainNote } from '../match/evolutive-cards.js'
 import { renderGCCard, renderStadiumCard, renderFormationCard as renderFormationCardTpl } from '../components/special-cards.js'
 import { getPortrait } from '../lib/portrait.js'
 
@@ -20,7 +19,7 @@ function getCardNote(card) {
   const p = card.player
   if (!p) return null
   const rar = p.rarity
-  if ((rar === 'pepite' || rar === 'papyte') && card.current_note != null) return card.current_note
+  // pepite/papyte: note de base uniquement (evolution_bonus gère la progression)
   return Math.max(Number(p.note_g)||0, Number(p.note_d)||0, Number(p.note_m)||0, Number(p.note_a)||0)
 }
 
@@ -829,9 +828,8 @@ async function openCardDetail(card, allPlayerCards, countByPlayer, ctx) {
   const canMarket = p.rarity !== 'legende'
 
   const portrait = getPortrait(p)
-  const note1    = ((p.rarity==='pepite'||p.rarity==='papyte') && card.current_note != null ? card.current_note : getNote(p, p.job)) + evoCard
-  const isEvol   = p.rarity==='pepite'||p.rarity==='papyte'
-  const note2    = p.job2 ? ((isEvol ? currentSecondaryNote(card, job2NoteKey(p.job2)) : getNote(p, p.job2)) + (getNote(p,p.job2)>0?evoCard:0)) : null
+  const note1    = getNote(p, p.job) + evoCard
+  const note2    = p.job2 ? (getNote(p, p.job2) + (getNote(p,p.job2)>0?evoCard:0)) : null
   const jobColor  = JOB_COLORS[p.job] || '#1A6B3C'
   const job2Color = p.job2 ? JOB_COLORS[p.job2] : null
   const rarColor  = RAR_COLORS[p.rarity] || '#ccc'
@@ -971,14 +969,11 @@ async function openCardDetail(card, allPlayerCards, countByPlayer, ctx) {
           <div style="font-weight:700;color:${rarColor}">${p.rarity.toUpperCase()}</div>
           ${(p.rarity==='pepite'||p.rarity==='papyte') ? `
           <div style="margin-top:6px;background:${rarColor}18;border-left:3px solid ${rarColor};border-radius:0 6px 6px 0;padding:6px 10px">
-            <div style="font-size:11px;font-weight:700;color:${rarColor};margin-bottom:2px">Carte évolutive</div>
+            <div style="font-size:11px;font-weight:700;color:${rarColor};margin-bottom:2px">✨ Carte évolutive</div>
             <div style="font-size:11px;color:#555;line-height:1.5">
               ${p.rarity==='pepite'
-                ? `✅ Victoire : <b>+2</b> &nbsp;|&nbsp; ❌ Défaite : <b>-1</b>`
-                : `✅ Victoire : <b>+1</b> &nbsp;|&nbsp; ❌ Défaite : <b>-2</b>`}
-              <br>Note actuelle : <b>${card.current_note ?? (p.rarity==='pepite'?p.note_min:p.note_max) ?? '—'}</b>
-              &nbsp;·&nbsp; Min : <b>${p.note_min ?? '—'}</b>
-              &nbsp;·&nbsp; Max : <b>${p.note_max ?? '—'}</b>
+                ? `⬆️ Bonus évolution : <b style="color:#D4A017">+30%</b>`
+                : `⬇️ Malus évolution : <b style="color:#909090">-30%</b>`}
             </div>
           </div>` : ''}
         </div>
@@ -1021,17 +1016,20 @@ async function openCardDetail(card, allPlayerCards, countByPlayer, ctx) {
   // ── Logique de sélection des exemplaires ──────────────────────────────────
   let selectedCardIds = new Set()
 
-  // Calcule le bonus total apporté par les cartes sacrifiées (nouveau système)
+  // Multiplicateur de rareté : pépite +30%, papyte -30%, autres ×1
+  const rarityMult = p.rarity === 'pepite' ? 1.3 : p.rarity === 'papyte' ? 0.7 : 1.0
+
+  // Calcule le bonus total apporté par les cartes sacrifiées (avec multiplicateur rareté)
   function computeBonus() {
-    let total = 0
+    let rawTotal = 0
     document.querySelectorAll('.expl-check:checked').forEach(cb => {
       const id = cb.dataset.id
       if (id === card.id) return  // la carte cible ne se sacrifie pas
       const evo  = Number(cb.dataset.evo)  || 0
       const note = Number(cb.dataset.note) || 0
-      total += note + evo
+      rawTotal += note + evo
     })
-    return total
+    return Math.round(rawTotal * rarityMult)
   }
 
   const updatePanel = () => {
@@ -1105,13 +1103,15 @@ async function openCardDetail(card, allPlayerCards, countByPlayer, ctx) {
     const idsToDelete = ids.filter(id => id !== card.id)
     if (!idsToDelete.length) { toast('Sélectionne des copies à sacrifier', 'warning'); return }
 
-    // Nouveau système : chaque copie sacrifiée apporte (note_poste + evolution_bonus)
-    const bonusGained = idsToDelete.reduce((sum, id) => {
+    // Σ(note + evo) des copies × multiplicateur rareté (pépite +30%, papyte -30%)
+    const rawBonus = idsToDelete.reduce((sum, id) => {
       const cb = document.querySelector(`.expl-check[data-id="${id}"]`)
       const evo  = cb ? Number(cb.dataset.evo)  || 0 : 0
       const note = cb ? Number(cb.dataset.note) || 0 : 0
       return sum + note + evo
     }, 0)
+    const bonusGained = Math.round(rawBonus * rarityMult)
+    const rarityBonusLabel = p.rarity === 'pepite' ? ' (+30% pépite ✨)' : p.rarity === 'papyte' ? ' (-30% papyte)' : ''
 
     // Popup de confirmation de sacrifice
     const confirmed = await new Promise(resolve => {
@@ -1126,7 +1126,8 @@ async function openCardDetail(card, allPlayerCards, countByPlayer, ctx) {
           </div>
           <div style="background:#f0fdf4;border-radius:10px;padding:12px;margin-bottom:16px;font-size:13px;color:#333">
             🗑️ <strong>${idsToDelete.length}</strong> copie${idsToDelete.length>1?'s':''} sacrifiée${idsToDelete.length>1?'s':''}<br>
-            ⬆️ Bonus gagné : <strong style="color:#1A6B3C">+${bonusGained}</strong> <span style="font-size:11px;color:#888">(Σ note + évolution de chaque copie)</span><br>
+            ➕ Brut : <strong>+${rawBonus}</strong>${rarityBonusLabel ? `<span style="font-size:11px;color:#888"> ${rarityBonusLabel}</span>` : ''}<br>
+            ⬆️ Bonus final : <strong style="color:#1A6B3C">+${bonusGained}</strong><br>
             📈 Évolution : <strong>${card.evolution_bonus||0}</strong> → <strong style="color:#1A6B3C">${(card.evolution_bonus||0)+bonusGained}</strong><br>
             📊 Note finale : <strong>${note1}</strong> → <strong style="color:#1A6B3C">${note1+bonusGained}</strong>
             ${note2&&note2>0 ? `<br>📊 Note 2 finale : <strong>${note2}</strong> → <strong style="color:#1A6B3C">${note2+bonusGained}</strong>` : ''}

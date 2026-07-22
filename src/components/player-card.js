@@ -64,7 +64,7 @@ export function renderPlayerCard(p, opts = {}) {
 
 
   // Glow selon rareté
-  const RARITY_GLOW_COLOR = { legende:'#7a28b8', pepite:'#D4A017', pépite:'#D4A017', papyte:'#b0b8c8' }
+  const RARITY_GLOW_COLOR = { legende:'#7a28b8', pepite:'#D4A017', pépite:'#D4A017', papyte:'#c8d0dc' }
   const glowColor = RARITY_GLOW_COLOR[p.rarity]
   const glowStyle = glowColor ? `filter:drop-shadow(0 0 5px ${glowColor}) drop-shadow(0 0 12px ${glowColor});` : ''
 
@@ -73,7 +73,7 @@ export function renderPlayerCard(p, opts = {}) {
     legende: '0 0 12px 4px #7a28b8, 0 0 24px 8px rgba(122,40,184,0.5)',
     pepite:  '0 0 12px 4px #D4A017, 0 0 24px 8px rgba(212,160,23,0.5)',
     pépite:  '0 0 12px 4px #D4A017, 0 0 24px 8px rgba(212,160,23,0.5)',
-    papyte:  '0 0 12px 4px #b0b8c8, 0 0 24px 8px rgba(176,184,200,0.5), 0 0 3px 1px #e8eaf0',
+    papyte:  '0 0 4px 2px #e8eaf0, 0 0 12px 6px #a8b4c4, 0 0 28px 10px rgba(168,180,196,0.6), 0 0 2px 1px #f0f2f5',
   }
   const evo    = p._evolution_bonus ?? p.evolution_bonus ?? 0
   const stadB  = showStad && (p.stadiumBonus || hasStadBonus(p, stadDef)) ? 10 : 0
@@ -124,9 +124,9 @@ export function renderPlayerCard(p, opts = {}) {
   const noteW    = ax(309)
 
   // Drapeaux/logo : alignés sur le centre de la note (y centre note = 390+90=480)
-  const rectH    = ax(160) // réduit de 10px natifs
+  const rectH    = ax(150) // réduit encore de 10px natifs
   const rectW    = ax(95)
-  const rectY    = ax(391) // remonté de 10% (435 → 391)
+  const rectY    = ax(357) // remonté de 10% supplémentaire
   const rectLX   = ax(38)    // moins collé au bord
   const rectRX   = ax(374)   // moins collé au bord
   const rectR    = ax(6)

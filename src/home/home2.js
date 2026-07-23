@@ -1,7 +1,7 @@
 import { supabase } from '../lib/supabase.js'
 import { showPendingPopup } from '../friends/friends.js'
 import { stopBGM } from '../lib/sound.js'
-import { getTier, getTierProgress, TIERS } from '../ranked/glicko2.js'
+import { getTier, getTierProgress } from '../ranked/glicko2.js'
 
 const APP_VERSION = (typeof __BUILD_TIME__ !== 'undefined' && __BUILD_TIME__)
   ? __BUILD_TIME__
@@ -21,7 +21,6 @@ function timeAgo(iso) {
   return new Date(iso).toLocaleDateString('fr-FR', { day:'2-digit', month:'short' })
 }
 
-// Sous-palier I/II/III à l'intérieur d'un tier (esthétique, purement visuel)
 function getSubTier(mmr, tier) {
   if (!isFinite(tier.max)) return ''
   const range = tier.max - tier.min + 1
@@ -72,10 +71,50 @@ async function fetchPromoBoosters() {
   return data || []
 }
 
+// Popup journal complet — duplication locale volontaire (ne touche pas à app.js)
+async function showFullJournalPopup() {
+  const { data: articles } = await supabase
+    .from('patch_notes')
+    .select('*')
+    .eq('is_published', true)
+    .order('published_at', { ascending: false })
+    .limit(20)
+
+  const ov = document.createElement('div')
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:9000;display:flex;align-items:center;justify-content:center;padding:16px'
+
+  const list = (articles||[]).map(a => {
+    const date = new Date(a.published_at).toLocaleDateString('fr-FR', { day:'2-digit', month:'long', year:'numeric' })
+    return `<div style="padding:14px 0;border-bottom:1px solid #f0f0f0">
+      ${a.image_url ? `<img src="${a.image_url}" style="width:100%;max-height:160px;object-fit:cover;border-radius:8px;margin-bottom:10px">` : ''}
+      <div style="font-size:12px;color:#999;margin-bottom:4px">${date}</div>
+      <div style="font-size:15px;font-weight:900;margin-bottom:6px">${a.title}</div>
+      <div style="font-size:13px;color:#444;line-height:1.6;white-space:pre-line">${a.description}</div>
+    </div>`
+  }).join('')
+
+  ov.innerHTML = `
+    <div style="background:#fff;border-radius:16px;width:100%;max-width:460px;max-height:85vh;display:flex;flex-direction:column;overflow:hidden">
+      <div style="display:flex;align-items:center;padding:16px 20px;border-bottom:1px solid #f0f0f0;flex-shrink:0">
+        <span style="font-size:22px;margin-right:10px">📰</span>
+        <div style="flex:1;font-size:17px;font-weight:900">Journal des mises à jour</div>
+        <button id="journal-close-v2" style="background:none;border:none;font-size:22px;cursor:pointer;color:#888;padding:0 4px">✕</button>
+      </div>
+      <div style="flex:1;overflow-y:auto;padding:0 20px">
+        ${list || '<div style="padding:40px;text-align:center;color:#aaa">Aucune mise à jour pour le moment.</div>'}
+      </div>
+    </div>`
+
+  document.body.appendChild(ov)
+  ov.querySelector('#journal-close-v2').addEventListener('click', () => ov.remove())
+  ov.addEventListener('click', e => { if (e.target === ov) ov.remove() })
+}
+
 export async function renderHome2(container, { state, navigate, toast }) {
   const p = state.profile
   if (!p) return
 
+  const ICON = import.meta.env.BASE_URL + 'icons/'
   const mmr    = p.mmr ?? 1000
   const tier   = getTier(mmr)
   const sub    = getSubTier(mmr, tier)
@@ -89,14 +128,14 @@ export async function renderHome2(container, { state, navigate, toast }) {
   ])
 
   const rankRowHTML = (u, i) => `
-    <div class="rank-row ${u.id === p.id ? 'rank-row-me' : ''}">
-      <div class="rank-pos ${i < 3 ? 'rank-pos-top' + (i+1) : ''}">${i < 3 ? ['🥇','🥈','🥉'][i] : i+1}</div>
-      <div class="rank-name">${u.pseudo}</div>
-      <div class="rank-rp">${(u.mmr ?? 0).toLocaleString('fr')} RP</div>
+    <div class="rk-row ${u.id === p.id ? 'rk-row-me' : ''}">
+      <div class="rk-pos ${i < 3 ? 'rk-pos-top' + (i+1) : ''}">${i < 3 ? ['🥇','🥈','🥉'][i] : i+1}</div>
+      <div class="rk-name ${u.id === p.id ? 'rk-name-me' : ''}">${u.pseudo}</div>
+      <div class="rk-rp">${(u.mmr ?? 0).toLocaleString('fr')} RP</div>
     </div>`
 
   const newsItemHTML = (n) => `
-    <div class="news-item" data-news-id="${n.id}">
+    <div class="news-item">
       ${n.image_url ? `<img src="${n.image_url}" class="news-thumb" onerror="this.style.display='none'">` : `<div class="news-thumb news-thumb-fallback">📰</div>`}
       <div class="news-body">
         <div class="news-title">${n.title}</div>
@@ -108,7 +147,7 @@ export async function renderHome2(container, { state, navigate, toast }) {
   let promoIdx = 0
   const promoSlideHTML = (b) => `
     <div class="promo-icon-wrap">
-      <img src="${import.meta.env.BASE_URL}icons/${b.icon || 'nav-boosters.png'}" class="promo-icon" onerror="this.style.display='none'">
+      <img src="${ICON}${b.icon || 'nav-boosters.png'}" class="promo-icon" onerror="this.style.display='none'">
     </div>
     <div class="promo-info">
       <div class="promo-kicker">NOUVEAU BOOSTER</div>
@@ -122,115 +161,130 @@ export async function renderHome2(container, { state, navigate, toast }) {
       min-height: 100%;
       background: var(--page-bg);
       background-image: var(--page-gradient);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: flex-start;
-      padding: 16px 16px 80px;
-      box-sizing: border-box;
-      overflow-y: auto;
+      display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
+      padding: 16px 16px 80px; box-sizing: border-box; overflow-y: auto;
     }
-    .home-inner { width: 100%; max-width: 560px; display: flex; flex-direction: column; gap: 12px; }
+    .home-inner { width: 100%; max-width: 560px; display: flex; flex-direction: column; gap: 14px; }
 
-    /* ── Carte profil + rang ── */
-    .profile-rank-card {
-      background: var(--tile-bg);
-      border: 1px solid var(--tile-border);
-      border-radius: 16px;
-      padding: 14px 16px;
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
+    /* ── Barre d'onglets (uniquement mode PC — remplace visuellement le bottom-nav) ── */
+    .home2-tabbar {
+      display: none;
+      align-items: center; gap: 6px;
+      background: rgba(255,255,255,0.04); border: 1px solid var(--tile-border);
+      border-radius: 14px; padding: 6px;
     }
+    .home2-tab {
+      flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px;
+      padding: 10px 6px; border-radius: 10px; cursor: pointer; text-decoration:none;
+      color: var(--tile-fg-dim); font-size: 13px; font-weight: 700; transition: background .15s, color .15s;
+    }
+    .home2-tab img.nav-icon { width: 18px; height: 18px; object-fit: contain; filter: brightness(1.6); }
+    .home2-tab.active { background: var(--green); color: #fff; }
+    .home2-tab:not(.active):hover { background: rgba(255,255,255,0.06); }
+
+    /* ── Profil ── */
     .profile-row { display: flex; align-items: center; gap: 12px; }
     .profile-badge {
-      width: 44px; height: 44px; border-radius: 12px; flex-shrink: 0;
+      width: 46px; height: 46px; border-radius: 12px; flex-shrink: 0;
       background: linear-gradient(135deg, ${p.club_color1}cc, ${p.club_color2}88);
       border: 1.5px solid ${p.club_color2};
       display: flex; align-items: center; justify-content: center;
-      font-weight: 900; font-size: 18px; color: var(--tile-fg-on-page);
+      font-weight: 900; font-size: 19px; color: #fff;
     }
     .profile-info { flex: 1; min-width: 0; }
-    .profile-info h3 { margin: 0; font-size: 16px; font-weight: 900; color: var(--tile-fg-on-page); }
-    .profile-info .club { font-size: 11px; color: var(--tile-fg-dim); margin-top: 1px; }
+    .profile-info .name-row { display:flex; align-items:center; gap:6px; }
+    .profile-info h3 { margin: 0; font-size: 17px; font-weight: 900; color: var(--tile-fg-on-page); }
+    .profile-edit-btn { background:none; border:none; cursor:pointer; font-size:12px; opacity:.55; padding:0; color: var(--tile-fg-dim); }
+    .profile-edit-btn:hover { opacity:1; }
+    .profile-info .club { display:flex; align-items:center; gap:5px; font-size: 11px; color: var(--tile-fg-dim); margin-top: 2px; letter-spacing:.3px; }
+    .profile-info .club .dot { width:6px; height:6px; border-radius:50%; background: var(--green-light); flex-shrink:0; }
     .profile-settings-btn {
       width: 34px; height: 34px; border-radius: 50%; border: none;
       background: rgba(255,255,255,0.08); cursor: pointer; flex-shrink: 0;
-      display: flex; align-items: center; justify-content: center; font-size: 16px;
-      color: var(--tile-fg-dim);
+      display: flex; align-items: center; justify-content: center; font-size: 16px; color: var(--tile-fg-dim);
     }
+    .profile-settings-btn:hover { background: rgba(255,255,255,0.15); }
 
-    .rank-block { display: flex; flex-direction: column; gap: 6px; }
-    .rank-top-row { display: flex; align-items: center; justify-content: space-between; }
-    .rank-tier-label { display:flex; align-items:center; gap:6px; font-size:14px; font-weight:900; color:${tier.color}; }
-    .rank-view-btn {
-      background: rgba(255,255,255,0.06); border: 1px solid var(--tile-border);
-      color: var(--tile-fg-dim); font-size: 11px; font-weight:700; border-radius: 10px;
-      padding: 5px 10px; cursor: pointer; display:flex; align-items:center; gap:4px;
+    /* ── Rank card ── */
+    .rank-card {
+      background: var(--tile-bg); border: 1px solid var(--tile-border); border-radius: 16px;
+      padding: 14px 16px; display: flex; flex-direction: column; gap: 8px;
     }
-    .rank-view-btn:hover { filter: brightness(1.2); }
-    .rank-rp-label { font-size: 11px; color: var(--tile-fg-dim); }
-    .rank-progress-track { width:100%; height:7px; border-radius:4px; background: rgba(255,255,255,0.08); overflow:hidden; }
-    .rank-progress-fill { height:100%; border-radius:4px; background: linear-gradient(90deg, ${tier.color}99, ${tier.color}); transition: width .4s; }
+    .rank-top-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+    .rank-tier-block .rank-label { font-size: 10px; font-weight: 900; color: var(--tile-fg-dim); letter-spacing: 1.5px; }
+    .rank-tier-block .rank-tier-value { font-size: 20px; font-weight: 900; color: ${tier.color}; margin-top: 1px; }
+    .rank-right { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+    .rank-rp-label { font-size: 11px; color: var(--tile-fg-dim); white-space: nowrap; }
+    .rank-inline-link {
+      display: inline-flex; align-items: center; gap: 4px;
+      background: rgba(255,255,255,0.06); border: 1px solid var(--tile-border);
+      color: var(--tile-fg-on-page); font-size: 11px; font-weight: 700;
+      border-radius: 8px; padding: 4px 9px; cursor: pointer; white-space: nowrap;
+    }
+    .rank-inline-link:hover { filter: brightness(1.2); }
+    .rank-progress-track { width: 100%; height: 7px; border-radius: 4px; background: rgba(255,255,255,0.08); overflow: hidden; }
+    .rank-progress-fill { height: 100%; border-radius: 4px; background: linear-gradient(90deg, ${tier.color}99, ${tier.color}); transition: width .4s; }
 
     .profile-view-btn {
-      width: 100%; text-align:center; background: rgba(255,255,255,0.05); border: 1px solid var(--tile-border);
+      display: none; width: 100%; align-items:center; justify-content:center; gap:8px;
+      background: rgba(255,255,255,0.05); border: 1px solid var(--tile-border);
       color: var(--tile-fg-on-page); font-size: 12px; font-weight: 700; border-radius: 10px;
-      padding: 9px; cursor: pointer;
+      padding: 10px; cursor: pointer;
     }
     .profile-view-btn:hover { filter: brightness(1.15); }
 
-    /* ── Classement mini-widget ── */
+    /* ── Classement mini-widget (PC uniquement) ── */
     .ranking-widget {
+      display: none;
       background: var(--tile-bg); border: 1px solid var(--tile-border); border-radius: 16px;
-      padding: 14px 16px; display: flex; flex-direction: column; gap: 10px;
+      padding: 14px 16px; flex-direction: column; gap: 6px;
     }
-    .ranking-widget-header { display:flex; align-items:center; justify-content:space-between; }
-    .ranking-widget-header h4 { margin:0; font-size:13px; font-weight:900; color: var(--tile-fg-on-page); letter-spacing:.5px; }
-    .ranking-widget-header a { font-size: 11px; color: var(--green); font-weight:700; cursor:pointer; text-decoration:none; }
-    .rank-row { display:flex; align-items:center; gap:10px; padding:6px 0; }
-    .rank-row-me { background: rgba(212,160,23,0.1); border-radius: 8px; margin: 0 -8px; padding: 6px 8px; }
-    .rank-pos {
+    .ranking-widget-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:4px; }
+    .ranking-widget-header h4 { margin:0; font-size:12px; font-weight:900; color: var(--tile-fg-on-page); letter-spacing:1px; }
+    .ranking-widget-header a { font-size: 11px; color: var(--green-light); font-weight:700; cursor:pointer; text-decoration:none; }
+    .rk-row { display:flex; align-items:center; gap:10px; padding:6px 0; }
+    .rk-row-me { background: rgba(26,107,60,0.18); border-radius: 8px; margin: 0 -8px; padding: 6px 8px; }
+    .rk-pos {
       width: 24px; height: 24px; border-radius: 50%; flex-shrink:0;
       background: rgba(255,255,255,0.06); color: var(--tile-fg-dim);
       display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:900;
     }
-    .rank-pos-top1 { background:#D4A017; color:#000; }
-    .rank-pos-top2 { background:#a0a0a0; color:#000; }
-    .rank-pos-top3 { background:#cd7f32; color:#000; }
-    .rank-name { flex:1; min-width:0; font-size:12px; font-weight:700; color: var(--tile-fg-on-page); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-    .rank-rp { font-size: 12px; font-weight:900; color: var(--tile-fg-dim); flex-shrink:0; }
+    .rk-pos-top1 { background:#D4A017; color:#000; }
+    .rk-pos-top2 { background:#a0a0a0; color:#000; }
+    .rk-pos-top3 { background:#cd7f32; color:#000; }
+    .rk-name { flex:1; min-width:0; font-size:12px; font-weight:700; color: var(--tile-fg-on-page); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .rk-name-me { color: var(--green-light); }
+    .rk-rp { font-size: 12px; font-weight:900; color: var(--tile-fg-dim); flex-shrink:0; }
     .ranking-widget-cta {
-      width:100%; text-align:center; background: rgba(255,255,255,0.05); border:1px solid var(--tile-border);
+      display:flex; align-items:center; justify-content:center; gap:6px;
+      width:100%; margin-top:6px; background: rgba(255,255,255,0.05); border:1px solid var(--tile-border);
       color: var(--tile-fg-on-page); font-size:12px; font-weight:700; border-radius:10px; padding:9px; cursor:pointer;
     }
     .ranking-widget-cta:hover { filter: brightness(1.15); }
 
     /* ── Section Jouer ── */
-    .play-section-header { display:flex; align-items:center; gap:8px; margin: 2px 0 2px; }
-    .play-section-header h4 { margin:0; font-size:14px; font-weight:900; letter-spacing:2px; color: var(--tile-fg-on-page); }
-    .play-section-header .slashes { color: var(--green); font-weight:900; font-size:14px; letter-spacing:2px; }
+    .play-section-header { display:flex; align-items:center; justify-content:center; gap:10px; margin: 2px 0; }
+    .play-section-header h4 { margin:0; font-size:14px; font-weight:900; letter-spacing:3px; color: var(--tile-fg-on-page); }
+    .play-section-header .slashes { color: var(--green-light); font-weight:900; font-size:15px; letter-spacing:1px; }
 
-    .play-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .play-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; }
     .play-tile {
+      grid-column: span 2;
       border-radius: 16px; background: var(--tile-bg); border: 1px solid var(--tile-border);
-      cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 10px;
-      transition: transform .15s, filter .15s; backdrop-filter: blur(4px);
+      cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 12px 8px;
+      transition: transform .15s, filter .15s; backdrop-filter: blur(4px); text-align:center; gap:2px;
     }
-    .play-tile:hover { filter: brightness(1.12); }
+    .play-tile:hover { filter: brightness(1.15); }
     .play-tile:active { transform: scale(.96); }
-    .play-text-overlay { max-height: 26px !important; width: auto !important; }
-    .ranked-tile .play-text-overlay { max-height: 34px !important; }
+    .play-tile img.tile-icon { height: 46px; object-fit:contain; }
+    .play-tile .tile-label { font-size: 13px; font-weight: 900; color: var(--tile-fg-on-page); letter-spacing:.5px; margin-top:2px; }
+    .play-tile .tile-desc { display:none; font-size: 10px; color: var(--tile-fg-dim); line-height:1.3; margin-top:2px; }
 
-    .ranked-tile {
-      border-radius: 16px;
-      background: linear-gradient(135deg, #2d0a6e 0%, #4a1a8a 50%, #6a28b8 100%);
-      border: 1.5px solid rgba(122,40,184,0.6);
-      box-shadow: 0 4px 20px rgba(122,40,184,0.3);
-      cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 8px;
-      transition: transform .15s, box-shadow .15s;
-    }
-    .ranked-tile:active { transform: scale(.97); }
+    .play-tile-big { grid-column: span 3; padding: 16px 10px; }
+    .play-tile-big img.tile-icon { height: 56px; }
+    .play-tile-big .tile-label { font-size: 15px; }
+    .tile-mini-league { background: linear-gradient(135deg, #2d0a6e 0%, #4a1a8a 50%, #6a28b8 100%); border: 1.5px solid rgba(122,40,184,0.6); box-shadow: 0 4px 20px rgba(122,40,184,0.3); }
+    .tile-ranked { background: linear-gradient(135deg, #4a3a05 0%, #8a6a10 50%, #D4A017 100%); border: 1.5px solid rgba(212,160,23,0.6); box-shadow: 0 4px 20px rgba(212,160,23,0.25); }
 
     /* ── Bannière promo booster ── */
     .promo-banner {
@@ -238,33 +292,35 @@ export async function renderHome2(container, { state, navigate, toast }) {
       border: 1px solid rgba(212,160,23,0.3); border-radius: 16px;
       padding: 16px; display:flex; align-items:center; gap:14px; position: relative; overflow:hidden;
     }
-    .promo-icon-wrap { width:64px; height:64px; flex-shrink:0; display:flex; align-items:center; justify-content:center; }
-    .promo-icon { max-width:100%; max-height:100%; object-fit:contain; }
+    .promo-icon-wrap { width:56px; height:56px; flex-shrink:0; display:flex; align-items:center; justify-content:center; background:rgba(212,160,23,0.12); border-radius:12px; border:1px solid rgba(212,160,23,0.3); }
+    .promo-icon { max-width:70%; max-height:70%; object-fit:contain; }
     .promo-info { flex:1; min-width:0; }
     .promo-kicker { font-size:10px; font-weight:900; color:#D4A017; letter-spacing:1px; }
     .promo-title { font-size:16px; font-weight:900; color:#fff; margin-top:2px; }
-    .promo-desc { font-size:11px; color:rgba(255,255,255,0.6); margin-top:2px; }
+    .promo-desc { font-size:11px; color:rgba(255,255,255,0.55); margin-top:2px; }
     .promo-cta {
       background: var(--green); color:#fff; border:none; border-radius:10px;
-      padding:9px 16px; font-size:12px; font-weight:900; cursor:pointer; flex-shrink:0;
+      padding:9px 14px; font-size:12px; font-weight:900; cursor:pointer; flex-shrink:0;
+      display:flex; align-items:center; gap:5px; white-space:nowrap;
     }
-    .promo-cta:hover { filter: brightness(1.15); }
+    .promo-cta:hover { filter: brightness(1.2); }
     .promo-dots { position:absolute; bottom:6px; left:50%; transform:translateX(-50%); display:flex; gap:4px; }
-    .promo-dot { width:5px; height:5px; border-radius:50%; background: rgba(255,255,255,0.25); transition: background .2s; }
+    .promo-dot { width:5px; height:5px; border-radius:50%; background: rgba(255,255,255,0.25); transition: background .2s; cursor:pointer; }
     .promo-dot.active { background: #D4A017; }
 
     /* ── Actualités ── */
-    .news-widget { background: var(--tile-bg); border: 1px solid var(--tile-border); border-radius: 16px; padding: 14px 16px; display:flex; flex-direction:column; gap: 10px; }
+    .news-widget { background: var(--tile-bg); border: 1px solid var(--tile-border); border-radius: 16px; padding: 14px 16px; display:flex; flex-direction:column; gap: 8px; }
     .news-widget-header { display:flex; align-items:center; justify-content:space-between; }
     .news-widget-header h4 { margin:0; font-size:13px; font-weight:900; color: var(--tile-fg-on-page); letter-spacing:.5px; }
-    .news-widget-header a { font-size: 11px; color: var(--green); font-weight:700; cursor:pointer; text-decoration:none; }
-    .news-item { display:flex; gap:10px; padding: 6px 0; cursor:default; }
-    .news-thumb { width:44px; height:44px; border-radius:8px; object-fit:cover; flex-shrink:0; }
+    .news-widget-header a { font-size: 11px; color: var(--green-light); font-weight:700; cursor:pointer; text-decoration:none; }
+    .news-item { display:flex; gap:10px; padding: 7px 0; border-top: 1px solid rgba(255,255,255,0.05); }
+    .news-item:first-of-type { border-top:none; }
+    .news-thumb { width:46px; height:46px; border-radius:8px; object-fit:cover; flex-shrink:0; }
     .news-thumb-fallback { background: rgba(255,255,255,0.06); display:flex; align-items:center; justify-content:center; font-size:18px; }
     .news-body { flex:1; min-width:0; }
-    .news-title { font-size:12px; font-weight:900; color: var(--tile-fg-on-page); }
+    .news-title { font-size:12.5px; font-weight:900; color: var(--tile-fg-on-page); }
     .news-desc { font-size:11px; color: var(--tile-fg-dim); margin-top:1px; overflow:hidden; text-overflow:ellipsis; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; }
-    .news-time { font-size:10px; color: rgba(255,255,255,0.35); margin-top:2px; }
+    .news-time { font-size:10px; color: rgba(255,255,255,0.35); margin-top:3px; }
 
     .home-footer { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 4px 0; }
     .home-logout-btn {
@@ -273,23 +329,38 @@ export async function renderHome2(container, { state, navigate, toast }) {
     }
     .home-logout-btn:hover { filter: brightness(1.15); }
 
-    /* ── Structure dashboard : colonne unique par défaut ── */
-    .home2-dash { display:flex; flex-direction:column; gap:12px; }
+    /* ── Structure : colonne unique par défaut (mobile) ── */
+    .home2-dash { display:flex; flex-direction:column; gap:14px; }
     .home2-col-left, .home2-col-center, .home2-col-right { display:contents; }
 
-    /* ── Mode PC : 3 colonnes à partir de 1024px ── */
+    /* ══════════ MODE PC (≥1024px) ══════════ */
     @media (min-width: 1024px) {
       .home-inner { max-width: 1180px; }
+      .home2-tabbar { display: flex; }
       .home2-dash { display:grid; grid-template-columns: 300px 1fr 320px; gap: 20px; align-items:start; }
-      .home2-col-left, .home2-col-center, .home2-col-right { display:flex; flex-direction:column; gap: 16px; }
-      .play-grid { grid-template-columns: repeat(3, 1fr); }
-      .play-grid .ranked-standalone { grid-column: span 1; }
+      .home2-col-left, .home2-col-center, .home2-col-right { display:flex; flex-direction:column; gap: 14px; }
+      .rank-inline-link { display: none; }
+      .profile-view-btn { display: flex; }
+      .ranking-widget { display: flex; }
+      .play-tile .tile-desc { display: block; }
+      .play-tile { padding: 16px 10px; }
+      .play-tile img.tile-icon { height: 60px; }
+      .play-tile-big img.tile-icon { height: 72px; }
       .home-footer { flex-direction: row; justify-content: space-between; width: 100%; padding: 10px 4px; }
     }
   </style>
 
   <div class="home-dark" id="home-dark">
     <div class="home-inner">
+
+      <!-- Barre d'onglets (mode PC uniquement) -->
+      <div class="home2-tabbar">
+        <a class="home2-tab active" id="tab-home"><img src="${ICON}nav-home.png" class="nav-icon">HOME</a>
+        <a class="home2-tab" id="tab-cards"><img src="${ICON}nav-collection.png" class="nav-icon">CARDS</a>
+        <a class="home2-tab" id="tab-decks"><img src="${ICON}nav-decks.png" class="nav-icon">DECKS</a>
+        <a class="home2-tab" id="tab-boosters"><img src="${ICON}nav-boosters.png" class="nav-icon">BOOSTERS</a>
+        <a class="home2-tab" id="tab-market"><img src="${ICON}nav-market.png" class="nav-icon">MERCATO</a>
+      </div>
 
       <!-- Bannières dynamiques -->
       <div id="friend-requests-banner"></div>
@@ -300,79 +371,73 @@ export async function renderHome2(container, { state, navigate, toast }) {
 
         <!-- Colonne gauche : profil + rang + classement -->
         <div class="home2-col-left">
-          <div class="profile-rank-card">
-            <div class="profile-row">
-              <div class="profile-badge">${p.level}</div>
-              <div class="profile-info">
-                <h3>${p.pseudo}</h3>
-                <div class="club">${p.club_name || ''}</div>
-              </div>
-              <button class="profile-settings-btn" id="nav-settings-btn">⚙️</button>
+          <div class="profile-row">
+            <div class="profile-badge">${p.level}</div>
+            <div class="profile-info">
+              <div class="name-row"><h3>${p.pseudo}</h3><button class="profile-edit-btn" id="nav-edit-btn">✏️</button></div>
+              <div class="club"><span class="dot"></span>${(p.club_name||'').toUpperCase()}</div>
             </div>
-
-            <div class="rank-block">
-              <div class="rank-top-row">
-                <div class="rank-tier-label">${tier.emoji} ${tier.label.toUpperCase()}${sub ? ' ' + sub : ''}</div>
-              </div>
-              <div class="rank-rp-label">${mmr.toLocaleString('fr')}${nextRP ? ' / ' + nextRP.toLocaleString('fr') : ''} RP</div>
-              <div class="rank-progress-track"><div class="rank-progress-fill" style="width:${prog}%"></div></div>
-            </div>
-
-            <button class="profile-view-btn" id="nav-profile-btn">Voir mon profil</button>
+            <button class="profile-settings-btn" id="nav-settings-btn">⚙️</button>
           </div>
 
-          <div class="ranking-widget">
-            <div class="ranking-widget-header">
-              <h4>CLASSEMENT</h4>
-              <a id="nav-rankings-link">Voir plus</a>
+          <div class="rank-card">
+            <div class="rank-top-row">
+              <div class="rank-tier-block">
+                <div class="rank-label">🛡️ RANKED</div>
+                <div class="rank-tier-value">${tier.label.toUpperCase()}${sub ? ' ' + sub : ''}</div>
+              </div>
+              <div class="rank-right">
+                <div class="rank-rp-label">${mmr.toLocaleString('fr')}${nextRP ? ' / ' + nextRP.toLocaleString('fr') : ''} RP</div>
+                <button class="rank-inline-link" id="rank-inline-link-btn">📊 Classement</button>
+              </div>
             </div>
+            <div class="rank-progress-track"><div class="rank-progress-fill" style="width:${prog}%"></div></div>
+          </div>
+
+          <button class="profile-view-btn" id="nav-profile-btn">Voir mon profil 📤</button>
+
+          <div class="ranking-widget">
+            <div class="ranking-widget-header"><h4>CLASSEMENT</h4><a id="nav-rankings-link">Voir plus</a></div>
             ${topUsers.map((u,i) => rankRowHTML(u,i)).join('')}
             ${(!iAmInTop && myPosition) ? `
-              <div class="rank-row rank-row-me" style="border-top:1px solid var(--tile-border);margin-top:2px;padding-top:8px">
-                <div class="rank-pos">${myPosition}</div>
-                <div class="rank-name">${p.pseudo}</div>
-                <div class="rank-rp">${mmr.toLocaleString('fr')} RP</div>
+              <div class="rk-row rk-row-me" style="border-top:1px solid var(--tile-border);margin-top:2px;padding-top:8px">
+                <div class="rk-pos">${myPosition}</div>
+                <div class="rk-name rk-name-me">${p.pseudo}</div>
+                <div class="rk-rp">${mmr.toLocaleString('fr')} RP</div>
               </div>` : ''}
-            <button class="ranking-widget-cta" id="nav-rankings-cta">Voir le classement</button>
+            <button class="ranking-widget-cta" id="nav-rankings-cta">📊 Voir le classement</button>
           </div>
         </div>
 
         <!-- Colonne centrale : Jouer + promo -->
         <div class="home2-col-center">
-          <div class="play-section-header">
-            <span class="slashes">///</span><h4>JOUER</h4><span class="slashes">///</span>
-          </div>
+          <div class="play-section-header"><span class="slashes">///</span><h4>JOUER</h4><span class="slashes">///</span></div>
 
           <div class="play-grid">
             <div class="play-tile" data-action="match-ai">
-              <div class="play-badge-group">
-                <img src="${import.meta.env.BASE_URL}icons/badge-ai.png" alt="" class="play-icon" style="height:70px">
-                <img src="${import.meta.env.BASE_URL}icons/badge-ai-txt.png" alt="Match IA" class="play-text-overlay">
-              </div>
+              <img src="${ICON}badge-ai.png" class="tile-icon">
+              <div class="tile-label">VS IA</div>
+              <div class="tile-desc">Affrontez l'intelligence artificielle</div>
             </div>
             <div class="play-tile" data-action="match-random">
-              <div class="play-badge-group">
-                <img src="${import.meta.env.BASE_URL}icons/badge-random.png" alt="" class="play-icon" style="height:70px">
-                <img src="${import.meta.env.BASE_URL}icons/badge-random-txt.png" alt="Match Random" class="play-text-overlay">
-              </div>
+              <img src="${ICON}badge-random.png" class="tile-icon">
+              <div class="tile-label">RANDOM</div>
+              <div class="tile-desc">Affrontez un adversaire aléatoire</div>
             </div>
             <div class="play-tile" data-action="match-friend">
-              <div class="play-badge-group">
-                <img src="${import.meta.env.BASE_URL}icons/badge-vs.png" alt="" class="play-icon" style="height:70px">
-                <img src="${import.meta.env.BASE_URL}icons/badge-vs-txt.png" alt="Match Friend" class="play-text-overlay">
-              </div>
+              <img src="${ICON}badge-vs.png" class="tile-icon">
+              <div class="tile-label">AMI</div>
+              <div class="tile-desc">Affrontez un ami</div>
             </div>
-            <div class="play-tile" data-action="mini-league">
-              <div class="play-badge-group">
-                <img src="${import.meta.env.BASE_URL}icons/badge-league.png" alt="" class="play-icon" style="height:70px">
-                <img src="${import.meta.env.BASE_URL}icons/badge-league-txt.png" alt="Mini League" class="play-text-overlay">
-              </div>
+            <div class="play-tile play-tile-big tile-mini-league" data-action="mini-league">
+              <img src="${ICON}badge-league.png" class="tile-icon">
+              <div class="tile-label">MINI LEAGUE</div>
+              <div class="tile-desc">Participez à des ligues</div>
             </div>
-            <div class="ranked-tile" data-action="ranked">
-              <div class="play-badge-group">
-                <img src="${import.meta.env.BASE_URL}icons/badge-ranked.png" alt="" class="play-icon" style="height:80px">
-                <img src="${import.meta.env.BASE_URL}icons/badge-ranked-txt.png" alt="Ranked" class="play-text-overlay">
-              </div>
+            <div class="play-tile play-tile-big tile-ranked" data-action="ranked">
+              <img src="${ICON}badge-ranked.png" class="tile-icon">
+              <div class="tile-label">RANKED</div>
+              <div class="tile-desc">Grimpez dans le classement</div>
             </div>
           </div>
 
@@ -381,7 +446,7 @@ export async function renderHome2(container, { state, navigate, toast }) {
             <div id="promo-slide-content" style="display:flex;align-items:center;gap:14px;flex:1;min-width:0">
               ${promoSlideHTML(promoBoosters[0])}
             </div>
-            <button class="promo-cta" id="promo-cta-btn">Ouvrir des boosters</button>
+            <button class="promo-cta" id="promo-cta-btn">✅ Ouvrir des boosters</button>
             ${promoBoosters.length > 1 ? `<div class="promo-dots">${promoBoosters.map((_,i)=>`<div class="promo-dot ${i===0?'active':''}" data-dot="${i}"></div>`).join('')}</div>` : ''}
           </div>` : ''}
         </div>
@@ -389,10 +454,7 @@ export async function renderHome2(container, { state, navigate, toast }) {
         <!-- Colonne droite : Actualités -->
         <div class="home2-col-right">
           <div class="news-widget">
-            <div class="news-widget-header">
-              <h4>ACTUALITÉS</h4>
-              <a id="nav-journal-link">Voir tout</a>
-            </div>
+            <div class="news-widget-header"><h4>ACTUALITÉS</h4><a id="nav-journal-link">Voir tout</a></div>
             ${news.length ? news.map(newsItemHTML).join('') : '<div style="font-size:11px;color:var(--tile-fg-dim);padding:8px 0">Aucune actualité pour le moment.</div>'}
           </div>
         </div>
@@ -428,7 +490,7 @@ export async function renderHome2(container, { state, navigate, toast }) {
     if (dark) dark.style.minHeight = avail + 'px'
   })
 
-  // Indicateur de mode (Mobile / PC) — se met à jour aussi au redimensionnement
+  // Indicateur de mode (Mobile / PC)
   const updateModeIndicator = () => {
     const el = document.getElementById('mode-indicator')
     if (!el) return
@@ -437,11 +499,20 @@ export async function renderHome2(container, { state, navigate, toast }) {
   updateModeIndicator()
   window.addEventListener('resize', updateModeIndicator)
 
+  // Barre d'onglets PC — navigation vers les mêmes routes que le bottom-nav
+  document.getElementById('tab-home')?.addEventListener('click', () => navigate('home2'))
+  document.getElementById('tab-cards')?.addEventListener('click', () => navigate('collection'))
+  document.getElementById('tab-decks')?.addEventListener('click', () => navigate('decks'))
+  document.getElementById('tab-boosters')?.addEventListener('click', () => navigate('boosters'))
+  document.getElementById('tab-market')?.addEventListener('click', () => navigate('market'))
+
   document.getElementById('nav-settings-btn')?.addEventListener('click', () => navigate('settings'))
+  document.getElementById('nav-edit-btn')?.addEventListener('click', () => navigate('settings'))
   document.getElementById('nav-profile-btn')?.addEventListener('click', () => navigate('settings'))
   document.getElementById('nav-rankings-link')?.addEventListener('click', () => navigate('rankings'))
   document.getElementById('nav-rankings-cta')?.addEventListener('click', () => navigate('rankings'))
-  document.getElementById('nav-journal-link')?.addEventListener('click', () => toast('Journal complet bientôt accessible depuis cette page', 'info'))
+  document.getElementById('rank-inline-link-btn')?.addEventListener('click', () => navigate('rankings'))
+  document.getElementById('nav-journal-link')?.addEventListener('click', () => showFullJournalPopup())
 
   container.querySelectorAll('[data-action]').forEach(el => {
     el.addEventListener('click', () => {
@@ -461,18 +532,14 @@ export async function renderHome2(container, { state, navigate, toast }) {
   if (promoBoosters.length > 1) {
     const slideEl = document.getElementById('promo-slide-content')
     const dots    = () => Array.from(document.querySelectorAll('.promo-dot'))
-    const rotate = () => {
-      promoIdx = (promoIdx + 1) % promoBoosters.length
+    const goTo = (idx) => {
+      promoIdx = idx
       if (slideEl) slideEl.innerHTML = promoSlideHTML(promoBoosters[promoIdx])
       dots().forEach((d,i) => d.classList.toggle('active', i === promoIdx))
     }
-    const interval = setInterval(rotate, 5000)
+    const interval = setInterval(() => goTo((promoIdx + 1) % promoBoosters.length), 5000)
     document.querySelectorAll('.promo-dot').forEach(dot => {
-      dot.addEventListener('click', () => {
-        promoIdx = Number(dot.dataset.dot)
-        if (slideEl) slideEl.innerHTML = promoSlideHTML(promoBoosters[promoIdx])
-        dots().forEach((d,i) => d.classList.toggle('active', i === promoIdx))
-      })
+      dot.addEventListener('click', () => goTo(Number(dot.dataset.dot)))
     })
   }
   document.getElementById('promo-cta-btn')?.addEventListener('click', () => navigate('boosters'))

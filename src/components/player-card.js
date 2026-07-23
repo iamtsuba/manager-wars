@@ -124,9 +124,9 @@ export function renderPlayerCard(p, opts = {}) {
   const noteW    = ax(309)
 
   // Drapeaux/logo : alignés sur le centre de la note (y centre note = 390+90=480)
-  const rectH    = ax(150) // réduit encore de 10px natifs
-  const rectW    = ax(95)
-  const rectY    = ax(357) // remonté de 10% supplémentaire
+  const rectH    = ax(115) // réduit davantage pour un look plus compact
+  const rectW    = ax(80)
+  const rectY    = ax(315) // remonté nettement, juste au-dessus du haut de l'octogone note
   const rectLX   = ax(38)    // moins collé au bord
   const rectRX   = ax(374)   // moins collé au bord
   const rectR    = ax(6)

@@ -166,21 +166,64 @@ export async function renderHome2(container, { state, navigate, toast }) {
     }
     .home-inner { width: 100%; max-width: 560px; display: flex; flex-direction: column; gap: 14px; }
 
-    /* ── Barre d'onglets (uniquement mode PC — remplace visuellement le bottom-nav) ── */
-    .home2-tabbar {
-      display: none;
-      align-items: center; gap: 6px;
-      background: rgba(255,255,255,0.04); border: 1px solid var(--tile-border);
-      border-radius: 14px; padding: 6px;
+    /* ── Masque le top-nav et bottom-nav globaux tant que Home v2 est affiché ── */
+    body:has(#home2-marker) .top-nav,
+    body:has(#home2-marker) .bottom-nav { display: none !important; }
+    body:has(#home2-marker) .page { padding-bottom: 0 !important; }
+
+    /* ── Bandeau d'en-tête Home v2 : logo + onglets + settings + crédits ── */
+    .home2-header {
+      display: flex; align-items: center; gap: 14px;
+      background: var(--nav-bg); border: 1px solid var(--tile-border);
+      border-radius: 16px; padding: 10px 14px;
     }
+    .home2-logo { display: flex; flex-direction: column; flex-shrink: 0; line-height: 1; }
+    .home2-logo .logo-word { font-size: 21px; font-weight: 900; letter-spacing: .5px; }
+    .home2-logo .logo-word .fm { color: #fff; }
+    .home2-logo .logo-word .war { color: var(--green-light); }
+    .home2-logo .logo-sub { font-size: 7px; font-weight: 700; color: rgba(255,255,255,0.4); letter-spacing: 1.2px; margin-top: 2px; }
+
+    .home2-tabs-row { display: flex; gap: 6px; flex: 1; min-width: 0; overflow-x: auto; scrollbar-width: none; }
+    .home2-tabs-row::-webkit-scrollbar { display: none; }
     .home2-tab {
-      flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px;
-      padding: 10px 6px; border-radius: 10px; cursor: pointer; text-decoration:none;
-      color: var(--tile-fg-dim); font-size: 13px; font-weight: 700; transition: background .15s, color .15s;
+      flex-shrink: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+      padding: 8px 14px; border-radius: 12px; cursor: pointer; text-decoration: none;
+      background: rgba(255,255,255,0.05); border: 1px solid transparent;
+      color: rgba(255,255,255,0.6); font-size: 10px; font-weight: 900; letter-spacing: .3px;
+      transition: background .15s, color .15s;
     }
-    .home2-tab img.nav-icon { width: 18px; height: 18px; object-fit: contain; filter: brightness(1.6); }
+    .home2-tab img.nav-icon { width: 20px; height: 20px; object-fit: contain; opacity: .75; }
     .home2-tab.active { background: var(--green); color: #fff; }
-    .home2-tab:not(.active):hover { background: rgba(255,255,255,0.06); }
+    .home2-tab.active img.nav-icon { opacity: 1; }
+    .home2-tab:not(.active):hover { background: rgba(255,255,255,0.09); color: #fff; }
+
+    .home2-header-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+    .home2-settings-btn {
+      width: 34px; height: 34px; border-radius: 50%; border: none;
+      background: rgba(255,255,255,0.08); cursor: pointer;
+      display: flex; align-items: center; justify-content: center; font-size: 15px; color: rgba(255,255,255,0.8);
+    }
+    .home2-settings-btn:hover { background: rgba(255,255,255,0.15); }
+    .home2-credits {
+      display: flex; align-items: center; gap: 6px;
+      background: rgba(255,255,255,0.06); border: 1px solid var(--tile-border);
+      border-radius: 20px; padding: 6px 12px; font-size: 13px; font-weight: 800; color: #f2c94c;
+      cursor: pointer; white-space: nowrap;
+    }
+    .home2-credits:hover { background: rgba(255,255,255,0.1); }
+    .home2-add-btn {
+      width: 30px; height: 30px; border-radius: 50%; border: none;
+      background: var(--green); color: #fff; font-size: 17px; font-weight: 900; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; flex-shrink:0;
+    }
+    .home2-add-btn:hover { filter: brightness(1.15); }
+
+    @media (max-width: 640px) {
+      .home2-logo .logo-sub { display: none; }
+      .home2-tab { padding: 7px 10px; }
+      .home2-tab img.nav-icon { width:18px; height:18px; }
+    }
+
 
     /* ── Profil ── */
     .profile-row { display: flex; align-items: center; gap: 12px; }
@@ -336,7 +379,6 @@ export async function renderHome2(container, { state, navigate, toast }) {
     /* ══════════ MODE PC (≥1024px) ══════════ */
     @media (min-width: 1024px) {
       .home-inner { max-width: 1180px; }
-      .home2-tabbar { display: flex; }
       .home2-dash { display:grid; grid-template-columns: 300px 1fr 320px; gap: 20px; align-items:start; }
       .home2-col-left, .home2-col-center, .home2-col-right { display:flex; flex-direction:column; gap: 14px; }
       .rank-inline-link { display: none; }
@@ -352,14 +394,26 @@ export async function renderHome2(container, { state, navigate, toast }) {
 
   <div class="home-dark" id="home-dark">
     <div class="home-inner">
+      <div id="home2-marker" style="display:none"></div>
 
-      <!-- Barre d'onglets (mode PC uniquement) -->
-      <div class="home2-tabbar">
-        <a class="home2-tab active" id="tab-home"><img src="${ICON}nav-home.png" class="nav-icon">HOME</a>
-        <a class="home2-tab" id="tab-cards"><img src="${ICON}nav-collection.png" class="nav-icon">CARDS</a>
-        <a class="home2-tab" id="tab-decks"><img src="${ICON}nav-decks.png" class="nav-icon">DECKS</a>
-        <a class="home2-tab" id="tab-boosters"><img src="${ICON}nav-boosters.png" class="nav-icon">BOOSTERS</a>
-        <a class="home2-tab" id="tab-market"><img src="${ICON}nav-market.png" class="nav-icon">MERCATO</a>
+      <!-- Bandeau d'en-tête Home v2 (remplace top-nav + bottom-nav globaux) -->
+      <div class="home2-header">
+        <div class="home2-logo">
+          <div class="logo-word"><span class="fm">FM</span><span class="war">WAR</span></div>
+          <div class="logo-sub">FOOTBALL MANAGERS<br>BATTLE</div>
+        </div>
+        <div class="home2-tabs-row">
+          <a class="home2-tab active" id="tab-home"><img src="${ICON}nav-home.png" class="nav-icon">HOME</a>
+          <a class="home2-tab" id="tab-cards"><img src="${ICON}nav-collection.png" class="nav-icon">CARDS</a>
+          <a class="home2-tab" id="tab-decks"><img src="${ICON}nav-decks.png" class="nav-icon">DECKS</a>
+          <a class="home2-tab" id="tab-boosters"><img src="${ICON}nav-boosters.png" class="nav-icon">BOOSTERS</a>
+          <a class="home2-tab" id="tab-market"><img src="${ICON}nav-market.png" class="nav-icon">MERCATO</a>
+        </div>
+        <div class="home2-header-right">
+          <button class="home2-settings-btn" id="header-settings-btn">⚙️</button>
+          <div class="home2-credits" id="header-credits">💰 ${(p.credits||0).toLocaleString('fr')}</div>
+          <button class="home2-add-btn" id="header-add-btn">+</button>
+        </div>
       </div>
 
       <!-- Bannières dynamiques -->
@@ -483,8 +537,10 @@ export async function renderHome2(container, { state, navigate, toast }) {
   // Adapter la hauteur globale
   requestAnimationFrame(() => {
     const vh = window.visualViewport?.height || window.innerHeight
-    const topBar = document.querySelector('.top-nav')?.offsetHeight || 56
-    const botNav = document.querySelector('.bottom-nav')?.offsetHeight || 60
+    const topNavEl = document.querySelector('.top-nav')
+    const botNavEl = document.querySelector('.bottom-nav')
+    const topBar = (topNavEl && topNavEl.offsetParent !== null) ? topNavEl.offsetHeight : 0
+    const botNav = (botNavEl && botNavEl.offsetParent !== null) ? botNavEl.offsetHeight : 0
     const avail = vh - topBar - botNav
     const dark = container.querySelector('.home-dark')
     if (dark) dark.style.minHeight = avail + 'px'
@@ -501,6 +557,9 @@ export async function renderHome2(container, { state, navigate, toast }) {
 
   // Barre d'onglets PC — navigation vers les mêmes routes que le bottom-nav
   document.getElementById('tab-home')?.addEventListener('click', () => navigate('home2'))
+  document.getElementById('header-settings-btn')?.addEventListener('click', () => navigate('settings'))
+  document.getElementById('header-credits')?.addEventListener('click', () => navigate('boosters'))
+  document.getElementById('header-add-btn')?.addEventListener('click', () => navigate('boosters'))
   document.getElementById('tab-cards')?.addEventListener('click', () => navigate('collection'))
   document.getElementById('tab-decks')?.addEventListener('click', () => navigate('decks'))
   document.getElementById('tab-boosters')?.addEventListener('click', () => navigate('boosters'))

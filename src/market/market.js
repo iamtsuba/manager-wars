@@ -76,6 +76,13 @@ async function loadMarket(container, ctx) {
   const myListings = myAllListings || []
 
   container.innerHTML = `
+  <style>
+    .mkt-buy-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:18px; }
+    .mkt-buy-tile { display:flex; flex-direction:column; align-items:center; gap:8px; }
+    .mkt-buy-tile .mkt-price { font-size:16px; font-weight:900; color:#D4A017; }
+    .mkt-buy-tile .mkt-seller { font-size:10px; color:var(--tile-fg-dim); margin-top:-4px; }
+    .mkt-buy-tile button { width:100%; }
+  </style>
   <div style="height:100%;overflow-y:auto;background:var(--page-bg)">
     <!-- Header -->
     <div style="padding:12px 16px;background:var(--tile-bg);border-bottom:1px solid var(--tile-border)">
@@ -146,40 +153,17 @@ async function loadMarket(container, ctx) {
     })
   }
 
-  function renderBuyRow(l) {
+  function renderBuyTile(l) {
     const p = l.card?.player
     if (!p) return ''
-    const evo     = l.card?.evolution_bonus || 0
-    const note1     = getNote(p, p.job, evo)
-    const note2     = p.job2 ? getNote(p, p.job2, evo) : 0
-    const canAfford = (state.profile.credits||0) >= l.price
-    const flagUrl1 = p.country_code ? `https://flagsapi.com/${p.country_code.slice(0,2).toUpperCase()}/flat/64.png` : null
-    const noteCol1 = JOB_COLORS[p.job] || '#bbb'
-    const noteCol2 = p.job2 ? (JOB_COLORS[p.job2] || '#bbb') : null
-    return `<div class="card-panel" style="display:flex;align-items:center;gap:10px;padding:10px 12px;overflow:hidden">
-      <!-- Drapeau -->
-      ${flagUrl1 ? `<img src="${flagUrl1}" style="width:32px;height:24px;object-fit:cover;border-radius:3px;flex-shrink:0">` : `<span style="font-size:20px">🌍</span>`}
-      <!-- Logo club -->
-      ${p.clubs?.logo_url ? `<img src="${p.clubs.logo_url}" style="width:28px;height:28px;object-fit:contain;flex-shrink:0">` : ''}
-      <!-- Notes -->
-      <div style="display:flex;gap:4px;flex-shrink:0">
-        <div style="width:36px;height:36px;border-radius:6px;background:#111;border:2px solid ${noteCol1};display:flex;align-items:center;justify-content:center">
-          <span style="font-size:14px;font-weight:900;color:${noteCol1};font-family:Arial Black,Arial">${note1}</span>
-        </div>
-        ${note2 ? `<div style="width:36px;height:36px;border-radius:6px;background:#111;border:2px solid ${noteCol2};display:flex;align-items:center;justify-content:center">
-          <span style="font-size:14px;font-weight:900;color:${noteCol2};font-family:Arial Black,Arial">${note2}</span>
-        </div>` : ''}
-      </div>
-      <!-- Nom -->
-      <div style="flex:1;min-width:0">
-        <div style="font-size:11px;color:#999">${p.firstname}</div>
-        <div style="font-size:14px;font-weight:900;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.surname_real}</div>
-        <div style="font-size:10px;color:#999;margin-top:1px">Vendeur : ${l.seller?.pseudo||'—'}</div>
-      </div>
-      <div style="text-align:right;flex-shrink:0">
-        <div style="font-size:14px;font-weight:900;color:#D4A017">${l.price.toLocaleString('fr')}</div>
-        <button class="btn btn-primary btn-sm" data-buy="${l.id}" ${!canAfford?'disabled':''} style="margin-top:4px;font-size:11px;padding:4px 10px">${canAfford?'Acheter':'Trop cher'}</button>
-      </div>
+    const evo        = l.card?.evolution_bonus || 0
+    const canAfford  = (state.profile.credits||0) >= l.price
+    const cardHtml   = renderPlayerCard({ ...p, _evolution_bonus: evo }, { width: 140 })
+    return `<div class="mkt-buy-tile">
+      ${cardHtml}
+      <div class="mkt-price">${l.price.toLocaleString('fr')} cr.</div>
+      <div class="mkt-seller">Vendeur : ${l.seller?.pseudo||'—'}</div>
+      <button class="btn btn-primary btn-sm" data-buy="${l.id}" ${!canAfford?'disabled':''} style="font-size:12px;padding:8px 10px">${canAfford?'Acheter':'Trop cher'}</button>
     </div>`
   }
 
@@ -229,7 +213,7 @@ async function loadMarket(container, ctx) {
     if (activeTab === 'buy') {
       const list = applyFilters(others)
       content.innerHTML = list.length
-        ? list.map(renderBuyRow).join('')
+        ? `<div class="mkt-buy-grid">${list.map(renderBuyTile).join('')}</div>`
         : `<div style="text-align:center;color:#aaa;padding:40px">Aucune carte trouvée.</div>`
     } else {
       const active = myListings.filter(l=>l.status==='active').sort((a,b)=>new Date(b.listed_at)-new Date(a.listed_at))

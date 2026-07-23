@@ -191,7 +191,7 @@ function generateSquad(clubId, countryCode, usedSurnamesGlobal = new Set(), stro
     CM: {
       first: ['Samuel','Alex','Karl','Fabrice','Cédric','Nicolas','Georges','André','Joël','Roger',
               'François','Jean','Patrick','Thierry','Eric','Benjamin','Aristide','Clinton','Clinton','Stéphane'],
-      last:  ['Eto'o','Song','Choupo-Moting','Aboubakar','Bassogog','Kunde','Toko','Nkoudou','Ngadeu','Oyongo',
+      last:  ['Eto\'o','Song','Choupo-Moting','Aboubakar','Bassogog','Kunde','Toko','Nkoudou','Ngadeu','Oyongo',
               'Fai','Zambo','Mokoena','Ekambi','Tchamba','Mbida','Biya','Kameni','Meyong','Webo']
     },
     NG: {

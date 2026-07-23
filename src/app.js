@@ -11,6 +11,7 @@ registerAvatarGenerator(generateAvatarSVG)
 import { renderAuth }       from './auth/auth.js'
 import { renderSetup }      from './auth/setup.js'
 import { renderHome }       from './home/home.js'
+import { renderHome2 }      from './home/home2.js'
 import { renderSettings }   from './settings/settings.js'
 import { renderCollection } from './collection/collection.js'
 import { renderDecks }      from './decks/decks.js'
@@ -112,6 +113,7 @@ async function renderPage() {
 
   switch (state.page) {
     case 'home':       await renderHome(container, ctx);       break
+    case 'home2':       await renderHome2(container, ctx);       break
     case 'settings':   await renderSettings(container, ctx);   break
     case 'collection': await renderCollection(container, ctx); break
     case 'decks':      await renderDecks(container, ctx);      break

@@ -584,13 +584,6 @@ export async function renderHome2(container, { state, navigate, toast }) {
           <button id="back-to-v1-btn" style="background:none;border:none;color:#D4A017;text-decoration:underline;cursor:pointer;font-size:11px;font-weight:700;padding:0">← Revenir à v1</button>
           <span id="mode-indicator" style="border-left:1px solid rgba(212,160,23,0.4);padding-left:8px;margin-left:2px"></span>
         </div>
-        <button class="home-logout-btn" id="logout-btn">Déconnexion</button>
-        ${p.is_admin ? `
-        <a href="${import.meta.env.BASE_URL}admin.html" class="btn btn-sm" id="admin-editor-btn"
-          style="background:var(--yellow);color:#111;font-weight:700;border:none;text-decoration:none;display:inline-block;padding:4px 12px;border-radius:8px;font-size:12px">
-          ⚙️ Admin Editor
-        </a>
-        <div style="font-size:10px;color:rgba(255,255,255,0.25);font-family:monospace">build ${APP_VERSION}</div>` : ''}
       </div>
 
     </div>
@@ -651,12 +644,6 @@ export async function renderHome2(container, { state, navigate, toast }) {
     })
   }
   document.getElementById('promo-cta-btn')?.addEventListener('click', () => navigate('boosters'))
-
-  document.getElementById('logout-btn').addEventListener('click', async () => {
-    teardownV2Chrome()
-    await supabase.auth.signOut()
-    window.location.reload()
-  })
 
   document.getElementById('back-to-v1-btn')?.addEventListener('click', () => {
     teardownV2Chrome()

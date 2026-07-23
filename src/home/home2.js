@@ -8,6 +8,124 @@ const APP_VERSION = (typeof __BUILD_TIME__ !== 'undefined' && __BUILD_TIME__)
   : new Date().toISOString().slice(0,16).replace('T','-').replace(':','h')
 
 // ── Helpers ──────────────────────────────────────────────────────────────
+
+const V2_TABS = [
+  { key: 'home2',      route: 'home2',      label: 'HOME',     icon: 'nav-home.png' },
+  { key: 'cards',      route: 'collection', label: 'CARDS',    icon: 'nav-collection.png' },
+  { key: 'decks',      route: 'decks',      label: 'DECKS',    icon: 'nav-decks.png' },
+  { key: 'boosters',   route: 'boosters',   label: 'BOOSTERS', icon: 'nav-boosters.png' },
+  { key: 'market',     route: 'market',     label: 'MERCATO',  icon: 'nav-market.png' },
+]
+
+// ── Bandeau persistant Home v2 ──────────────────────────────────────────
+// Attaché directement à document.body (hors #page-content), il survit donc
+// à navigate() qui ne remplace que #page-content. Masque le top-nav/bottom-nav
+// globaux tant qu'il est présent, et se retire uniquement via "Revenir à v1"
+// ou déconnexion. Ne touche jamais aux fichiers des autres pages.
+function ensureV2Chrome(navigate, p, activeRouteKey, ICON) {
+  if (!document.getElementById('home2-chrome-style')) {
+    const style = document.createElement('style')
+    style.id = 'home2-chrome-style'
+    style.textContent = `
+      body:has(#home2-chrome-marker) .top-nav,
+      body:has(#home2-chrome-marker) .bottom-nav { display: none !important; }
+      body:has(#home2-chrome-marker) .page { padding-top: 72px !important; padding-bottom: 0 !important; }
+
+      .home2-chrome-header {
+        position: fixed; top: 0; left: 0; right: 0; z-index: 500;
+        display: flex; align-items: center; gap: 14px;
+        background: var(--nav-bg); border-bottom: 1px solid var(--tile-border);
+        padding: 10px 16px; box-sizing: border-box;
+      }
+      .home2-chrome-logo { flex-shrink: 0; display: flex; align-items: center; }
+      .home2-chrome-logo img { height: 40px; width: auto; display: block; }
+      .home2-chrome-tabs { display: flex; gap: 6px; flex: 1; min-width: 0; justify-content: center; overflow-x: auto; scrollbar-width: none; }
+      .home2-chrome-tabs::-webkit-scrollbar { display: none; }
+      .home2-chrome-tab {
+        flex-shrink: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+        padding: 8px 16px; border-radius: 12px; cursor: pointer; text-decoration: none;
+        background: rgba(255,255,255,0.05); border: 1px solid transparent;
+        color: rgba(255,255,255,0.6); font-size: 10px; font-weight: 900; letter-spacing: .3px;
+        transition: background .15s, color .15s;
+      }
+      .home2-chrome-tab img { width: 20px; height: 20px; object-fit: contain; opacity: .75; }
+      .home2-chrome-tab.active { background: var(--green); color: #fff; }
+      .home2-chrome-tab.active img { opacity: 1; }
+      .home2-chrome-tab:not(.active):hover { background: rgba(255,255,255,0.09); color: #fff; }
+      .home2-chrome-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+      .home2-chrome-settings {
+        width: 34px; height: 34px; border-radius: 50%; border: none;
+        background: rgba(255,255,255,0.08); cursor: pointer;
+        display: flex; align-items: center; justify-content: center; font-size: 15px; color: rgba(255,255,255,0.8);
+      }
+      .home2-chrome-settings:hover { background: rgba(255,255,255,0.15); }
+      .home2-chrome-credits {
+        display: flex; align-items: center; gap: 6px;
+        background: rgba(255,255,255,0.06); border: 1px solid var(--tile-border);
+        border-radius: 20px; padding: 6px 12px; font-size: 13px; font-weight: 800; color: #f2c94c;
+        cursor: pointer; white-space: nowrap;
+      }
+      .home2-chrome-credits:hover { background: rgba(255,255,255,0.1); }
+      .home2-chrome-add {
+        width: 30px; height: 30px; border-radius: 50%; border: none;
+        background: var(--green); color: #fff; font-size: 17px; font-weight: 900; cursor: pointer;
+        display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+      }
+      .home2-chrome-add:hover { filter: brightness(1.15); }
+      @media (max-width: 640px) {
+        .home2-chrome-tab { padding: 7px 10px; }
+        .home2-chrome-tab img { width: 18px; height: 18px; }
+        .home2-chrome-logo img { height: 32px; }
+      }
+    `
+    document.head.appendChild(style)
+  }
+
+  let header = document.getElementById('home2-chrome-header')
+  if (!header) {
+    header = document.createElement('div')
+    header.id = 'home2-chrome-header'
+    header.className = 'home2-chrome-header'
+    header.innerHTML = `
+      <div id="home2-chrome-marker" style="display:none"></div>
+      <div class="home2-chrome-logo"><img src="${ICON}logo-withname.png" alt="Manager Wars"></div>
+      <div class="home2-chrome-tabs">
+        ${V2_TABS.map(t => `
+          <a class="home2-chrome-tab" data-route="${t.route}" data-key="${t.key}">
+            <img src="${ICON}${t.icon}">${t.label}
+          </a>`).join('')}
+      </div>
+      <div class="home2-chrome-right">
+        <button class="home2-chrome-settings" id="home2-chrome-settings-btn">⚙️</button>
+        <div class="home2-chrome-credits" id="home2-chrome-credits">💰 ${(p.credits||0).toLocaleString('fr')}</div>
+        <button class="home2-chrome-add" id="home2-chrome-add-btn">+</button>
+      </div>
+    `
+    document.body.appendChild(header)
+
+    header.querySelectorAll('.home2-chrome-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        header.querySelectorAll('.home2-chrome-tab').forEach(t => t.classList.remove('active'))
+        tab.classList.add('active')
+        navigate(tab.dataset.route)
+      })
+    })
+    header.querySelector('#home2-chrome-settings-btn').addEventListener('click', () => navigate('settings'))
+    header.querySelector('#home2-chrome-credits').addEventListener('click', () => navigate('boosters'))
+    header.querySelector('#home2-chrome-add-btn').addEventListener('click', () => navigate('boosters'))
+  }
+
+  // Met à jour l'onglet actif + le solde de crédits à chaque re-rendu
+  header.querySelectorAll('.home2-chrome-tab').forEach(t => t.classList.toggle('active', t.dataset.key === activeRouteKey))
+  const creditsEl = header.querySelector('#home2-chrome-credits')
+  if (creditsEl) creditsEl.textContent = `💰 ${(p.credits||0).toLocaleString('fr')}`
+}
+
+function teardownV2Chrome() {
+  document.getElementById('home2-chrome-header')?.remove()
+  document.getElementById('home2-chrome-style')?.remove()
+}
+
 function timeAgo(iso) {
   if (!iso) return ''
   const diffMs = Date.now() - new Date(iso).getTime()
@@ -115,6 +233,7 @@ export async function renderHome2(container, { state, navigate, toast }) {
   if (!p) return
 
   const ICON = import.meta.env.BASE_URL + 'icons/'
+  ensureV2Chrome(navigate, p, 'home2', ICON)
   const mmr    = p.mmr ?? 1000
   const tier   = getTier(mmr)
   const sub    = getSubTier(mmr, tier)
@@ -165,65 +284,6 @@ export async function renderHome2(container, { state, navigate, toast }) {
       padding: 16px 16px 80px; box-sizing: border-box; overflow-y: auto;
     }
     .home-inner { width: 100%; max-width: 560px; display: flex; flex-direction: column; gap: 14px; }
-
-    /* ── Masque le top-nav et bottom-nav globaux tant que Home v2 est affiché ── */
-    body:has(#home2-marker) .top-nav,
-    body:has(#home2-marker) .bottom-nav { display: none !important; }
-    body:has(#home2-marker) .page { padding-bottom: 0 !important; }
-
-    /* ── Bandeau d'en-tête Home v2 : logo + onglets + settings + crédits ── */
-    .home2-header {
-      display: flex; align-items: center; gap: 14px;
-      background: var(--nav-bg); border: 1px solid var(--tile-border);
-      border-radius: 16px; padding: 10px 14px;
-    }
-    .home2-logo { display: flex; flex-direction: column; flex-shrink: 0; line-height: 1; }
-    .home2-logo .logo-word { font-size: 21px; font-weight: 900; letter-spacing: .5px; }
-    .home2-logo .logo-word .fm { color: #fff; }
-    .home2-logo .logo-word .war { color: var(--green-light); }
-    .home2-logo .logo-sub { font-size: 7px; font-weight: 700; color: rgba(255,255,255,0.4); letter-spacing: 1.2px; margin-top: 2px; }
-
-    .home2-tabs-row { display: flex; gap: 6px; flex: 1; min-width: 0; overflow-x: auto; scrollbar-width: none; }
-    .home2-tabs-row::-webkit-scrollbar { display: none; }
-    .home2-tab {
-      flex-shrink: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
-      padding: 8px 14px; border-radius: 12px; cursor: pointer; text-decoration: none;
-      background: rgba(255,255,255,0.05); border: 1px solid transparent;
-      color: rgba(255,255,255,0.6); font-size: 10px; font-weight: 900; letter-spacing: .3px;
-      transition: background .15s, color .15s;
-    }
-    .home2-tab img.nav-icon { width: 20px; height: 20px; object-fit: contain; opacity: .75; }
-    .home2-tab.active { background: var(--green); color: #fff; }
-    .home2-tab.active img.nav-icon { opacity: 1; }
-    .home2-tab:not(.active):hover { background: rgba(255,255,255,0.09); color: #fff; }
-
-    .home2-header-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
-    .home2-settings-btn {
-      width: 34px; height: 34px; border-radius: 50%; border: none;
-      background: rgba(255,255,255,0.08); cursor: pointer;
-      display: flex; align-items: center; justify-content: center; font-size: 15px; color: rgba(255,255,255,0.8);
-    }
-    .home2-settings-btn:hover { background: rgba(255,255,255,0.15); }
-    .home2-credits {
-      display: flex; align-items: center; gap: 6px;
-      background: rgba(255,255,255,0.06); border: 1px solid var(--tile-border);
-      border-radius: 20px; padding: 6px 12px; font-size: 13px; font-weight: 800; color: #f2c94c;
-      cursor: pointer; white-space: nowrap;
-    }
-    .home2-credits:hover { background: rgba(255,255,255,0.1); }
-    .home2-add-btn {
-      width: 30px; height: 30px; border-radius: 50%; border: none;
-      background: var(--green); color: #fff; font-size: 17px; font-weight: 900; cursor: pointer;
-      display: flex; align-items: center; justify-content: center; flex-shrink:0;
-    }
-    .home2-add-btn:hover { filter: brightness(1.15); }
-
-    @media (max-width: 640px) {
-      .home2-logo .logo-sub { display: none; }
-      .home2-tab { padding: 7px 10px; }
-      .home2-tab img.nav-icon { width:18px; height:18px; }
-    }
-
 
     /* ── Profil ── */
     .profile-row { display: flex; align-items: center; gap: 12px; }
@@ -394,28 +454,6 @@ export async function renderHome2(container, { state, navigate, toast }) {
 
   <div class="home-dark" id="home-dark">
     <div class="home-inner">
-      <div id="home2-marker" style="display:none"></div>
-
-      <!-- Bandeau d'en-tête Home v2 (remplace top-nav + bottom-nav globaux) -->
-      <div class="home2-header">
-        <div class="home2-logo">
-          <div class="logo-word"><span class="fm">FM</span><span class="war">WAR</span></div>
-          <div class="logo-sub">FOOTBALL MANAGERS<br>BATTLE</div>
-        </div>
-        <div class="home2-tabs-row">
-          <a class="home2-tab active" id="tab-home"><img src="${ICON}nav-home.png" class="nav-icon">HOME</a>
-          <a class="home2-tab" id="tab-cards"><img src="${ICON}nav-collection.png" class="nav-icon">CARDS</a>
-          <a class="home2-tab" id="tab-decks"><img src="${ICON}nav-decks.png" class="nav-icon">DECKS</a>
-          <a class="home2-tab" id="tab-boosters"><img src="${ICON}nav-boosters.png" class="nav-icon">BOOSTERS</a>
-          <a class="home2-tab" id="tab-market"><img src="${ICON}nav-market.png" class="nav-icon">MERCATO</a>
-        </div>
-        <div class="home2-header-right">
-          <button class="home2-settings-btn" id="header-settings-btn">⚙️</button>
-          <div class="home2-credits" id="header-credits">💰 ${(p.credits||0).toLocaleString('fr')}</div>
-          <button class="home2-add-btn" id="header-add-btn">+</button>
-        </div>
-      </div>
-
       <!-- Bannières dynamiques -->
       <div id="friend-requests-banner"></div>
       <div id="match-invite-banner"></div>
@@ -537,11 +575,9 @@ export async function renderHome2(container, { state, navigate, toast }) {
   // Adapter la hauteur globale
   requestAnimationFrame(() => {
     const vh = window.visualViewport?.height || window.innerHeight
-    const topNavEl = document.querySelector('.top-nav')
-    const botNavEl = document.querySelector('.bottom-nav')
-    const topBar = (topNavEl && topNavEl.offsetParent !== null) ? topNavEl.offsetHeight : 0
-    const botNav = (botNavEl && botNavEl.offsetParent !== null) ? botNavEl.offsetHeight : 0
-    const avail = vh - topBar - botNav
+    const chromeHeader = document.getElementById('home2-chrome-header')
+    const chromeH = chromeHeader ? chromeHeader.offsetHeight : 0
+    const avail = vh - chromeH
     const dark = container.querySelector('.home-dark')
     if (dark) dark.style.minHeight = avail + 'px'
   })
@@ -554,16 +590,6 @@ export async function renderHome2(container, { state, navigate, toast }) {
   }
   updateModeIndicator()
   window.addEventListener('resize', updateModeIndicator)
-
-  // Barre d'onglets PC — navigation vers les mêmes routes que le bottom-nav
-  document.getElementById('tab-home')?.addEventListener('click', () => navigate('home2'))
-  document.getElementById('header-settings-btn')?.addEventListener('click', () => navigate('settings'))
-  document.getElementById('header-credits')?.addEventListener('click', () => navigate('boosters'))
-  document.getElementById('header-add-btn')?.addEventListener('click', () => navigate('boosters'))
-  document.getElementById('tab-cards')?.addEventListener('click', () => navigate('collection'))
-  document.getElementById('tab-decks')?.addEventListener('click', () => navigate('decks'))
-  document.getElementById('tab-boosters')?.addEventListener('click', () => navigate('boosters'))
-  document.getElementById('tab-market')?.addEventListener('click', () => navigate('market'))
 
   document.getElementById('nav-settings-btn')?.addEventListener('click', () => navigate('settings'))
   document.getElementById('nav-edit-btn')?.addEventListener('click', () => navigate('settings'))
@@ -604,11 +630,15 @@ export async function renderHome2(container, { state, navigate, toast }) {
   document.getElementById('promo-cta-btn')?.addEventListener('click', () => navigate('boosters'))
 
   document.getElementById('logout-btn').addEventListener('click', async () => {
+    teardownV2Chrome()
     await supabase.auth.signOut()
     window.location.reload()
   })
 
-  document.getElementById('back-to-v1-btn')?.addEventListener('click', () => navigate('home'))
+  document.getElementById('back-to-v1-btn')?.addEventListener('click', () => {
+    teardownV2Chrome()
+    navigate('home')
+  })
 
   loadFriendRequestsBanner(state, toast)
   loadMatchInviteBanner(state, toast, navigate)

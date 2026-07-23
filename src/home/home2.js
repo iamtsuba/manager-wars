@@ -30,7 +30,9 @@ export function ensureV2Chrome(navigate, p, activeRouteKey, ICON) {
     style.textContent = `
       body:has(#home2-chrome-marker) .top-nav,
       body:has(#home2-chrome-marker) .bottom-nav { display: none !important; }
-      body:has(#home2-chrome-marker) .page { padding-top: var(--v2-header-height, 100px) !important; padding-bottom: 0 !important; }
+      body:has(#home2-chrome-marker) #page-content { padding-top: var(--v2-header-height, 100px) !important; padding-bottom: 0 !important; }
+      /* Neutralise le padding-top/bottom que certaines pages (ex: Cards) réappliquent sur leur propre .page interne imbriqué */
+      body:has(#home2-chrome-marker) #page-content .page { padding-top: 0 !important; padding-bottom: 0 !important; }
 
       .home2-chrome-header {
         position: fixed; top: 0; left: 0; right: 0; z-index: 500;

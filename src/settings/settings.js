@@ -4,9 +4,13 @@ import { getTheme, setTheme } from '../app.js'
 import { getVolume, setVolume, playSound } from '../lib/sound.js'
 
 export async function renderSettings(container, ctx) {
-  const { navigate } = ctx
+  const { state, navigate } = ctx
   const theme = getTheme()
   const volume = getVolume()
+  const isAdmin = state?.profile?.is_admin
+  const APP_VERSION = (typeof __BUILD_TIME__ !== 'undefined' && __BUILD_TIME__)
+    ? __BUILD_TIME__
+    : new Date().toISOString().slice(0,16).replace('T','-').replace(':','h')
 
   container.innerHTML = `
   <div style="height:100%;overflow-y:auto;background:var(--page-bg)">
@@ -45,9 +49,17 @@ export async function renderSettings(container, ctx) {
         </button>
       </div>
 
-      <button id="settings-logout" class="btn" style="width:100%;padding:14px;border-radius:12px;border:1.5px solid #ff6b6b;background:transparent;color:#ff6b6b;font-weight:700;font-size:14px;cursor:pointer;margin-top:6px">
+      ${isAdmin ? `
+      <a href="${import.meta.env.BASE_URL}admin.html" id="settings-admin-mode"
+        style="width:100%;box-sizing:border-box;padding:14px;border-radius:12px;border:none;background:var(--yellow,#D4A017);color:#111;font-weight:900;font-size:14px;cursor:pointer;margin-top:6px;text-align:center;text-decoration:none;display:flex;align-items:center;justify-content:center;gap:8px">
+        ⚙️ Administration Mode
+      </a>` : ''}
+
+      <button id="settings-logout" class="btn" style="width:100%;padding:14px;border-radius:12px;border:1.5px solid #ff6b6b;background:transparent;color:#ff6b6b;font-weight:700;font-size:14px;cursor:pointer;margin-top:${isAdmin?'0':'6px'}">
         Déconnexion
       </button>
+
+      <div style="text-align:center;font-size:10px;color:rgba(255,255,255,0.25);font-family:monospace;margin-top:4px">build ${APP_VERSION}</div>
 
     </div>
   </div>`

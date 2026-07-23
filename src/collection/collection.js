@@ -245,14 +245,14 @@ export async function renderCollection(container, ctx) {
               style="flex-shrink:0;padding:4px 12px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;
                 border:1.5px solid ${f===activeFilter?'var(--green)':'var(--tile-border)'};
                 background:${f===activeFilter?'var(--green)':'#fff'};
-                color:${f===activeFilter?'#fff':'var(--tile-fg-dim)'}">
+                color:${f===activeFilter?'#fff':'#555'}">
               ${f}
             </button>`).join('')}
           <button id="show-all-btn"
             style="flex-shrink:0;margin-left:auto;padding:4px 12px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;
               border:1.5px solid ${showAll?'var(--yellow)':'var(--tile-border)'};
               background:${showAll?'var(--yellow)':'#fff'};
-              color:${showAll?'#111':'var(--tile-fg-dim)'}; font-size:18px; padding:5px 10px">
+              color:${showAll?'#111':'#555'}; font-size:18px; padding:5px 10px">
             ${showAll ? '👁️' : '🚫👁️'}
           </button>
         </div>`
@@ -281,7 +281,7 @@ export async function renderCollection(container, ctx) {
             style="padding:4px 12px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;
               border:1.5px solid ${showAll?'var(--yellow)':'var(--tile-border)'};
               background:${showAll?'var(--yellow)':'#fff'};
-              color:${showAll?'#111':'var(--tile-fg-dim)'}; font-size:18px; padding:5px 10px">
+              color:${showAll?'#111':'#555'}; font-size:18px; padding:5px 10px">
             ${showAll ? '👁️' : '🚫👁️'}
           </button>
         </div>`
@@ -865,11 +865,11 @@ async function openCardDetail(card, allPlayerCards, countByPlayer, ctx) {
     <div style="display:flex;justify-content:space-between;align-items:flex-start;background:#f9f9f9;border-radius:8px;padding:8px 12px;gap:8px">
       <div style="flex:1;min-width:0">
         <div style="font-size:13px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${t.club_name}</div>
-        <div style="font-size:11px;color:var(--tile-fg-dim)">(${t.manager_name})</div>
+        <div style="font-size:11px;color:#999">(${t.manager_name})</div>
       </div>
       <div style="text-align:right;flex-shrink:0">
-        <div style="font-size:13px;font-weight:700;color:${t.source==='booster'?'var(--tile-fg-dim)':'var(--yellow)'}">${price}</div>
-        <div style="font-size:11px;color:var(--tile-fg-dim)">${date}</div>
+        <div style="font-size:13px;font-weight:700;color:${t.source==='booster'?'#999':'var(--yellow)'}">${price}</div>
+        <div style="font-size:11px;color:#999">${date}</div>
       </div>
     </div>`
   }
@@ -965,8 +965,8 @@ async function openCardDetail(card, allPlayerCards, countByPlayer, ctx) {
       <!-- Infos -->
       <div style="flex:1;min-width:160px;display:flex;flex-direction:column;gap:10px">
         <div>
-          <div style="font-size:11px;color:var(--tile-fg-dim);margin-bottom:2px">RARETÉ</div>
-          <div style="font-weight:700;color:${rarColor}">${p.rarity.toUpperCase()}</div>
+          <div style="font-size:11px;color:#888;margin-bottom:2px">RARETÉ</div>
+          <div style="font-weight:700;color:${p.rarity==='normal' ? '#555' : (p.rarity==='papyte' ? '#707070' : rarColor)}">${p.rarity.toUpperCase()}</div>
           ${(p.rarity==='pepite'||p.rarity==='papyte') ? `
           <div style="margin-top:6px;background:${rarColor}18;border-left:3px solid ${rarColor};border-radius:0 6px 6px 0;padding:6px 10px">
             <div style="font-size:11px;font-weight:700;color:${rarColor};margin-bottom:2px">✨ Carte évolutive</div>
@@ -978,11 +978,11 @@ async function openCardDetail(card, allPlayerCards, countByPlayer, ctx) {
           </div>` : ''}
         </div>
         <div>
-          <div style="font-size:11px;color:var(--tile-fg-dim);margin-bottom:2px">POSTE</div>
+          <div style="font-size:11px;color:#888;margin-bottom:2px">POSTE</div>
           <div style="font-weight:700">${p.job}${p.job2?' / '+p.job2:''}</div>
         </div>
         <div>
-          <div style="font-size:11px;color:var(--tile-fg-dim);margin-bottom:6px">NOTES</div>
+          <div style="font-size:11px;color:#888;margin-bottom:6px">NOTES</div>
           <div style="display:flex;align-items:center;gap:6px">
             ${[['GK',p.note_g],['DEF',p.note_d],['MIL',p.note_m],['ATT',p.note_a]].map(([j,n]) => {
               const col = JOB_COLORS[j]
@@ -1000,7 +1000,7 @@ async function openCardDetail(card, allPlayerCards, countByPlayer, ctx) {
           </div>
         </div>
         <div>
-          <div style="font-size:11px;color:var(--tile-fg-dim);margin-bottom:2px">EN COLLECTION</div>
+          <div style="font-size:11px;color:#888;margin-bottom:2px">EN COLLECTION</div>
           <div style="font-weight:700;font-size:18px">×${count}</div>
         </div>
       </div>

@@ -123,13 +123,14 @@ export function renderPlayerCard(p, opts = {}) {
   const noteX    = ax(100)
   const noteW    = ax(309)
 
-  // Drapeaux/logo : alignés sur le centre de la note (y centre note = 390+90=480)
-  const rectH    = ax(115) // réduit davantage pour un look plus compact
-  const rectW    = ax(80)
-  const rectY    = ax(315) // remonté nettement, juste au-dessus du haut de l'octogone note
+  // Drapeaux/logo : ronds, centrés verticalement sur le centre de la note (390+180/2=480)
+  const rectSize = ax(90)
+  const rectH    = rectSize
+  const rectW    = rectSize
+  const rectY    = ax(480) - rectSize/2   // centré sur le milieu de la note
   const rectLX   = ax(38)    // moins collé au bord
   const rectRX   = ax(374)   // moins collé au bord
-  const rectR    = ax(6)
+  const rectR    = rectSize/2  // cercle parfait
 
   return `<div style="position:relative;width:${width}px;height:${height}px;flex-shrink:0;${opacity}user-select:none;${glowStyle}">
   <div style="position:absolute;top:${opts._cardOffset||0}px;left:0;width:${width}px;height:${height}px">
@@ -191,19 +192,21 @@ export function renderPlayerCard(p, opts = {}) {
     <span style="font-size:${px(32)};font-weight:900;color:${JOB_ACCENT[job2]||'#e03030'};font-family:Arial Black,Arial;line-height:1">${job2Note}</span>
   </div>` : ''}
 
-  <!-- Drapeau : sans fond -->
+  <!-- Drapeau : rond -->
   <div style="position:absolute;left:${rectLX}px;top:${rectY}px;width:${rectW}px;height:${rectH}px;z-index:3;
-    display:flex;align-items:center;justify-content:center;overflow:hidden">
+    border-radius:${rectR}px;overflow:hidden;
+    display:flex;align-items:center;justify-content:center;background:#0a0a0a;border:${px(2)} solid rgba(255,255,255,0.15)">
     ${flagUrl
-      ? `<img src="${flagUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:${rectR}px">`
+      ? `<img src="${flagUrl}" style="width:100%;height:100%;object-fit:cover">`
       : `<span style="font-size:${px(22)}">🌍</span>`}
   </div>
 
-  <!-- Logo club : sans fond -->
+  <!-- Logo club : rond -->
   <div style="position:absolute;left:${rectRX}px;top:${rectY}px;width:${rectW}px;height:${rectH}px;z-index:3;
-    display:flex;align-items:center;justify-content:center;overflow:hidden">
+    border-radius:${rectR}px;overflow:hidden;
+    display:flex;align-items:center;justify-content:center;background:#0a0a0a;border:${px(2)} solid rgba(255,255,255,0.15)">
     ${clubLogoUrl
-      ? `<img src="${clubLogoUrl}" style="width:100%;height:100%;object-fit:contain">`
+      ? `<img src="${clubLogoUrl}" style="width:100%;height:100%;object-fit:cover">`
       : `<span style="font-size:${px(14)};font-weight:900;color:#fff">${(p.clubs?.encoded_name||p.clubName||'').slice(0,3).toUpperCase()}</span>`}
   </div>
 

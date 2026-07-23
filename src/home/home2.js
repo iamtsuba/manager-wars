@@ -11,6 +11,7 @@ const APP_VERSION = (typeof __BUILD_TIME__ !== 'undefined' && __BUILD_TIME__)
 
 const V2_TABS = [
   { key: 'home2',      route: 'home2',      label: 'HOME',     icon: 'nav-home.png' },
+  { key: 'game',       route: 'game',       label: 'GAME',     emoji: '🎮' },
   { key: 'cards',      route: 'collection', label: 'CARDS',    icon: 'nav-collection.png' },
   { key: 'decks',      route: 'decks',      label: 'DECKS',    icon: 'nav-decks.png' },
   { key: 'boosters',   route: 'boosters',   label: 'BOOSTERS', icon: 'nav-boosters.png' },
@@ -22,60 +23,62 @@ const V2_TABS = [
 // à navigate() qui ne remplace que #page-content. Masque le top-nav/bottom-nav
 // globaux tant qu'il est présent, et se retire uniquement via "Revenir à v1"
 // ou déconnexion. Ne touche jamais aux fichiers des autres pages.
-function ensureV2Chrome(navigate, p, activeRouteKey, ICON) {
+export function ensureV2Chrome(navigate, p, activeRouteKey, ICON) {
   if (!document.getElementById('home2-chrome-style')) {
     const style = document.createElement('style')
     style.id = 'home2-chrome-style'
     style.textContent = `
       body:has(#home2-chrome-marker) .top-nav,
       body:has(#home2-chrome-marker) .bottom-nav { display: none !important; }
-      body:has(#home2-chrome-marker) .page { padding-top: 72px !important; padding-bottom: 0 !important; }
+      body:has(#home2-chrome-marker) .page { padding-top: var(--v2-header-height, 100px) !important; padding-bottom: 0 !important; }
 
       .home2-chrome-header {
         position: fixed; top: 0; left: 0; right: 0; z-index: 500;
         display: flex; align-items: center; gap: 14px;
         background: var(--nav-bg); border-bottom: 1px solid var(--tile-border);
-        padding: 10px 16px; box-sizing: border-box;
+        padding: 14px 20px; box-sizing: border-box;
       }
       .home2-chrome-logo { flex-shrink: 0; display: flex; align-items: center; }
-      .home2-chrome-logo img { height: 40px; width: auto; display: block; }
-      .home2-chrome-tabs { display: flex; gap: 6px; flex: 1; min-width: 0; justify-content: center; overflow-x: auto; scrollbar-width: none; }
+      .home2-chrome-logo img { height: 52px; width: auto; display: block; }
+      .home2-chrome-tabs { display: flex; gap: 10px; flex: 1; min-width: 0; justify-content: center; overflow-x: auto; scrollbar-width: none; }
       .home2-chrome-tabs::-webkit-scrollbar { display: none; }
       .home2-chrome-tab {
-        flex-shrink: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
-        padding: 8px 16px; border-radius: 12px; cursor: pointer; text-decoration: none;
+        flex-shrink: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px;
+        padding: 12px 22px; border-radius: 14px; cursor: pointer; text-decoration: none;
         background: rgba(255,255,255,0.05); border: 1px solid transparent;
-        color: rgba(255,255,255,0.6); font-size: 10px; font-weight: 900; letter-spacing: .3px;
+        color: rgba(255,255,255,0.6); font-size: 12px; font-weight: 900; letter-spacing: .4px;
         transition: background .15s, color .15s;
       }
-      .home2-chrome-tab img { width: 20px; height: 20px; object-fit: contain; opacity: .75; }
+      .home2-chrome-tab img { width: 30px; height: 30px; object-fit: contain; opacity: .75; }
+      .home2-chrome-tab-emoji { font-size: 26px; line-height: 1; opacity: .9; }
       .home2-chrome-tab.active { background: var(--green); color: #fff; }
       .home2-chrome-tab.active img { opacity: 1; }
       .home2-chrome-tab:not(.active):hover { background: rgba(255,255,255,0.09); color: #fff; }
-      .home2-chrome-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+      .home2-chrome-right { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
       .home2-chrome-settings {
-        width: 34px; height: 34px; border-radius: 50%; border: none;
+        width: 40px; height: 40px; border-radius: 50%; border: none;
         background: rgba(255,255,255,0.08); cursor: pointer;
-        display: flex; align-items: center; justify-content: center; font-size: 15px; color: rgba(255,255,255,0.8);
+        display: flex; align-items: center; justify-content: center; font-size: 18px; color: rgba(255,255,255,0.8);
       }
       .home2-chrome-settings:hover { background: rgba(255,255,255,0.15); }
       .home2-chrome-credits {
         display: flex; align-items: center; gap: 6px;
         background: rgba(255,255,255,0.06); border: 1px solid var(--tile-border);
-        border-radius: 20px; padding: 6px 12px; font-size: 13px; font-weight: 800; color: #f2c94c;
+        border-radius: 22px; padding: 8px 16px; font-size: 15px; font-weight: 800; color: #f2c94c;
         cursor: pointer; white-space: nowrap;
       }
       .home2-chrome-credits:hover { background: rgba(255,255,255,0.1); }
       .home2-chrome-add {
-        width: 30px; height: 30px; border-radius: 50%; border: none;
-        background: var(--green); color: #fff; font-size: 17px; font-weight: 900; cursor: pointer;
+        width: 36px; height: 36px; border-radius: 50%; border: none;
+        background: var(--green); color: #fff; font-size: 20px; font-weight: 900; cursor: pointer;
         display: flex; align-items: center; justify-content: center; flex-shrink: 0;
       }
       .home2-chrome-add:hover { filter: brightness(1.15); }
       @media (max-width: 640px) {
-        .home2-chrome-tab { padding: 7px 10px; }
-        .home2-chrome-tab img { width: 18px; height: 18px; }
-        .home2-chrome-logo img { height: 32px; }
+        .home2-chrome-tab { padding: 9px 14px; }
+        .home2-chrome-tab img { width: 24px; height: 24px; }
+        .home2-chrome-tab-emoji { font-size: 22px; }
+        .home2-chrome-logo img { height: 38px; }
       }
     `
     document.head.appendChild(style)
@@ -92,7 +95,7 @@ function ensureV2Chrome(navigate, p, activeRouteKey, ICON) {
       <div class="home2-chrome-tabs">
         ${V2_TABS.map(t => `
           <a class="home2-chrome-tab" data-route="${t.route}" data-key="${t.key}">
-            <img src="${ICON}${t.icon}">${t.label}
+            ${t.icon ? `<img src="${ICON}${t.icon}">` : `<span class="home2-chrome-tab-emoji">${t.emoji}</span>`}${t.label}
           </a>`).join('')}
       </div>
       <div class="home2-chrome-right">
@@ -119,6 +122,11 @@ function ensureV2Chrome(navigate, p, activeRouteKey, ICON) {
   header.querySelectorAll('.home2-chrome-tab').forEach(t => t.classList.toggle('active', t.dataset.key === activeRouteKey))
   const creditsEl = header.querySelector('#home2-chrome-credits')
   if (creditsEl) creditsEl.textContent = `💰 ${(p.credits||0).toLocaleString('fr')}`
+
+  // Recalcule la hauteur réelle du bandeau (utile après agrandissement des boutons/icônes)
+  requestAnimationFrame(() => {
+    document.documentElement.style.setProperty('--v2-header-height', header.offsetHeight + 'px')
+  })
 }
 
 function teardownV2Chrome() {
@@ -826,7 +834,7 @@ async function loadFriendRequestsBanner(state, toast) {
   document.getElementById('friend-req-btn').addEventListener('click', () => showPendingPopup(state, toast, () => loadFriendRequestsBanner(state, toast)))
 }
 
-function showDifficultyPicker(navigate) {
+export function showDifficultyPicker(navigate) {
   const levels = [
     { mode:'vs_ai_easy',   label:'Facile',    desc:'Pour découvrir le jeu',      credits:'500',   icon:'🟢',
       bg:'#eefaf2', border:'#bfe8cf', iconBg:'#1A6B3C', text:'#12401f' },

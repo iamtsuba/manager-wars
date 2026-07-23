@@ -170,6 +170,7 @@ export async function renderHome(container, { state, navigate, toast }) {
 
       <!-- Footer -->
       <div class="home-footer">
+        <button class="home-logout-btn" id="try-home2-btn" style="background:rgba(212,160,23,0.15);border-color:rgba(212,160,23,0.4);color:#D4A017">🧪 Essayer Home v2</button>
         <button class="home-logout-btn" id="logout-btn">Déconnexion</button>
         ${p.is_admin ? `
         <a href="${import.meta.env.BASE_URL}admin.html" class="btn btn-sm" id="admin-editor-btn"
@@ -236,6 +237,8 @@ export async function renderHome(container, { state, navigate, toast }) {
     await supabase.auth.signOut()
     window.location.reload()
   })
+
+  document.getElementById('try-home2-btn')?.addEventListener('click', () => navigate('home2'))
 
   loadFriendRequestsBanner(state, toast)
   loadMatchInviteBanner(state, toast, navigate)

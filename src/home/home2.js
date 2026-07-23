@@ -1,14 +1,120 @@
 import { supabase } from '../lib/supabase.js'
 import { showPendingPopup } from '../friends/friends.js'
 import { stopBGM } from '../lib/sound.js'
+import { getTier, getTierProgress, TIERS } from '../ranked/glicko2.js'
 
 const APP_VERSION = (typeof __BUILD_TIME__ !== 'undefined' && __BUILD_TIME__)
   ? __BUILD_TIME__
   : new Date().toISOString().slice(0,16).replace('T','-').replace(':','h')
 
+// ── Helpers ──────────────────────────────────────────────────────────────
+function timeAgo(iso) {
+  if (!iso) return ''
+  const diffMs = Date.now() - new Date(iso).getTime()
+  const min = Math.floor(diffMs / 60000)
+  if (min < 1)   return 'à l\'instant'
+  if (min < 60)  return `il y a ${min}min`
+  const h = Math.floor(min / 60)
+  if (h < 24)    return `il y a ${h}h`
+  const j = Math.floor(h / 24)
+  if (j < 7)     return `il y a ${j}j`
+  return new Date(iso).toLocaleDateString('fr-FR', { day:'2-digit', month:'short' })
+}
+
+// Sous-palier I/II/III à l'intérieur d'un tier (esthétique, purement visuel)
+function getSubTier(mmr, tier) {
+  if (!isFinite(tier.max)) return ''
+  const range = tier.max - tier.min + 1
+  const third = Math.floor((mmr - tier.min) / (range / 3))
+  return ['III','II','I'][Math.min(2, Math.max(0, third))]
+}
+
+async function fetchTopRanking(myId) {
+  const { data: top } = await supabase
+    .from('users')
+    .select('id,pseudo,club_name,mmr')
+    .order('mmr', { ascending: false })
+    .limit(5)
+
+  const list = top || []
+  const iAmInTop = list.some(u => u.id === myId)
+  let myPosition = null
+  if (!iAmInTop) {
+    const { data: meRow } = await supabase.from('users').select('mmr').eq('id', myId).single()
+    if (meRow) {
+      const { count } = await supabase
+        .from('users')
+        .select('id', { count: 'exact', head: true })
+        .gt('mmr', meRow.mmr || 0)
+      myPosition = (count || 0) + 1
+    }
+  }
+  return { list, iAmInTop, myPosition }
+}
+
+async function fetchNews(limit = 4) {
+  const { data } = await supabase
+    .from('patch_notes')
+    .select('id,title,description,image_url,published_at')
+    .eq('is_published', true)
+    .order('published_at', { ascending: false })
+    .limit(limit)
+  return data || []
+}
+
+async function fetchPromoBoosters() {
+  const { data } = await supabase
+    .from('booster_configs')
+    .select('id,name,icon,price_type,price_credits,card_count')
+    .eq('is_active', true)
+    .order('created_at', { ascending: false })
+    .limit(5)
+  return data || []
+}
+
 export async function renderHome2(container, { state, navigate, toast }) {
   const p = state.profile
   if (!p) return
+
+  const mmr    = p.mmr ?? 1000
+  const tier   = getTier(mmr)
+  const sub    = getSubTier(mmr, tier)
+  const prog   = getTierProgress(mmr)
+  const nextRP = isFinite(tier.max) ? tier.max + 1 : null
+
+  const [{ list: topUsers, iAmInTop, myPosition }, news, promoBoosters] = await Promise.all([
+    fetchTopRanking(p.id),
+    fetchNews(5),
+    fetchPromoBoosters()
+  ])
+
+  const rankRowHTML = (u, i) => `
+    <div class="rank-row ${u.id === p.id ? 'rank-row-me' : ''}">
+      <div class="rank-pos ${i < 3 ? 'rank-pos-top' + (i+1) : ''}">${i < 3 ? ['🥇','🥈','🥉'][i] : i+1}</div>
+      <div class="rank-name">${u.pseudo}</div>
+      <div class="rank-rp">${(u.mmr ?? 0).toLocaleString('fr')} RP</div>
+    </div>`
+
+  const newsItemHTML = (n) => `
+    <div class="news-item" data-news-id="${n.id}">
+      ${n.image_url ? `<img src="${n.image_url}" class="news-thumb" onerror="this.style.display='none'">` : `<div class="news-thumb news-thumb-fallback">📰</div>`}
+      <div class="news-body">
+        <div class="news-title">${n.title}</div>
+        <div class="news-desc">${n.description || ''}</div>
+        <div class="news-time">${timeAgo(n.published_at)}</div>
+      </div>
+    </div>`
+
+  let promoIdx = 0
+  const promoSlideHTML = (b) => `
+    <div class="promo-icon-wrap">
+      <img src="${import.meta.env.BASE_URL}icons/${b.icon || 'nav-boosters.png'}" class="promo-icon" onerror="this.style.display='none'">
+    </div>
+    <div class="promo-info">
+      <div class="promo-kicker">NOUVEAU BOOSTER</div>
+      <div class="promo-title">${b.name}</div>
+      <div class="promo-desc">${b.card_count || 5} cartes · ${b.price_type === 'pub' ? 'Pub gratuite' : (b.price_credits||0).toLocaleString('fr') + ' cr.'}</div>
+    </div>`
 
   container.innerHTML = `
   <style>
@@ -24,130 +130,161 @@ export async function renderHome2(container, { state, navigate, toast }) {
       box-sizing: border-box;
       overflow-y: auto;
     }
-    .home-inner {
-      width: 100%;
-      max-width: 560px;
+    .home-inner { width: 100%; max-width: 560px; display: flex; flex-direction: column; gap: 12px; }
+
+    /* ── Carte profil + rang ── */
+    .profile-rank-card {
+      background: var(--tile-bg);
+      border: 1px solid var(--tile-border);
+      border-radius: 16px;
+      padding: 14px 16px;
       display: flex;
       flex-direction: column;
       gap: 12px;
     }
-    .home-hero {
+    .profile-row { display: flex; align-items: center; gap: 12px; }
+    .profile-badge {
+      width: 44px; height: 44px; border-radius: 12px; flex-shrink: 0;
       background: linear-gradient(135deg, ${p.club_color1}cc, ${p.club_color2}88);
       border: 1.5px solid ${p.club_color2};
-      border-radius: 16px;
-      padding: 14px 18px;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 900; font-size: 18px; color: var(--tile-fg-on-page);
     }
-    .home-hero-info h3 { margin:0; font-size:17px; font-weight:900; color:var(--tile-fg-on-page); }
-    .home-hero-info .level { font-size:11px; color:var(--tile-fg-dim); letter-spacing:1px; text-transform:uppercase; margin-top:2px; }
-    .home-hero-btn {
-      width:38px; height:38px; border-radius:50%; border:none;
-      background:rgba(255,255,255,0.15); cursor:pointer;
-      display:flex; align-items:center; justify-content:center;
-      transition: background .2s;
+    .profile-info { flex: 1; min-width: 0; }
+    .profile-info h3 { margin: 0; font-size: 16px; font-weight: 900; color: var(--tile-fg-on-page); }
+    .profile-info .club { font-size: 11px; color: var(--tile-fg-dim); margin-top: 1px; }
+    .profile-settings-btn {
+      width: 34px; height: 34px; border-radius: 50%; border: none;
+      background: rgba(255,255,255,0.08); cursor: pointer; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center; font-size: 16px;
+      color: var(--tile-fg-dim);
     }
-    .home-hero-btn:hover { background:rgba(255,255,255,0.25); }
-    .home-hero-btn img { width:22px; height:22px; object-fit:contain; }
+
+    .rank-block { display: flex; flex-direction: column; gap: 6px; }
+    .rank-top-row { display: flex; align-items: center; justify-content: space-between; }
+    .rank-tier-label { display:flex; align-items:center; gap:6px; font-size:14px; font-weight:900; color:${tier.color}; }
+    .rank-view-btn {
+      background: rgba(255,255,255,0.06); border: 1px solid var(--tile-border);
+      color: var(--tile-fg-dim); font-size: 11px; font-weight:700; border-radius: 10px;
+      padding: 5px 10px; cursor: pointer; display:flex; align-items:center; gap:4px;
+    }
+    .rank-view-btn:hover { filter: brightness(1.2); }
+    .rank-rp-label { font-size: 11px; color: var(--tile-fg-dim); }
+    .rank-progress-track { width:100%; height:7px; border-radius:4px; background: rgba(255,255,255,0.08); overflow:hidden; }
+    .rank-progress-fill { height:100%; border-radius:4px; background: linear-gradient(90deg, ${tier.color}99, ${tier.color}); transition: width .4s; }
+
+    .profile-view-btn {
+      width: 100%; text-align:center; background: rgba(255,255,255,0.05); border: 1px solid var(--tile-border);
+      color: var(--tile-fg-on-page); font-size: 12px; font-weight: 700; border-radius: 10px;
+      padding: 9px; cursor: pointer;
+    }
+    .profile-view-btn:hover { filter: brightness(1.15); }
+
+    /* ── Classement mini-widget ── */
+    .ranking-widget {
+      background: var(--tile-bg); border: 1px solid var(--tile-border); border-radius: 16px;
+      padding: 14px 16px; display: flex; flex-direction: column; gap: 10px;
+    }
+    .ranking-widget-header { display:flex; align-items:center; justify-content:space-between; }
+    .ranking-widget-header h4 { margin:0; font-size:13px; font-weight:900; color: var(--tile-fg-on-page); letter-spacing:.5px; }
+    .ranking-widget-header a { font-size: 11px; color: var(--green); font-weight:700; cursor:pointer; text-decoration:none; }
+    .rank-row { display:flex; align-items:center; gap:10px; padding:6px 0; }
+    .rank-row-me { background: rgba(212,160,23,0.1); border-radius: 8px; margin: 0 -8px; padding: 6px 8px; }
+    .rank-pos {
+      width: 24px; height: 24px; border-radius: 50%; flex-shrink:0;
+      background: rgba(255,255,255,0.06); color: var(--tile-fg-dim);
+      display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:900;
+    }
+    .rank-pos-top1 { background:#D4A017; color:#000; }
+    .rank-pos-top2 { background:#a0a0a0; color:#000; }
+    .rank-pos-top3 { background:#cd7f32; color:#000; }
+    .rank-name { flex:1; min-width:0; font-size:12px; font-weight:700; color: var(--tile-fg-on-page); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .rank-rp { font-size: 12px; font-weight:900; color: var(--tile-fg-dim); flex-shrink:0; }
+    .ranking-widget-cta {
+      width:100%; text-align:center; background: rgba(255,255,255,0.05); border:1px solid var(--tile-border);
+      color: var(--tile-fg-on-page); font-size:12px; font-weight:700; border-radius:10px; padding:9px; cursor:pointer;
+    }
+    .ranking-widget-cta:hover { filter: brightness(1.15); }
+
+    /* ── Section Jouer ── */
+    .play-section-header { display:flex; align-items:center; gap:8px; margin: 2px 0 2px; }
+    .play-section-header h4 { margin:0; font-size:14px; font-weight:900; letter-spacing:2px; color: var(--tile-fg-on-page); }
+    .play-section-header .slashes { color: var(--green); font-weight:900; font-size:14px; letter-spacing:2px; }
+
+    .play-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .play-tile {
+      border-radius: 16px; background: var(--tile-bg); border: 1px solid var(--tile-border);
+      cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 10px;
+      transition: transform .15s, filter .15s; backdrop-filter: blur(4px);
+    }
+    .play-tile:hover { filter: brightness(1.12); }
+    .play-tile:active { transform: scale(.96); }
+    .play-text-overlay { max-height: 26px !important; width: auto !important; }
+    .ranked-tile .play-text-overlay { max-height: 34px !important; }
 
     .ranked-tile {
       border-radius: 16px;
       background: linear-gradient(135deg, #2d0a6e 0%, #4a1a8a 50%, #6a28b8 100%);
       border: 1.5px solid rgba(122,40,184,0.6);
       box-shadow: 0 4px 20px rgba(122,40,184,0.3);
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 8px;
+      cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 8px;
       transition: transform .15s, box-shadow .15s;
     }
     .ranked-tile:active { transform: scale(.97); }
 
-    .play-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px;
+    /* ── Bannière promo booster ── */
+    .promo-banner {
+      background: linear-gradient(135deg, #14261a 0%, #0d1a12 100%);
+      border: 1px solid rgba(212,160,23,0.3); border-radius: 16px;
+      padding: 16px; display:flex; align-items:center; gap:14px; position: relative; overflow:hidden;
     }
-    .play-tile {
-      border-radius: 16px;
-      background: var(--tile-bg);
-      border: 1px solid var(--tile-border);
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 10px;
-      transition: transform .15s, filter .15s;
-      backdrop-filter: blur(4px);
+    .promo-icon-wrap { width:64px; height:64px; flex-shrink:0; display:flex; align-items:center; justify-content:center; }
+    .promo-icon { max-width:100%; max-height:100%; object-fit:contain; }
+    .promo-info { flex:1; min-width:0; }
+    .promo-kicker { font-size:10px; font-weight:900; color:#D4A017; letter-spacing:1px; }
+    .promo-title { font-size:16px; font-weight:900; color:#fff; margin-top:2px; }
+    .promo-desc { font-size:11px; color:rgba(255,255,255,0.6); margin-top:2px; }
+    .promo-cta {
+      background: var(--green); color:#fff; border:none; border-radius:10px;
+      padding:9px 16px; font-size:12px; font-weight:900; cursor:pointer; flex-shrink:0;
     }
-    .play-tile:hover { filter: brightness(1.12); }
-    .play-tile:active { transform: scale(.96); }
-    .play-text-overlay { max-height: 26px !important; width: auto !important; }
-    .ranked-tile .play-text-overlay { max-height: 34px !important; }
-    .play-text-overlay { max-height: 28px !important; width: auto !important; }
-    .ranked-tile .play-text-overlay { max-height: 36px !important; }
+    .promo-cta:hover { filter: brightness(1.15); }
+    .promo-dots { position:absolute; bottom:6px; left:50%; transform:translateX(-50%); display:flex; gap:4px; }
+    .promo-dot { width:5px; height:5px; border-radius:50%; background: rgba(255,255,255,0.25); transition: background .2s; }
+    .promo-dot.active { background: #D4A017; }
 
-    .home-footer {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 6px;
-      padding: 4px 0;
-    }
+    /* ── Actualités ── */
+    .news-widget { background: var(--tile-bg); border: 1px solid var(--tile-border); border-radius: 16px; padding: 14px 16px; display:flex; flex-direction:column; gap: 10px; }
+    .news-widget-header { display:flex; align-items:center; justify-content:space-between; }
+    .news-widget-header h4 { margin:0; font-size:13px; font-weight:900; color: var(--tile-fg-on-page); letter-spacing:.5px; }
+    .news-widget-header a { font-size: 11px; color: var(--green); font-weight:700; cursor:pointer; text-decoration:none; }
+    .news-item { display:flex; gap:10px; padding: 6px 0; cursor:default; }
+    .news-thumb { width:44px; height:44px; border-radius:8px; object-fit:cover; flex-shrink:0; }
+    .news-thumb-fallback { background: rgba(255,255,255,0.06); display:flex; align-items:center; justify-content:center; font-size:18px; }
+    .news-body { flex:1; min-width:0; }
+    .news-title { font-size:12px; font-weight:900; color: var(--tile-fg-on-page); }
+    .news-desc { font-size:11px; color: var(--tile-fg-dim); margin-top:1px; overflow:hidden; text-overflow:ellipsis; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; }
+    .news-time { font-size:10px; color: rgba(255,255,255,0.35); margin-top:2px; }
+
+    .home-footer { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 4px 0; }
     .home-logout-btn {
-      background: var(--tile-bg);
-      border: 1px solid var(--tile-border);
-      border-radius: 20px;
-      color: var(--tile-fg-dim);
-      font-size: 12px;
-      padding: 6px 18px;
-      cursor: pointer;
-      transition: filter .2s;
+      background: var(--tile-bg); border: 1px solid var(--tile-border); border-radius: 20px;
+      color: var(--tile-fg-dim); font-size: 12px; padding: 6px 18px; cursor: pointer; transition: filter .2s;
     }
     .home-logout-btn:hover { filter: brightness(1.15); }
 
-    /* ── Zone de jeu : colonne unique par défaut (mobile) ── */
-    .home2-play-area {
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-    }
+    /* ── Structure dashboard : colonne unique par défaut ── */
+    .home2-dash { display:flex; flex-direction:column; gap:12px; }
+    .home2-col-left, .home2-col-center, .home2-col-right { display:contents; }
 
-    /* ── Mode PC : dashboard large à partir de 1024px ── */
+    /* ── Mode PC : 3 colonnes à partir de 1024px ── */
     @media (min-width: 1024px) {
-      .home-inner { max-width: 1100px; }
-      .home-hero { padding: 22px 32px; }
-      .home-hero-info h3 { font-size: 22px; }
-      .home2-play-area {
-        display: grid;
-        grid-template-columns: 340px 1fr;
-        gap: 22px;
-        align-items: stretch;
-      }
-      .home2-play-area .ranked-tile {
-        min-height: 360px !important;
-        max-height: none !important;
-        height: 100% !important;
-      }
-      .home2-play-area .ranked-tile .play-icon { height: 120px !important; }
-      .home2-play-area .play-grid {
-        grid-template-columns: repeat(2, 1fr);
-        gap: 18px;
-      }
-      .home2-play-area .play-tile {
-        min-height: 170px !important;
-        height: auto !important;
-      }
-      .home2-play-area .play-tile .play-icon { height: 90px !important; }
-      .home-footer {
-        flex-direction: row;
-        justify-content: space-between;
-        width: 100%;
-        padding: 10px 4px;
-      }
+      .home-inner { max-width: 1180px; }
+      .home2-dash { display:grid; grid-template-columns: 300px 1fr 320px; gap: 20px; align-items:start; }
+      .home2-col-left, .home2-col-center, .home2-col-right { display:flex; flex-direction:column; gap: 16px; }
+      .play-grid { grid-template-columns: repeat(3, 1fr); }
+      .play-grid .ranked-standalone { grid-column: span 1; }
+      .home-footer { flex-direction: row; justify-content: space-between; width: 100%; padding: 10px 4px; }
     }
   </style>
 
@@ -159,60 +296,108 @@ export async function renderHome2(container, { state, navigate, toast }) {
       <div id="match-invite-banner"></div>
       <div id="ongoing-match-banner"></div>
 
-      <!-- Hero / pseudo -->
-      <div class="home-hero">
-        <button class="home-hero-btn" id="nav-rankings">
-          <img src="${import.meta.env.BASE_URL}icons/badge-trophy.png" alt="Classement" onerror="this.replaceWith(Object.assign(document.createElement('span'),{textContent:'🏆',style:'font-size:20px'}))">
-        </button>
-        <div class="home-hero-info" style="flex:1">
-          <h3>${p.pseudo}</h3>
-          <div class="level">Niveau ${p.level} · ${p.club_name}</div>
+      <div class="home2-dash">
+
+        <!-- Colonne gauche : profil + rang + classement -->
+        <div class="home2-col-left">
+          <div class="profile-rank-card">
+            <div class="profile-row">
+              <div class="profile-badge">${p.level}</div>
+              <div class="profile-info">
+                <h3>${p.pseudo}</h3>
+                <div class="club">${p.club_name || ''}</div>
+              </div>
+              <button class="profile-settings-btn" id="nav-settings-btn">⚙️</button>
+            </div>
+
+            <div class="rank-block">
+              <div class="rank-top-row">
+                <div class="rank-tier-label">${tier.emoji} ${tier.label.toUpperCase()}${sub ? ' ' + sub : ''}</div>
+              </div>
+              <div class="rank-rp-label">${mmr.toLocaleString('fr')}${nextRP ? ' / ' + nextRP.toLocaleString('fr') : ''} RP</div>
+              <div class="rank-progress-track"><div class="rank-progress-fill" style="width:${prog}%"></div></div>
+            </div>
+
+            <button class="profile-view-btn" id="nav-profile-btn">Voir mon profil</button>
+          </div>
+
+          <div class="ranking-widget">
+            <div class="ranking-widget-header">
+              <h4>CLASSEMENT</h4>
+              <a id="nav-rankings-link">Voir plus</a>
+            </div>
+            ${topUsers.map((u,i) => rankRowHTML(u,i)).join('')}
+            ${(!iAmInTop && myPosition) ? `
+              <div class="rank-row rank-row-me" style="border-top:1px solid var(--tile-border);margin-top:2px;padding-top:8px">
+                <div class="rank-pos">${myPosition}</div>
+                <div class="rank-name">${p.pseudo}</div>
+                <div class="rank-rp">${mmr.toLocaleString('fr')} RP</div>
+              </div>` : ''}
+            <button class="ranking-widget-cta" id="nav-rankings-cta">Voir le classement</button>
+          </div>
         </div>
-        <button class="home-hero-btn" id="nav-matches">
-          <img src="${import.meta.env.BASE_URL}icons/badge-ball.png" alt="Matchs" onerror="this.replaceWith(Object.assign(document.createElement('span'),{textContent:'⚽',style:'font-size:20px'}))">
-        </button>
+
+        <!-- Colonne centrale : Jouer + promo -->
+        <div class="home2-col-center">
+          <div class="play-section-header">
+            <span class="slashes">///</span><h4>JOUER</h4><span class="slashes">///</span>
+          </div>
+
+          <div class="play-grid">
+            <div class="play-tile" data-action="match-ai">
+              <div class="play-badge-group">
+                <img src="${import.meta.env.BASE_URL}icons/badge-ai.png" alt="" class="play-icon" style="height:70px">
+                <img src="${import.meta.env.BASE_URL}icons/badge-ai-txt.png" alt="Match IA" class="play-text-overlay">
+              </div>
+            </div>
+            <div class="play-tile" data-action="match-random">
+              <div class="play-badge-group">
+                <img src="${import.meta.env.BASE_URL}icons/badge-random.png" alt="" class="play-icon" style="height:70px">
+                <img src="${import.meta.env.BASE_URL}icons/badge-random-txt.png" alt="Match Random" class="play-text-overlay">
+              </div>
+            </div>
+            <div class="play-tile" data-action="match-friend">
+              <div class="play-badge-group">
+                <img src="${import.meta.env.BASE_URL}icons/badge-vs.png" alt="" class="play-icon" style="height:70px">
+                <img src="${import.meta.env.BASE_URL}icons/badge-vs-txt.png" alt="Match Friend" class="play-text-overlay">
+              </div>
+            </div>
+            <div class="play-tile" data-action="mini-league">
+              <div class="play-badge-group">
+                <img src="${import.meta.env.BASE_URL}icons/badge-league.png" alt="" class="play-icon" style="height:70px">
+                <img src="${import.meta.env.BASE_URL}icons/badge-league-txt.png" alt="Mini League" class="play-text-overlay">
+              </div>
+            </div>
+            <div class="ranked-tile" data-action="ranked">
+              <div class="play-badge-group">
+                <img src="${import.meta.env.BASE_URL}icons/badge-ranked.png" alt="" class="play-icon" style="height:80px">
+                <img src="${import.meta.env.BASE_URL}icons/badge-ranked-txt.png" alt="Ranked" class="play-text-overlay">
+              </div>
+            </div>
+          </div>
+
+          ${promoBoosters.length ? `
+          <div class="promo-banner" id="promo-banner">
+            <div id="promo-slide-content" style="display:flex;align-items:center;gap:14px;flex:1;min-width:0">
+              ${promoSlideHTML(promoBoosters[0])}
+            </div>
+            <button class="promo-cta" id="promo-cta-btn">Ouvrir des boosters</button>
+            ${promoBoosters.length > 1 ? `<div class="promo-dots">${promoBoosters.map((_,i)=>`<div class="promo-dot ${i===0?'active':''}" data-dot="${i}"></div>`).join('')}</div>` : ''}
+          </div>` : ''}
+        </div>
+
+        <!-- Colonne droite : Actualités -->
+        <div class="home2-col-right">
+          <div class="news-widget">
+            <div class="news-widget-header">
+              <h4>ACTUALITÉS</h4>
+              <a id="nav-journal-link">Voir tout</a>
+            </div>
+            ${news.length ? news.map(newsItemHTML).join('') : '<div style="font-size:11px;color:var(--tile-fg-dim);padding:8px 0">Aucune actualité pour le moment.</div>'}
+          </div>
+        </div>
+
       </div>
-
-      <!-- Zone de jeu : colonne unique sur mobile, grille 2 colonnes sur PC -->
-      <div class="home2-play-area">
-
-      <!-- Ranked -->
-      <div class="ranked-tile" data-action="ranked">
-        <div class="play-badge-group">
-          <img src="${import.meta.env.BASE_URL}icons/badge-ranked.png" alt="" class="play-icon" style="height:80px">
-          <img src="${import.meta.env.BASE_URL}icons/badge-ranked-txt.png" alt="Ranked" class="play-text-overlay">
-        </div>
-      </div>
-
-      <!-- Grille 2x2 -->
-      <div class="play-grid">
-        <div class="play-tile" data-action="match-ai">
-          <div class="play-badge-group">
-            <img src="${import.meta.env.BASE_URL}icons/badge-ai.png" alt="" class="play-icon" style="height:70px">
-            <img src="${import.meta.env.BASE_URL}icons/badge-ai-txt.png" alt="Match IA" class="play-text-overlay">
-          </div>
-        </div>
-        <div class="play-tile" data-action="match-random">
-          <div class="play-badge-group">
-            <img src="${import.meta.env.BASE_URL}icons/badge-random.png" alt="" class="play-icon" style="height:70px">
-            <img src="${import.meta.env.BASE_URL}icons/badge-random-txt.png" alt="Match Random" class="play-text-overlay">
-          </div>
-        </div>
-        <div class="play-tile" data-action="match-friend">
-          <div class="play-badge-group">
-            <img src="${import.meta.env.BASE_URL}icons/badge-vs.png" alt="" class="play-icon" style="height:70px">
-            <img src="${import.meta.env.BASE_URL}icons/badge-vs-txt.png" alt="Match Friend" class="play-text-overlay">
-          </div>
-        </div>
-        <div class="play-tile" data-action="mini-league">
-          <div class="play-badge-group">
-            <img src="${import.meta.env.BASE_URL}icons/badge-league.png" alt="" class="play-icon" style="height:70px">
-            <img src="${import.meta.env.BASE_URL}icons/badge-league-txt.png" alt="Mini League" class="play-text-overlay">
-          </div>
-        </div>
-      </div>
-
-      </div><!-- /home2-play-area -->
 
       <!-- Footer -->
       <div class="home-footer">
@@ -233,37 +418,14 @@ export async function renderHome2(container, { state, navigate, toast }) {
     </div>
   </div>`
 
-  // Adapter la hauteur des tuiles
+  // Adapter la hauteur globale
   requestAnimationFrame(() => {
     const vh = window.visualViewport?.height || window.innerHeight
     const topBar = document.querySelector('.top-nav')?.offsetHeight || 56
     const botNav = document.querySelector('.bottom-nav')?.offsetHeight || 60
-    const inner = container.querySelector('.home-inner')
-    if (inner) {
-      const avail = vh - topBar - botNav
-      container.querySelector('.home-dark').style.minHeight = avail + 'px'
-    }
-
-    if (window.innerWidth < 768) {
-      const hero    = container.querySelector('.home-hero')?.offsetHeight || 60
-      const ranked  = container.querySelector('.ranked-tile')
-      const grid    = container.querySelector('.play-grid')
-      const footer  = container.querySelector('.home-footer')?.offsetHeight || 44
-      const banners = ['friend-requests-banner','match-invite-banner','ongoing-match-banner']
-        .reduce((s, id) => s + (document.getElementById(id)?.offsetHeight || 0), 0)
-      const gap = 12 * 5
-      const avail2 = vh - topBar - botNav - hero - footer - banners - gap - 32
-      const rankedH = Math.max(80, Math.round(avail2 * 0.28))
-      const gridH   = Math.max(160, Math.round(avail2 * 0.72))
-      const cellH   = Math.floor((gridH - 10) / 2)
-      if (ranked) ranked.style.minHeight = ranked.style.maxHeight = rankedH + 'px'
-      container.querySelectorAll('.play-tile').forEach(c => {
-        c.style.minHeight = c.style.height = cellH + 'px'
-      })
-      container.querySelectorAll('.play-tile .play-icon').forEach(img => {
-        img.style.height = Math.round(cellH * 0.55) + 'px'
-      })
-    }
+    const avail = vh - topBar - botNav
+    const dark = container.querySelector('.home-dark')
+    if (dark) dark.style.minHeight = avail + 'px'
   })
 
   // Indicateur de mode (Mobile / PC) — se met à jour aussi au redimensionnement
@@ -275,8 +437,11 @@ export async function renderHome2(container, { state, navigate, toast }) {
   updateModeIndicator()
   window.addEventListener('resize', updateModeIndicator)
 
-  document.getElementById('nav-rankings')?.addEventListener('click', () => navigate('rankings'))
-  document.getElementById('nav-matches')?.addEventListener('click', () => navigate('matches'))
+  document.getElementById('nav-settings-btn')?.addEventListener('click', () => navigate('settings'))
+  document.getElementById('nav-profile-btn')?.addEventListener('click', () => navigate('settings'))
+  document.getElementById('nav-rankings-link')?.addEventListener('click', () => navigate('rankings'))
+  document.getElementById('nav-rankings-cta')?.addEventListener('click', () => navigate('rankings'))
+  document.getElementById('nav-journal-link')?.addEventListener('click', () => toast('Journal complet bientôt accessible depuis cette page', 'info'))
 
   container.querySelectorAll('[data-action]').forEach(el => {
     el.addEventListener('click', () => {
@@ -292,6 +457,26 @@ export async function renderHome2(container, { state, navigate, toast }) {
     })
   })
 
+  // Bannière promo booster : carousel automatique
+  if (promoBoosters.length > 1) {
+    const slideEl = document.getElementById('promo-slide-content')
+    const dots    = () => Array.from(document.querySelectorAll('.promo-dot'))
+    const rotate = () => {
+      promoIdx = (promoIdx + 1) % promoBoosters.length
+      if (slideEl) slideEl.innerHTML = promoSlideHTML(promoBoosters[promoIdx])
+      dots().forEach((d,i) => d.classList.toggle('active', i === promoIdx))
+    }
+    const interval = setInterval(rotate, 5000)
+    document.querySelectorAll('.promo-dot').forEach(dot => {
+      dot.addEventListener('click', () => {
+        promoIdx = Number(dot.dataset.dot)
+        if (slideEl) slideEl.innerHTML = promoSlideHTML(promoBoosters[promoIdx])
+        dots().forEach((d,i) => d.classList.toggle('active', i === promoIdx))
+      })
+    })
+  }
+  document.getElementById('promo-cta-btn')?.addEventListener('click', () => navigate('boosters'))
+
   document.getElementById('logout-btn').addEventListener('click', async () => {
     await supabase.auth.signOut()
     window.location.reload()
@@ -305,7 +490,6 @@ export async function renderHome2(container, { state, navigate, toast }) {
   checkUnclaimedMiniLeaguePrizes(state, toast)
 }
 
-// ── Popup gains Mini League non récupérés ────────────────────────────────
 async function checkUnclaimedMiniLeaguePrizes(state, toast) {
   const uid = state.profile.id
   const { data: rows } = await supabase

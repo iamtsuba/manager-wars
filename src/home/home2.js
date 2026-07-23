@@ -108,6 +108,47 @@ export async function renderHome2(container, { state, navigate, toast }) {
       transition: filter .2s;
     }
     .home-logout-btn:hover { filter: brightness(1.15); }
+
+    /* ── Zone de jeu : colonne unique par défaut (mobile) ── */
+    .home2-play-area {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    /* ── Mode PC : dashboard large à partir de 1024px ── */
+    @media (min-width: 1024px) {
+      .home-inner { max-width: 1100px; }
+      .home-hero { padding: 22px 32px; }
+      .home-hero-info h3 { font-size: 22px; }
+      .home2-play-area {
+        display: grid;
+        grid-template-columns: 340px 1fr;
+        gap: 22px;
+        align-items: stretch;
+      }
+      .home2-play-area .ranked-tile {
+        min-height: 360px !important;
+        max-height: none !important;
+        height: 100% !important;
+      }
+      .home2-play-area .ranked-tile .play-icon { height: 120px !important; }
+      .home2-play-area .play-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 18px;
+      }
+      .home2-play-area .play-tile {
+        min-height: 170px !important;
+        height: auto !important;
+      }
+      .home2-play-area .play-tile .play-icon { height: 90px !important; }
+      .home-footer {
+        flex-direction: row;
+        justify-content: space-between;
+        width: 100%;
+        padding: 10px 4px;
+      }
+    }
   </style>
 
   <div class="home-dark" id="home-dark">
@@ -131,6 +172,9 @@ export async function renderHome2(container, { state, navigate, toast }) {
           <img src="${import.meta.env.BASE_URL}icons/badge-ball.png" alt="Matchs" onerror="this.replaceWith(Object.assign(document.createElement('span'),{textContent:'⚽',style:'font-size:20px'}))">
         </button>
       </div>
+
+      <!-- Zone de jeu : colonne unique sur mobile, grille 2 colonnes sur PC -->
+      <div class="home2-play-area">
 
       <!-- Ranked -->
       <div class="ranked-tile" data-action="ranked">
@@ -168,11 +212,14 @@ export async function renderHome2(container, { state, navigate, toast }) {
         </div>
       </div>
 
+      </div><!-- /home2-play-area -->
+
       <!-- Footer -->
       <div class="home-footer">
         <div style="display:flex;align-items:center;gap:8px;background:rgba(212,160,23,0.15);border:1px solid rgba(212,160,23,0.4);border-radius:20px;padding:5px 14px;font-size:11px;font-weight:700;color:#D4A017">
           🧪 HOME V2 (BÊTA)
           <button id="back-to-v1-btn" style="background:none;border:none;color:#D4A017;text-decoration:underline;cursor:pointer;font-size:11px;font-weight:700;padding:0">← Revenir à v1</button>
+          <span id="mode-indicator" style="border-left:1px solid rgba(212,160,23,0.4);padding-left:8px;margin-left:2px"></span>
         </div>
         <button class="home-logout-btn" id="logout-btn">Déconnexion</button>
         ${p.is_admin ? `
@@ -218,6 +265,15 @@ export async function renderHome2(container, { state, navigate, toast }) {
       })
     }
   })
+
+  // Indicateur de mode (Mobile / PC) — se met à jour aussi au redimensionnement
+  const updateModeIndicator = () => {
+    const el = document.getElementById('mode-indicator')
+    if (!el) return
+    el.textContent = window.innerWidth >= 1024 ? '🖥️ Mode PC' : '📱 Mode Mobile'
+  }
+  updateModeIndicator()
+  window.addEventListener('resize', updateModeIndicator)
 
   document.getElementById('nav-rankings')?.addEventListener('click', () => navigate('rankings'))
   document.getElementById('nav-matches')?.addEventListener('click', () => navigate('matches'))

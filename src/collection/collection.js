@@ -877,7 +877,26 @@ async function openCardDetail(card, allPlayerCards, countByPlayer, ctx) {
   // Un bloc par carte possédée avec checkbox de sélection
   const clubsHTML = myCardIds.length ? `
     <div style="margin-top:16px;border-top:1px solid var(--tile-border);padding-top:14px">
-      ${(count-1) > 0 ? `<div style="font-size:13px;font-weight:700;margin-bottom:10px">🗂️ Copies (${count-1})</div>` : '<div style="font-size:12px;color:#aaa;margin-bottom:6px;font-style:italic">Aucune copie à sacrifier</div>'}
+      ${(count-1) > 0 ? `<div style="font-size:13px;font-weight:700;margin-bottom:10px">🗂️ Copies (${count-1})</div>` : `
+        <div style="font-size:12px;color:#aaa;margin-bottom:10px;font-style:italic">Aucune copie à sacrifier</div>
+        ${card.is_for_sale ? `
+        <div style="background:#fff8e1;border-radius:10px;padding:10px 14px;display:flex;justify-content:space-between;align-items:center">
+          <div style="font-size:13px;color:#D4A017;font-weight:600">🏷️ En vente : ${(card.sale_price||0).toLocaleString('fr')} cr.</div>
+          <button id="cancel-sell-btn" class="btn btn-ghost btn-sm">Retirer</button>
+        </div>` : (canMarket ? `
+        <!-- Vente directe : un seul exemplaire = c'est cette carte qui part sur le marché -->
+        <div style="background:#f0fdf4;border:2px solid #1A6B3C;border-radius:12px;padding:14px">
+          <div style="font-size:12px;font-weight:700;color:#1A6B3C;margin-bottom:8px">🛒 Mettre cette carte en vente</div>
+          <div style="display:flex;gap:8px">
+            <input type="number" id="single-sell-price" min="1" placeholder="Prix"
+              value="${p.sell_price||5000}"
+              style="flex:1;padding:8px;border:1.5px solid #ddd;border-radius:8px;font-size:14px">
+            <button id="single-sell-btn" class="btn btn-primary" style="padding:8px 14px;white-space:nowrap">
+              Mettre en vente
+            </button>
+          </div>
+        </div>` : '<div style="font-size:11px;color:#aaa;font-style:italic">Les cartes légendes ne sont pas vendables.</div>')}
+      `}
       <!-- Grille de mini-cartes (copies uniquement, l'exemplaire 1 = carte principale affichée en haut) -->
       <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
         ${samePlayerCards.filter(c => c.id !== card.id).map((c, i) => {
@@ -1191,6 +1210,23 @@ async function openCardDetail(card, allPlayerCards, countByPlayer, ctx) {
     if (listErr) { console.warn('[Market] insert listings:', listErr.message) }
 
     toast(`${ids.length} carte${ids.length>1?'s':''} mise${ids.length>1?'s':''} en vente à ${price.toLocaleString('fr')} cr. chacune !`, 'success')
+    closeModal(); navigate('collection')
+  })
+
+  // Vente directe (un seul exemplaire — c'est la carte elle-même qui part sur le marché)
+  document.getElementById('single-sell-btn')?.addEventListener('click', async () => {
+    const price = parseInt(document.getElementById('single-sell-price')?.value)
+    if (!price || price < 1) { toast('Prix invalide', 'error'); return }
+
+    const { error } = await supabase.from('cards').update({ is_for_sale: true, sale_price: price }).eq('id', card.id)
+    if (error) { toast(error.message, 'error'); return }
+
+    const { error: listErr } = await supabase.from('market_listings').insert({
+      seller_id: state.profile.id, card_id: card.id, price, status: 'active'
+    })
+    if (listErr) console.warn('[Market] insert listing:', listErr.message)
+
+    toast(`Carte mise en vente à ${price.toLocaleString('fr')} cr. !`, 'success')
     closeModal(); navigate('collection')
   })
 

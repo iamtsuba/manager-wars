@@ -45,8 +45,8 @@ export function ensureV2Chrome(navigate, p, activeRouteKey, ICON) {
       .home2-chrome-tabs { display: flex; gap: 10px; flex: 1; min-width: 0; justify-content: center; overflow-x: auto; scrollbar-width: none; }
       .home2-chrome-tabs::-webkit-scrollbar { display: none; }
       .home2-chrome-tab {
-        flex-shrink: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px;
-        padding: 12px 22px; border-radius: 14px; cursor: pointer; text-decoration: none;
+        flex-shrink: 0; width: 132px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px;
+        padding: 12px 8px; border-radius: 14px; cursor: pointer; text-decoration: none;
         background: rgba(255,255,255,0.05); border: 1px solid transparent;
         color: rgba(255,255,255,0.6); font-size: 12px; font-weight: 900; letter-spacing: .4px;
         transition: background .15s, color .15s;
@@ -57,12 +57,6 @@ export function ensureV2Chrome(navigate, p, activeRouteKey, ICON) {
       .home2-chrome-tab.active img { opacity: 1; }
       .home2-chrome-tab:not(.active):hover { background: rgba(255,255,255,0.09); color: #fff; }
       .home2-chrome-right { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
-      .home2-chrome-settings {
-        width: 40px; height: 40px; border-radius: 50%; border: none;
-        background: rgba(255,255,255,0.08); cursor: pointer;
-        display: flex; align-items: center; justify-content: center; font-size: 18px; color: rgba(255,255,255,0.8);
-      }
-      .home2-chrome-settings:hover { background: rgba(255,255,255,0.15); }
       .home2-chrome-credits {
         display: flex; align-items: center; gap: 6px;
         background: rgba(255,255,255,0.06); border: 1px solid var(--tile-border);
@@ -70,17 +64,29 @@ export function ensureV2Chrome(navigate, p, activeRouteKey, ICON) {
         cursor: pointer; white-space: nowrap;
       }
       .home2-chrome-credits:hover { background: rgba(255,255,255,0.1); }
-      .home2-chrome-add {
-        width: 36px; height: 36px; border-radius: 50%; border: none;
-        background: var(--green); color: #fff; font-size: 20px; font-weight: 900; cursor: pointer;
-        display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+      .home2-chrome-settings-pill {
+        display: flex; align-items: center; gap: 7px;
+        background: rgba(255,255,255,0.06); border: 1px solid var(--tile-border);
+        border-radius: 22px; padding: 8px 18px; font-size: 14px; font-weight: 800; color: rgba(255,255,255,0.85);
+        cursor: pointer; white-space: nowrap;
       }
-      .home2-chrome-add:hover { filter: brightness(1.15); }
+      .home2-chrome-settings-pill:hover { background: rgba(255,255,255,0.12); }
       @media (max-width: 640px) {
         .home2-chrome-tab { padding: 9px 14px; }
         .home2-chrome-tab img { width: 24px; height: 24px; }
         .home2-chrome-tab-emoji { font-size: 22px; }
         .home2-chrome-logo img { height: 38px; }
+      }
+      /* ── Mobile (<1024px) : bandeau entier fixé en bas, comme l'ancien bottom-nav ── */
+      @media (max-width: 1023px) {
+        .home2-chrome-header {
+          top: auto; bottom: 0;
+          border-bottom: none; border-top: 1px solid var(--tile-border);
+        }
+        body:has(#home2-chrome-marker) #page-content {
+          padding-top: 0 !important;
+          padding-bottom: var(--v2-header-height, 90px) !important;
+        }
       }
     `
     document.head.appendChild(style)
@@ -101,9 +107,8 @@ export function ensureV2Chrome(navigate, p, activeRouteKey, ICON) {
           </a>`).join('')}
       </div>
       <div class="home2-chrome-right">
-        <button class="home2-chrome-settings" id="home2-chrome-settings-btn">⚙️</button>
         <div class="home2-chrome-credits" id="home2-chrome-credits">💰 ${(p.credits||0).toLocaleString('fr')}</div>
-        <button class="home2-chrome-add" id="home2-chrome-add-btn">+</button>
+        <button class="home2-chrome-settings-pill" id="home2-chrome-settings-btn">⚙️ Paramètres</button>
       </div>
     `
     document.body.appendChild(header)
@@ -117,7 +122,6 @@ export function ensureV2Chrome(navigate, p, activeRouteKey, ICON) {
     })
     header.querySelector('#home2-chrome-settings-btn').addEventListener('click', () => navigate('settings'))
     header.querySelector('#home2-chrome-credits').addEventListener('click', () => navigate('boosters'))
-    header.querySelector('#home2-chrome-add-btn').addEventListener('click', () => navigate('boosters'))
   }
 
   // Met à jour l'onglet actif + le solde de crédits à chaque re-rendu
@@ -304,6 +308,9 @@ export async function renderHome2(container, { state, navigate, toast }) {
       display: flex; align-items: center; justify-content: center;
       font-weight: 900; font-size: 26px; color: #fff;
     }
+    /* Mobile par défaut : icône de rang. PC (≥1024px, cf media query plus bas) : numéro de niveau. */
+    .badge-level { display: none; }
+    .badge-rank-icon { display: flex; font-size: 30px; }
     .profile-info { flex: 1; min-width: 0; }
     .profile-info .name-row { display:flex; align-items:center; gap:6px; }
     .profile-info h3 { margin: 0; font-size: 22px; font-weight: 900; color: var(--tile-fg-on-page); }
@@ -453,6 +460,8 @@ export async function renderHome2(container, { state, navigate, toast }) {
       .home-inner { max-width: 1440px; }
       .home2-dash { display:grid; grid-template-columns: 380px 1fr 400px; gap: 28px; align-items:start; }
       .home2-col-left, .home2-col-center, .home2-col-right { display:flex; flex-direction:column; gap: 18px; }
+      .badge-level { display: flex; }
+      .badge-rank-icon { display: none; }
       .rank-inline-link { display: none; }
       .profile-view-btn { display: flex; }
       .ranking-widget { display: flex; }
@@ -477,12 +486,14 @@ export async function renderHome2(container, { state, navigate, toast }) {
         <!-- Colonne gauche : profil + rang + classement -->
         <div class="home2-col-left">
           <div class="profile-row">
-            <div class="profile-badge">${p.level}</div>
+            <div class="profile-badge">
+              <span class="badge-level">${p.level}</span>
+              <span class="badge-rank-icon">${tier.emoji}</span>
+            </div>
             <div class="profile-info">
               <div class="name-row"><h3>${p.pseudo}</h3><button class="profile-edit-btn" id="nav-edit-btn">✏️</button></div>
               <div class="club"><span class="dot"></span>${(p.club_name||'').toUpperCase()}</div>
             </div>
-            <button class="profile-settings-btn" id="nav-settings-btn">⚙️</button>
           </div>
 
           <div class="rank-card">
@@ -604,7 +615,6 @@ export async function renderHome2(container, { state, navigate, toast }) {
   updateModeIndicator()
   window.addEventListener('resize', updateModeIndicator)
 
-  document.getElementById('nav-settings-btn')?.addEventListener('click', () => navigate('settings'))
   document.getElementById('nav-edit-btn')?.addEventListener('click', () => navigate('settings'))
   document.getElementById('nav-profile-btn')?.addEventListener('click', () => navigate('settings'))
   document.getElementById('nav-rankings-link')?.addEventListener('click', () => navigate('rankings'))

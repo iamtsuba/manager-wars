@@ -244,9 +244,9 @@ async function load(container) {
     }
   })
 
-  container.querySelectorAll('[data-edit]').forEach(btn => {
-    const s = (steps||[]).find(x => x.id === btn.dataset.edit)
-    if (s) btn.addEventListener('click', () => openForm(s))
+  container.querySelectorAll('[data-edit-row]').forEach(row => {
+    const s = (steps||[]).find(x => x.id === row.dataset.editRow)
+    if (s) row.addEventListener('click', () => openForm(s))
   })
   container.querySelectorAll('[data-delete]').forEach(btn => {
     btn.addEventListener('click', async () => {
@@ -291,7 +291,7 @@ async function load(container) {
 
 function stepRowHTML(s) {
   return `
-  <div style="background:#fff;border-radius:10px;padding:12px 16px;box-shadow:0 1px 4px rgba(0,0,0,0.08);display:flex;align-items:center;gap:12px">
+  <div data-edit-row="${s.id}" style="background:#fff;border-radius:10px;padding:12px 16px;box-shadow:0 1px 4px rgba(0,0,0,0.08);display:flex;align-items:center;gap:12px;cursor:pointer">
     <div style="font-size:28px;flex-shrink:0;width:40px;text-align:center">${s.emoji}</div>
     <div style="width:10px;height:36px;border-radius:4px;flex-shrink:0;background:${s.color}"></div>
     <div style="flex:1;min-width:0">
@@ -299,11 +299,10 @@ function stepRowHTML(s) {
       <div style="font-size:11px;color:#aaa;margin-top:2px">Ordre : ${s.step_order} · ${s.is_active ? '🟢 Active' : '🔴 Désactivée'}</div>
     </div>
     <div style="display:flex;gap:4px;flex-shrink:0;flex-wrap:wrap;justify-content:flex-end">
-      <button data-up="${s.id}" class="btn btn-ghost btn-sm" title="Monter" style="padding:4px 8px">↑</button>
-      <button data-down="${s.id}" class="btn btn-ghost btn-sm" title="Descendre" style="padding:4px 8px">↓</button>
-      <button data-toggle="${s.id}" class="btn btn-ghost btn-sm" style="padding:4px 8px">${s.is_active ? '🔴 Désactiver' : '🟢 Activer'}</button>
-      <button data-edit="${s.id}" class="btn btn-ghost btn-sm" style="padding:4px 8px">✏️</button>
-      <button data-delete="${s.id}" class="btn btn-ghost btn-sm" style="color:#cc2222;padding:4px 8px">🗑️</button>
+      <button data-up="${s.id}" class="btn btn-ghost btn-sm" title="Monter" style="padding:4px 8px" onclick="event.stopPropagation()">↑</button>
+      <button data-down="${s.id}" class="btn btn-ghost btn-sm" title="Descendre" style="padding:4px 8px" onclick="event.stopPropagation()">↓</button>
+      <button data-toggle="${s.id}" class="btn btn-ghost btn-sm" style="padding:4px 8px" onclick="event.stopPropagation()">${s.is_active ? '🔴 Désactiver' : '🟢 Activer'}</button>
+      <button data-delete="${s.id}" class="btn btn-ghost btn-sm" style="color:#cc2222;padding:4px 8px" onclick="event.stopPropagation()">🗑️</button>
     </div>
   </div>`
 }

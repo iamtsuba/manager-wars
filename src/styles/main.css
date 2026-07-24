@@ -225,6 +225,23 @@ tr:hover td { background: rgba(255,255,255,0.04); }
 }
 .modal input::placeholder, .modal textarea::placeholder { color: #999; }
 .modal select option { background: #fff; color: #1a1a1a; }
+
+/* ── Filet de sécurité : toute boîte blanche codée en dur (hors .modal, ex:
+   formulaires inline dans Journal/Tutoriel/Boosters) doit avoir du texte
+   sombre, pas hérité du blanc de la page en thème sombre. ── */
+[style*="background:#fff"] input, [style*="background: #fff"] input,
+[style*="background:#fff"] select, [style*="background: #fff"] select,
+[style*="background:#fff"] textarea, [style*="background: #fff"] textarea {
+  background: #fff; color: #1a1a1a; border-color: var(--gray-200);
+}
+[style*="background:#fff"] h1, [style*="background:#fff"] h2, [style*="background:#fff"] h3,
+[style*="background:#fff"] h4, [style*="background:#fff"] span, [style*="background:#fff"] div,
+[style*="background:#fff"] p, [style*="background:#fff"] b, [style*="background:#fff"] strong,
+[style*="background: #fff"] h1, [style*="background: #fff"] h2, [style*="background: #fff"] h3,
+[style*="background: #fff"] h4, [style*="background: #fff"] span, [style*="background: #fff"] div,
+[style*="background: #fff"] p, [style*="background: #fff"] b, [style*="background: #fff"] strong {
+  color: #1a1a1a;
+}
 .modal-header {
   padding: 16px 20px; background: #1A6B3C; border-bottom: none;
   display: flex; justify-content: space-between; align-items: center;

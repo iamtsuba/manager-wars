@@ -63,19 +63,19 @@
     }
     .admin-topbar {
       display: flex; align-items: center; gap: 12px;
-      padding: 0 16px; height: 56px; background: #fff;
-      border-bottom: 1px solid #e0e0e0; flex-shrink: 0;
+      padding: 0 16px; height: 56px; background: #0a0f0a;
+      border-bottom: 1px solid rgba(255,255,255,0.1); flex-shrink: 0;
     }
     #menu-toggle {
       background: none; border: none; font-size: 22px;
-      cursor: pointer; color: #333; padding: 4px 6px;
+      cursor: pointer; color: #fff; padding: 4px 6px;
       border-radius: 6px; line-height: 1;
       display: none; /* visible seulement mobile */
     }
-    .admin-topbar h1 { font-size: 16px; font-weight: 700; margin: 0; flex: 1; }
-    #admin-user { font-size: 12px; color: #888; white-space: nowrap; }
+    .admin-topbar h1 { font-size: 16px; font-weight: 700; margin: 0; flex: 1; color: #fff; }
+    #admin-user { font-size: 12px; color: rgba(255,255,255,0.5); white-space: nowrap; }
     .admin-content {
-      flex: 1; overflow-y: auto; background: #f4f4f4;
+      flex: 1; overflow-y: auto; background: #0d1a0f; color: rgba(255,255,255,0.9);
     }
 
     /* ── Desktop : sidebar toujours visible ── */
@@ -133,14 +133,11 @@
       <a href="#" data-page="dashboard"       class="active">📊 Dashboard</a>
       <a href="#" data-page="players">        🃏 Joueurs / Cartes</a>
       <a href="#" data-page="clubs">          🏟️ Clubs</a>
-      <a href="#" data-page="card-builder">   🎨 Card Builder</a>
       <a href="#" data-page="users">          👥 Managers</a>
       <a href="#" data-page="market">         🛒 Marché</a>
-      <a href="#" data-page="import-export">  📊 Import/Export CSV</a>
       <a href="#" data-page="formations">     ⚽ Formations & Liens</a>
       <a href="#" data-page="boosters-config">📦 Boosters</a>
       <a href="#" data-page="gc-cards">⚡ Game Changers</a>
-      <a href="#" data-page="sell-price">💰 Prix vente directe</a>
       <a href="#" data-page="journal">📰 Journal</a>
       <a href="#" data-page="tutorial">🎓 Tutoriel</a>
       <a href="#" data-page="stadiums">🏟️ Stades</a>
@@ -155,21 +152,19 @@
     <div class="admin-topbar">
       <button id="menu-toggle" aria-label="Menu">☰</button>
       <h1 id="page-title" class="admin-page-title-desktop">Dashboard</h1>
-      <select id="mobile-page-select" style="display:none;flex:1;padding:6px 8px;border:1.5px solid #ddd;border-radius:8px;font-size:13px;font-weight:700;background:#fff;color:#333;max-width:200px">
+      <select id="mobile-page-select" style="display:none;flex:1;padding:6px 8px;border:1.5px solid rgba(255,255,255,0.15);border-radius:8px;font-size:13px;font-weight:700;background:#1a1a2e;color:#fff;max-width:200px">
         <option value="dashboard">📊 Dashboard</option>
         <option value="players">🃏 Joueurs</option>
         <option value="clubs">🏟️ Clubs</option>
-        <option value="card-builder">🎨 Card Builder</option>
         <option value="users">👥 Managers</option>
         <option value="market">🛒 Marché</option>
-        <option value="import-export">📊 Import/Export</option>
         <option value="formations">⚽ Formations</option>
         <option value="boosters-config">📦 Boosters</option>
         <option value="gc-cards">⚡ Game Changers</option>
-        <option value="sell-price">💰 Prix vente directe</option>
         <option value="journal">📰 Journal</option>
         <option value="tutorial">🎓 Tutoriel</option>
         <option value="stadiums">🏟️ Stades</option>
+        <option value="ranked-seasons">⚔️ Saisons Ranked</option>
       </select>
       <div id="admin-user"></div>
     </div>

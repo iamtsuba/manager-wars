@@ -39,8 +39,17 @@ async function load(container) {
             <textarea id="form-art-desc" rows="5" placeholder="Décris les changements apportés..." style="width:100%;box-sizing:border-box;padding:9px;border:1.5px solid #ddd;border-radius:8px;font-size:13px;resize:vertical"></textarea>
           </div>
           <div>
-            <label style="font-size:12px;font-weight:700;color:#555;display:block;margin-bottom:4px">URL IMAGE (optionnel)</label>
-            <input id="form-art-img" placeholder="https://... ou chemin relatif" style="width:100%;box-sizing:border-box;padding:9px;border:1.5px solid #ddd;border-radius:8px;font-size:13px">
+            <label style="font-size:12px;font-weight:700;color:#555;display:block;margin-bottom:4px">IMAGE (optionnel)</label>
+            <div style="display:flex;align-items:center;gap:12px">
+              <div id="form-art-img-preview" style="width:56px;height:56px;border-radius:8px;background:#f0f0f0;border:1.5px solid #ddd;display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0">
+                <span style="font-size:20px;opacity:.4">📰</span>
+              </div>
+              <div style="flex:1">
+                <input type="file" id="form-art-img-file" accept="image/png,image/jpeg,image/webp">
+                <div style="font-size:11px;color:#888;margin-top:4px">PNG/JPG/WEBP — remplace l'image actuelle si un fichier est choisi</div>
+              </div>
+            </div>
+            <input type="hidden" id="form-art-img-current">
           </div>
           <div style="display:flex;align-items:center;gap:8px">
             <input type="checkbox" id="form-art-pub" checked style="width:16px;height:16px">
@@ -100,7 +109,19 @@ function openForm(a) {
   document.getElementById('form-id').value = a?.id || ''
   document.getElementById('form-art-title').value = a?.title || ''
   document.getElementById('form-art-desc').value  = a?.description || ''
-  document.getElementById('form-art-img').value   = a?.image_url || ''
+  document.getElementById('form-art-img-current').value = a?.image_url || ''
+  document.getElementById('form-art-img-file').value = ''
+  const preview = document.getElementById('form-art-img-preview')
+  preview.innerHTML = a?.image_url
+    ? `<img src="${a.image_url}" style="width:100%;height:100%;object-fit:cover">`
+    : '<span style="font-size:20px;opacity:.4">📰</span>'
+  document.getElementById('form-art-img-file').onchange = (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = () => { preview.innerHTML = `<img src="${reader.result}" style="width:100%;height:100%;object-fit:cover">` }
+    reader.readAsDataURL(file)
+  }
   document.getElementById('form-art-pub').checked = a ? a.is_published : true
   // Date locale pour l'input datetime-local
   const d = new Date(a?.published_at || Date.now())
@@ -109,16 +130,39 @@ function openForm(a) {
   form.scrollIntoView({ behavior:'smooth' })
 }
 
+async function uploadArticleImage(file) {
+  const ext  = (file.name.split('.').pop() || 'png').toLowerCase()
+  const path = `journal/${Date.now()}.${ext}`
+  const { error } = await supabase.storage.from('assets').upload(path, file, { upsert: true, cacheControl: '3600' })
+  if (error) throw error
+  const { data } = supabase.storage.from('assets').getPublicUrl(path)
+  return data.publicUrl
+}
+
 async function saveForm(container) {
-  const id    = document.getElementById('form-id').value
-  const title = document.getElementById('form-art-title').value.trim()
-  const desc  = document.getElementById('form-art-desc').value.trim()
-  const img   = document.getElementById('form-art-img').value.trim() || null
-  const pub   = document.getElementById('form-art-pub').checked
-  const dateV = document.getElementById('form-art-date').value
+  const id       = document.getElementById('form-id').value
+  const title    = document.getElementById('form-art-title').value.trim()
+  const desc     = document.getElementById('form-art-desc').value.trim()
+  const imgFile  = document.getElementById('form-art-img-file').files?.[0] || null
+  const imgCurrent = document.getElementById('form-art-img-current').value || null
+  const pub      = document.getElementById('form-art-pub').checked
+  const dateV    = document.getElementById('form-art-date').value
+  const saveBtn  = document.getElementById('form-save')
 
   if (!title) { alert('Le titre est obligatoire.'); return }
   if (!desc)  { alert('La description est obligatoire.'); return }
+
+  let img = imgCurrent
+  if (imgFile) {
+    try {
+      if (saveBtn) saveBtn.textContent = '📤 Envoi de l\'image…'
+      img = await uploadArticleImage(imgFile)
+    } catch (e) {
+      alert('Erreur upload image : ' + e.message)
+      if (saveBtn) saveBtn.textContent = '💾 Enregistrer'
+      return
+    }
+  }
 
   const published_at = dateV ? new Date(dateV).toISOString() : new Date().toISOString()
   const payload = { title, description: desc, image_url: img, is_published: pub, published_at }

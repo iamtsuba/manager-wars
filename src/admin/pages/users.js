@@ -16,7 +16,7 @@ export async function pageUsers(container, { toast }) {
       <input id="search-users" placeholder="🔍 Rechercher un manager…" style="width:260px">
       <span style="font-size:13px;color:var(--gray-600)">${users.length} manager(s)</span>
     </div>
-    <div class="card-panel" style="background:#fff;box-shadow:0 1px 4px rgba(0,0,0,0.08)">
+    <div class="card-panel">
       <div class="table-wrap">
         <table>
           <thead>

@@ -217,6 +217,14 @@ tr:hover td { background: rgba(255,255,255,0.04); }
 }
 .modal label { color: #555; }
 .modal p, .modal span, .modal div { color: inherit; }
+/* Le modal est un popup blanc volontaire (même en thème sombre) : ses champs
+   doivent utiliser des couleurs claires fixes, pas les variables de thème
+   (qui sont sombres par défaut et rendraient le texte invisible ici). */
+.modal input, .modal select, .modal textarea {
+  background: #fff; color: #1a1a1a; border-color: var(--gray-200);
+}
+.modal input::placeholder, .modal textarea::placeholder { color: #999; }
+.modal select option { background: #fff; color: #1a1a1a; }
 .modal-header {
   padding: 16px 20px; background: #1A6B3C; border-bottom: none;
   display: flex; justify-content: space-between; align-items: center;

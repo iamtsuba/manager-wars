@@ -51,7 +51,7 @@ const PAGES = {
   formations:          { title: 'Formations & Liens',  fn: pageFormations },
   'boosters-config': { title: 'Boosters',              fn: renderBoostersConfig },
   'sell-price':      { title: 'Prix vente directe',    fn: renderSellPriceConfig },
-  'journal':         { title: 'Journal',               fn: renderJournal },
+  'journal':         { title: 'Actualités',            fn: renderJournal },
   'tutorial':        { title: 'Tutoriel',              fn: renderTutorialAdmin },
   'stadiums':        { title: 'Stades',                fn: renderStadiums },
   'gc-cards':         { title: 'Game Changers',          fn: renderGCCards },

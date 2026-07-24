@@ -1188,12 +1188,33 @@ async function openCardDetail(card, allPlayerCards, countByPlayer, ctx) {
     navigate('collection')
   })
 
+  // ── Validation de prix selon la grille admin (sell_price_configs) ──────
+  async function validateSellPrice(price) {
+    const { data: cfg } = await supabase
+      .from('sell_price_configs')
+      .select('price_min, price_max')
+      .eq('rarity', p.rarity)
+      .lte('note_min', note1)
+      .gte('note_max', note1)
+      .order('note_max', { ascending: true }) // règle la plus étroite en priorité
+      .limit(1)
+      .maybeSingle()
+    if (!cfg) return { ok: true } // pas de règle définie pour cette tranche → pas de contrainte
+    if (price < cfg.price_min || price > cfg.price_max) {
+      return { ok: false, min: cfg.price_min, max: cfg.price_max }
+    }
+    return { ok: true }
+  }
+
   // ── Marché (les cartes sélectionnées, même prix pour toutes) ────────────
   document.getElementById('market-sell-btn')?.addEventListener('click', async () => {
     const ids = [...selectedCardIds]
     if (!ids.length) { toast('Sélectionne au moins un exemplaire', 'warning'); return }
     const price = parseInt(document.getElementById('sell-market-price')?.value)
     if (!price || price < 1) { toast('Prix invalide', 'error'); return }
+
+    const check = await validateSellPrice(price)
+    if (!check.ok) { toast(`Prix hors grille : entre ${check.min.toLocaleString('fr')} et ${check.max.toLocaleString('fr')} cr. pour cette rareté/note`, 'error'); return }
 
     // Marquer les cartes en vente
     const { error } = await supabase.from('cards').update({ is_for_sale: true, sale_price: price }).in('id', ids)
@@ -1217,6 +1238,9 @@ async function openCardDetail(card, allPlayerCards, countByPlayer, ctx) {
   document.getElementById('single-sell-btn')?.addEventListener('click', async () => {
     const price = parseInt(document.getElementById('single-sell-price')?.value)
     if (!price || price < 1) { toast('Prix invalide', 'error'); return }
+
+    const check = await validateSellPrice(price)
+    if (!check.ok) { toast(`Prix hors grille : entre ${check.min.toLocaleString('fr')} et ${check.max.toLocaleString('fr')} cr. pour cette rareté/note`, 'error'); return }
 
     const { error } = await supabase.from('cards').update({ is_for_sale: true, sale_price: price }).eq('id', card.id)
     if (error) { toast(error.message, 'error'); return }

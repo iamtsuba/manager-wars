@@ -46,7 +46,7 @@ const PAGES = {
   clubs:        { title: 'Clubs',              fn: pageClubs },
   'card-builder':{ title: 'Card Builder',      fn: pageCardBuilder },
   users:        { title: 'Managers',           fn: pageUsers },
-  market:       { title: 'Marché des transferts', fn: pageMarket },
+  market:       { title: 'Mercato', fn: pageMarket },
   'import-export': { title: 'Import / Export CSV', fn: pageImportExport },
   formations:          { title: 'Formations & Liens',  fn: pageFormations },
   'boosters-config': { title: 'Boosters',              fn: renderBoostersConfig },

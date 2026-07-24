@@ -1000,7 +1000,7 @@ Achraf,Hakimi,,MA,PARIS FC,DEF,MIL,0,7,5,3,pepite,5,9,metisse,noir,court,20000
       ${e.image_url?`<img src="${e.image_url}" style="width:60px;height:60px;object-fit:cover;border-radius:8px;flex-shrink:0">`:""}
       <div style="flex:1;min-width:0">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:2px">
-          <span style="font-size:14px;font-weight:900">${e.title}</span>
+          <span style="font-size:14px;font-weight:900;color:#1a1a1a">${e.title}</span>
           ${e.is_published?"":'<span style="font-size:10px;background:#f0f0f0;color:#888;padding:1px 6px;border-radius:6px;font-weight:700">BROUILLON</span>'}
         </div>
         <div style="font-size:11px;color:#999;margin-bottom:4px">${t}</div>

@@ -106,191 +106,192 @@ function pickNoteByDistribution(strong, idx) {
   return rollNoteByDistribution()
 }
 
+// ── Pools de prénoms et noms par zone géographique ─────────────────────────
+const NAMES_BY_ZONE = {
+  FR: {
+    first: ['Lucas','Tom','Hugo','Théo','Antoine','Kylian','Rayan','Axel','Paul','Enzo',
+            'Léo','Mathis','Nathan','Alexis','Ethan','Maxime','Julien','Baptiste','Nicolas','Pierre',
+            'Clément','Adrien','Valentin','Dylan','Loïc','Quentin','Florian','Kevin','Corentin','Raphaël'],
+    last:  ['Martin','Bernard','Petit','Dupont','Moreau','Laurent','Robert','Michel','Leroy','Roux',
+            'David','Bertrand','Morel','Fournier','Girard','Bonnet','Rousseau','Fontaine','Chevalier','Blanc',
+            'Garnier','Boyer','Gauthier','Garcia','Perrin','Robin','Clément','Morin','Nicolas','Henry',
+            'Lemaire','Noël','Dufour','Meunier','Brun','Blanchard','Giraud','Joly','Rivière','Brunet']
+  },
+  ES: {
+    first: ['Carlos','Miguel','Javier','Alejandro','Sergio','David','Diego','Pablo','Álvaro','Marcos',
+            'Adrián','Rubén','Iker','Raúl','Fernando','Roberto','Víctor','Iván','Gonzalo','Antonio',
+            'Manuel','Jesús','Josué','Rodrigo','Cristian','Héctor','Óscar','Mario','Daniel','Jorge'],
+    last:  ['García','Rodríguez','Martínez','López','Sánchez','González','Pérez','Hernández','Jiménez','Díaz',
+            'Torres','Ramírez','Flores','Rivera','Gómez','Morales','Álvarez','Romero','Herrera','Medina',
+            'Aguilar','Vargas','Guzmán','Muñoz','Salazar','Soto','Contreras','Rojas','Ramos','Ortiz']
+  },
+  PT: {
+    first: ['João','Pedro','Diogo','Rúben','Bruno','Tiago','André','Ricardo','Luís','Gonçalo',
+            'Nuno','Mário','Fábio','Rui','Miguel','Sérgio','Hugo','Filipe','Paulo','Vítor'],
+    last:  ['Silva','Santos','Costa','Pereira','Oliveira','Mendes','Ferreira','Alves','Carvalho','Gomes',
+            'Ribeiro','Araújo','Barbosa','Cardoso','Correia','Teixeira','Machado','Vieira','Monteiro','Cunha',
+            'Pinto','Melo','Barros','Freitas','Fonseca','Andrade','Castro','Neves','Figueiredo','Duarte']
+  },
+  BR: {
+    first: ['Gabriel','Lucas','Mateus','Gustavo','Felipe','Rodrigo','Thiago','Rafael','Bruno','Diego',
+            'Leonardo','Eduardo','Victor','Pedro','Carlos','Alexandre','André','Paulo','Danilo','Marcelo'],
+    last:  ['Silva','Santos','Oliveira','Souza','Lima','Ferreira','Costa','Nascimento','Alves','Pereira',
+            'Rodrigues','Almeida','Nunes','Melo','Barbosa','Rocha','Brito','Castro','Carvalho','Gomes',
+            'Lopes','Ramos','Mendes','Cavalcanti','Batista','Azevedo','Campos','Freitas','Reis','Andrade']
+  },
+  AR: {
+    first: ['Lionel','Sergio','Rodrigo','Nicolás','Ezequiel','Gonzalo','Federico','Mauro','Pablo','Diego',
+            'Lucas','Matías','Alejandro','Maximiliano','Emiliano','Marcos','Lautaro','Ángel','Leandro','Julián'],
+    last:  ['González','Rodríguez','Martínez','García','López','Pérez','Sánchez','Romero','Torres','Flores',
+            'Díaz','Gómez','Alvarez','Ruiz','Castro','Herrera','Cabrera','Medina','Ferreyra','Suárez']
+  },
+  IT: {
+    first: ['Marco','Luca','Alessandro','Matteo','Davide','Andrea','Francesco','Federico','Lorenzo','Riccardo',
+            'Stefano','Simone','Roberto','Nicola','Giovanni','Antonio','Emanuele','Daniele','Alberto','Giorgio'],
+    last:  ['Rossi','Russo','Ferrari','Esposito','Bianchi','Romano','Ricci','Marino','Greco','Bruno',
+            'Gallo','Conti','De Luca','Mancini','Giordano','Rizzo','Lombardi','Moretti','Fontana','Rinaldi']
+  },
+  DE: {
+    first: ['Lukas','Max','Jonas','Florian','Tobias','Stefan','Markus','Sebastian','Niklas','Leon',
+            'Tim','Felix','Alexander','Philipp','Christian','Thomas','Michael','Jan','Moritz','Fabian'],
+    last:  ['Müller','Schmidt','Schneider','Fischer','Weber','Richter','Bauer','Wolf','Schröder','Neumann',
+            'Schwarz','Zimmermann','Braun','Krüger','Hofmann','Wagner','Becker','Koch','Lehmann','Kaiser']
+  },
+  GB: {
+    first: ['James','Harry','Oliver','Jack','George','Charlie','William','Thomas','Alfie','Edward',
+            'Ryan','Liam','Noah','Ethan','Kyle','Jordan','Callum','Aaron','Declan','Connor'],
+    last:  ['Smith','Jones','Williams','Brown','Taylor','Davies','Evans','Wilson','Thomas','Roberts',
+            'Johnson','Walker','Wright','Robinson','White','Thompson','Hughes','Edwards','Green','Hall']
+  },
+  MA: {
+    first: ['Yassine','Karim','Mehdi','Amine','Hamza','Bilal','Soufiane','Rachid','Omar','Mohammed',
+            'Zakaria','Ilyas','Ayoub','Saad','Khalid','Adil','Tarik','Hicham','Reda','Nabil'],
+    last:  ['Benali','Amrani','Bouazza','Cherif','Haddad','Meziane','Belkacem','Rahmani','Saidi','Zidane',
+            'Belhadj','Tazi','Idrissi','Alaoui','Bennani','Fassi','Lahlou','Naciri','Tahiri','Zniber']
+  },
+  DZ: {
+    first: ['Yacine','Riyad','Sofiane','Haris','Adem','Islam','Bilal','Omar','Nassim','Mehdi',
+            'Ryad','Zinedine','Youssef','Farid','Karim','Mourad','Walid','Anes','Ferhat','Djamel'],
+    last:  ['Amrouche','Boudiaf','Cherki','Guessab','Hamdi','Jaber','Lakhal','Mahjoub','Rezki','Sahnoun',
+            'Talbi','Zerrouki','Achour','Bakri','Chaouch','Djaballah','Ferhat','Gacem','Khaldi','Larbi']
+  },
+  SN: {
+    first: ['Sadio','Ismaïla','Cheikhou','Gana','Famara','Mbaye','Pape','Aliou','Moussa','Sidy',
+            'Idrissa','Lamine','Bamba','Fallou','Abdou','Diallo','Mamadou','Souleymane','Oumar','Cheikh'],
+    last:  ['Diallo','Traoré','Coulibaly','Bah','Konaté','Touré','Camara','Barry','Diop','Ndiaye',
+            'Sow','Cissé','Fofana','Keita','Sylla','Kane','Diarra','Sanogo','Baldé','Kouyaté']
+  },
+  CI: {
+    first: ['Didier','Wilfried','Serge','Jonathan','Franck','Maxwel','Salomon','Gervinho','Nicolas','Maxime',
+            'Ismael','Romaric','Abdul','Cheick','Arouna','Kolo','Yaya','Geoffroy','Siaka','Adama'],
+    last:  ['Drogba','Zaha','Gnagnon','Koné','Touré','Bamba','Diomandé','Konaté','Coulibaly','Fofana',
+            'Traoré','Doumbia','Sanogo','Diabaté','Kalou','Bakayoko','Gradel','Seri','Aurier','Haller']
+  },
+  CM: {
+    first: ['Samuel','Alex','Karl','Fabrice','Cédric','Nicolas','Georges','André','Joël','Roger',
+            'François','Jean','Patrick','Thierry','Eric','Benjamin','Aristide','Clinton','Clinton','Stéphane'],
+    last:  ['Eto\'o','Song','Choupo-Moting','Aboubakar','Bassogog','Kunde','Toko','Nkoudou','Ngadeu','Oyongo',
+            'Fai','Zambo','Mokoena','Ekambi','Tchamba','Mbida','Biya','Kameni','Meyong','Webo']
+  },
+  NG: {
+    first: ['Kelechi','Ahmed','Victor','John','Emmanuel','Samuel','Moses','Ola','Chukwuemeka','Odion',
+            'Sunday','Chidi','Nnamdi','Chisom','Tunde','Emeka','Obinna','Uchenna','Ifeanyi','Segun'],
+    last:  ['Osimhen','Iheanacho','Musa','Onyekuru','Iwobi','Ndidi','Nwankwo','Obi','Mikel','Martins',
+            'Okocha','Yekini','Amunike','Babangida','Fash','Lawal','Onuoha','Taiwo','Ayodele','Ameobi']
+  },
+  JP: {
+    first: ['Ryota','Kenji','Hiroshi','Takumi','Yuto','Daichi','Shinji','Makoto','Koji','Naoki',
+            'Yuya','Shoya','Ryo','Shu','Atsuto','Masato','Hotaru','Genki','Ko','Ritsu'],
+    last:  ['Nakamura','Tanaka','Suzuki','Sato','Yamamoto','Watanabe','Ito','Yamada','Saito','Matsumoto',
+            'Inoue','Kimura','Hayashi','Shimizu','Yamazaki','Mori','Abe','Ikeda','Kato','Honda']
+  },
+  KR: {
+    first: ['Heung','Son','Ji','Sung','Jae','Young','Kang','Hyun','Woo','Tae',
+            'Seung','Min','Jun','Dong','Chang','Sang','Yo','Hee','Jin','Bum'],
+    last:  ['Kim','Park','Lee','Choi','Jung','Kang','Cho','Yoon','Lim','Oh',
+            'Han','Seo','Kwon','Hwang','Ahn','Yang','Shin','Yoo','Jang','Song']
+  },
+  MX: {
+    first: ['Carlos','Hirving','Andrés','Javier','Miguel','Raúl','Héctor','Diego','Jorge','Luis',
+            'Rodolfo','Erick','Jonathan','Néstor','Tecatito','Chicharito','Oswaldo','Oribe','Uriel','Giovanni'],
+    last:  ['Hernández','Lozano','Guardado','Vela','Morales','Jiménez','Reyes','Corona','Herrera','Rodríguez',
+            'Ochoa','Chicharito','Flores','Domínguez','Araujo','Álvarez','Pineda','Sánchez','Antuna','Meza']
+  },
+  _DEFAULT_EUROPE: {
+    first: ['Stefan','Ivan','Luca','Marco','Andrei','Cristian','Bogdan','Mircea','Adrian','Florin',
+            'Dušan','Aleksandar','Nikola','Nemanja','Marko','Filip','Milan','Branislav','Radomir','Dejan'],
+    last:  ['Popescu','Ionescu','Stan','Marin','Stoica','Popa','Radu','Constantin','Barbu','Dobre',
+            'Petrović','Marković','Nikolić','Jovanović','Popović','Stanković','Đorđević','Lukić','Simić','Ilić']
+  },
+  _DEFAULT_AFRIQUE: {
+    first: ['Mamadou','Ibrahima','Moussa','Seydou','Boubacar','Oumar','Modibo','Adama','Bakary','Abdoulaye',
+            'Lamine','Ousmane','Sekou','Demba','Tidiane','Amadou','Issiaka','Siaka','Fode','Samba'],
+    last:  ['Diallo','Traoré','Coulibaly','Koné','Doumbia','Kouyaté','Bah','Konaté','Touré','Camara',
+            'Sylla','Keita','Diakité','Sangaré','Sanou','Sidibé','Bathily','Niakaté','Dioumassi','Sissoko']
+  },
+  _DEFAULT_ASIE: {
+    first: ['Wei','Ming','Jae','Van','Duc','Sorn','Ali','Hassan','Reza','Arman',
+            'Yusuf','Tariq','Faris','Khalid','Saad','Rashid','Nasser','Walid','Ziad','Adel'],
+    last:  ['Zhang','Wang','Liu','Chen','Yang','Huang','Zhou','Wu','Xu','Sun',
+            'Al-Rashidi','Al-Dosari','Al-Harthi','Al-Balushi','Al-Farsi','Al-Shamsi','Al-Neyadi','Al-Breiki','Al-Hammadi','Al-Mansouri']
+  },
+  _DEFAULT_AMERIQUE: {
+    first: ['James','Ryan','Tyler','Kevin','Nathan','Liam','Noah','Ethan','Oliver','Marcus',
+            'Jordan','Andre','Devonte','Malik','Tyrone','Jamal','Darius','DeShawn','Brandon','Cody'],
+    last:  ['Johnson','Williams','Brown','Davis','Wilson','Moore','Martinez','Lopez','Taylor','Anderson',
+            'Jackson','White','Harris','Clark','Lewis','Walker','Hall','Allen','Young','King']
+  }
+}
+
+// Mapping country_code → zone de noms
+const CC_TO_ZONE = {
+  FR:'FR', BE:'FR', CH:'FR', MC:'FR', LU:'FR',
+  ES:'ES', MX:'MX', CO:'ES', VE:'ES', PE:'ES', CL:'ES', EC:'ES', UY:'ES', PY:'ES', BO:'ES', CR:'ES', PA:'ES', HN:'ES', GT:'ES', SV:'ES', NI:'ES', DO:'ES', CU:'ES',
+  PT:'PT', AO:'PT', MZ:'PT', CV:'PT',
+  BR:'BR',
+  AR:'AR',
+  IT:'IT', SM:'IT',
+  DE:'DE', AT:'DE',
+  GB:'GB', IE:'GB', AU:'GB', NZ:'GB', CA:'GB',
+  MA:'MA', TN:'DZ', LY:'DZ',
+  DZ:'DZ',
+  SN:'SN', ML:'SN', GN:'SN', GW:'SN', GM:'SN', MR:'SN',
+  CI:'CI', BF:'CI', TG:'CI', BJ:'CI', GH:'CI',
+  CM:'CM', GA:'CM', CG:'CM', CD:'CM',
+  NG:'NG',
+  JP:'JP',
+  KR:'KR',
+  MX:'MX',
+  // Fallbacks
+  PL:'_DEFAULT_EUROPE', CZ:'_DEFAULT_EUROPE', SK:'_DEFAULT_EUROPE', HU:'_DEFAULT_EUROPE',
+  HR:'_DEFAULT_EUROPE', RS:'_DEFAULT_EUROPE', SI:'_DEFAULT_EUROPE', RO:'_DEFAULT_EUROPE',
+  BG:'_DEFAULT_EUROPE', GR:'_DEFAULT_EUROPE', TR:'_DEFAULT_EUROPE', RU:'_DEFAULT_EUROPE',
+  UA:'_DEFAULT_EUROPE', NL:'_DEFAULT_EUROPE', DK:'_DEFAULT_EUROPE', SE:'_DEFAULT_EUROPE',
+  NO:'_DEFAULT_EUROPE', FI:'_DEFAULT_EUROPE', AL:'_DEFAULT_EUROPE',
+  EG:'_DEFAULT_AFRIQUE', ZA:'_DEFAULT_AFRIQUE', KE:'_DEFAULT_AFRIQUE',
+  ET:'_DEFAULT_AFRIQUE', TZ:'_DEFAULT_AFRIQUE', UG:'_DEFAULT_AFRIQUE',
+  CN:'_DEFAULT_ASIE', VN:'_DEFAULT_ASIE', TH:'_DEFAULT_ASIE', ID:'_DEFAULT_ASIE',
+  PH:'_DEFAULT_ASIE', IN:'_DEFAULT_ASIE', PK:'_DEFAULT_ASIE', BD:'_DEFAULT_ASIE',
+  IR:'_DEFAULT_ASIE', SA:'_DEFAULT_ASIE', AE:'_DEFAULT_ASIE', QA:'_DEFAULT_ASIE',
+  KW:'_DEFAULT_ASIE', IQ:'_DEFAULT_ASIE', SY:'_DEFAULT_ASIE', JO:'_DEFAULT_ASIE',
+  US:'_DEFAULT_AMERIQUE',
+}
+
+function getZone(cc) {
+  return CC_TO_ZONE[cc] || '_DEFAULT_EUROPE'
+}
+function pickFirstname(cc) {
+  const zone = getZone(cc)
+  const pool = (NAMES_BY_ZONE[zone] || NAMES_BY_ZONE['_DEFAULT_EUROPE']).first
+  return pick(pool)
+}
+function getSurnamePool(cc) {
+  const zone = getZone(cc)
+  return (NAMES_BY_ZONE[zone] || NAMES_BY_ZONE['_DEFAULT_EUROPE']).last
+}
+
 function generateSquad(clubId, countryCode, usedSurnamesGlobal = new Set(), strong = false) {
 
-  // ── Pools de prénoms et noms par zone géographique ─────────────────────────
-  const NAMES_BY_ZONE = {
-    FR: {
-      first: ['Lucas','Tom','Hugo','Théo','Antoine','Kylian','Rayan','Axel','Paul','Enzo',
-              'Léo','Mathis','Nathan','Alexis','Ethan','Maxime','Julien','Baptiste','Nicolas','Pierre',
-              'Clément','Adrien','Valentin','Dylan','Loïc','Quentin','Florian','Kevin','Corentin','Raphaël'],
-      last:  ['Martin','Bernard','Petit','Dupont','Moreau','Laurent','Robert','Michel','Leroy','Roux',
-              'David','Bertrand','Morel','Fournier','Girard','Bonnet','Rousseau','Fontaine','Chevalier','Blanc',
-              'Garnier','Boyer','Gauthier','Garcia','Perrin','Robin','Clément','Morin','Nicolas','Henry',
-              'Lemaire','Noël','Dufour','Meunier','Brun','Blanchard','Giraud','Joly','Rivière','Brunet']
-    },
-    ES: {
-      first: ['Carlos','Miguel','Javier','Alejandro','Sergio','David','Diego','Pablo','Álvaro','Marcos',
-              'Adrián','Rubén','Iker','Raúl','Fernando','Roberto','Víctor','Iván','Gonzalo','Antonio',
-              'Manuel','Jesús','Josué','Rodrigo','Cristian','Héctor','Óscar','Mario','Daniel','Jorge'],
-      last:  ['García','Rodríguez','Martínez','López','Sánchez','González','Pérez','Hernández','Jiménez','Díaz',
-              'Torres','Ramírez','Flores','Rivera','Gómez','Morales','Álvarez','Romero','Herrera','Medina',
-              'Aguilar','Vargas','Guzmán','Muñoz','Salazar','Soto','Contreras','Rojas','Ramos','Ortiz']
-    },
-    PT: {
-      first: ['João','Pedro','Diogo','Rúben','Bruno','Tiago','André','Ricardo','Luís','Gonçalo',
-              'Nuno','Mário','Fábio','Rui','Miguel','Sérgio','Hugo','Filipe','Paulo','Vítor'],
-      last:  ['Silva','Santos','Costa','Pereira','Oliveira','Mendes','Ferreira','Alves','Carvalho','Gomes',
-              'Ribeiro','Araújo','Barbosa','Cardoso','Correia','Teixeira','Machado','Vieira','Monteiro','Cunha',
-              'Pinto','Melo','Barros','Freitas','Fonseca','Andrade','Castro','Neves','Figueiredo','Duarte']
-    },
-    BR: {
-      first: ['Gabriel','Lucas','Mateus','Gustavo','Felipe','Rodrigo','Thiago','Rafael','Bruno','Diego',
-              'Leonardo','Eduardo','Victor','Pedro','Carlos','Alexandre','André','Paulo','Danilo','Marcelo'],
-      last:  ['Silva','Santos','Oliveira','Souza','Lima','Ferreira','Costa','Nascimento','Alves','Pereira',
-              'Rodrigues','Almeida','Nunes','Melo','Barbosa','Rocha','Brito','Castro','Carvalho','Gomes',
-              'Lopes','Ramos','Mendes','Cavalcanti','Batista','Azevedo','Campos','Freitas','Reis','Andrade']
-    },
-    AR: {
-      first: ['Lionel','Sergio','Rodrigo','Nicolás','Ezequiel','Gonzalo','Federico','Mauro','Pablo','Diego',
-              'Lucas','Matías','Alejandro','Maximiliano','Emiliano','Marcos','Lautaro','Ángel','Leandro','Julián'],
-      last:  ['González','Rodríguez','Martínez','García','López','Pérez','Sánchez','Romero','Torres','Flores',
-              'Díaz','Gómez','Alvarez','Ruiz','Castro','Herrera','Cabrera','Medina','Ferreyra','Suárez']
-    },
-    IT: {
-      first: ['Marco','Luca','Alessandro','Matteo','Davide','Andrea','Francesco','Federico','Lorenzo','Riccardo',
-              'Stefano','Simone','Roberto','Nicola','Giovanni','Antonio','Emanuele','Daniele','Alberto','Giorgio'],
-      last:  ['Rossi','Russo','Ferrari','Esposito','Bianchi','Romano','Ricci','Marino','Greco','Bruno',
-              'Gallo','Conti','De Luca','Mancini','Giordano','Rizzo','Lombardi','Moretti','Fontana','Rinaldi']
-    },
-    DE: {
-      first: ['Lukas','Max','Jonas','Florian','Tobias','Stefan','Markus','Sebastian','Niklas','Leon',
-              'Tim','Felix','Alexander','Philipp','Christian','Thomas','Michael','Jan','Moritz','Fabian'],
-      last:  ['Müller','Schmidt','Schneider','Fischer','Weber','Richter','Bauer','Wolf','Schröder','Neumann',
-              'Schwarz','Zimmermann','Braun','Krüger','Hofmann','Wagner','Becker','Koch','Lehmann','Kaiser']
-    },
-    GB: {
-      first: ['James','Harry','Oliver','Jack','George','Charlie','William','Thomas','Alfie','Edward',
-              'Ryan','Liam','Noah','Ethan','Kyle','Jordan','Callum','Aaron','Declan','Connor'],
-      last:  ['Smith','Jones','Williams','Brown','Taylor','Davies','Evans','Wilson','Thomas','Roberts',
-              'Johnson','Walker','Wright','Robinson','White','Thompson','Hughes','Edwards','Green','Hall']
-    },
-    MA: {
-      first: ['Yassine','Karim','Mehdi','Amine','Hamza','Bilal','Soufiane','Rachid','Omar','Mohammed',
-              'Zakaria','Ilyas','Ayoub','Saad','Khalid','Adil','Tarik','Hicham','Reda','Nabil'],
-      last:  ['Benali','Amrani','Bouazza','Cherif','Haddad','Meziane','Belkacem','Rahmani','Saidi','Zidane',
-              'Belhadj','Tazi','Idrissi','Alaoui','Bennani','Fassi','Lahlou','Naciri','Tahiri','Zniber']
-    },
-    DZ: {
-      first: ['Yacine','Riyad','Sofiane','Haris','Adem','Islam','Bilal','Omar','Nassim','Mehdi',
-              'Ryad','Zinedine','Youssef','Farid','Karim','Mourad','Walid','Anes','Ferhat','Djamel'],
-      last:  ['Amrouche','Boudiaf','Cherki','Guessab','Hamdi','Jaber','Lakhal','Mahjoub','Rezki','Sahnoun',
-              'Talbi','Zerrouki','Achour','Bakri','Chaouch','Djaballah','Ferhat','Gacem','Khaldi','Larbi']
-    },
-    SN: {
-      first: ['Sadio','Ismaïla','Cheikhou','Gana','Famara','Mbaye','Pape','Aliou','Moussa','Sidy',
-              'Idrissa','Lamine','Bamba','Fallou','Abdou','Diallo','Mamadou','Souleymane','Oumar','Cheikh'],
-      last:  ['Diallo','Traoré','Coulibaly','Bah','Konaté','Touré','Camara','Barry','Diop','Ndiaye',
-              'Sow','Cissé','Fofana','Keita','Sylla','Kane','Diarra','Sanogo','Baldé','Kouyaté']
-    },
-    CI: {
-      first: ['Didier','Wilfried','Serge','Jonathan','Franck','Maxwel','Salomon','Gervinho','Nicolas','Maxime',
-              'Ismael','Romaric','Abdul','Cheick','Arouna','Kolo','Yaya','Geoffroy','Siaka','Adama'],
-      last:  ['Drogba','Zaha','Gnagnon','Koné','Touré','Bamba','Diomandé','Konaté','Coulibaly','Fofana',
-              'Traoré','Doumbia','Sanogo','Diabaté','Kalou','Bakayoko','Gradel','Seri','Aurier','Haller']
-    },
-    CM: {
-      first: ['Samuel','Alex','Karl','Fabrice','Cédric','Nicolas','Georges','André','Joël','Roger',
-              'François','Jean','Patrick','Thierry','Eric','Benjamin','Aristide','Clinton','Clinton','Stéphane'],
-      last:  ['Eto\'o','Song','Choupo-Moting','Aboubakar','Bassogog','Kunde','Toko','Nkoudou','Ngadeu','Oyongo',
-              'Fai','Zambo','Mokoena','Ekambi','Tchamba','Mbida','Biya','Kameni','Meyong','Webo']
-    },
-    NG: {
-      first: ['Kelechi','Ahmed','Victor','John','Emmanuel','Samuel','Moses','Ola','Chukwuemeka','Odion',
-              'Sunday','Chidi','Nnamdi','Chisom','Tunde','Emeka','Obinna','Uchenna','Ifeanyi','Segun'],
-      last:  ['Osimhen','Iheanacho','Musa','Onyekuru','Iwobi','Ndidi','Nwankwo','Obi','Mikel','Martins',
-              'Okocha','Yekini','Amunike','Babangida','Fash','Lawal','Onuoha','Taiwo','Ayodele','Ameobi']
-    },
-    JP: {
-      first: ['Ryota','Kenji','Hiroshi','Takumi','Yuto','Daichi','Shinji','Makoto','Koji','Naoki',
-              'Yuya','Shoya','Ryo','Shu','Atsuto','Masato','Hotaru','Genki','Ko','Ritsu'],
-      last:  ['Nakamura','Tanaka','Suzuki','Sato','Yamamoto','Watanabe','Ito','Yamada','Saito','Matsumoto',
-              'Inoue','Kimura','Hayashi','Shimizu','Yamazaki','Mori','Abe','Ikeda','Kato','Honda']
-    },
-    KR: {
-      first: ['Heung','Son','Ji','Sung','Jae','Young','Kang','Hyun','Woo','Tae',
-              'Seung','Min','Jun','Dong','Chang','Sang','Yo','Hee','Jin','Bum'],
-      last:  ['Kim','Park','Lee','Choi','Jung','Kang','Cho','Yoon','Lim','Oh',
-              'Han','Seo','Kwon','Hwang','Ahn','Yang','Shin','Yoo','Jang','Song']
-    },
-    MX: {
-      first: ['Carlos','Hirving','Andrés','Javier','Miguel','Raúl','Héctor','Diego','Jorge','Luis',
-              'Rodolfo','Erick','Jonathan','Néstor','Tecatito','Chicharito','Oswaldo','Oribe','Uriel','Giovanni'],
-      last:  ['Hernández','Lozano','Guardado','Vela','Morales','Jiménez','Reyes','Corona','Herrera','Rodríguez',
-              'Ochoa','Chicharito','Flores','Domínguez','Araujo','Álvarez','Pineda','Sánchez','Antuna','Meza']
-    },
-    _DEFAULT_EUROPE: {
-      first: ['Stefan','Ivan','Luca','Marco','Andrei','Cristian','Bogdan','Mircea','Adrian','Florin',
-              'Dušan','Aleksandar','Nikola','Nemanja','Marko','Filip','Milan','Branislav','Radomir','Dejan'],
-      last:  ['Popescu','Ionescu','Stan','Marin','Stoica','Popa','Radu','Constantin','Barbu','Dobre',
-              'Petrović','Marković','Nikolić','Jovanović','Popović','Stanković','Đorđević','Lukić','Simić','Ilić']
-    },
-    _DEFAULT_AFRIQUE: {
-      first: ['Mamadou','Ibrahima','Moussa','Seydou','Boubacar','Oumar','Modibo','Adama','Bakary','Abdoulaye',
-              'Lamine','Ousmane','Sekou','Demba','Tidiane','Amadou','Issiaka','Siaka','Fode','Samba'],
-      last:  ['Diallo','Traoré','Coulibaly','Koné','Doumbia','Kouyaté','Bah','Konaté','Touré','Camara',
-              'Sylla','Keita','Diakité','Sangaré','Sanou','Sidibé','Bathily','Niakaté','Dioumassi','Sissoko']
-    },
-    _DEFAULT_ASIE: {
-      first: ['Wei','Ming','Jae','Van','Duc','Sorn','Ali','Hassan','Reza','Arman',
-              'Yusuf','Tariq','Faris','Khalid','Saad','Rashid','Nasser','Walid','Ziad','Adel'],
-      last:  ['Zhang','Wang','Liu','Chen','Yang','Huang','Zhou','Wu','Xu','Sun',
-              'Al-Rashidi','Al-Dosari','Al-Harthi','Al-Balushi','Al-Farsi','Al-Shamsi','Al-Neyadi','Al-Breiki','Al-Hammadi','Al-Mansouri']
-    },
-    _DEFAULT_AMERIQUE: {
-      first: ['James','Ryan','Tyler','Kevin','Nathan','Liam','Noah','Ethan','Oliver','Marcus',
-              'Jordan','Andre','Devonte','Malik','Tyrone','Jamal','Darius','DeShawn','Brandon','Cody'],
-      last:  ['Johnson','Williams','Brown','Davis','Wilson','Moore','Martinez','Lopez','Taylor','Anderson',
-              'Jackson','White','Harris','Clark','Lewis','Walker','Hall','Allen','Young','King']
-    }
-  }
-
-  // Mapping country_code → zone de noms
-  const CC_TO_ZONE = {
-    FR:'FR', BE:'FR', CH:'FR', MC:'FR', LU:'FR',
-    ES:'ES', MX:'MX', CO:'ES', VE:'ES', PE:'ES', CL:'ES', EC:'ES', UY:'ES', PY:'ES', BO:'ES', CR:'ES', PA:'ES', HN:'ES', GT:'ES', SV:'ES', NI:'ES', DO:'ES', CU:'ES',
-    PT:'PT', AO:'PT', MZ:'PT', CV:'PT',
-    BR:'BR',
-    AR:'AR',
-    IT:'IT', SM:'IT',
-    DE:'DE', AT:'DE',
-    GB:'GB', IE:'GB', AU:'GB', NZ:'GB', CA:'GB',
-    MA:'MA', TN:'DZ', LY:'DZ',
-    DZ:'DZ',
-    SN:'SN', ML:'SN', GN:'SN', GW:'SN', GM:'SN', MR:'SN',
-    CI:'CI', BF:'CI', TG:'CI', BJ:'CI', GH:'CI',
-    CM:'CM', GA:'CM', CG:'CM', CD:'CM',
-    NG:'NG',
-    JP:'JP',
-    KR:'KR',
-    MX:'MX',
-    // Fallbacks
-    PL:'_DEFAULT_EUROPE', CZ:'_DEFAULT_EUROPE', SK:'_DEFAULT_EUROPE', HU:'_DEFAULT_EUROPE',
-    HR:'_DEFAULT_EUROPE', RS:'_DEFAULT_EUROPE', SI:'_DEFAULT_EUROPE', RO:'_DEFAULT_EUROPE',
-    BG:'_DEFAULT_EUROPE', GR:'_DEFAULT_EUROPE', TR:'_DEFAULT_EUROPE', RU:'_DEFAULT_EUROPE',
-    UA:'_DEFAULT_EUROPE', NL:'_DEFAULT_EUROPE', DK:'_DEFAULT_EUROPE', SE:'_DEFAULT_EUROPE',
-    NO:'_DEFAULT_EUROPE', FI:'_DEFAULT_EUROPE', AL:'_DEFAULT_EUROPE',
-    EG:'_DEFAULT_AFRIQUE', ZA:'_DEFAULT_AFRIQUE', KE:'_DEFAULT_AFRIQUE',
-    ET:'_DEFAULT_AFRIQUE', TZ:'_DEFAULT_AFRIQUE', UG:'_DEFAULT_AFRIQUE',
-    CN:'_DEFAULT_ASIE', VN:'_DEFAULT_ASIE', TH:'_DEFAULT_ASIE', ID:'_DEFAULT_ASIE',
-    PH:'_DEFAULT_ASIE', IN:'_DEFAULT_ASIE', PK:'_DEFAULT_ASIE', BD:'_DEFAULT_ASIE',
-    IR:'_DEFAULT_ASIE', SA:'_DEFAULT_ASIE', AE:'_DEFAULT_ASIE', QA:'_DEFAULT_ASIE',
-    KW:'_DEFAULT_ASIE', IQ:'_DEFAULT_ASIE', SY:'_DEFAULT_ASIE', JO:'_DEFAULT_ASIE',
-    US:'_DEFAULT_AMERIQUE',
-  }
-
-  function getZone(cc) {
-    return CC_TO_ZONE[cc] || '_DEFAULT_EUROPE'
-  }
-  function pickFirstname(cc) {
-    const zone = getZone(cc)
-    const pool = (NAMES_BY_ZONE[zone] || NAMES_BY_ZONE['_DEFAULT_EUROPE']).first
-    return pick(pool)
-  }
-  function getSurnamePool(cc) {
-    const zone = getZone(cc)
-    return (NAMES_BY_ZONE[zone] || NAMES_BY_ZONE['_DEFAULT_EUROPE']).last
-  }
 
   // 20 slots : 2 GK, 8 DEF, 6 MIL, 4 ATT
   const slots = [
@@ -642,7 +643,10 @@ async function openClubPanel(club, container, helpers) {
 
     ${isEdit ? `
     <div style="border-top:1px solid var(--tile-border);margin-top:24px;padding-top:20px">
-      <h4 style="font-size:14px;font-weight:900;margin-bottom:12px;color:var(--tile-fg-on-page)">🃏 Joueurs du club (<span id="club-players-count">…</span>)</h4>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <h4 style="font-size:14px;font-weight:900;color:var(--tile-fg-on-page)">🃏 Joueurs du club (<span id="club-players-count">…</span>)</h4>
+        <button id="btn-gen-one-player" class="btn btn-primary btn-sm">➕ Générer 1 joueur</button>
+      </div>
       <div id="club-players-grid" style="display:flex;flex-wrap:wrap;gap:10px"></div>
     </div>` : ''}
   `
@@ -721,6 +725,11 @@ async function openClubPanel(club, container, helpers) {
     openGenSquadPopup(club, helpers, container)
   })
 
+  // Génération d'un seul joueur
+  document.getElementById('btn-gen-one-player')?.addEventListener('click', () => {
+    openGenOnePlayerPopup(club, helpers)
+  })
+
   // Grille des joueurs du club
   if (isEdit) loadClubPlayers(club.id)
 }
@@ -774,6 +783,174 @@ function openGenSquadPopup(club, helpers, container) {
       loadClubs(container, helpers)
     })
   }, 50)
+}
+
+// ── Génération d'un seul joueur (Aléatoire / Personnalisé) ────────────────
+const GEN_ONE_JOBS = ['GK', 'DEF', 'MIL', 'ATT']
+const GEN_ONE_RARITIES = [
+  { value: 'normal',  label: 'Normal' },
+  { value: 'pepite',  label: 'Pépite' },
+  { value: 'papyte',  label: 'Papyte' },
+  { value: 'legende', label: 'Légende' },
+]
+
+function openGenOnePlayerPopup(club, helpers) {
+  const { openModal, closeModal, toast } = helpers
+
+  const countryOptions = ALL_COUNTRIES.map(c => `<option value="${c}">${c}</option>`).join('')
+  const jobOptions = (selected) => GEN_ONE_JOBS.map(j => `<option value="${j}" ${j===selected?'selected':''}>${j}</option>`).join('')
+
+  const bodyHTML = `
+    <div style="display:flex;flex-direction:column;gap:14px">
+      <div style="display:flex;gap:10px">
+        <label style="flex:1;display:flex;align-items:center;gap:8px;padding:12px;border-radius:10px;border:1.5px solid var(--gray-200);cursor:pointer">
+          <input type="radio" name="gen-one-mode" value="random" checked style="width:16px;height:16px">
+          <span style="font-weight:700">🎲 Aléatoire</span>
+        </label>
+        <label style="flex:1;display:flex;align-items:center;gap:8px;padding:12px;border-radius:10px;border:1.5px solid var(--gray-200);cursor:pointer">
+          <input type="radio" name="gen-one-mode" value="custom" style="width:16px;height:16px">
+          <span style="font-weight:700">🎛️ Personnalisé</span>
+        </label>
+      </div>
+
+      <div id="gen-one-custom-fields" style="display:none;flex-direction:column;gap:12px;background:#f7f7f7;border-radius:10px;padding:14px">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div>
+            <label>POSTE 1</label>
+            <select id="gen-one-job1">${jobOptions('MIL')}</select>
+          </div>
+          <div>
+            <label>POSTE 2 (optionnel)</label>
+            <select id="gen-one-job2">
+              <option value="">— Aucun —</option>
+              ${jobOptions(null)}
+            </select>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div>
+            <label>RARETÉ</label>
+            <select id="gen-one-rarity">
+              ${GEN_ONE_RARITIES.map(r => `<option value="${r.value}">${r.label}</option>`).join('')}
+            </select>
+          </div>
+          <div>
+            <label>PAYS</label>
+            <select id="gen-one-country">
+              <option value="">— Aléatoire —</option>
+              ${countryOptions}
+            </select>
+          </div>
+        </div>
+      </div>
+    </div>
+  `
+  const footerHTML = `
+    <button id="gen-one-cancel" class="btn btn-ghost">Annuler</button>
+    <button id="gen-one-ok" class="btn btn-primary">➕ Générer</button>
+  `
+
+  openModal(`➕ Générer un joueur — ${club.real_name}`, bodyHTML, footerHTML)
+
+  setTimeout(() => {
+    document.querySelectorAll('input[name="gen-one-mode"]').forEach(radio => {
+      radio.addEventListener('change', () => {
+        document.getElementById('gen-one-custom-fields').style.display =
+          radio.value === 'custom' && radio.checked ? 'flex' : 'none'
+      })
+    })
+
+    document.getElementById('gen-one-cancel')?.addEventListener('click', () => closeModal())
+
+    document.getElementById('gen-one-ok')?.addEventListener('click', async () => {
+      const mode = document.querySelector('input[name="gen-one-mode"]:checked')?.value || 'random'
+      const okBtn = document.getElementById('gen-one-ok')
+      okBtn.disabled = true; okBtn.textContent = '⏳ Génération…'
+
+      const opts = {}
+      if (mode === 'custom') {
+        opts.job      = document.getElementById('gen-one-job1')?.value || null
+        opts.job2     = document.getElementById('gen-one-job2')?.value || null
+        opts.rarity   = document.getElementById('gen-one-rarity')?.value || null
+        opts.country  = document.getElementById('gen-one-country')?.value || null
+      }
+
+      try {
+        await genOnePlayer(club, opts)
+        toast('Joueur généré ✅', 'success')
+        closeModal()
+        loadClubPlayers(club.id)
+      } catch (e) {
+        toast('Erreur : ' + e.message, 'error')
+        okBtn.disabled = false; okBtn.textContent = '➕ Générer'
+      }
+    })
+  }, 50)
+}
+
+async function genOnePlayer(club, opts = {}) {
+  // Pays : celui choisi, sinon 50/50 natif/étranger comme dans generateSquad
+  const cc = opts.country || (Math.random() < 0.5 ? club.country_code : randCC(club.country_code))
+
+  const job  = opts.job  || pick(GEN_ONE_JOBS)
+  const job2 = opts.job2 || null
+
+  const rarity = opts.rarity || (() => {
+    const r = Math.random() * 100
+    if (r < 1.5) return 'legende'
+    if (r < 3.0) return 'pepite'
+    if (r < 4.5) return 'papyte'
+    return 'normal'
+  })()
+
+  const note = rollNoteByDistribution()
+  const noteSec = job2 ? Math.max(0, note - 2) : 0
+
+  let note_g = 0, note_d = 0, note_m = 0, note_a = 0
+  if (job === 'GK')  note_g = note
+  if (job === 'DEF') note_d = note
+  if (job === 'MIL') note_m = note
+  if (job === 'ATT') note_a = note
+  if (job2 === 'GK')  note_g = noteSec
+  if (job2 === 'DEF') note_d = noteSec
+  if (job2 === 'MIL') note_m = noteSec
+  if (job2 === 'ATT') note_a = noteSec
+
+  const skin = skinForCountry(cc)
+  const hair = hairForCountry(cc)
+  const len  = pick(ALL_LENGTHS)
+
+  // Évite les doublons de nom déjà en base
+  const { data: usedSurnamesData } = await supabase.from('players').select('surname_real').not('surname_real', 'is', null)
+  const usedSurnames = new Set((usedSurnamesData || []).map(r => r.surname_real).filter(Boolean))
+  const surnamePool = getSurnamePool(cc)
+  const freshNames = surnamePool.filter(s => !usedSurnames.has(s))
+  const surname_real = pick(freshNames.length ? freshNames : surnamePool)
+
+  const playerPayload = {
+    job, job2,
+    firstname: pickFirstname(cc),
+    surname_real,
+    country_code: cc,
+    club_id: club.id,
+    note_g, note_d, note_m, note_a,
+    skin, hair, hair_length: len,
+    rarity,
+    sell_price: 0,
+    ethnie: ethnieForCountry(cc),
+  }
+
+  // Attribuer une face unique
+  const { data: usedFacesData } = await supabase.from('players').select('face').not('face', 'is', null)
+  const usedFaces = new Set((usedFacesData || []).map(r => r.face).filter(Boolean))
+  const facePath = await assignFace(cc, usedFaces)
+  if (facePath) playerPayload.face = facePath
+
+  const { data: newPlayer, error } = await supabase.from('players').insert(playerPayload).select('id').single()
+  if (error) throw error
+
+  const { error: cardErr } = await supabase.from('cards').insert({ card_type: 'player', player_id: newPlayer.id })
+  if (cardErr) console.warn('[GenOnePlayer] Erreur carte:', cardErr.message)
 }
 
 function getKit() {

@@ -2,6 +2,7 @@ import { supabase } from '../../lib/supabase.js'
 import { encodeVowels } from '../../components/card.js'
 import { generateKitPreviewSVG, KIT_STYLES, DEFAULT_KIT } from '../../components/avatar.js'
 import { assignFace } from '../../lib/portrait.js'
+import { renderPlayerCard } from '../../components/player-card.js'
 
 // ── Physiques par pays ────────────────────────────────────
 const COUNTRY_SKIN = {
@@ -448,7 +449,6 @@ async function loadClubs(container, helpers) {
   ])
   if (error) { container.innerHTML = `<p style="color:red">${error.message}</p>`; return }
   clubs = data || []
-  // Compter les joueurs par club
   const countMap = {}
   ;(playerCounts || []).forEach(p => { countMap[p.club_id] = (countMap[p.club_id] || 0) + 1 })
   renderClubs(container, helpers, countMap)
@@ -458,11 +458,22 @@ function renderClubs(container, helpers, countMap = {}) {
   const { toast, openModal, closeModal } = helpers
 
   container.innerHTML = `
-    <div style="display:flex;gap:8px;align-items:center;margin-bottom:14px">
-      <input id="search-clubs" placeholder="🔍 Rechercher…" style="flex:1">
-      <button class="btn btn-primary" id="add-club-btn" style="white-space:nowrap">+ Club</button>
-    </div>
-    <div id="clubs-list" style="display:flex;flex-direction:column;gap:8px"></div>`
+    <div style="display:flex;gap:16px;height:calc(100vh - 56px);overflow:hidden;padding:16px">
+
+      <!-- Colonne gauche : liste des clubs -->
+      <div style="width:300px;flex-shrink:0;display:flex;flex-direction:column;gap:10px">
+        <div style="display:flex;gap:8px;align-items:center">
+          <input id="search-clubs" placeholder="🔍 Rechercher…" style="flex:1">
+          <button class="btn btn-primary btn-sm" id="add-club-btn" style="white-space:nowrap">+ Club</button>
+        </div>
+        <div id="clubs-list" style="flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:6px"></div>
+      </div>
+
+      <!-- Colonne droite : fiche club -->
+      <div id="club-panel" class="card-panel" style="flex:1;overflow-y:auto;display:flex;align-items:center;justify-content:center">
+        <div style="color:var(--tile-fg-dim);text-align:center;padding:40px">← Sélectionnez un club ou créez-en un nouveau</div>
+      </div>
+    </div>`
 
   renderList(clubs)
 
@@ -471,84 +482,41 @@ function renderClubs(container, helpers, countMap = {}) {
     renderList(clubs.filter(c => c.real_name.toLowerCase().includes(q) || c.encoded_name.toLowerCase().includes(q)))
   })
 
-  document.getElementById('add-club-btn').addEventListener('click', () => openClubModal(null, container, helpers))
+  document.getElementById('add-club-btn').addEventListener('click', () => openClubPanel(null, container, helpers))
 
   function renderList(list) {
     const el = document.getElementById('clubs-list')
-    if (!list.length) { el.innerHTML = '<p style="color:var(--gray-600);padding:20px">Aucun club.</p>'; return }
+    if (!list.length) { el.innerHTML = '<p style="color:var(--tile-fg-dim);padding:20px;text-align:center">Aucun club.</p>'; return }
     el.innerHTML = list.map(c => {
-      const kit      = buildKitFromClub(c)
-      const kitSVG   = generateKitPreviewSVG(kit, c.id).replace('<svg ', '<svg style="width:40px;height:48px" ')
-      const logo     = c.logo_url
-        ? `<img src="${c.logo_url}" style="width:40px;height:40px;object-fit:contain;border-radius:8px">`
-        : `<div style="width:40px;height:40px;background:linear-gradient(135deg,${kit.color1},${kit.color2});border-radius:8px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:10px;font-weight:900">${c.encoded_name.slice(0,3)}</div>`
+      const kit  = buildKitFromClub(c)
+      const logo = c.logo_url
+        ? `<img src="${c.logo_url}" style="width:36px;height:36px;object-fit:contain;border-radius:8px;flex-shrink:0">`
+        : `<div style="width:36px;height:36px;background:linear-gradient(135deg,${kit.color1},${kit.color2});border-radius:8px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:9px;font-weight:900;flex-shrink:0">${c.encoded_name.slice(0,3)}</div>`
       const nbPlayers = countMap[c.id] || 0
       return `
-        <div class="card-panel" style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,0.08)">
+        <div class="club-row" data-club-id="${c.id}"
+          style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:10px;cursor:pointer;background:var(--tile-bg);border:1px solid var(--tile-border);transition:background .15s">
           ${logo}
+          <img src="https://flagsapi.com/${c.country_code}/flat/24.png" style="width:18px;height:13px;object-fit:cover;border-radius:2px;flex-shrink:0" onerror="this.style.display='none'">
           <div style="flex:1;min-width:0">
-            <div style="font-weight:900;font-size:14px;color:#1a1a1a;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${c.real_name}</div>
-            <div style="display:flex;align-items:center;gap:6px;margin-top:2px">
-              <img src="https://flagsapi.com/${c.country_code}/flat/24.png" style="height:12px" onerror="this.style.display='none'">
-              <span style="font-size:11px;color:var(--gray-600);font-family:monospace">${c.encoded_name} · ${c.country_code}</span>
-            </div>
-            <div style="font-size:11px;margin-top:2px;color:${nbPlayers === 0 ? '#e67e22' : 'var(--gray-600)'}">
-              ${nbPlayers === 0 ? '⚠️ Aucun joueur' : `👥 ${nbPlayers} joueur${nbPlayers > 1 ? 's' : ''}`}
-            </div>
+            <div style="font-weight:900;font-size:12px;color:var(--tile-fg-on-page);font-family:monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${c.encoded_name}</div>
+            <div style="font-size:10px;color:${nbPlayers === 0 ? '#e67e22' : 'var(--tile-fg-dim)'}">${nbPlayers === 0 ? '⚠️ 0 joueur' : `👥 ${nbPlayers}`}</div>
           </div>
-          ${kitSVG}
-          <div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0">
-            ${nbPlayers === 0 ? `<button class="btn btn-primary btn-sm" data-gen="${c.id}" data-cc="${c.country_code}" data-name="${c.real_name}" title="Générer joueurs">⚽</button>` : ''}
-            <button class="btn btn-ghost btn-sm" data-edit="${c.id}">✏️</button>
-            <button class="btn btn-danger btn-sm" data-del="${c.id}">🗑️</button>
-          </div>
+          <button class="btn-del-club" data-del="${c.id}"
+            style="width:22px;height:22px;border-radius:50%;background:#c0392b;border:none;color:#fff;font-size:11px;cursor:pointer;flex-shrink:0"
+            onclick="event.stopPropagation()">✕</button>
         </div>`
     }).join('')
 
-    el.querySelectorAll('[data-gen]').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const clubId   = btn.dataset.gen
-        const clubName = btn.dataset.name
-        const cc       = btn.dataset.cc
-
-        openModal(
-          `⚽ Générer — ${clubName}`,
-          `<div style="display:flex;flex-direction:column;gap:14px">
-            <div style="font-size:12px;color:#888;background:#f8f8f8;border-radius:8px;padding:10px;line-height:1.6">
-              Distribution : 55% note 1–4 · 20% note 5–10 · 10% note 11–14 · 10% note 15–17 · 5% note 18–20<br>
-              2 pépites + 2 papytes · 50% nationalité du club
-            </div>
-            <label style="display:flex;align-items:center;gap:10px;font-size:14px;cursor:pointer;padding:12px;background:rgba(212,160,23,0.08);border-radius:10px;border:1.5px solid rgba(212,160,23,0.35)">
-              <input type="checkbox" id="qg-strong" style="width:18px;height:18px;accent-color:#D4A017;flex-shrink:0">
-              <div>
-                <div style="font-weight:700">💪 Équipe Forte</div>
-                <div style="font-size:11px;color:#888;margin-top:2px">10 joueurs avec une note entre 15 et 20 garantis</div>
-              </div>
-            </label>
-          </div>`,
-          `<div style="display:flex;gap:10px;width:100%">
-            <button id="qg-cancel" class="btn btn-ghost" style="flex:1">Annuler</button>
-            <button id="qg-ok" class="btn btn-primary" style="flex:1">⚽ Générer</button>
-          </div>`
-        )
-
-        setTimeout(() => {
-          document.getElementById('qg-cancel')?.addEventListener('click', () => closeModal())
-          document.getElementById('qg-ok')?.addEventListener('click', async () => {
-            const strong = document.getElementById('qg-strong')?.checked ?? false
-            closeModal()
-            btn.disabled = true; btn.textContent = '⏳'
-            await runGenSquad(clubId, cc, toast, strong)
-            loadClubs(container, helpers)
-          })
-        }, 50)
+    el.querySelectorAll('.club-row').forEach(row => {
+      row.addEventListener('click', () => {
+        const c = clubs.find(x => x.id === row.dataset.clubId)
+        if (c) openClubPanel(c, container, helpers)
+        el.querySelectorAll('.club-row').forEach(r => r.style.background = 'var(--tile-bg)')
+        row.style.background = 'rgba(26,107,60,0.18)'
       })
     })
-    el.querySelectorAll('[data-edit]').forEach(btn => {
-      const club = clubs.find(c => c.id === btn.dataset.edit)
-      btn.addEventListener('click', () => openClubModal(club, container, helpers))
-    })
-    el.querySelectorAll('[data-del]').forEach(btn => {
+    el.querySelectorAll('.btn-del-club').forEach(btn => {
       btn.addEventListener('click', async () => {
         if (!confirm('Supprimer ce club ?')) return
         const { error } = await supabase.from('clubs').delete().eq('id', btn.dataset.del)
@@ -559,22 +527,29 @@ function renderClubs(container, helpers, countMap = {}) {
   }
 }
 
-// ── Modal ─────────────────────────────────────────────────
-function openClubModal(club, container, helpers) {
-  const { toast, openModal, closeModal } = helpers
+// ── Panneau droit (fiche club + joueurs) ────────────────────────────────
+async function openClubPanel(club, container, helpers) {
+  const { toast } = helpers
   const isEdit = !!club
   const kit = club ? buildKitFromClub(club) : { ...DEFAULT_KIT }
+  const panel = document.getElementById('club-panel')
+  if (!panel) return
 
   const kitStyleOptions = Object.entries(KIT_STYLES)
     .map(([k, v]) => `<option value="${k}" ${kit.style === k ? 'selected' : ''}>${v.label}</option>`).join('')
   const countryOptions = ALL_COUNTRIES
     .map(c => `<option value="${c}" ${(club?.country_code || 'FR') === c ? 'selected' : ''}>${c}</option>`).join('')
 
-  openModal(
-    isEdit ? `✏️ ${club.real_name}` : '➕ Nouveau club',
-    `<div style="display:flex;flex-direction:column;gap:14px">
+  panel.style.display = 'block'
+  panel.style.alignItems = ''
+  panel.style.justifyContent = ''
+  panel.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+      <h3 style="font-size:17px;font-weight:900;color:var(--tile-fg-on-page)">${isEdit ? `✏️ ${club.real_name}` : '➕ Nouveau club'}</h3>
+      ${isEdit ? `<button id="btn-gen-squad-panel" class="btn btn-primary btn-sm">⚽ Générer joueurs</button>` : ''}
+    </div>
 
-      <!-- Identité -->
+    <div style="display:flex;flex-direction:column;gap:14px;max-width:640px">
       <div class="form-group">
         <label>Nom du club *</label>
         <input id="m-real" value="${club?.real_name || ''}" placeholder="Paris Saint-Germain">
@@ -595,17 +570,27 @@ function openClubModal(club, container, helpers) {
           </select>
         </div>
       </div>
+
+      <!-- Logo : upload de fichier, plus une URL -->
       <div class="form-group">
-        <label>Logo (URL)</label>
-        <input id="m-logo" value="${club?.logo_url || ''}" placeholder="https://...">
+        <label>Logo du club</label>
+        <div style="display:flex;align-items:center;gap:12px">
+          <div id="logo-preview" style="width:56px;height:56px;border-radius:10px;background:var(--tile-bg);border:1.5px solid var(--tile-border);display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0">
+            ${club?.logo_url ? `<img src="${club.logo_url}" style="width:100%;height:100%;object-fit:contain">` : '<span style="font-size:22px;opacity:.4">🏟️</span>'}
+          </div>
+          <div style="flex:1">
+            <input type="file" id="m-logo-file" accept="image/png,image/jpeg,image/webp,image/svg+xml">
+            <div style="font-size:11px;color:var(--tile-fg-dim);margin-top:4px">PNG/JPG/WEBP/SVG — remplace le logo actuel si un fichier est choisi</div>
+          </div>
+        </div>
+        <input type="hidden" id="m-logo-url-current" value="${club?.logo_url || ''}">
       </div>
 
       <!-- Tenue -->
-      <div style="border-top:1px solid var(--gray-200);padding-top:12px">
-        <div style="font-weight:700;font-size:13px;margin-bottom:10px">👕 Tenue</div>
-        <div style="display:flex;gap:12px;align-items:flex-start">
-          <!-- Contrôles -->
-          <div style="flex:1;display:flex;flex-direction:column;gap:8px">
+      <div style="border-top:1px solid var(--tile-border);padding-top:12px">
+        <div style="font-weight:700;font-size:13px;margin-bottom:10px;color:var(--tile-fg-on-page)">👕 Tenue</div>
+        <div style="display:flex;gap:12px;align-items:flex-start;flex-wrap:wrap">
+          <div style="flex:1;min-width:200px;display:flex;flex-direction:column;gap:8px">
             <div class="form-group">
               <label>Style</label>
               <select id="m-kit-style" style="width:100%">${kitStyleOptions}</select>
@@ -620,109 +605,174 @@ function openClubModal(club, container, helpers) {
               <div class="form-group" id="wrap-${id}" ${isC3 ? 'style="display:none"' : ''}>
                 <label>${lbl}</label>
                 <div style="display:flex;gap:6px;align-items:center">
-                  <input type="color" id="${id}" value="${val || '#000000'}" style="width:38px;height:32px;padding:2px;border:1px solid var(--gray-200);border-radius:6px;cursor:pointer;flex-shrink:0">
+                  <input type="color" id="${id}" value="${val || '#000000'}" style="width:38px;height:32px;padding:2px;border:1px solid var(--tile-border);border-radius:6px;cursor:pointer;flex-shrink:0">
                   <input id="${id}-txt" value="${val || '#000000'}" maxlength="7" style="flex:1;font-family:monospace;font-size:12px">
                 </div>
               </div>`).join('')}
           </div>
-          <!-- Aperçu -->
           <div style="display:flex;flex-direction:column;align-items:center;gap:6px">
-            <div id="kit-preview-wrap" style="background:#f0f0f0;border-radius:12px;padding:14px;border:1.5px solid var(--gray-200);min-width:60px;text-align:center"></div>
-            <div style="font-size:10px;color:var(--gray-600)">Aperçu</div>
+            <div id="kit-preview-wrap" style="background:#f0f0f0;border-radius:12px;padding:14px;border:1.5px solid var(--tile-border);min-width:60px;text-align:center"></div>
+            <div style="font-size:10px;color:var(--tile-fg-dim)">Aperçu</div>
           </div>
         </div>
       </div>
 
-      <!-- Génération auto (création uniquement) -->
       ${!isEdit ? `
-      <div style="border-top:1px solid var(--gray-200);padding-top:12px;display:flex;flex-direction:column;gap:8px">
-        <div style="font-weight:700;font-size:13px;margin-bottom:2px">⚡ Génération automatique</div>
-        <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;padding:8px;background:rgba(26,107,60,0.06);border-radius:8px;border:1px solid rgba(26,107,60,0.2)">
+      <div style="border-top:1px solid var(--tile-border);padding-top:12px;display:flex;flex-direction:column;gap:8px">
+        <div style="font-weight:700;font-size:13px;margin-bottom:2px;color:var(--tile-fg-on-page)">⚡ Génération automatique</div>
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;padding:8px;background:rgba(26,107,60,0.1);border-radius:8px;border:1px solid rgba(26,107,60,0.3);color:var(--tile-fg-on-page)">
           <input type="checkbox" id="m-gen-stadium" checked style="width:16px;height:16px">
           🏟️ Créer la carte Stade du club automatiquement
         </label>
-        <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;padding:8px;background:rgba(26,107,60,0.06);border-radius:8px;border:1px solid rgba(26,107,60,0.2)">
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;padding:8px;background:rgba(26,107,60,0.1);border-radius:8px;border:1px solid rgba(26,107,60,0.3);color:var(--tile-fg-on-page)">
           <input type="checkbox" id="m-gen-squad" style="width:16px;height:16px">
           ⚽ Générer 20 joueurs (2 GK · 8 DEF · 6 MIL · 4 ATT)
         </label>
-        <label id="m-gen-strong-label" style="display:none;align-items:center;gap:8px;font-size:13px;cursor:pointer;padding:8px;background:rgba(212,160,23,0.08);border-radius:8px;border:1px solid rgba(212,160,23,0.35);margin-left:12px">
+        <label id="m-gen-strong-label" style="display:none;align-items:center;gap:8px;font-size:13px;cursor:pointer;padding:8px;background:rgba(212,160,23,0.1);border-radius:8px;border:1px solid rgba(212,160,23,0.4);margin-left:12px;color:var(--tile-fg-on-page)">
           <input type="checkbox" id="m-gen-strong" style="width:16px;height:16px;accent-color:#D4A017">
-          💪 Équipe Forte <span style="font-size:11px;color:#888;font-weight:400">(10 joueurs note 15–20 garantis)</span>
+          💪 Équipe Forte <span style="font-size:11px;color:var(--tile-fg-dim);font-weight:400">(10 joueurs note 15–20 garantis)</span>
         </label>
-        <div style="font-size:11px;color:var(--gray-600);padding-left:4px">Distribution : 55% note 1–4 · 20% note 5–10 · 10% note 11–14 · 10% note 15–17 · 5% note 18–20 · 2 pépites + 2 papytes</div>
       </div>` : ''}
 
-      <div id="m-error" style="color:#bb2020;font-size:13px;min-height:16px"></div>
+      <div id="m-error" style="color:#ff6b6b;font-size:13px;min-height:16px"></div>
       <button class="btn btn-primary" id="m-save" style="width:100%;padding:14px;font-size:15px">
         ${isEdit ? '💾 Enregistrer' : '✅ Créer le club'}
       </button>
+    </div>
+
+    ${isEdit ? `
+    <div style="border-top:1px solid var(--tile-border);margin-top:24px;padding-top:20px">
+      <h4 style="font-size:14px;font-weight:900;margin-bottom:12px;color:var(--tile-fg-on-page)">🃏 Joueurs du club (<span id="club-players-count">…</span>)</h4>
+      <div id="club-players-grid" style="display:flex;flex-wrap:wrap;gap:10px"></div>
+    </div>` : ''}
+  `
+
+  // Prévisualisation logo au choix de fichier
+  document.getElementById('m-logo-file')?.addEventListener('change', (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = () => {
+      document.getElementById('logo-preview').innerHTML = `<img src="${reader.result}" style="width:100%;height:100%;object-fit:contain">`
+    }
+    reader.readAsDataURL(file)
+  })
+
+  refreshKit()
+
+  function updateColor3Visibility() {
+    const style = document.getElementById('m-kit-style')?.value || 'uni'
+    const needs3 = KIT_STYLES[style]?.colors === 3
+    const wrap = document.getElementById('wrap-m-kit-color3')
+    if (wrap) wrap.style.display = needs3 ? '' : 'none'
+  }
+  updateColor3Visibility()
+
+  ;['m-kit-color1','m-kit-color2','m-kit-color3','m-kit-shorts','m-kit-socks'].forEach(id => {
+    const picker = document.getElementById(id)
+    const txt    = document.getElementById(id + '-txt')
+    if (!picker || !txt) return
+    picker.addEventListener('input', () => { txt.value = picker.value; refreshKit() })
+    txt.addEventListener('input', () => {
+      const v = txt.value.trim()
+      if (/^#[0-9a-fA-F]{6}$/.test(v)) { picker.value = v; refreshKit() }
+    })
+    txt.addEventListener('change', () => {
+      let v = txt.value.trim()
+      if (!v.startsWith('#')) v = '#' + v
+      if (/^#[0-9a-fA-F]{6}$/.test(v)) { picker.value = v; txt.value = v; refreshKit() }
+    })
+  })
+  document.getElementById('m-kit-style')?.addEventListener('change', () => { updateColor3Visibility(); refreshKit() })
+
+  const realInput    = document.getElementById('m-real')
+  const encodedInput = document.getElementById('m-encoded')
+  function autoEncode() {
+    if (!realInput || !encodedInput || encodedInput.value) return
+    const words = realInput.value.trim().split(/\s+/)
+    const abbr  = words.length === 1
+      ? words[0].toUpperCase().slice(0, 6)
+      : words.filter(w => w.length > 2).map(w => w[0].toUpperCase()).join('') || words[0].toUpperCase().slice(0, 4)
+    encodedInput.value = abbr
+  }
+  realInput?.addEventListener('input', autoEncode)
+  document.getElementById('auto-encode-btn')?.addEventListener('click', () => {
+    if (encodedInput) encodedInput.value = ''
+    autoEncode()
+  })
+
+  document.getElementById('m-save')?.addEventListener('click', () => saveClub(club, isEdit, container, helpers))
+
+  const squadCb  = document.getElementById('m-gen-squad')
+  const strongLbl = document.getElementById('m-gen-strong-label')
+  function toggleStrongLabel() {
+    if (!strongLbl) return
+    strongLbl.style.display = squadCb?.checked ? 'flex' : 'none'
+    if (!squadCb?.checked) {
+      const strongCb = document.getElementById('m-gen-strong')
+      if (strongCb) strongCb.checked = false
+    }
+  }
+  squadCb?.addEventListener('change', toggleStrongLabel)
+  toggleStrongLabel()
+
+  // Génération d'effectif depuis le panneau (club existant)
+  document.getElementById('btn-gen-squad-panel')?.addEventListener('click', () => {
+    openGenSquadPopup(club, helpers, container)
+  })
+
+  // Grille des joueurs du club
+  if (isEdit) loadClubPlayers(club.id)
+}
+
+async function loadClubPlayers(clubId) {
+  const { data: players } = await supabase
+    .from('players')
+    .select('*, clubs(encoded_name, logo_url, kit_style, kit_color1, kit_color2, kit_color3, kit_shorts, kit_socks)')
+    .eq('club_id', clubId)
+    .order('surname_real')
+
+  const grid = document.getElementById('club-players-grid')
+  const countEl = document.getElementById('club-players-count')
+  if (countEl) countEl.textContent = (players||[]).length
+  if (!grid) return
+  if (!players?.length) { grid.innerHTML = '<div style="color:var(--tile-fg-dim);padding:20px;font-size:13px">Aucun joueur dans ce club.</div>'; return }
+  grid.innerHTML = players.map(p => renderPlayerCard(p, { width: 100 })).join('')
+}
+
+function openGenSquadPopup(club, helpers, container) {
+  const { openModal, closeModal, toast } = helpers
+  openModal(
+    `⚽ Générer — ${club.real_name}`,
+    `<div style="display:flex;flex-direction:column;gap:14px">
+      <div style="font-size:12px;color:#888;background:#f8f8f8;border-radius:8px;padding:10px;line-height:1.6">
+        Distribution : 55% note 1–4 · 20% note 5–10 · 10% note 11–14 · 10% note 15–17 · 5% note 18–20<br>
+        2 pépites + 2 papytes · 50% nationalité du club
+      </div>
+      <label style="display:flex;align-items:center;gap:10px;font-size:14px;cursor:pointer;padding:12px;background:rgba(212,160,23,0.08);border-radius:10px;border:1.5px solid rgba(212,160,23,0.35)">
+        <input type="checkbox" id="qg-strong" style="width:18px;height:18px;accent-color:#D4A017;flex-shrink:0">
+        <div>
+          <div style="font-weight:700">💪 Équipe Forte</div>
+          <div style="font-size:11px;color:#888;margin-top:2px">10 joueurs avec une note entre 15 et 20 garantis</div>
+        </div>
+      </label>
+    </div>`,
+    `<div style="display:flex;gap:10px;width:100%">
+      <button id="qg-cancel" class="btn btn-ghost" style="flex:1">Annuler</button>
+      <button id="qg-ok" class="btn btn-primary" style="flex:1">⚽ Générer</button>
     </div>`
   )
-
-  // ── Init kit preview (setTimeout pour attendre le DOM de la modal) ──
   setTimeout(() => {
-    refreshKit()
-
-    // Afficher/masquer couleur 3 selon le style choisi
-    function updateColor3Visibility() {
-      const style = document.getElementById('m-kit-style')?.value || 'uni'
-      const needs3 = KIT_STYLES[style]?.colors === 3
-      const wrap = document.getElementById('wrap-m-kit-color3')
-      if (wrap) wrap.style.display = needs3 ? '' : 'none'
-    }
-    updateColor3Visibility()
-
-    // Sync color pickers ↔ text inputs
-    ;['m-kit-color1','m-kit-color2','m-kit-color3','m-kit-shorts','m-kit-socks'].forEach(id => {
-      const picker = document.getElementById(id)
-      const txt    = document.getElementById(id + '-txt')
-      if (!picker || !txt) return
-      picker.addEventListener('input', () => { txt.value = picker.value; refreshKit() })
-      txt.addEventListener('input', () => {
-        const v = txt.value.trim()
-        if (/^#[0-9a-fA-F]{6}$/.test(v)) { picker.value = v; refreshKit() }
-      })
-      txt.addEventListener('change', () => {
-        let v = txt.value.trim()
-        if (!v.startsWith('#')) v = '#' + v
-        if (/^#[0-9a-fA-F]{6}$/.test(v)) { picker.value = v; txt.value = v; refreshKit() }
-      })
+    document.getElementById('qg-cancel')?.addEventListener('click', () => closeModal())
+    document.getElementById('qg-ok')?.addEventListener('click', async () => {
+      const strong = document.getElementById('qg-strong')?.checked ?? false
+      closeModal()
+      toast('Génération en cours…', 'info')
+      await runGenSquad(club.id, club.country_code, toast, strong)
+      toast('Effectif généré ✅', 'success')
+      loadClubPlayers(club.id)
+      loadClubs(container, helpers)
     })
-    document.getElementById('m-kit-style')?.addEventListener('change', () => { updateColor3Visibility(); refreshKit() })
-
-    // Auto-encode
-    const realInput    = document.getElementById('m-real')
-    const encodedInput = document.getElementById('m-encoded')
-    function autoEncode() {
-      if (!realInput || !encodedInput || encodedInput.value) return
-      const words = realInput.value.trim().split(/\s+/)
-      const abbr  = words.length === 1
-        ? words[0].toUpperCase().slice(0, 6)
-        : words.filter(w => w.length > 2).map(w => w[0].toUpperCase()).join('') || words[0].toUpperCase().slice(0, 4)
-      encodedInput.value = abbr
-    }
-    realInput?.addEventListener('input', autoEncode)
-    document.getElementById('auto-encode-btn')?.addEventListener('click', () => {
-      if (encodedInput) encodedInput.value = ''
-      autoEncode()
-    })
-
-    // Save
-    document.getElementById('m-save')?.addEventListener('click', () => saveClub(club, isEdit, container, helpers))
-
-    // Afficher/masquer la coche "Équipe Forte" selon l'état de "Générer joueurs"
-    const squadCb  = document.getElementById('m-gen-squad')
-    const strongLbl = document.getElementById('m-gen-strong-label')
-    function toggleStrongLabel() {
-      if (!strongLbl) return
-      strongLbl.style.display = squadCb?.checked ? 'flex' : 'none'
-      if (!squadCb?.checked) {
-        const strongCb = document.getElementById('m-gen-strong')
-        if (strongCb) strongCb.checked = false
-      }
-    }
-    squadCb?.addEventListener('change', toggleStrongLabel)
-    toggleStrongLabel()
   }, 50)
 }
 
@@ -740,19 +790,30 @@ function getKit() {
 function refreshKit() {
   const wrap = document.getElementById('kit-preview-wrap')
   if (!wrap) return
-  wrap.innerHTML = generateKitPreviewSVG(getKit(), 'modal')
+  wrap.innerHTML = generateKitPreviewSVG(getKit(), 'panel')
+}
+
+// ── Upload logo vers Supabase Storage ────────────────────────────────────
+async function uploadClubLogo(file, clubIdHint) {
+  const ext  = (file.name.split('.').pop() || 'png').toLowerCase()
+  const path = `clubs/${clubIdHint || 'new'}-${Date.now()}.${ext}`
+  const { error } = await supabase.storage.from('assets').upload(path, file, { upsert: true, cacheControl: '3600' })
+  if (error) throw error
+  const { data } = supabase.storage.from('assets').getPublicUrl(path)
+  return data.publicUrl
 }
 
 // ── Sauvegarde ────────────────────────────────────────────
 async function saveClub(club, isEdit, container, helpers) {
-  const { toast, closeModal } = helpers
+  const { toast } = helpers
   const errEl = document.getElementById('m-error')
   const btn   = document.getElementById('m-save')
 
   const realName    = document.getElementById('m-real')?.value.trim()
   const encodedName = document.getElementById('m-encoded')?.value.trim().toUpperCase()
   const countryCode = document.getElementById('m-country')?.value.trim().toUpperCase()
-  const logoUrl     = document.getElementById('m-logo')?.value.trim() || null
+  const logoFile    = document.getElementById('m-logo-file')?.files?.[0] || null
+  const currentLogo = document.getElementById('m-logo-url-current')?.value || null
   const genStadium  = document.getElementById('m-gen-stadium')?.checked ?? false
   const genSquad    = document.getElementById('m-gen-squad')?.checked   ?? false
   const genStrong   = document.getElementById('m-gen-strong')?.checked  ?? false
@@ -763,6 +824,18 @@ async function saveClub(club, isEdit, container, helpers) {
   if (!countryCode) { errEl.textContent = 'Le pays est requis.';         return }
 
   btn.disabled = true; btn.textContent = 'Enregistrement…'
+
+  let logoUrl = currentLogo
+  if (logoFile) {
+    try {
+      btn.textContent = '📤 Envoi du logo…'
+      logoUrl = await uploadClubLogo(logoFile, club?.id)
+    } catch (e) {
+      errEl.textContent = 'Erreur upload logo : ' + e.message
+      btn.disabled = false; btn.textContent = isEdit ? '💾 Enregistrer' : '✅ Créer le club'
+      return
+    }
+  }
 
   const payload = {
     real_name: realName, encoded_name: encodedName,
@@ -781,7 +854,6 @@ async function saveClub(club, isEdit, container, helpers) {
     if (error) { errEl.textContent = error.message; btn.disabled = false; btn.textContent = '✅ Créer le club'; return }
     clubId = newClub.id
 
-    // Carte Stade
     if (genStadium) {
       btn.textContent = '🏟️ Création du stade…'
       const { data: stadDef, error: eSD } = await supabase
@@ -794,7 +866,6 @@ async function saveClub(club, isEdit, container, helpers) {
       }
     }
 
-    // Génération effectif
     if (genSquad) {
       btn.textContent = '⚽ Génération des joueurs…'
       await runGenSquad(clubId, countryCode, toast, genStrong)
@@ -802,6 +873,5 @@ async function saveClub(club, isEdit, container, helpers) {
   }
 
   toast(isEdit ? 'Club modifié ✅' : 'Club créé ✅', 'success')
-  closeModal()
   loadClubs(container, helpers)
 }

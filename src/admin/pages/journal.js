@@ -13,7 +13,7 @@ async function load(container) {
   container.innerHTML = `
     <div style="padding:20px;max-width:760px;margin:0 auto">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
-        <h2 style="font-size:20px;font-weight:900">📰 Journal des mises à jour</h2>
+        <h2 style="font-size:20px;font-weight:900">📰 Actualités</h2>
         <button id="add-article" class="btn btn-primary">+ Nouvel article</button>
       </div>
 
@@ -69,9 +69,9 @@ async function load(container) {
   })
   document.getElementById('form-save').addEventListener('click', () => saveForm(container))
 
-  container.querySelectorAll('[data-edit]').forEach(btn => {
-    const a = (articles||[]).find(x => x.id === btn.dataset.edit)
-    if (a) btn.addEventListener('click', () => openForm(a))
+  container.querySelectorAll('[data-edit-row]').forEach(row => {
+    const a = (articles||[]).find(x => x.id === row.dataset.editRow)
+    if (a) row.addEventListener('click', () => openForm(a))
   })
   container.querySelectorAll('[data-delete]').forEach(btn => {
     btn.addEventListener('click', async () => {
@@ -85,7 +85,7 @@ async function load(container) {
 function articleRowHTML(a) {
   const date = new Date(a.published_at).toLocaleDateString('fr-FR', { day:'2-digit', month:'short', year:'numeric' })
   return `
-    <div style="background:#fff;border-radius:10px;padding:14px 16px;box-shadow:0 1px 4px rgba(0,0,0,0.08);display:flex;gap:12px;align-items:flex-start">
+    <div data-edit-row="${a.id}" style="background:#fff;border-radius:10px;padding:14px 16px;box-shadow:0 1px 4px rgba(0,0,0,0.08);display:flex;gap:12px;align-items:flex-start;cursor:pointer">
       ${a.image_url ? `<img src="${a.image_url}" style="width:60px;height:60px;object-fit:cover;border-radius:8px;flex-shrink:0">` : ''}
       <div style="flex:1;min-width:0">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:2px">
@@ -96,8 +96,7 @@ function articleRowHTML(a) {
         <div style="font-size:12px;color:#555;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${a.description}</div>
       </div>
       <div style="display:flex;gap:6px;flex-shrink:0">
-        <button data-edit="${a.id}" class="btn btn-ghost btn-sm">✏️</button>
-        <button data-delete="${a.id}" class="btn btn-ghost btn-sm" style="color:#cc2222">🗑️</button>
+        <button data-delete="${a.id}" class="btn btn-ghost btn-sm" style="color:#cc2222" onclick="event.stopPropagation()">🗑️</button>
       </div>
     </div>`
 }

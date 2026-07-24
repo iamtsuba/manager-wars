@@ -11,31 +11,18 @@ async function load(container) {
     .order('step_order')
 
   container.innerHTML = `
-    <div style="padding:20px;max-width:820px;margin:0 auto">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
-        <div>
-          <h2 style="font-size:20px;font-weight:900">🎓 Tutoriel — Étapes</h2>
-          <div style="font-size:12px;color:#888;margin-top:2px">Gérez les slides du tutoriel affiché aux nouveaux joueurs</div>
-        </div>
-        <div style="display:flex;gap:8px">
-          <button id="ts-reset" class="btn btn-ghost btn-sm" style="color:#7a28b8" title="Réinitialiser tutorial_done pour tous les joueurs">🔄 Reset tutos</button>
-          <button id="ts-add" class="btn btn-primary">+ Ajouter</button>
-        </div>
-      </div>
+    <div style="display:flex;gap:16px;height:calc(100vh - 56px);overflow:hidden;padding:16px">
 
-      <div id="ts-list" style="display:flex;flex-direction:column;gap:10px">
-        ${(steps||[]).length === 0 ? `
-          <div style="text-align:center;padding:40px;color:#aaa;background:#fff;border-radius:12px">
-            Aucune étape. Clique sur "+ Ajouter" pour commencer.
-          </div>` :
-          (steps||[]).map(s => stepRowHTML(s)).join('')
-        }
-      </div>
-
-      <!-- Formulaire -->
-      <div id="ts-form" style="display:none;margin-top:24px;background:#fff;border-radius:12px;padding:20px;box-shadow:0 1px 8px rgba(0,0,0,0.1)">
-        <h3 id="ts-form-title" style="font-size:16px;font-weight:900;margin-bottom:16px">Nouvelle étape</h3>
-        <input type="hidden" id="ts-id">
+      <!-- Colonne gauche : panneau de modification -->
+      <div style="width:420px;flex-shrink:0;overflow-y:auto">
+        <!-- Formulaire -->
+        <div id="ts-form" style="background:#fff;border-radius:12px;padding:20px;box-shadow:0 1px 8px rgba(0,0,0,0.1)">
+          <div id="ts-form-empty" style="text-align:center;padding:40px 10px;color:#aaa">
+            ← Sélectionnez une étape ou créez-en une nouvelle
+          </div>
+          <div id="ts-form-content" style="display:none">
+          <h3 id="ts-form-title" style="font-size:16px;font-weight:900;margin-bottom:16px">Nouvelle étape</h3>
+          <input type="hidden" id="ts-id">
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
           <div>
             <label style="font-size:11px;font-weight:700;color:#555;display:block;margin-bottom:4px">EMOJI *</label>
@@ -109,7 +96,32 @@ async function load(container) {
           <button id="ts-cancel" class="btn btn-ghost" style="flex:1">Annuler</button>
           <button id="ts-save" class="btn btn-primary" style="flex:1">Enregistrer</button>
         </div>
-      </div>
+          </div><!-- /ts-form-content -->
+        </div><!-- /ts-form -->
+      </div><!-- /colonne gauche -->
+
+      <!-- Colonne droite : liste des étapes -->
+      <div style="flex:1;overflow-y:auto">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+          <div>
+            <h2 style="font-size:20px;font-weight:900;color:var(--tile-fg-on-page)">🎓 Tutoriel — Étapes</h2>
+            <div style="font-size:12px;color:var(--tile-fg-dim);margin-top:2px">Gérez les slides du tutoriel affiché aux nouveaux joueurs</div>
+          </div>
+          <div style="display:flex;gap:8px">
+            <button id="ts-reset" class="btn btn-ghost btn-sm" style="color:#7a28b8" title="Réinitialiser tutorial_done pour tous les joueurs">🔄 Reset tutos</button>
+            <button id="ts-add" class="btn btn-primary">+ Ajouter</button>
+          </div>
+        </div>
+
+        <div id="ts-list" style="display:flex;flex-direction:column;gap:10px">
+          ${(steps||[]).length === 0 ? `
+            <div style="text-align:center;padding:40px;color:#aaa;background:#fff;border-radius:12px">
+              Aucune étape. Clique sur "+ Ajouter" pour commencer.
+            </div>` :
+            (steps||[]).map(s => stepRowHTML(s)).join('')
+          }
+        </div>
+      </div><!-- /colonne droite -->
     </div>`
 
   document.getElementById('ts-add')?.addEventListener('click', () => openForm(null, steps?.length || 0))
@@ -297,7 +309,8 @@ function stepRowHTML(s) {
 }
 
 function openForm(s, defaultOrder = 0) {
-  document.getElementById('ts-form').style.display = 'block'
+  document.getElementById('ts-form-empty').style.display = 'none'
+  document.getElementById('ts-form-content').style.display = 'block'
   document.getElementById('ts-form-title').textContent = s ? 'Modifier l\'étape' : 'Nouvelle étape'
   document.getElementById('ts-id').value    = s?.id || ''
   document.getElementById('ts-emoji').value  = s?.emoji || '⚽'
@@ -328,7 +341,8 @@ function openForm(s, defaultOrder = 0) {
 }
 
 function closeForm() {
-  document.getElementById('ts-form').style.display = 'none'
+  document.getElementById('ts-form-content').style.display = 'none'
+  document.getElementById('ts-form-empty').style.display = 'block'
   document.getElementById('ts-preview-area').innerHTML = ''
 }
 

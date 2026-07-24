@@ -225,6 +225,9 @@ tr:hover td { background: rgba(255,255,255,0.04); }
 }
 .modal input::placeholder, .modal textarea::placeholder { color: #999; }
 .modal select option { background: #fff; color: #1a1a1a; }
+.modal th { color: #888; }
+.modal td { color: #1a1a1a; border-bottom-color: var(--gray-200); }
+.modal th { border-bottom-color: var(--gray-200); }
 
 /* ── Filet de sécurité : toute boîte blanche codée en dur (hors .modal, ex:
    formulaires inline dans Journal/Tutoriel/Boosters) doit avoir du texte

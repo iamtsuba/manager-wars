@@ -121,11 +121,12 @@ body {
 /* ── Inputs ── */
 input, select, textarea {
   width: 100%; padding: 8px 10px;
-  border: 1.5px solid var(--gray-200);
+  border: 1.5px solid var(--input-border, var(--gray-200));
   border-radius: var(--radius); font-size: 14px;
-  font-family: var(--font); background: #fff;
+  font-family: var(--font); background: var(--input-bg, #fff); color: var(--input-fg, #1a1a1a);
   transition: border-color .15s;
 }
+input::placeholder, textarea::placeholder { color: var(--tile-fg-dim); opacity: .8; }
 input:focus, select:focus, textarea:focus {
   outline: none; border-color: var(--green);
 }
@@ -134,9 +135,9 @@ label { font-size: 12px; font-weight: 500; color: var(--gray-600);
 
 /* ── Cards ── */
 .card-panel {
-  background: transparent; border-radius: var(--radius-lg);
-  border: 1px solid var(--gray-200); padding: 1.25rem;
-  box-shadow: var(--shadow);
+  background: var(--card-bg, transparent); border-radius: var(--radius-lg);
+  border: 1px solid var(--card-border, var(--gray-200)); padding: 1.25rem;
+  box-shadow: var(--shadow); color: var(--tile-fg-on-page);
 }
 
 /* ── Admin layout ── */
@@ -184,10 +185,10 @@ label { font-size: 12px; font-weight: 500; color: var(--gray-600);
 /* ── Table ── */
 .table-wrap { overflow-x: auto; }
 table { width: 100%; border-collapse: collapse; font-size: 13px; }
-th { text-align: left; padding: 8px 12px; border-bottom: 2px solid var(--gray-200);
-     font-size: 11px; text-transform: uppercase; letter-spacing: .4px; color: var(--gray-600); }
-td { padding: 8px 12px; border-bottom: 1px solid var(--gray-200); vertical-align: middle; color: #1a1a1a; }
-tr:hover td { background: rgba(0,0,0,0.03); }
+th { text-align: left; padding: 8px 12px; border-bottom: 2px solid var(--tile-border, var(--gray-200));
+     font-size: 11px; text-transform: uppercase; letter-spacing: .4px; color: var(--tile-fg-dim); }
+td { padding: 8px 12px; border-bottom: 1px solid var(--tile-border, var(--gray-200)); vertical-align: middle; color: var(--tile-fg-on-page, #1a1a1a); }
+tr:hover td { background: rgba(255,255,255,0.04); }
 
 /* ── Toast ── */
 #toast {
@@ -212,7 +213,10 @@ tr:hover td { background: rgba(0,0,0,0.03); }
   background: #fff; border-radius: var(--radius-lg);
   width: 100%; max-width: 540px; max-height: 90vh;
   overflow-y: auto; box-shadow: 0 8px 40px rgba(0,0,0,0.5);
+  color: #1a1a1a;
 }
+.modal label { color: #555; }
+.modal p, .modal span, .modal div { color: inherit; }
 .modal-header {
   padding: 16px 20px; background: #1A6B3C; border-bottom: none;
   display: flex; justify-content: space-between; align-items: center;

@@ -30,13 +30,17 @@ export function ensureV2Chrome(navigate, p, activeRouteKey, ICON) {
     style.textContent = `
       body:has(#home2-chrome-marker) .top-nav,
       body:has(#home2-chrome-marker) .bottom-nav { display: none !important; }
-      body:has(#home2-chrome-marker) #page-content { padding-top: var(--v2-header-height, 100px) !important; padding-bottom: 0 !important; }
+      body:has(#home2-chrome-marker) #page-content {
+        padding-top: var(--v2-top-height, 100px) !important;
+        padding-bottom: 0 !important;
+      }
       /* Neutralise le padding-top/bottom que certaines pages (ex: Cards) réappliquent sur leur propre .page interne imbriqué */
       body:has(#home2-chrome-marker) #page-content .page { padding-top: 0 !important; padding-bottom: 0 !important; }
 
+      /* ══════════ Bandeau unique PC (≥1024px) : logo + onglets + credits + parametres ══════════ */
       .home2-chrome-header {
-        position: fixed; top: 0; left: 0; right: 0; z-index: 500;
-        display: flex; align-items: center; gap: 14px;
+        display: flex; position: fixed; top: 0; left: 0; right: 0; z-index: 500;
+        align-items: center; gap: 14px;
         background: var(--nav-bg); border-bottom: 1px solid var(--tile-border);
         padding: 14px 20px; box-sizing: border-box;
       }
@@ -71,27 +75,59 @@ export function ensureV2Chrome(navigate, p, activeRouteKey, ICON) {
         cursor: pointer; white-space: nowrap;
       }
       .home2-chrome-settings-pill:hover { background: rgba(255,255,255,0.12); }
-      @media (max-width: 640px) {
-        .home2-chrome-tab { padding: 9px 14px; }
-        .home2-chrome-tab img { width: 24px; height: 24px; }
-        .home2-chrome-tab-emoji { font-size: 22px; }
-        .home2-chrome-logo img { height: 38px; }
-      }
-      /* ── Mobile (<1024px) : bandeau entier fixé en bas, comme l'ancien bottom-nav ── */
+
+      /* ══════════ Mobile (<1024px) : DEUX bandeaux séparés, haut + bas ══════════ */
+      .home2-mobile-top, .home2-mobile-bottom { display: none; }
+
       @media (max-width: 1023px) {
-        .home2-chrome-header {
-          top: auto; bottom: 0;
-          border-bottom: none; border-top: 1px solid var(--tile-border);
-        }
+        .home2-chrome-header { display: none; } /* le bandeau unique PC disparaît totalement */
+
         body:has(#home2-chrome-marker) #page-content {
-          padding-top: 0 !important;
-          padding-bottom: var(--v2-header-height, 90px) !important;
+          padding-top: var(--v2-top-height, 66px) !important;
+          padding-bottom: var(--v2-bottom-height, 76px) !important;
         }
+
+        /* Bandeau du haut : logo à gauche, crédits + paramètres à droite */
+        .home2-mobile-top {
+          display: flex; position: fixed; top: 0; left: 0; right: 0; z-index: 500;
+          align-items: center; justify-content: space-between; gap: 10px;
+          background: #05080a; border-bottom: 1px solid rgba(255,255,255,0.1);
+          padding: 10px 14px; box-sizing: border-box;
+        }
+        .home2-mobile-top .home2-chrome-logo img { height: 34px; }
+        .home2-mobile-top .home2-chrome-right { gap: 8px; }
+        .home2-mobile-top .home2-chrome-credits { padding: 6px 12px; font-size: 13px; }
+        .home2-mobile-top .home2-chrome-settings-pill {
+          padding: 6px; width: 34px; height: 34px; border-radius: 50%; justify-content: center;
+        }
+        .home2-mobile-top .home2-chrome-settings-pill span.pill-label { display: none; }
+
+        /* Bandeau du bas : les onglets, façon bottom-nav classique */
+        .home2-mobile-bottom {
+          display: flex; position: fixed; bottom: 0; left: 0; right: 0; z-index: 500;
+          align-items: stretch; justify-content: space-around;
+          background: #05080a; border-top: 1px solid rgba(255,255,255,0.1);
+          padding: 6px 4px calc(6px + env(safe-area-inset-bottom, 0px)); box-sizing: border-box;
+          overflow-x: auto; scrollbar-width: none;
+        }
+        .home2-mobile-bottom::-webkit-scrollbar { display: none; }
+        .home2-mobile-bottom .home2-chrome-tab {
+          width: auto; flex: 1; min-width: 58px; padding: 6px 4px; border-radius: 10px; gap: 3px;
+        }
+        .home2-mobile-bottom .home2-chrome-tab img { width: 22px; height: 22px; }
+        .home2-mobile-bottom .home2-chrome-tab-emoji { font-size: 19px; }
+        .home2-mobile-bottom .home2-chrome-tab { font-size: 9px; }
       }
     `
     document.head.appendChild(style)
   }
 
+  const tabsHTML = V2_TABS.map(t => `
+    <a class="home2-chrome-tab" data-route="${t.route}" data-key="${t.key}">
+      ${t.icon ? `<img src="${ICON}${t.icon}">` : `<span class="home2-chrome-tab-emoji">${t.emoji}</span>`}${t.label}
+    </a>`).join('')
+
+  // ── Bandeau unique PC ──
   let header = document.getElementById('home2-chrome-header')
   if (!header) {
     header = document.createElement('div')
@@ -100,43 +136,74 @@ export function ensureV2Chrome(navigate, p, activeRouteKey, ICON) {
     header.innerHTML = `
       <div id="home2-chrome-marker" style="display:none"></div>
       <div class="home2-chrome-logo"><img src="${ICON}logo-withname.png" alt="Manager Wars"></div>
-      <div class="home2-chrome-tabs">
-        ${V2_TABS.map(t => `
-          <a class="home2-chrome-tab" data-route="${t.route}" data-key="${t.key}">
-            ${t.icon ? `<img src="${ICON}${t.icon}">` : `<span class="home2-chrome-tab-emoji">${t.emoji}</span>`}${t.label}
-          </a>`).join('')}
-      </div>
+      <div class="home2-chrome-tabs">${tabsHTML}</div>
       <div class="home2-chrome-right">
         <div class="home2-chrome-credits" id="home2-chrome-credits">💰 ${(p.credits||0).toLocaleString('fr')}</div>
         <button class="home2-chrome-settings-pill" id="home2-chrome-settings-btn">⚙️ Paramètres</button>
       </div>
     `
     document.body.appendChild(header)
-
-    header.querySelectorAll('.home2-chrome-tab').forEach(tab => {
-      tab.addEventListener('click', () => {
-        header.querySelectorAll('.home2-chrome-tab').forEach(t => t.classList.remove('active'))
-        tab.classList.add('active')
-        navigate(tab.dataset.route)
-      })
-    })
     header.querySelector('#home2-chrome-settings-btn').addEventListener('click', () => navigate('settings'))
     header.querySelector('#home2-chrome-credits').addEventListener('click', () => navigate('boosters'))
   }
 
-  // Met à jour l'onglet actif + le solde de crédits à chaque re-rendu
-  header.querySelectorAll('.home2-chrome-tab').forEach(t => t.classList.toggle('active', t.dataset.key === activeRouteKey))
-  const creditsEl = header.querySelector('#home2-chrome-credits')
-  if (creditsEl) creditsEl.textContent = `💰 ${(p.credits||0).toLocaleString('fr')}`
+  // ── Bandeau mobile du haut : logo + crédits + paramètres ──
+  let topBar = document.getElementById('home2-mobile-top')
+  if (!topBar) {
+    topBar = document.createElement('div')
+    topBar.id = 'home2-mobile-top'
+    topBar.className = 'home2-mobile-top'
+    topBar.innerHTML = `
+      <div class="home2-chrome-logo"><img src="${ICON}logo-withname.png" alt="Manager Wars"></div>
+      <div class="home2-chrome-right">
+        <div class="home2-chrome-credits" id="home2-mobtop-credits">💰 ${(p.credits||0).toLocaleString('fr')}</div>
+        <button class="home2-chrome-settings-pill" id="home2-mobtop-settings-btn"><span>⚙️</span><span class="pill-label">Paramètres</span></button>
+      </div>
+    `
+    document.body.appendChild(topBar)
+    topBar.querySelector('#home2-mobtop-settings-btn').addEventListener('click', () => navigate('settings'))
+    topBar.querySelector('#home2-mobtop-credits').addEventListener('click', () => navigate('boosters'))
+  }
 
-  // Recalcule la hauteur réelle du bandeau (utile après agrandissement des boutons/icônes)
+  // ── Bandeau mobile du bas : onglets ──
+  let bottomBar = document.getElementById('home2-mobile-bottom')
+  if (!bottomBar) {
+    bottomBar = document.createElement('div')
+    bottomBar.id = 'home2-mobile-bottom'
+    bottomBar.className = 'home2-mobile-bottom'
+    bottomBar.innerHTML = tabsHTML
+    document.body.appendChild(bottomBar)
+  }
+
+  // Un seul gestionnaire de clic pour tous les onglets (PC + mobile)
+  document.querySelectorAll('.home2-chrome-tab').forEach(tab => {
+    if (tab._v2Bound) return
+    tab._v2Bound = true
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.home2-chrome-tab').forEach(t => t.classList.remove('active'))
+      document.querySelectorAll(`.home2-chrome-tab[data-key="${tab.dataset.key}"]`).forEach(t => t.classList.add('active'))
+      navigate(tab.dataset.route)
+    })
+  })
+
+  // Met à jour l'onglet actif + le solde de crédits partout
+  document.querySelectorAll('.home2-chrome-tab').forEach(t => t.classList.toggle('active', t.dataset.key === activeRouteKey))
+  const credAmount = `💰 ${(p.credits||0).toLocaleString('fr')}`
+  document.getElementById('home2-chrome-credits') && (document.getElementById('home2-chrome-credits').textContent = credAmount)
+  document.getElementById('home2-mobtop-credits') && (document.getElementById('home2-mobtop-credits').textContent = credAmount)
+
+  // Recalcule les hauteurs réelles pour compenser le padding du contenu
   requestAnimationFrame(() => {
-    document.documentElement.style.setProperty('--v2-header-height', header.offsetHeight + 'px')
+    const isMobile = window.innerWidth < 1024
+    document.documentElement.style.setProperty('--v2-top-height', (isMobile ? topBar.offsetHeight : header.offsetHeight) + 'px')
+    document.documentElement.style.setProperty('--v2-bottom-height', bottomBar.offsetHeight + 'px')
   })
 }
 
 function teardownV2Chrome() {
   document.getElementById('home2-chrome-header')?.remove()
+  document.getElementById('home2-mobile-top')?.remove()
+  document.getElementById('home2-mobile-bottom')?.remove()
   document.getElementById('home2-chrome-style')?.remove()
 }
 
@@ -592,8 +659,15 @@ export async function renderHome2(container, { state, navigate, toast }) {
   // Adapter la hauteur globale
   requestAnimationFrame(() => {
     const vh = window.visualViewport?.height || window.innerHeight
-    const chromeHeader = document.getElementById('home2-chrome-header')
-    const chromeH = chromeHeader ? chromeHeader.offsetHeight : 0
+    const isMobile = window.innerWidth < 1024
+    let chromeH = 0
+    if (isMobile) {
+      const top = document.getElementById('home2-mobile-top')
+      const bot = document.getElementById('home2-mobile-bottom')
+      chromeH = (top?.offsetHeight || 0) + (bot?.offsetHeight || 0)
+    } else {
+      chromeH = document.getElementById('home2-chrome-header')?.offsetHeight || 0
+    }
     const avail = vh - chromeH
     const dark = container.querySelector('.home-dark')
     if (dark) dark.style.minHeight = avail + 'px'

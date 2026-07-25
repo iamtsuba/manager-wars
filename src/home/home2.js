@@ -112,7 +112,7 @@ export function ensureV2Chrome(navigate, p, activeRouteKey, ICON) {
         }
         .home2-mobile-bottom::-webkit-scrollbar { display: none; }
         .home2-mobile-bottom .home2-chrome-tab {
-          width: auto; flex: 1; min-width: 87px; padding: 9px 6px; border-radius: 15px; gap: 5px;
+          width: auto; flex: 1; min-width: 0; padding: 8px 2px; border-radius: 12px; gap: 4px;
         }
         .home2-mobile-bottom .home2-chrome-tab img { width: 33px; height: 33px; }
         .home2-mobile-bottom .home2-chrome-tab[data-key="game"] { display: none; }
@@ -472,8 +472,8 @@ export async function renderHome2(container, { state, navigate, toast }) {
     .play-tile-big { grid-column: span 3; padding: 30px 16px; min-height: 190px; }
     .play-tile-big img.tile-icon { height: 84px; }
     .play-tile-big .tile-label { font-size: 19px; }
-    .tile-mini-league { background: linear-gradient(135deg, #2d0a6e 0%, #4a1a8a 50%, #6a28b8 100%); border: 1.5px solid rgba(122,40,184,0.6); box-shadow: 0 4px 20px rgba(122,40,184,0.3); }
-    .tile-ranked { background: linear-gradient(135deg, #4a3a05 0%, #8a6a10 50%, #D4A017 100%); border: 1.5px solid rgba(212,160,23,0.6); box-shadow: 0 4px 20px rgba(212,160,23,0.25); }
+    .tile-mini-league { background: linear-gradient(135deg, #4a3a05 0%, #8a6a10 50%, #D4A017 100%); border: 1.5px solid rgba(212,160,23,0.6); box-shadow: 0 4px 20px rgba(212,160,23,0.25); }
+    .tile-ranked { background: linear-gradient(135deg, #2d0a6e 0%, #4a1a8a 50%, #6a28b8 100%); border: 1.5px solid rgba(122,40,184,0.6); box-shadow: 0 4px 20px rgba(122,40,184,0.3); }
 
     /* ── Bannière promo booster ── */
     .promo-banner {
@@ -598,6 +598,16 @@ export async function renderHome2(container, { state, navigate, toast }) {
           <div class="play-section-header"><span class="slashes">///</span><h4>JOUER</h4><span class="slashes">///</span></div>
 
           <div class="play-grid">
+            <div class="play-tile play-tile-big tile-ranked" data-action="ranked">
+              <img src="${ICON}badge-ranked.png" class="tile-icon">
+              <div class="tile-label">RANKED</div>
+              <div class="tile-desc">Grimpez dans le classement</div>
+            </div>
+            <div class="play-tile play-tile-big tile-mini-league" data-action="mini-league">
+              <img src="${ICON}badge-league.png" class="tile-icon">
+              <div class="tile-label">MINI LEAGUE</div>
+              <div class="tile-desc">Participez à des ligues</div>
+            </div>
             <div class="play-tile" data-action="match-ai">
               <img src="${ICON}badge-ai.png" class="tile-icon">
               <div class="tile-label">VS IA</div>
@@ -612,16 +622,6 @@ export async function renderHome2(container, { state, navigate, toast }) {
               <img src="${ICON}badge-vs.png" class="tile-icon">
               <div class="tile-label">AMI</div>
               <div class="tile-desc">Affrontez un ami</div>
-            </div>
-            <div class="play-tile play-tile-big tile-mini-league" data-action="mini-league">
-              <img src="${ICON}badge-league.png" class="tile-icon">
-              <div class="tile-label">MINI LEAGUE</div>
-              <div class="tile-desc">Participez à des ligues</div>
-            </div>
-            <div class="play-tile play-tile-big tile-ranked" data-action="ranked">
-              <img src="${ICON}badge-ranked.png" class="tile-icon">
-              <div class="tile-label">RANKED</div>
-              <div class="tile-desc">Grimpez dans le classement</div>
             </div>
           </div>
 

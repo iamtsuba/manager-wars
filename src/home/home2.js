@@ -599,8 +599,8 @@ export async function renderHome2(container, { state, navigate, toast }) {
             </div>
             <div class="play-tile" data-action="match-ai">
               <img src="${ICON}badge-ai.png" class="tile-icon">
-              <div class="tile-label">VS IA</div>
-              <div class="tile-desc">Affrontez l'intelligence artificielle</div>
+              <div class="tile-label">SOLO</div>
+              <div class="tile-desc">Progressez à travers les niveaux</div>
             </div>
             <div class="play-tile" data-action="match-random">
               <img src="${ICON}badge-random.png" class="tile-icon">
@@ -683,7 +683,7 @@ export async function renderHome2(container, { state, navigate, toast }) {
       el.style.transform = 'scale(.96)'
       setTimeout(() => el.style.transform = '', 180)
       const action = el.dataset.action
-      if (action === 'match-ai') { showDifficultyPicker(navigate); return }
+      if (action === 'match-ai') { showSoloLevelPicker(navigate, state); return }
       if (action === 'match-random') { navigate('match', { matchMode: 'random' }); return }
       if (action === 'match-friend') { navigate('friends'); return }
       if (action === 'mini-league')  { navigate('mini-league'); return }
@@ -899,44 +899,67 @@ async function loadFriendRequestsBanner(state, toast) {
   document.getElementById('friend-req-btn').addEventListener('click', () => showPendingPopup(state, toast, () => loadFriendRequestsBanner(state, toast)))
 }
 
-export function showDifficultyPicker(navigate) {
-  const levels = [
-    { mode:'vs_ai_easy',   label:'Facile',    desc:'Pour découvrir le jeu',      credits:'500',   icon:'🟢',
-      bg:'#eefaf2', border:'#bfe8cf', iconBg:'#1A6B3C', text:'#12401f' },
-    { mode:'vs_ai_medium', label:'Moyen',     desc:'Un défi équilibré',          credits:'1 000', icon:'🟡',
-      bg:'#fdf7e6', border:'#f0dd9e', iconBg:'#D4A017', text:'#5c4408' },
-    { mode:'vs_ai_hard',   label:'Difficile', desc:'Réservé aux experts',        credits:'1 500', icon:'🔴',
-      bg:'#fdecec', border:'#f3bcbc', iconBg:'#bb2020', text:'#5c1010' },
-  ]
+export async function showSoloLevelPicker(navigate, state) {
   const overlay = document.createElement('div')
   overlay.className = 'modal-overlay'
   overlay.style.zIndex = '2000'
-  overlay.innerHTML = `<div class="modal" style="max-width:400px;border-radius:18px;overflow:hidden">
-    <div class="modal-header"><h2>Choisir la difficulté</h2><button class="btn-icon" id="diff-cancel">✕</button></div>
+  overlay.innerHTML = `<div class="modal" style="max-width:420px;border-radius:18px;overflow:hidden">
+    <div class="modal-header"><h2>Solo — Choisir un niveau</h2><button class="btn-icon" id="solo-cancel">✕</button></div>
     <div class="modal-body" style="padding:16px">
-      <div style="display:flex;flex-direction:column;gap:10px">
-        ${levels.map(l => `
-          <div class="diff-card" data-mode="${l.mode}" style="cursor:pointer;display:flex;align-items:center;gap:14px;padding:14px 16px;border-radius:14px;background:${l.bg};border:1px solid ${l.border};transition:transform .12s ease, box-shadow .12s ease">
-            <div style="width:46px;height:46px;border-radius:12px;background:${l.iconBg};display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;box-shadow:0 4px 10px -4px ${l.iconBg}">${l.icon}</div>
-            <div style="flex:1;min-width:0">
-              <div style="font-weight:800;font-size:15px;color:${l.text}">${l.label}</div>
-              <div style="font-size:12px;color:${l.text};opacity:0.65;margin-top:1px">${l.desc}</div>
-            </div>
-            <div style="font-weight:900;font-size:12.5px;color:${l.text};background:rgba(255,255,255,0.6);padding:6px 11px;border-radius:999px;flex-shrink:0;white-space:nowrap">+${l.credits} cr.</div>
-          </div>
-        `).join('')}
+      <div id="solo-levels-list" style="display:flex;flex-direction:column;gap:10px">
+        <div style="text-align:center;color:#999;padding:20px">⏳ Chargement…</div>
       </div>
     </div>
   </div>`
   document.body.appendChild(overlay)
-  overlay.querySelectorAll('.diff-card').forEach(el => {
-    el.addEventListener('mouseenter', () => { el.style.transform = 'translateY(-1px)'; el.style.boxShadow = '0 6px 16px -6px rgba(0,0,0,0.18)' })
-    el.addEventListener('mouseleave', () => { el.style.transform = ''; el.style.boxShadow = '' })
-  })
   const cleanup = () => overlay.remove()
-  document.getElementById('diff-cancel').addEventListener('click', cleanup)
+  document.getElementById('solo-cancel').addEventListener('click', cleanup)
   overlay.addEventListener('click', e => { if (e.target === overlay) cleanup() })
-  overlay.querySelectorAll('[data-mode]').forEach(el => {
-    el.addEventListener('click', () => { cleanup(); navigate('match', { matchMode: el.dataset.mode }) })
+
+  const [{ data: levels }, { data: progress }] = await Promise.all([
+    supabase.from('solo_levels').select('*').eq('is_active', true).order('level_number'),
+    supabase.from('user_solo_progress').select('unlocked_level').eq('user_id', state.profile.id).maybeSingle(),
+  ])
+  const unlockedLevel = progress?.unlocked_level || 1
+  const list = levels || []
+
+  const list_el = document.getElementById('solo-levels-list')
+  if (!list_el) return
+  if (!list.length) {
+    list_el.innerHTML = '<div style="text-align:center;color:#999;padding:20px">Aucun niveau configuré.</div>'
+    return
+  }
+
+  list_el.innerHTML = list.map(lvl => {
+    const isLocked = lvl.level_number > unlockedLevel
+    const isNext   = lvl.level_number === unlockedLevel
+    const bg     = isLocked ? '#f0f0f0' : (isNext ? '#eefaf2' : '#f7f7f7')
+    const border = isLocked ? '#ddd' : (isNext ? '#bfe8cf' : '#e0e0e0')
+    const text   = isLocked ? '#999' : '#12401f'
+    return `
+      <div class="solo-level-card" data-level="${lvl.level_number}" data-locked="${isLocked}"
+        style="cursor:${isLocked?'not-allowed':'pointer'};display:flex;align-items:center;gap:14px;padding:14px 16px;border-radius:14px;background:${bg};border:1px solid ${border};opacity:${isLocked?0.6:1};transition:transform .12s ease">
+        <div style="width:46px;height:46px;border-radius:12px;background:${isLocked?'#bbb':'#1A6B3C'};display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:900;color:#fff;flex-shrink:0">
+          ${isLocked ? '🔒' : lvl.level_number}
+        </div>
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:800;font-size:15px;color:${text}">Niveau ${lvl.level_number}</div>
+          <div style="font-size:11px;color:${text};opacity:0.75;margin-top:1px">
+            Note globale ~${lvl.target_note_avg} · 🟡${lvl.nb_liens_jaune} 🟢${lvl.nb_liens_vert} · 🏟️${lvl.nb_joueurs_stade}
+          </div>
+        </div>
+        ${!isLocked ? `<div style="font-weight:900;font-size:12.5px;color:${text};background:rgba(255,255,255,0.7);padding:6px 11px;border-radius:999px;flex-shrink:0;white-space:nowrap">+${lvl.reward_credits} cr.</div>` : ''}
+      </div>`
+  }).join('')
+
+  list_el.querySelectorAll('.solo-level-card').forEach(el => {
+    if (el.dataset.locked === 'true') return
+    el.addEventListener('mouseenter', () => { el.style.transform = 'translateY(-1px)' })
+    el.addEventListener('mouseleave', () => { el.style.transform = '' })
+    el.addEventListener('click', () => {
+      cleanup()
+      navigate('match', { matchMode: 'solo', soloLevel: Number(el.dataset.level) })
+    })
   })
 }
+

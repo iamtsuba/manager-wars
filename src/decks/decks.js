@@ -288,7 +288,7 @@ function renderBuilder(container, builder, ctx) {
 
   container.innerHTML = `
   <style>.no-scrollbar::-webkit-scrollbar{display:none}</style>
-  <div style="height:100%;overflow:hidden;background:var(--page-bg)">
+  <div style="height:100%;overflow-y:auto;background:var(--page-bg)">
     <div class="page-header" style="display:flex;align-items:center;gap:8px;padding:6px 12px;min-height:0">
       <button class="btn-icon" id="builder-back" style="font-size:16px">←</button>
       <div style="flex:1">
@@ -364,27 +364,27 @@ function renderBuilder(container, builder, ctx) {
 
       <!-- Remplaçants + Stade mobile -->
       <div style="padding:8px 10px;background:rgba(0,0,0,0.25);border-top:1px solid rgba(255,255,255,0.1)">
-        <div style="display:flex;gap:10px;align-items:flex-start">
+        <div style="display:flex;gap:6px;align-items:flex-start">
           <!-- Remplaçants mobile -->
           <div style="flex:1;min-width:0">
             <div style="font-size:10px;font-weight:700;margin-bottom:6px;color:rgba(255,255,255,0.6);letter-spacing:1px;text-transform:uppercase">Remplaçants (${builder.subs.length}/5)</div>
-            <div style="display:flex;gap:4px;align-items:center;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;-ms-overflow-style:none" id="subs-list" class="no-scrollbar">
+            <div style="display:flex;gap:2px;align-items:center;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;-ms-overflow-style:none" id="subs-list" class="no-scrollbar">
               ${subPlayers.map(card => {
                 const p = { ...card.player, _evolution_bonus: card.evolution_bonus || 0 }
                 return `<div style="position:relative;flex-shrink:0;overflow:visible;padding-bottom:20px">
-                  ${renderPlayerCard({ ...p, _evolution_bonus: p._evolution_bonus||0 }, { width: 66, showStad: true, stadDef: _stadDef })}
+                  ${renderPlayerCard({ ...p, _evolution_bonus: p._evolution_bonus||0 }, { width: 44, showStad: true, stadDef: _stadDef })}
                   <button data-remove-sub="${card.id}"
                     style="position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:16px;height:16px;background:#c0392b;border:none;border-radius:50%;color:#fff;font-size:9px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;padding:0;z-index:10">✕</button>
                 </div>`
               }).join('')}
-              ${builder.subs.length < 5 ? `<div id="add-sub-btn" style="width:66px;height:85px;border:2px dashed rgba(255,255,255,0.3);border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:16px;color:rgba(255,255,255,0.4);cursor:pointer;flex-shrink:0">+</div>` : ''}
+              ${builder.subs.length < 5 ? `<div id="add-sub-btn" style="width:44px;height:57px;border:2px dashed rgba(255,255,255,0.3);border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:14px;color:rgba(255,255,255,0.4);cursor:pointer;flex-shrink:0">+</div>` : ''}
             </div>
           </div>
           <!-- Formation mobile -->
           <div style="flex-shrink:0;text-align:center">
             <div style="font-size:10px;font-weight:700;margin-bottom:6px;color:rgba(255,255,255,0.6);letter-spacing:1px;text-transform:uppercase">⚽</div>
-            <div id="formation-mobile-btn" style="cursor:pointer;width:66px;height:86px;border-radius:6px;background:#1A6B3C;border:2px solid #2ecc71;display:flex;align-items:center;justify-content:center">
-              <span style="font-size:11px;font-weight:900;color:#fff;text-align:center">${builder.formation}</span>
+            <div id="formation-mobile-btn" style="cursor:pointer;width:44px;height:57px;border-radius:6px;background:#1A6B3C;border:2px solid #2ecc71;display:flex;align-items:center;justify-content:center">
+              <span style="font-size:8px;font-weight:900;color:#fff;text-align:center;line-height:1.1">${builder.formation}</span>
             </div>
           </div>
           <!-- Stade mobile : à droite -->
@@ -394,10 +394,10 @@ function renderBuilder(container, builder, ctx) {
               ${_selStadCard ? (() => {
                 const def = builder.stadDefMap[_selStadCard.stadium_id]
                 const logo = def?.club?.logo_url || def?.image_url || null
-                return renderStadiumCard(def?.name || 'Stade', logo, '+10⭐', { width: 66 })
-              })() : `<div style="width:66px;height:86px;border:2px dashed rgba(79,195,247,0.5);border-radius:6px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px">
-                <span style="font-size:18px">🏟️</span>
-                <span style="font-size:8px;color:rgba(255,255,255,0.4)">+</span>
+                return renderStadiumCard(def?.name || 'Stade', logo, '+10⭐', { width: 44 })
+              })() : `<div style="width:44px;height:57px;border:2px dashed rgba(79,195,247,0.5);border-radius:6px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px">
+                <span style="font-size:13px">🏟️</span>
+                <span style="font-size:7px;color:rgba(255,255,255,0.4)">+</span>
               </div>`}
             </div>
           </div>

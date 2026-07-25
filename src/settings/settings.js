@@ -14,10 +14,6 @@ export async function renderSettings(container, ctx) {
 
   container.innerHTML = `
   <div style="height:100%;overflow-y:auto;background:var(--page-bg)">
-    <div style="padding:14px 16px;background:var(--nav-bg,#0d1a0f);border-bottom:1px solid rgba(255,255,255,0.08);display:flex;align-items:center;gap:10px">
-      <button id="settings-back" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--nav-fg,#fff)">‹</button>
-      <div style="font-size:18px;font-weight:900;color:var(--nav-fg,#fff)">⚙️ Réglages</div>
-    </div>
 
     <div style="padding:16px;display:flex;flex-direction:column;gap:14px;max-width:520px;margin:0 auto">
 
@@ -64,7 +60,6 @@ export async function renderSettings(container, ctx) {
     </div>
   </div>`
 
-  container.querySelector('#settings-back').addEventListener('click', () => navigate('home'))
 
   container.querySelectorAll('[data-theme-choice]').forEach(btn => {
     btn.addEventListener('click', () => {

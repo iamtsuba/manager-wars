@@ -1,4 +1,4 @@
-import { showDifficultyPicker, ensureV2Chrome } from './home2.js'
+import { showSoloLevelPicker, ensureV2Chrome } from './home2.js'
 
 // Page "GAME" — regroupe toutes les possibilités de match (v2 uniquement).
 // N'existe que via l'onglet 🎮 du bandeau persistant Home v2.
@@ -57,8 +57,8 @@ export async function renderGame(container, { state, navigate, toast }) {
       <div class="game-grid">
         <div class="game-tile" data-action="match-ai">
           <img src="${ICON}badge-ai.png">
-          <div class="g-label">VS IA</div>
-          <div class="g-desc">Affrontez l'intelligence artificielle</div>
+          <div class="g-label">SOLO</div>
+          <div class="g-desc">Progressez à travers les niveaux</div>
         </div>
         <div class="game-tile" data-action="match-random">
           <img src="${ICON}badge-random.png">
@@ -89,7 +89,7 @@ export async function renderGame(container, { state, navigate, toast }) {
       el.style.transform = 'scale(.96)'
       setTimeout(() => el.style.transform = '', 180)
       const action = el.dataset.action
-      if (action === 'match-ai')     { showDifficultyPicker(navigate); return }
+      if (action === 'match-ai')     { showSoloLevelPicker(navigate, state); return }
       if (action === 'match-random') { navigate('match', { matchMode: 'random' }); return }
       if (action === 'match-friend') { navigate('friends'); return }
       if (action === 'mini-league')  { navigate('mini-league'); return }

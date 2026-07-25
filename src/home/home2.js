@@ -115,6 +115,7 @@ export function ensureV2Chrome(navigate, p, activeRouteKey, ICON) {
           width: auto; flex: 1; min-width: 58px; padding: 6px 4px; border-radius: 10px; gap: 3px;
         }
         .home2-mobile-bottom .home2-chrome-tab img { width: 22px; height: 22px; }
+        .home2-mobile-bottom .home2-chrome-tab[data-key="game"] { display: none; }
         .home2-mobile-bottom .home2-chrome-tab-emoji { font-size: 19px; }
         .home2-mobile-bottom .home2-chrome-tab { font-size: 9px; }
       }

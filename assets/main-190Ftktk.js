@@ -350,7 +350,7 @@ import{s as v,j as hi,q as zn,t as Ht,u as Ni,F as Oi,o as tt,n as ei,g as At,r 
         border:1.5px solid #ddd;background:#fff;
         font-size:14px;font-weight:700;cursor:pointer;color:#555;
       }
-    </style>`}const Sn="mw_sound_volume";function Yi(){const e=localStorage.getItem(Sn);if(e===null)return 100;const t=parseInt(e,10);return Number.isFinite(t)?Math.max(0,Math.min(100,t)):100}function Lo(e){localStorage.setItem(Sn,String(Math.max(0,Math.min(100,Math.round(e)))))}function Wi(){return Yi()===0}function ui(e){return Math.max(0,Math.min(1,e*(Yi()/100)))}function Xi(e,t=1){if(Wi())return null;try{const i=new Audio(e);return i.volume=ui(t),i.play().catch(()=>{}),i}catch{return null}}let gt=null,Mi=null,fn=.3;function An(e,t=.3){if(fn=t,gt&&Mi===e&&!gt.paused){gt.volume=ui(fn);return}if(It(),!Wi())try{const i=new Audio(e);i.loop=!0,i.volume=ui(t),i.play().catch(()=>{}),gt=i,Mi=e}catch{}}function It(){if(gt)try{gt.pause(),gt.currentTime=0}catch{}gt=null,Mi=null}let Wt=null;function Mn(e,t=.6){if(Ue(),!Wi())try{const i=new Audio(e);i.volume=ui(t),i.play().catch(()=>{}),Wt=i}catch{}}function Ue(){if(Wt)try{Wt.pause(),Wt.currentTime=0}catch{}Wt=null}const Io="2026.07.26-0024";async function mn(e,{state:t,navigate:i,toast:n}){var r,a,s;const o=t.profile;o&&(e.innerHTML=`
+    </style>`}const Sn="mw_sound_volume";function Yi(){const e=localStorage.getItem(Sn);if(e===null)return 100;const t=parseInt(e,10);return Number.isFinite(t)?Math.max(0,Math.min(100,t)):100}function Lo(e){localStorage.setItem(Sn,String(Math.max(0,Math.min(100,Math.round(e)))))}function Wi(){return Yi()===0}function ui(e){return Math.max(0,Math.min(1,e*(Yi()/100)))}function Xi(e,t=1){if(Wi())return null;try{const i=new Audio(e);return i.volume=ui(t),i.play().catch(()=>{}),i}catch{return null}}let gt=null,Mi=null,fn=.3;function An(e,t=.3){if(fn=t,gt&&Mi===e&&!gt.paused){gt.volume=ui(fn);return}if(It(),!Wi())try{const i=new Audio(e);i.loop=!0,i.volume=ui(t),i.play().catch(()=>{}),gt=i,Mi=e}catch{}}function It(){if(gt)try{gt.pause(),gt.currentTime=0}catch{}gt=null,Mi=null}let Wt=null;function Mn(e,t=.6){if(Ue(),!Wi())try{const i=new Audio(e);i.volume=ui(t),i.play().catch(()=>{}),Wt=i}catch{}}function Ue(){if(Wt)try{Wt.pause(),Wt.currentTime=0}catch{}Wt=null}const Io="2026.07.26-0030";async function mn(e,{state:t,navigate:i,toast:n}){var r,a,s;const o=t.profile;o&&(e.innerHTML=`
   <style>
     .home-dark {
       min-height: 100%;
@@ -1143,7 +1143,7 @@ import{s as v,j as hi,q as zn,t as Ht,u as Ni,F as Oi,o as tt,n as ei,g as At,r 
         </div>
       </div>
     </div>
-  </div>`,e.querySelectorAll("[data-action]").forEach(a=>{a.addEventListener("click",()=>{a.style.transform="scale(.96)",setTimeout(()=>a.style.transform="",180);const s=a.dataset.action;if(s==="match-ai"){Fn(i);return}if(s==="match-random"){i("match",{matchMode:"random"});return}if(s==="match-friend"){i("friends");return}if(s==="mini-league"){i("mini-league");return}if(s==="ranked"){i("ranked");return}n("Bientôt disponible","info")})})}async function Pn(e,t){var f;const{state:i,navigate:n}=t,o=so(),r=Yi(),a=(f=i==null?void 0:i.profile)==null?void 0:f.is_admin,s="2026.07.26-0024";e.innerHTML=`
+  </div>`,e.querySelectorAll("[data-action]").forEach(a=>{a.addEventListener("click",()=>{a.style.transform="scale(.96)",setTimeout(()=>a.style.transform="",180);const s=a.dataset.action;if(s==="match-ai"){Fn(i);return}if(s==="match-random"){i("match",{matchMode:"random"});return}if(s==="match-friend"){i("friends");return}if(s==="mini-league"){i("mini-league");return}if(s==="ranked"){i("ranked");return}n("Bientôt disponible","info")})})}async function Pn(e,t){var f;const{state:i,navigate:n}=t,o=so(),r=Yi(),a=(f=i==null?void 0:i.profile)==null?void 0:f.is_admin,s="2026.07.26-0030";e.innerHTML=`
   <div style="height:100%;overflow-y:auto;background:var(--page-bg)">
 
     <div style="padding:16px;display:flex;flex-direction:column;gap:14px;max-width:520px;margin:0 auto">
@@ -1500,7 +1500,7 @@ import{s as v,j as hi,q as zn,t as Ht,u as Ni,F as Oi,o as tt,n as ei,g as At,r 
       stadium_def:stadium_definitions(id, name, club_id, country_code, image_url,
         club:clubs(encoded_name, logo_url))`).eq("owner_id",n.profile.id).eq("card_type","stadium"),d=(a||[]).filter(y=>y.card_type==="player"&&y.player),l=(a||[]).filter(y=>y.card_type==="formation"),c=(s||[]).filter(y=>y.card_type==="stadium"),f=[...new Set(c.map(y=>y.stadium_id).filter(Boolean))];let b={};if(c.forEach(y=>{y.stadium_def&&y.stadium_id&&(b[y.stadium_id]=y.stadium_def)}),f.length&&Object.keys(b).length<f.length){const{data:y}=await v.from("stadium_definitions").select("id,name,club_id,country_code,image_url,club:clubs(encoded_name,logo_url)").in("id",f);(y||[]).forEach(w=>{b[w.id]=w})}const x=l.map(y=>y.formation).filter(Boolean),{data:g}=await v.from("deck_cards").select("card_id, position, is_starter, slot_order").eq("deck_id",e);let p=r.formation||"4-4-2";x.length>0&&!x.includes(p)&&(p=x[0]);const u={deckId:e,name:r.name,formation:p,formationCardId:r.formation_card_id,stadiumCardId:r.stadium_card_id||null,slots:{},subs:[],playerCards:d,formationCards:l,stadiumCards:c,stadDefMap:b,availableFormations:x};(g||[]).forEach(y=>{y.is_starter?u.slots[y.position]=y.card_id:u.subs.includes(y.card_id)||u.subs.push(y.card_id)}),wt(t,u,i)}function wt(e,t,i){var g,p;const{navigate:n}=i;fi[t.formation];const o=wn(t.formation),r=o.filter(u=>t.slots[u]).length,a=t.availableFormations.length>0?t.availableFormations:Object.keys(fi),s=(g=t.stadiumCards)==null?void 0:g.find(u=>u.id===t.stadiumCardId),d=s&&((p=t.stadDefMap)==null?void 0:p[s.stadium_id])||null,l=t.subs.map(u=>t.playerCards.find(y=>y.id===u)).filter(Boolean);[...Object.values(t.slots),...t.subs],e.innerHTML=`
   <style>.no-scrollbar::-webkit-scrollbar{display:none}</style>
-  <div style="height:100%;overflow:hidden;background:var(--page-bg)">
+  <div style="height:100%;overflow-y:auto;background:var(--page-bg)">
     <div class="page-header" style="display:flex;align-items:center;gap:8px;padding:6px 12px;min-height:0">
       <button class="btn-icon" id="builder-back" style="font-size:16px">←</button>
       <div style="flex:1">
@@ -1569,33 +1569,33 @@ import{s as v,j as hi,q as zn,t as Ht,u as Ni,F as Oi,o as tt,n as ei,g as At,r 
 
       <!-- Remplaçants + Stade mobile -->
       <div style="padding:8px 10px;background:rgba(0,0,0,0.25);border-top:1px solid rgba(255,255,255,0.1)">
-        <div style="display:flex;gap:10px;align-items:flex-start">
+        <div style="display:flex;gap:6px;align-items:flex-start">
           <!-- Remplaçants mobile -->
           <div style="flex:1;min-width:0">
             <div style="font-size:10px;font-weight:700;margin-bottom:6px;color:rgba(255,255,255,0.6);letter-spacing:1px;text-transform:uppercase">Remplaçants (${t.subs.length}/5)</div>
-            <div style="display:flex;gap:4px;align-items:center;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;-ms-overflow-style:none" id="subs-list" class="no-scrollbar">
+            <div style="display:flex;gap:2px;align-items:center;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;-ms-overflow-style:none" id="subs-list" class="no-scrollbar">
               ${l.map(u=>{const y={...u.player,_evolution_bonus:u.evolution_bonus||0};return`<div style="position:relative;flex-shrink:0;overflow:visible;padding-bottom:20px">
-                  ${Te({...y,_evolution_bonus:y._evolution_bonus||0},{width:66,showStad:!0,stadDef:d})}
+                  ${Te({...y,_evolution_bonus:y._evolution_bonus||0},{width:44,showStad:!0,stadDef:d})}
                   <button data-remove-sub="${u.id}"
                     style="position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:16px;height:16px;background:#c0392b;border:none;border-radius:50%;color:#fff;font-size:9px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;padding:0;z-index:10">✕</button>
                 </div>`}).join("")}
-              ${t.subs.length<5?'<div id="add-sub-btn" style="width:66px;height:85px;border:2px dashed rgba(255,255,255,0.3);border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:16px;color:rgba(255,255,255,0.4);cursor:pointer;flex-shrink:0">+</div>':""}
+              ${t.subs.length<5?'<div id="add-sub-btn" style="width:44px;height:57px;border:2px dashed rgba(255,255,255,0.3);border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:14px;color:rgba(255,255,255,0.4);cursor:pointer;flex-shrink:0">+</div>':""}
             </div>
           </div>
           <!-- Formation mobile -->
           <div style="flex-shrink:0;text-align:center">
             <div style="font-size:10px;font-weight:700;margin-bottom:6px;color:rgba(255,255,255,0.6);letter-spacing:1px;text-transform:uppercase">⚽</div>
-            <div id="formation-mobile-btn" style="cursor:pointer;width:66px;height:86px;border-radius:6px;background:#1A6B3C;border:2px solid #2ecc71;display:flex;align-items:center;justify-content:center">
-              <span style="font-size:11px;font-weight:900;color:#fff;text-align:center">${t.formation}</span>
+            <div id="formation-mobile-btn" style="cursor:pointer;width:44px;height:57px;border-radius:6px;background:#1A6B3C;border:2px solid #2ecc71;display:flex;align-items:center;justify-content:center">
+              <span style="font-size:8px;font-weight:900;color:#fff;text-align:center;line-height:1.1">${t.formation}</span>
             </div>
           </div>
           <!-- Stade mobile : à droite -->
           <div style="flex-shrink:0;text-align:center">
             <div style="font-size:10px;font-weight:700;margin-bottom:6px;color:rgba(255,255,255,0.6);letter-spacing:1px;text-transform:uppercase">🏟️</div>
             <div id="add-stad-btn" style="cursor:pointer">
-              ${s?(()=>{var w;const u=t.stadDefMap[s.stadium_id],y=((w=u==null?void 0:u.club)==null?void 0:w.logo_url)||(u==null?void 0:u.image_url)||null;return ei((u==null?void 0:u.name)||"Stade",y,"+10⭐",{width:66})})():`<div style="width:66px;height:86px;border:2px dashed rgba(79,195,247,0.5);border-radius:6px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px">
-                <span style="font-size:18px">🏟️</span>
-                <span style="font-size:8px;color:rgba(255,255,255,0.4)">+</span>
+              ${s?(()=>{var w;const u=t.stadDefMap[s.stadium_id],y=((w=u==null?void 0:u.club)==null?void 0:w.logo_url)||(u==null?void 0:u.image_url)||null;return ei((u==null?void 0:u.name)||"Stade",y,"+10⭐",{width:44})})():`<div style="width:44px;height:57px;border:2px dashed rgba(79,195,247,0.5);border-radius:6px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px">
+                <span style="font-size:13px">🏟️</span>
+                <span style="font-size:7px;color:rgba(255,255,255,0.4)">+</span>
               </div>`}
             </div>
           </div>
@@ -3210,7 +3210,7 @@ import{s as v,j as hi,q as zn,t as Ht,u as Ni,F as Oi,o as tt,n as ei,g as At,r 
     </div>
   </div>`}fo(go);const ye={user:null,profile:null,page:"home",params:{}};function Ft(e,t="info",i=3e3){const n=document.getElementById("toast");n&&(n.textContent=e,n.className=`show ${t}`,clearTimeout(n._t),n._t=setTimeout(()=>{n.className=""},i))}function Ea(e,t,i=""){document.getElementById("modal-title").textContent=e,document.getElementById("modal-body").innerHTML=t,document.getElementById("modal-footer").innerHTML=i,document.getElementById("modal-overlay").classList.remove("hidden")}function Ri(){document.getElementById("modal-overlay").classList.add("hidden")}async function Qt(){if(!ye.user)return;const{data:e}=await v.from("users").select("*").eq("id",ye.user.id).single();e&&(ye.profile=e)}const ao="mw_theme";function so(){return localStorage.getItem(ao)||"dark"}function La(e){var t;localStorage.setItem(ao,e),Ia(e),(t=ye.profile)!=null&&t.id&&v.from("users").update({theme:e}).eq("id",ye.profile.id).then(()=>{})}function Ia(e){document.documentElement.setAttribute("data-theme",e)}function Pt(e,t={}){ye.page=e,ye.params=t,lo()}async function lo(){var n,o,r,a;const e=document.getElementById("page-content");if(!e)return;document.querySelectorAll(".bottom-nav a").forEach(s=>{s.classList.toggle("active",s.dataset.page===ye.page)});const t=document.getElementById("nav-credits");t&&ye.profile&&(t.textContent=`💰 ${(ye.profile.credits||0).toLocaleString("fr")}`);const i={state:ye,navigate:Pt,toast:Ft,openModal:Ea,closeModal:Ri,refreshProfile:Qt};switch(e.innerHTML='<div style="padding:40px;text-align:center;color:#aaa">⚽</div>',ye.page){case"home":await mn(e,i);break;case"home2":await Ro(e,i);break;case"game":await Ko(e,i);break;case"settings":await Pn(e,i);break;case"collection":await Zo(e,i);break;case"decks":await Ci(e,i);break;case"boosters":await ur(e,i);break;case"ranked":await ka(e,i);break;case"match":{const s=ye.params&&ye.params.matchMode||"vs_ai_easy";s==="random"?await Pi(e,i,!1):s==="ranked"?await Pi(e,i,!0):s==="friend"?await Xr(e,i,(n=ye.params)==null?void 0:n.friendId,(o=ye.params)==null?void 0:o.friendName):s==="mini_league"||s==="mini-league"?await En(e,i,(r=ye.params)==null?void 0:r.mlMatchId,(a=ye.params)==null?void 0:a.leagueId):await Ir(e,i);break}case"market":await ya(e,i);break;case"rankings":await _a(e,i);break;case"matches":await $a(e,i);break;case"friends":await _o(e,i);break;case"mini-league":await ea(e,i);break;case"match-mini-league":{const s=ye.params||{};await En(e,i,s.mlMatchId,s.leagueId);break}default:await mn(e,i)}}function za(){var n,o;const e=document.getElementById("app"),t=ye.profile;if(!t)return;const i="/icons/";e.innerHTML=`
     <nav class="top-nav">
-      <div class="logo" id="nav-logo" title="Manager Wars v2026.07.26-0024" style="cursor:pointer">
+      <div class="logo" id="nav-logo" title="Manager Wars v2026.07.26-0030" style="cursor:pointer">
         <img src="${i}logo-withname.png" alt="Manager Wars" style="height:48px;width:auto;display:block">
       </div>
       <div style="display:flex;align-items:center;gap:10px">

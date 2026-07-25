@@ -551,19 +551,8 @@ export async function renderHome2(container, { state, navigate, toast }) {
 
       <div class="home2-dash">
 
-        <!-- Colonne gauche : profil + rang + classement -->
+        <!-- Colonne gauche : rang + classement -->
         <div class="home2-col-left">
-          <div class="profile-row">
-            <div class="profile-badge">
-              <span class="badge-level">${p.level}</span>
-              <span class="badge-rank-icon">${tier.emoji}</span>
-            </div>
-            <div class="profile-info">
-              <div class="name-row"><h3>${p.pseudo}</h3><button class="profile-edit-btn" id="nav-edit-btn">✏️</button></div>
-              <div class="club"><span class="dot"></span>${(p.club_name||'').toUpperCase()}</div>
-            </div>
-          </div>
-
           <div class="rank-card">
             <div class="rank-top-row">
               <div class="rank-tier-block">
@@ -683,7 +672,6 @@ export async function renderHome2(container, { state, navigate, toast }) {
   updateModeIndicator()
   window.addEventListener('resize', updateModeIndicator)
 
-  document.getElementById('nav-edit-btn')?.addEventListener('click', () => navigate('settings'))
   document.getElementById('nav-profile-btn')?.addEventListener('click', () => navigate('settings'))
   document.getElementById('nav-rankings-link')?.addEventListener('click', () => navigate('rankings'))
   document.getElementById('nav-rankings-cta')?.addEventListener('click', () => navigate('rankings'))

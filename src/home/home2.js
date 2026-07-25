@@ -107,16 +107,16 @@ export function ensureV2Chrome(navigate, p, activeRouteKey, ICON) {
           display: flex; position: fixed; bottom: 0; left: 0; right: 0; z-index: 500;
           align-items: stretch; justify-content: space-around;
           background: #05080a; border-top: 1px solid rgba(255,255,255,0.1);
-          padding: 6px 4px calc(6px + env(safe-area-inset-bottom, 0px)); box-sizing: border-box;
+          padding: 9px 6px calc(9px + env(safe-area-inset-bottom, 0px)); box-sizing: border-box;
           overflow-x: auto; scrollbar-width: none;
         }
         .home2-mobile-bottom::-webkit-scrollbar { display: none; }
         .home2-mobile-bottom .home2-chrome-tab {
-          width: auto; flex: 1; min-width: 58px; padding: 6px 4px; border-radius: 10px; gap: 3px;
+          width: auto; flex: 1; min-width: 87px; padding: 9px 6px; border-radius: 15px; gap: 5px;
         }
-        .home2-mobile-bottom .home2-chrome-tab img { width: 22px; height: 22px; }
+        .home2-mobile-bottom .home2-chrome-tab img { width: 33px; height: 33px; }
         .home2-mobile-bottom .home2-chrome-tab[data-key="game"] { display: none; }
-        .home2-mobile-bottom .home2-chrome-tab-emoji { font-size: 19px; }
+        .home2-mobile-bottom .home2-chrome-tab-emoji { font-size: 29px; }
         .home2-mobile-bottom .home2-chrome-tab { font-size: 9px; }
       }
     `

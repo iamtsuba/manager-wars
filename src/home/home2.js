@@ -363,7 +363,7 @@ export async function renderHome2(container, { state, navigate, toast }) {
       background: var(--page-bg);
       background-image: var(--page-gradient);
       display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
-      padding: 16px 16px 80px; box-sizing: border-box; overflow-y: auto;
+      padding: 0 16px 80px; box-sizing: border-box; overflow-y: auto;
     }
     .home-inner { width: 100%; max-width: 640px; display: flex; flex-direction: column; gap: 18px; }
 

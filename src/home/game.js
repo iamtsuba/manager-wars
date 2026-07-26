@@ -1,4 +1,4 @@
-import { showSoloLevelPicker, ensureV2Chrome } from './home2.js'
+import { showSoloLevelPicker, ensureV2Chrome, hideV2ChromeNow } from './home2.js'
 
 // Page "GAME" — regroupe toutes les possibilités de match (v2 uniquement).
 // N'existe que via l'onglet 🎮 du bandeau persistant Home v2.
@@ -90,7 +90,7 @@ export async function renderGame(container, { state, navigate, toast }) {
       setTimeout(() => el.style.transform = '', 180)
       const action = el.dataset.action
       if (action === 'match-ai')     { showSoloLevelPicker(navigate, state); return }
-      if (action === 'match-random') { navigate('match', { matchMode: 'random' }); return }
+      if (action === 'match-random') { hideV2ChromeNow(); navigate('match', { matchMode: 'random' }); return }
       if (action === 'match-friend') { navigate('friends'); return }
       if (action === 'mini-league')  { navigate('mini-league'); return }
       if (action === 'ranked')       { navigate('ranked'); return }

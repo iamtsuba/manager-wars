@@ -838,10 +838,18 @@ function renderGame(container, game, ctx) {
               const isGoal = e.isGoal
               const accent = e.homeScored ? '#FFD700' : isGoal ? '#ff6b6b' : 'rgba(255,255,255,0.3)'
               const side = e.homeScored ? '⚽ BUT !' : isGoal ? '⚽ BUT IA !' : e.homePlayers?.length ? '⚔️ Attaque' : '🛡️ Défense'
+              const homeWon = (e.homeTotal ?? 0) >= (e.aiTotal ?? 0)
               return `<div style="padding:8px;border-radius:8px;background:${isGoal?'rgba(212,160,23,0.12)':'rgba(255,255,255,0.04)'};border-left:3px solid ${accent};margin-bottom:4px">
-                <div style="font-size:9px;color:${accent};letter-spacing:1px;margin-bottom:5px;font-weight:700;text-transform:uppercase">${side}</div>
-                ${e.homePlayers?.length ? `<div style="margin-bottom:3px">${renderCardRow(e.homePlayers,'rgba(255,255,255,0.7)',e.homeTotal,undefined,game.formation)}</div>` : ''}
-                ${e.aiPlayers?.length ? `<div style="opacity:0.7">${renderCardRow(e.aiPlayers,'#ff6b6b',e.aiTotal,undefined,game.formation)}</div>` : ''}
+                <div style="font-size:9px;color:${accent};letter-spacing:1px;margin-bottom:6px;font-weight:700;text-transform:uppercase;text-align:center">${side}</div>
+                <div style="display:flex;align-items:center;justify-content:center;gap:10px">
+                  ${e.aiPlayers?.length ? `<div style="flex:1;display:flex;justify-content:flex-end;opacity:0.75">${renderCardRow(e.aiPlayers,'#ff6b6b',undefined,undefined,game.formation)}</div>` : '<div style="flex:1"></div>'}
+                  <div style="flex-shrink:0;display:flex;align-items:center;gap:6px">
+                    <span style="font-size:16px;font-weight:900;color:${!homeWon?'#22c55e':'#e03030'}">${e.aiTotal ?? '–'}</span>
+                    <span style="font-size:9px;color:rgba(255,255,255,0.3)">VS</span>
+                    <span style="font-size:16px;font-weight:900;color:${homeWon?'#22c55e':'#e03030'}">${e.homeTotal ?? '–'}</span>
+                  </div>
+                  ${e.homePlayers?.length ? `<div style="flex:1;display:flex;justify-content:flex-start">${renderCardRow(e.homePlayers,'rgba(255,255,255,0.7)',undefined,undefined,game.formation)}</div>` : '<div style="flex:1"></div>'}
+                </div>
               </div>`
             }
             if (e.type === 'sub') {
@@ -1896,10 +1904,12 @@ async function finishMatch(container, game, ctx) {
         <button class="btn btn-ghost" id="res-home" style="flex:1;color:#fff;border-color:rgba(255,255,255,0.3)">Accueil</button>
         <button class="btn btn-primary" id="res-replay" style="flex:1">Rejouer</button>
       </div>
+      ${(game.isSolo && isWin) ? `<button class="btn btn-primary" id="res-next-level" style="width:100%;margin-top:10px;background:#D4A017;border-color:#D4A017">▶️ Niveau ${game.soloLevel + 1}</button>` : ''}
     </div>`
   document.body.appendChild(overlay)
   document.getElementById('res-home')?.addEventListener('click',()=>{overlay.remove();_showBottomNav(container);ctx.navigate('home')})
   document.getElementById('res-replay')?.addEventListener('click',()=>{overlay.remove();_showBottomNav(container);ctx.navigate('match', game.isSolo ? {matchMode:game.mode, soloLevel:game.soloLevel} : {matchMode:game.mode})})
+  document.getElementById('res-next-level')?.addEventListener('click',()=>{overlay.remove();_showBottomNav(container);ctx.navigate('match', {matchMode:'solo', soloLevel:game.soloLevel+1})})
 }
 
 function showAITeam(game, ctx) {

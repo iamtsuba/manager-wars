@@ -284,6 +284,10 @@ function renderBuilder(container, builder, ctx) {
 
   // Calcul des remplaçants avec données joueurs
   const subPlayers = builder.subs.map(id => builder.playerCards.find(c => c.id === id)).filter(Boolean)
+  // Purge les références obsolètes (carte vendue/supprimée depuis) pour que le compteur et le bouton "+" restent cohérents
+  if (subPlayers.length !== builder.subs.length) {
+    builder.subs = subPlayers.map(c => c.id)
+  }
   const allUsed    = [...Object.values(builder.slots), ...builder.subs]
 
   container.innerHTML = `
@@ -293,7 +297,7 @@ function renderBuilder(container, builder, ctx) {
       <button class="btn-icon" id="builder-back" style="font-size:16px">←</button>
       <div style="flex:1">
         <h2 style="font-size:14px;margin:0">${builder.name}</h2>
-        <p style="font-size:11px;margin:0">${filled}/11 · ${builder.subs.length}/5 rempl.</p>
+        <p style="font-size:11px;margin:0">${filled}/11 · ${subPlayers.length}/5 rempl.</p>
       </div>
     </div>
 
@@ -308,7 +312,7 @@ function renderBuilder(container, builder, ctx) {
 
 
           <!-- Remplaçants PC : colonne verticale -->
-          <div style="font-size:11px;font-weight:700;color:rgba(255,255,255,0.6);letter-spacing:1px;text-transform:uppercase;text-align:center;margin-top:8px">Remplaçants<br>(${builder.subs.length}/5)</div>
+          <div style="font-size:11px;font-weight:700;color:rgba(255,255,255,0.6);letter-spacing:1px;text-transform:uppercase;text-align:center;margin-top:8px">Remplaçants<br>(${subPlayers.length}/5)</div>
           <div style="display:flex;flex-direction:column;gap:6px;align-items:center" id="subs-list">
             ${subPlayers.map(card => {
               const p = { ...card.player, _evolution_bonus: card.evolution_bonus || 0 }
@@ -318,7 +322,7 @@ function renderBuilder(container, builder, ctx) {
                   style="position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:20px;height:20px;background:#c0392b;border:none;border-radius:50%;color:#fff;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;padding:0;z-index:10">✕</button>
               </div>`
             }).join('')}
-            ${builder.subs.length < 5 ? `<div id="add-sub-btn" style="width:90px;height:117px;border:2px dashed rgba(255,255,255,0.3);border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:18px;color:rgba(255,255,255,0.4);cursor:pointer">+</div>` : ''}
+            ${subPlayers.length < 5 ? `<div id="add-sub-btn" style="width:90px;height:117px;border:2px dashed rgba(255,255,255,0.3);border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:18px;color:rgba(255,255,255,0.4);cursor:pointer">+</div>` : ''}
           </div>
         </div>
 
@@ -367,7 +371,7 @@ function renderBuilder(container, builder, ctx) {
         <div style="display:flex;gap:6px;align-items:flex-start">
           <!-- Remplaçants mobile -->
           <div style="flex:1;min-width:0">
-            <div style="font-size:10px;font-weight:700;margin-bottom:6px;color:rgba(255,255,255,0.6);letter-spacing:1px;text-transform:uppercase">Remplaçants (${builder.subs.length}/5)</div>
+            <div style="font-size:10px;font-weight:700;margin-bottom:6px;color:rgba(255,255,255,0.6);letter-spacing:1px;text-transform:uppercase">Remplaçants (${subPlayers.length}/5)</div>
             <div style="display:flex;gap:2px;align-items:center;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;-ms-overflow-style:none" id="subs-list" class="no-scrollbar">
               ${subPlayers.map(card => {
                 const p = { ...card.player, _evolution_bonus: card.evolution_bonus || 0 }
@@ -377,7 +381,7 @@ function renderBuilder(container, builder, ctx) {
                     style="position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:16px;height:16px;background:#c0392b;border:none;border-radius:50%;color:#fff;font-size:9px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;padding:0;z-index:10">✕</button>
                 </div>`
               }).join('')}
-              ${builder.subs.length < 5 ? `<div id="add-sub-btn" style="width:44px;height:57px;border:2px dashed rgba(255,255,255,0.3);border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:14px;color:rgba(255,255,255,0.4);cursor:pointer;flex-shrink:0">+</div>` : ''}
+              ${subPlayers.length < 5 ? `<div id="add-sub-btn" style="width:44px;height:57px;border:2px dashed rgba(255,255,255,0.3);border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:14px;color:rgba(255,255,255,0.4);cursor:pointer;flex-shrink:0">+</div>` : ''}
             </div>
           </div>
           <!-- Formation mobile -->
@@ -406,7 +410,7 @@ function renderBuilder(container, builder, ctx) {
     </div>
 
     <!-- Sauvegarder -->
-    <div class="page-body" style="padding-bottom:20px">
+    <div class="page-body" style="padding:12px 16px calc(80px + env(safe-area-inset-bottom, 0px))">
       <button class="btn btn-primary" id="save-deck" style="width:100%" ${filled < 11 ? 'disabled' : ''}>
         ${filled < 11 ? `Placez encore ${11-filled} joueur(s)` : '💾 Enregistrer le deck'}
       </button>

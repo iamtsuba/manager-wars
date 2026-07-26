@@ -10,6 +10,7 @@
  */
 
 import { supabase } from '../lib/supabase.js'
+import { hideV2ChromeNow } from '../home/home2.js'
 import { getTier, getTierProgress, TIERS, previewDelta } from './glicko2.js'
 
 export async function renderRanked(container, ctx) {
@@ -168,6 +169,7 @@ export async function renderRanked(container, ctx) {
   document.getElementById('ranked-leaderboard-btn')?.addEventListener('click', () => navigate('rankings', { tab: 'ranked' }))
   document.getElementById('ranked-play-btn')?.addEventListener('click', () => {
     // Lance le matchmaking ranked en passant le mode et les données MMR
+    hideV2ChromeNow()
     navigate('match', {
       matchMode : 'ranked',
       rankedData: { mmr, rd, sigma, isPlacement },

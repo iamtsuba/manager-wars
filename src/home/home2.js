@@ -206,6 +206,11 @@ export function ensureV2Chrome(navigate, p, activeRouteKey, ICON) {
   document.getElementById('home2-chrome-credits') && (document.getElementById('home2-chrome-credits').textContent = credAmount)
   document.getElementById('home2-mobtop-credits') && (document.getElementById('home2-mobtop-credits').textContent = credAmount)
 
+  // Réaffiche le bandeau (annule un éventuel hideV2ChromeNow() laissé par une navigation précédente vers un match)
+  header.style.display = ''
+  topBar.style.display = ''
+  bottomBar.style.display = ''
+
   // Recalcule les hauteurs réelles pour compenser le padding du contenu
   requestAnimationFrame(() => {
     const isMobile = window.innerWidth < 1024
@@ -219,6 +224,15 @@ function teardownV2Chrome() {
   document.getElementById('home2-mobile-top')?.remove()
   document.getElementById('home2-mobile-bottom')?.remove()
   document.getElementById('home2-chrome-style')?.remove()
+}
+
+// Masque le bandeau instantanément au clic (avant même la navigation), pour éviter
+// tout flash pendant le chargement du match. Réaffiché automatiquement par
+// ensureV2Chrome() dès qu'une vraie page v2 (hors match) se rend à nouveau.
+export function hideV2ChromeNow() {
+  const h = document.getElementById('home2-chrome-header'); if (h) h.style.display = 'none'
+  const t = document.getElementById('home2-mobile-top');    if (t) t.style.display = 'none'
+  const b = document.getElementById('home2-mobile-bottom'); if (b) b.style.display = 'none'
 }
 
 function timeAgo(iso) {
@@ -697,7 +711,7 @@ export async function renderHome2(container, { state, navigate, toast }) {
       setTimeout(() => el.style.transform = '', 180)
       const action = el.dataset.action
       if (action === 'match-ai') { showSoloLevelPicker(navigate, state); return }
-      if (action === 'match-random') { navigate('match', { matchMode: 'random' }); return }
+      if (action === 'match-random') { hideV2ChromeNow(); navigate('match', { matchMode: 'random' }); return }
       if (action === 'match-friend') { navigate('friends'); return }
       if (action === 'mini-league')  { navigate('mini-league'); return }
       if (action === 'ranked')       { navigate('ranked'); return }
@@ -971,6 +985,7 @@ export async function showSoloLevelPicker(navigate, state) {
     el.addEventListener('mouseleave', () => { el.style.transform = '' })
     el.addEventListener('click', () => {
       cleanup()
+      hideV2ChromeNow()
       navigate('match', { matchMode: 'solo', soloLevel: Number(el.dataset.level) })
     })
   })

@@ -346,7 +346,7 @@ function renderBuilder(container, builder, ctx) {
             <div id="add-stad-btn-pc" style="cursor:pointer;margin:0 auto;width:fit-content">
               ${_selStadCard ? (() => {
                 const def = builder.stadDefMap[_selStadCard.stadium_id]
-                const logo = def?.club?.logo_url || def?.image_url || null
+                const logo = def?.club?.logo_url || def?.image_url || (def?.country_code ? `https://flagsapi.com/${def.country_code.slice(0,2).toUpperCase()}/flat/64.png` : null)
                 return renderStadiumCard(def?.name || 'Stade', logo, '+10 ⭐', { width: 100 })
               })() : `<div style="width:100px;height:171px;border:2px dashed rgba(79,195,247,0.4);border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px">
                 <span style="font-size:36px">🏟️</span>
@@ -397,7 +397,7 @@ function renderBuilder(container, builder, ctx) {
             <div id="add-stad-btn" style="cursor:pointer">
               ${_selStadCard ? (() => {
                 const def = builder.stadDefMap[_selStadCard.stadium_id]
-                const logo = def?.club?.logo_url || def?.image_url || null
+                const logo = def?.club?.logo_url || def?.image_url || (def?.country_code ? `https://flagsapi.com/${def.country_code.slice(0,2).toUpperCase()}/flat/64.png` : null)
                 return renderStadiumCard(def?.name || 'Stade', logo, '+10⭐', { width: 44 })
               })() : `<div style="width:44px;height:57px;border:2px dashed rgba(79,195,247,0.5);border-radius:6px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px">
                 <span style="font-size:13px">🏟️</span>
@@ -592,7 +592,7 @@ function openStadiumSelector(builder, container, ctx) {
       </div>
       ${cards.map(c => {
         const def = builder.stadDefMap[c.stadium_id]
-        const logo = def?.club?.logo_url || def?.image_url || null
+        const logo = def?.club?.logo_url || def?.image_url || (def?.country_code ? `https://flagsapi.com/${def.country_code.slice(0,2).toUpperCase()}/flat/64.png` : null)
         const sel = builder.stadiumCardId === c.id
         const cardHtml = renderStadiumCard(def?.name || 'Stade', logo, '+10⭐', { width: 90 })
         return `<div class="stad-choice" data-stad-id="${c.id}" style="cursor:pointer;position:relative;border-radius:8px;${sel?'box-shadow:0 0 0 3px #4fc3f7':''}">

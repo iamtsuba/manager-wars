@@ -113,7 +113,7 @@ async function renderPage() {
   container.innerHTML = '<div style="padding:40px;text-align:center;color:#aaa">⚽</div>'
 
   switch (state.page) {
-    case 'home':       await renderHome(container, ctx);       break
+    case 'home':       await renderHome2(container, ctx);       break
     case 'home2':       await renderHome2(container, ctx);       break
     case 'game':        await renderGame(container, ctx);        break
     case 'settings':   await renderSettings(container, ctx);   break
@@ -140,7 +140,7 @@ async function renderPage() {
       await renderMatchMiniLeague(container, ctx, p.mlMatchId, p.leagueId)
       break
     }
-    default:           await renderHome(container, ctx);
+    default:           await renderHome2(container, ctx);
   }
 }
 

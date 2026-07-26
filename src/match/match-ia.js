@@ -733,7 +733,7 @@ function renderGame(container, game, ctx) {
           </div>`
 
       const gcMiniPC = (gc, isBoost) => isBoost ? boostCardDesign(95, 162) : gcCardDesign(gc, 95, 162)
-      const gcMiniMob = (gc, isBoost) => isBoost ? boostCardDesign(68, 116) : gcCardDesign(gc, 68, 116)
+      const gcMiniMob = (gc, isBoost) => isBoost ? boostCardDesign(53, 90) : gcCardDesign(gc, 53, 90)
 
       // ─── Bouton action ────────────────────────────────────
       const btnStyle = _pc

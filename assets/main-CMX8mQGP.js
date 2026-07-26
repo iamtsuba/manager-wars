@@ -350,7 +350,7 @@ import{s as v,j as vi,q as zn,t as Ht,u as Oi,F as Hi,o as tt,n as ei,g as Mt,r 
         border:1.5px solid #ddd;background:#fff;
         font-size:14px;font-weight:700;cursor:pointer;color:#555;
       }
-    </style>`}const Mn="mw_sound_volume";function Wi(){const t=localStorage.getItem(Mn);if(t===null)return 100;const e=parseInt(t,10);return Number.isFinite(e)?Math.max(0,Math.min(100,e)):100}function So(t){localStorage.setItem(Mn,String(Math.max(0,Math.min(100,Math.round(t)))))}function Xi(){return Wi()===0}function fi(t){return Math.max(0,Math.min(1,t*(Wi()/100)))}function Ji(t,e=1){if(Xi())return null;try{const i=new Audio(t);return i.volume=fi(e),i.play().catch(()=>{}),i}catch{return null}}let xt=null,Ci=null,mn=.3;function Cn(t,e=.3){if(mn=e,xt&&Ci===t&&!xt.paused){xt.volume=fi(mn);return}if(It(),!Xi())try{const i=new Audio(t);i.loop=!0,i.volume=fi(e),i.play().catch(()=>{}),xt=i,Ci=t}catch{}}function It(){if(xt)try{xt.pause(),xt.currentTime=0}catch{}xt=null,Ci=null}let Wt=null;function jn(t,e=.6){if(Ue(),!Xi())try{const i=new Audio(t);i.volume=fi(e),i.play().catch(()=>{}),Wt=i}catch{}}function Ue(){if(Wt)try{Wt.pause(),Wt.currentTime=0}catch{}Wt=null}const zo="2026.07.26-0936";async function gn(t,{state:e,navigate:i,toast:n}){var o,a,s;const r=e.profile;r&&(t.innerHTML=`
+    </style>`}const Mn="mw_sound_volume";function Wi(){const t=localStorage.getItem(Mn);if(t===null)return 100;const e=parseInt(t,10);return Number.isFinite(e)?Math.max(0,Math.min(100,e)):100}function So(t){localStorage.setItem(Mn,String(Math.max(0,Math.min(100,Math.round(t)))))}function Xi(){return Wi()===0}function fi(t){return Math.max(0,Math.min(1,t*(Wi()/100)))}function Ji(t,e=1){if(Xi())return null;try{const i=new Audio(t);return i.volume=fi(e),i.play().catch(()=>{}),i}catch{return null}}let xt=null,Ci=null,mn=.3;function Cn(t,e=.3){if(mn=e,xt&&Ci===t&&!xt.paused){xt.volume=fi(mn);return}if(It(),!Xi())try{const i=new Audio(t);i.loop=!0,i.volume=fi(e),i.play().catch(()=>{}),xt=i,Ci=t}catch{}}function It(){if(xt)try{xt.pause(),xt.currentTime=0}catch{}xt=null,Ci=null}let Wt=null;function jn(t,e=.6){if(Ue(),!Xi())try{const i=new Audio(t);i.volume=fi(e),i.play().catch(()=>{}),Wt=i}catch{}}function Ue(){if(Wt)try{Wt.pause(),Wt.currentTime=0}catch{}Wt=null}const zo="2026.07.26-1051";async function gn(t,{state:e,navigate:i,toast:n}){var o,a,s;const r=e.profile;r&&(t.innerHTML=`
   <style>
     .home-dark {
       min-height: 100%;
@@ -1147,7 +1147,7 @@ import{s as v,j as vi,q as zn,t as Ht,u as Oi,F as Hi,o as tt,n as ei,g as Mt,r 
         </div>
       </div>
     </div>
-  </div>`,t.querySelectorAll("[data-action]").forEach(a=>{a.addEventListener("click",()=>{a.style.transform="scale(.96)",setTimeout(()=>a.style.transform="",180);const s=a.dataset.action;if(s==="match-ai"){Nn(i,e);return}if(s==="match-random"){i("match",{matchMode:"random"});return}if(s==="match-friend"){i("friends");return}if(s==="mini-league"){i("mini-league");return}if(s==="ranked"){i("ranked");return}n("Bientôt disponible","info")})})}async function Gn(t,e){var u;const{state:i,navigate:n}=e,r=po(),o=Wi(),a=(u=i==null?void 0:i.profile)==null?void 0:u.is_admin,s="2026.07.26-0936";t.innerHTML=`
+  </div>`,t.querySelectorAll("[data-action]").forEach(a=>{a.addEventListener("click",()=>{a.style.transform="scale(.96)",setTimeout(()=>a.style.transform="",180);const s=a.dataset.action;if(s==="match-ai"){Nn(i,e);return}if(s==="match-random"){i("match",{matchMode:"random"});return}if(s==="match-friend"){i("friends");return}if(s==="mini-league"){i("mini-league");return}if(s==="ranked"){i("ranked");return}n("Bientôt disponible","info")})})}async function Gn(t,e){var u;const{state:i,navigate:n}=e,r=po(),o=Wi(),a=(u=i==null?void 0:i.profile)==null?void 0:u.is_admin,s="2026.07.26-1051";t.innerHTML=`
   <div style="height:100%;overflow-y:auto;background:var(--page-bg)">
 
     <div style="padding:16px;display:flex;flex-direction:column;gap:14px;max-width:520px;margin:0 auto">
@@ -1502,14 +1502,14 @@ import{s as v,j as vi,q as zn,t as Ht,u as Oi,F as Hi,o as tt,n as ei,g as Mt,r 
         note_g, note_d, note_m, note_a, rarity, skin, hair, hair_length, face,
         clubs(encoded_name, logo_url))`).eq("owner_id",n.profile.id),{data:s}=await v.from("cards").select(`id, card_type, stadium_id,
       stadium_def:stadium_definitions(id, name, club_id, country_code, image_url,
-        club:clubs(encoded_name, logo_url))`).eq("owner_id",n.profile.id).eq("card_type","stadium"),d=(a||[]).filter(y=>y.card_type==="player"&&y.player),l=(a||[]).filter(y=>y.card_type==="formation"),c=(s||[]).filter(y=>y.card_type==="stadium"),u=[...new Set(c.map(y=>y.stadium_id).filter(Boolean))];let b={};if(c.forEach(y=>{y.stadium_def&&y.stadium_id&&(b[y.stadium_id]=y.stadium_def)}),u.length&&Object.keys(b).length<u.length){const{data:y}=await v.from("stadium_definitions").select("id,name,club_id,country_code,image_url,club:clubs(encoded_name,logo_url)").in("id",u);(y||[]).forEach(w=>{b[w.id]=w})}const x=l.map(y=>y.formation).filter(Boolean),{data:m}=await v.from("deck_cards").select("card_id, position, is_starter, slot_order").eq("deck_id",t);let p=o.formation||"4-4-2";x.length>0&&!x.includes(p)&&(p=x[0]);const f={deckId:t,name:o.name,formation:p,formationCardId:o.formation_card_id,stadiumCardId:o.stadium_card_id||null,slots:{},subs:[],playerCards:d,formationCards:l,stadiumCards:c,stadDefMap:b,availableFormations:x};(m||[]).forEach(y=>{y.is_starter?f.slots[y.position]=y.card_id:f.subs.includes(y.card_id)||f.subs.push(y.card_id)}),wt(e,f,i)}function wt(t,e,i){var m,p;const{navigate:n}=i;mi[e.formation];const r=_n(e.formation),o=r.filter(f=>e.slots[f]).length,a=e.availableFormations.length>0?e.availableFormations:Object.keys(mi),s=(m=e.stadiumCards)==null?void 0:m.find(f=>f.id===e.stadiumCardId),d=s&&((p=e.stadDefMap)==null?void 0:p[s.stadium_id])||null,l=e.subs.map(f=>e.playerCards.find(y=>y.id===f)).filter(Boolean);[...Object.values(e.slots),...e.subs],t.innerHTML=`
+        club:clubs(encoded_name, logo_url))`).eq("owner_id",n.profile.id).eq("card_type","stadium"),d=(a||[]).filter(y=>y.card_type==="player"&&y.player),l=(a||[]).filter(y=>y.card_type==="formation"),c=(s||[]).filter(y=>y.card_type==="stadium"),u=[...new Set(c.map(y=>y.stadium_id).filter(Boolean))];let b={};if(c.forEach(y=>{y.stadium_def&&y.stadium_id&&(b[y.stadium_id]=y.stadium_def)}),u.length&&Object.keys(b).length<u.length){const{data:y}=await v.from("stadium_definitions").select("id,name,club_id,country_code,image_url,club:clubs(encoded_name,logo_url)").in("id",u);(y||[]).forEach(w=>{b[w.id]=w})}const x=l.map(y=>y.formation).filter(Boolean),{data:m}=await v.from("deck_cards").select("card_id, position, is_starter, slot_order").eq("deck_id",t);let p=o.formation||"4-4-2";x.length>0&&!x.includes(p)&&(p=x[0]);const f={deckId:t,name:o.name,formation:p,formationCardId:o.formation_card_id,stadiumCardId:o.stadium_card_id||null,slots:{},subs:[],playerCards:d,formationCards:l,stadiumCards:c,stadDefMap:b,availableFormations:x};(m||[]).forEach(y=>{y.is_starter?f.slots[y.position]=y.card_id:f.subs.includes(y.card_id)||f.subs.push(y.card_id)}),wt(e,f,i)}function wt(t,e,i){var m,p;const{navigate:n}=i;mi[e.formation];const r=_n(e.formation),o=r.filter(f=>e.slots[f]).length,a=e.availableFormations.length>0?e.availableFormations:Object.keys(mi),s=(m=e.stadiumCards)==null?void 0:m.find(f=>f.id===e.stadiumCardId),d=s&&((p=e.stadDefMap)==null?void 0:p[s.stadium_id])||null,l=e.subs.map(f=>e.playerCards.find(y=>y.id===f)).filter(Boolean);l.length!==e.subs.length&&(e.subs=l.map(f=>f.id)),[...Object.values(e.slots),...e.subs],t.innerHTML=`
   <style>.no-scrollbar::-webkit-scrollbar{display:none}</style>
   <div style="height:100%;overflow-y:auto;background:var(--page-bg)">
     <div class="page-header" style="display:flex;align-items:center;gap:8px;padding:6px 12px;min-height:0">
       <button class="btn-icon" id="builder-back" style="font-size:16px">←</button>
       <div style="flex:1">
         <h2 style="font-size:14px;margin:0">${e.name}</h2>
-        <p style="font-size:11px;margin:0">${o}/11 · ${e.subs.length}/5 rempl.</p>
+        <p style="font-size:11px;margin:0">${o}/11 · ${l.length}/5 rempl.</p>
       </div>
     </div>
 
@@ -1524,14 +1524,14 @@ import{s as v,j as vi,q as zn,t as Ht,u as Oi,F as Hi,o as tt,n as ei,g as Mt,r 
 
 
           <!-- Remplaçants PC : colonne verticale -->
-          <div style="font-size:11px;font-weight:700;color:rgba(255,255,255,0.6);letter-spacing:1px;text-transform:uppercase;text-align:center;margin-top:8px">Remplaçants<br>(${e.subs.length}/5)</div>
+          <div style="font-size:11px;font-weight:700;color:rgba(255,255,255,0.6);letter-spacing:1px;text-transform:uppercase;text-align:center;margin-top:8px">Remplaçants<br>(${l.length}/5)</div>
           <div style="display:flex;flex-direction:column;gap:6px;align-items:center" id="subs-list">
             ${l.map(f=>{const y={...f.player,_evolution_bonus:f.evolution_bonus||0};return`<div style="position:relative;flex-shrink:0;overflow:visible;padding-bottom:24px">
                 ${Se({...y,_evolution_bonus:y._evolution_bonus||0},{width:90,showStad:!0,stadDef:d})}
                 <button data-remove-sub="${f.id}"
                   style="position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:20px;height:20px;background:#c0392b;border:none;border-radius:50%;color:#fff;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;padding:0;z-index:10">✕</button>
               </div>`}).join("")}
-            ${e.subs.length<5?'<div id="add-sub-btn" style="width:90px;height:117px;border:2px dashed rgba(255,255,255,0.3);border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:18px;color:rgba(255,255,255,0.4);cursor:pointer">+</div>':""}
+            ${l.length<5?'<div id="add-sub-btn" style="width:90px;height:117px;border:2px dashed rgba(255,255,255,0.3);border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:18px;color:rgba(255,255,255,0.4);cursor:pointer">+</div>':""}
           </div>
         </div>
 
@@ -1576,14 +1576,14 @@ import{s as v,j as vi,q as zn,t as Ht,u as Oi,F as Hi,o as tt,n as ei,g as Mt,r 
         <div style="display:flex;gap:6px;align-items:flex-start">
           <!-- Remplaçants mobile -->
           <div style="flex:1;min-width:0">
-            <div style="font-size:10px;font-weight:700;margin-bottom:6px;color:rgba(255,255,255,0.6);letter-spacing:1px;text-transform:uppercase">Remplaçants (${e.subs.length}/5)</div>
+            <div style="font-size:10px;font-weight:700;margin-bottom:6px;color:rgba(255,255,255,0.6);letter-spacing:1px;text-transform:uppercase">Remplaçants (${l.length}/5)</div>
             <div style="display:flex;gap:2px;align-items:center;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;-ms-overflow-style:none" id="subs-list" class="no-scrollbar">
               ${l.map(f=>{const y={...f.player,_evolution_bonus:f.evolution_bonus||0};return`<div style="position:relative;flex-shrink:0;overflow:visible;padding-bottom:20px">
                   ${Se({...y,_evolution_bonus:y._evolution_bonus||0},{width:44,showStad:!0,stadDef:d})}
                   <button data-remove-sub="${f.id}"
                     style="position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:16px;height:16px;background:#c0392b;border:none;border-radius:50%;color:#fff;font-size:9px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;padding:0;z-index:10">✕</button>
                 </div>`}).join("")}
-              ${e.subs.length<5?'<div id="add-sub-btn" style="width:44px;height:57px;border:2px dashed rgba(255,255,255,0.3);border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:14px;color:rgba(255,255,255,0.4);cursor:pointer;flex-shrink:0">+</div>':""}
+              ${l.length<5?'<div id="add-sub-btn" style="width:44px;height:57px;border:2px dashed rgba(255,255,255,0.3);border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:14px;color:rgba(255,255,255,0.4);cursor:pointer;flex-shrink:0">+</div>':""}
             </div>
           </div>
           <!-- Formation mobile -->
@@ -1608,7 +1608,7 @@ import{s as v,j as vi,q as zn,t as Ht,u as Oi,F as Hi,o as tt,n as ei,g as Mt,r 
     </div>
 
     <!-- Sauvegarder -->
-    <div class="page-body" style="padding-bottom:20px">
+    <div class="page-body" style="padding:12px 16px calc(80px + env(safe-area-inset-bottom, 0px))">
       <button class="btn btn-primary" id="save-deck" style="width:100%" ${o<11?"disabled":""}>
         ${o<11?`Placez encore ${11-o} joueur(s)`:"💾 Enregistrer le deck"}
       </button>
@@ -3215,7 +3215,7 @@ import{s as v,j as vi,q as zn,t as Ht,u as Oi,F as Hi,o as tt,n as ei,g as Mt,r 
     </div>
   </div>`}xo(yo);const ye={user:null,profile:null,page:"home",params:{}};function Pt(t,e="info",i=3e3){const n=document.getElementById("toast");n&&(n.textContent=t,n.className=`show ${e}`,clearTimeout(n._t),n._t=setTimeout(()=>{n.className=""},i))}function Ia(t,e,i=""){document.getElementById("modal-title").textContent=t,document.getElementById("modal-body").innerHTML=e,document.getElementById("modal-footer").innerHTML=i,document.getElementById("modal-overlay").classList.remove("hidden")}function Ri(){document.getElementById("modal-overlay").classList.add("hidden")}async function Qt(){if(!ye.user)return;const{data:t}=await v.from("users").select("*").eq("id",ye.user.id).single();t&&(ye.profile=t)}const co="mw_theme";function po(){return localStorage.getItem(co)||"dark"}function Sa(t){var e;localStorage.setItem(co,t),za(t),(e=ye.profile)!=null&&e.id&&v.from("users").update({theme:t}).eq("id",ye.profile.id).then(()=>{})}function za(t){document.documentElement.setAttribute("data-theme",t)}function Nt(t,e={}){ye.page=t,ye.params=e,uo()}async function uo(){var n,r,o,a;const t=document.getElementById("page-content");if(!t)return;document.querySelectorAll(".bottom-nav a").forEach(s=>{s.classList.toggle("active",s.dataset.page===ye.page)});const e=document.getElementById("nav-credits");e&&ye.profile&&(e.textContent=`💰 ${(ye.profile.credits||0).toLocaleString("fr")}`);const i={state:ye,navigate:Nt,toast:Pt,openModal:Ia,closeModal:Ri,refreshProfile:Qt};switch(t.innerHTML='<div style="padding:40px;text-align:center;color:#aaa">⚽</div>',ye.page){case"home":await gn(t,i);break;case"home2":await Ho(t,i);break;case"game":await Wo(t,i);break;case"settings":await Gn(t,i);break;case"collection":await ir(t,i);break;case"decks":await ji(t,i);break;case"boosters":await gr(t,i);break;case"ranked":await La(t,i);break;case"match":{const s=ye.params&&ye.params.matchMode||"vs_ai_easy";s==="random"?await Ni(t,i,!1):s==="ranked"?await Ni(t,i,!0):s==="friend"?await Zr(t,i,(n=ye.params)==null?void 0:n.friendId,(r=ye.params)==null?void 0:r.friendName):s==="mini_league"||s==="mini-league"?await Tn(t,i,(o=ye.params)==null?void 0:o.mlMatchId,(a=ye.params)==null?void 0:a.leagueId):await zr(t,i);break}case"market":await wa(t,i);break;case"rankings":await Ea(t,i);break;case"matches":await Ta(t,i);break;case"friends":await Eo(t,i);break;case"mini-league":await na(t,i);break;case"match-mini-league":{const s=ye.params||{};await Tn(t,i,s.mlMatchId,s.leagueId);break}default:await gn(t,i)}}function Aa(){var n,r;const t=document.getElementById("app"),e=ye.profile;if(!e)return;const i="/icons/";t.innerHTML=`
     <nav class="top-nav">
-      <div class="logo" id="nav-logo" title="Manager Wars v2026.07.26-0936" style="cursor:pointer">
+      <div class="logo" id="nav-logo" title="Manager Wars v2026.07.26-1051" style="cursor:pointer">
         <img src="${i}logo-withname.png" alt="Manager Wars" style="height:48px;width:auto;display:block">
       </div>
       <div style="display:flex;align-items:center;gap:10px">

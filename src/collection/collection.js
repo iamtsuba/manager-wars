@@ -1105,7 +1105,7 @@ async function openCardDetail(card, allPlayerCards, countByPlayer, ctx) {
       const ov = document.createElement('div')
       ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px'
       ov.innerHTML = `
-        <div style="background:var(--tile-bg);border-radius:16px;padding:24px;max-width:300px;width:100%;text-align:center">
+        <div style="background:#fff;border-radius:16px;padding:24px;max-width:300px;width:100%;text-align:center">
           <div style="font-size:40px;margin-bottom:10px">⚠️</div>
           <div style="font-size:15px;font-weight:900;color:#cc2222;margin-bottom:10px">Action impossible</div>
           <div style="font-size:13px;color:#555;line-height:1.5;margin-bottom:18px">
@@ -1137,9 +1137,9 @@ async function openCardDetail(card, allPlayerCards, countByPlayer, ctx) {
       const ov = document.createElement('div')
       ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px'
       ov.innerHTML = `
-        <div style="background:var(--tile-bg);border-radius:16px;padding:24px;max-width:320px;width:100%;text-align:center;box-shadow:0 16px 48px rgba(0,0,0,0.3)">
+        <div style="background:#fff;border-radius:16px;padding:24px;max-width:320px;width:100%;text-align:center;box-shadow:0 16px 48px rgba(0,0,0,0.3)">
           <div style="font-size:48px;margin-bottom:10px">⬆️</div>
-          <div style="font-size:17px;font-weight:900;margin-bottom:6px">Évolution par fusion</div>
+          <div style="font-size:17px;font-weight:900;margin-bottom:6px;color:#1a1a1a">Évolution par fusion</div>
           <div style="font-size:13px;color:#555;margin-bottom:6px">
             <strong>${p.firstname} ${p.surname_real}</strong>
           </div>
@@ -1153,7 +1153,7 @@ async function openCardDetail(card, allPlayerCards, countByPlayer, ctx) {
           </div>
           <div style="font-size:11px;color:#aaa;margin-bottom:18px">⚠️ Les copies sacrifiées sont définitivement supprimées</div>
           <div style="display:flex;gap:10px">
-            <button id="sac-cancel" style="flex:1;padding:12px;border-radius:10px;border:1.5px solid #ddd;background:var(--tile-bg);font-size:14px;font-weight:700;cursor:pointer;color:#555">Annuler</button>
+            <button id="sac-cancel" style="flex:1;padding:12px;border-radius:10px;border:1.5px solid #ddd;background:#fff;font-size:14px;font-weight:700;cursor:pointer;color:#555">Annuler</button>
             <button id="sac-ok" style="flex:1;padding:12px;border-radius:10px;border:none;background:#1A6B3C;color:#fff;font-size:14px;font-weight:900;cursor:pointer">⬆️ Confirmer</button>
           </div>
         </div>`

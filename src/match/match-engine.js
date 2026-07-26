@@ -121,7 +121,7 @@ export function renderMidfieldDuel(homeMils, aiMils, homeLabel, aiLabel, homeTot
   const renderMilCard = (p, stadDef) => renderPlayerCard(
     { ...p, _evolution_bonus: 0 },
     {
-      width: window.innerWidth >= 900 ? Math.min(130, Math.max(80, Math.round(window.innerWidth * 0.08))) : 58,
+      width: window.innerWidth >= 900 ? Math.min(130, Math.max(80, Math.round(window.innerWidth * 0.08))) : 42,
       showStad: true,
       stadDef,
       role: 'MIL',

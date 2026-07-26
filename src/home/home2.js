@@ -210,6 +210,8 @@ export function ensureV2Chrome(navigate, p, activeRouteKey, ICON) {
   header.style.display = ''
   topBar.style.display = ''
   bottomBar.style.display = ''
+  const pcReset = document.getElementById('page-content')
+  if (pcReset) { pcReset.style.paddingTop = ''; pcReset.style.paddingBottom = '' }
 
   // Recalcule les hauteurs réelles pour compenser le padding du contenu
   // (double rAF : garantit que le layout est bien posé avant de mesurer,
@@ -237,6 +239,10 @@ export function hideV2ChromeNow() {
   const h = document.getElementById('home2-chrome-header'); if (h) h.style.display = 'none'
   const t = document.getElementById('home2-mobile-top');    if (t) t.style.display = 'none'
   const b = document.getElementById('home2-mobile-bottom'); if (b) b.style.display = 'none'
+  // Libère aussi l'espace réservé (sinon un vide subsiste tant que .match-screen n'existe pas encore,
+  // ex: pendant "Choisis ton deck" avant que l'écran de match lui-même ne se monte)
+  const pc = document.getElementById('page-content')
+  if (pc) { pc.style.paddingTop = '0'; pc.style.paddingBottom = '0' }
 }
 
 function timeAgo(iso) {

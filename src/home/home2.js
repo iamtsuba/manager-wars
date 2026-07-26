@@ -92,7 +92,7 @@ export function ensureV2Chrome(navigate, p, activeRouteKey, ICON) {
         .home2-chrome-header { display: none; } /* le bandeau unique PC disparaît totalement */
 
         body:has(#home2-chrome-marker) #page-content {
-          padding-top: var(--v2-top-height, 66px) !important;
+          padding-top: var(--v2-top-height, 56px) !important;
           padding-bottom: var(--v2-bottom-height, 76px) !important;
         }
         body:has(#home2-chrome-marker) #page-content:has(.match-screen) {
@@ -212,10 +212,14 @@ export function ensureV2Chrome(navigate, p, activeRouteKey, ICON) {
   bottomBar.style.display = ''
 
   // Recalcule les hauteurs réelles pour compenser le padding du contenu
+  // (double rAF : garantit que le layout est bien posé avant de mesurer,
+  // évite une mesure prématurée à 0 ou incorrecte qui resterait figée)
   requestAnimationFrame(() => {
-    const isMobile = window.innerWidth < 1024
-    document.documentElement.style.setProperty('--v2-top-height', (isMobile ? topBar.offsetHeight : header.offsetHeight) + 'px')
-    document.documentElement.style.setProperty('--v2-bottom-height', bottomBar.offsetHeight + 'px')
+    requestAnimationFrame(() => {
+      const isMobile = window.innerWidth < 1024
+      document.documentElement.style.setProperty('--v2-top-height', (isMobile ? topBar.offsetHeight : header.offsetHeight) + 'px')
+      document.documentElement.style.setProperty('--v2-bottom-height', bottomBar.offsetHeight + 'px')
+    })
   })
 }
 

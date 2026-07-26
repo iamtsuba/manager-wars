@@ -78,10 +78,10 @@ export function ensureV2Chrome(navigate, p, activeRouteKey, ICON) {
       }
       .home2-chrome-credits:hover { background: rgba(255,255,255,0.1); }
       .home2-chrome-settings-pill {
-        display: flex; align-items: center; gap: 7px;
+        display: flex; align-items: center; justify-content: center;
+        width: 40px; height: 40px; border-radius: 50%;
         background: rgba(255,255,255,0.06); border: 1px solid var(--tile-border);
-        border-radius: 22px; padding: 8px 18px; font-size: 14px; font-weight: 800; color: rgba(255,255,255,0.85);
-        cursor: pointer; white-space: nowrap;
+        font-size: 17px; cursor: pointer; flex-shrink: 0;
       }
       .home2-chrome-settings-pill:hover { background: rgba(255,255,255,0.12); }
 
@@ -153,7 +153,7 @@ export function ensureV2Chrome(navigate, p, activeRouteKey, ICON) {
       <div class="home2-chrome-tabs">${tabsHTML}</div>
       <div class="home2-chrome-right">
         <div class="home2-chrome-credits" id="home2-chrome-credits">💰 ${(p.credits||0).toLocaleString('fr')}</div>
-        <button class="home2-chrome-settings-pill" id="home2-chrome-settings-btn">⚙️ Paramètres</button>
+        <button class="home2-chrome-settings-pill" id="home2-chrome-settings-btn">⚙️</button>
       </div>
     `
     document.body.appendChild(header)
@@ -393,7 +393,7 @@ export async function renderHome2(container, { state, navigate, toast }) {
       min-height: 100%;
       background: var(--page-bg);
       background-image: var(--page-gradient);
-      display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
       padding: 0 16px 80px; box-sizing: border-box; overflow-y: auto;
     }
     .home-inner { width: 100%; max-width: 640px; display: flex; flex-direction: column; gap: 18px; }

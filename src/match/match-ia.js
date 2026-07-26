@@ -33,8 +33,17 @@ export async function renderMatchIA(container, ctx) {
   const { state } = ctx
   const params = state.params || {}
   const matchMode  = params.matchMode || 'vs_ai_easy'
+  const isSolo     = matchMode === 'solo'
+  const soloLevel  = params.soloLevel || 1
   const difficulty = matchMode.replace('vs_ai_','')
   const mode       = matchMode
+
+  // Mode Solo : configuration du niveau (note visée, liens, stade) définie dans l'admin
+  let soloLevelConfig = null
+  if (isSolo) {
+    const { data: cfg } = await supabase.from('solo_levels').select('*').eq('level_number', soloLevel).maybeSingle()
+    soloLevelConfig = cfg || { level_number: soloLevel, target_note_avg: 10, nb_liens_jaune: 2, nb_liens_vert: 1, nb_joueurs_stade: 2, reward_credits: 500 }
+  }
 
   await loadMatchSetup(container, ctx, matchMode, async ({ deckId, formation, starters, subsRaw, gcCardsEnriched, gcDefs, stadiumDef }) => {
     try {
@@ -43,16 +52,18 @@ export async function renderMatchIA(container, ctx) {
         homeTeam = applyStadiumBonus(homeTeam, stadiumDef)
         applyStadiumBonusToSubs(subsRaw, stadiumDef)
       }
-      const aiResult = await generateAITeam(formation, difficulty)
+      const aiResult = isSolo
+        ? await generateAITeamForLevel(formation, soloLevelConfig)
+        : await generateAITeam(formation, difficulty)
       const aiTeam   = aiResult.lines || aiResult  // compatibilité fallback fake
 
       const launchMatch = async (selectedGC) => {
         try {
-          // La contrainte matches_mode_check n'autorise pas 'vs_ai_club' — la
-          // valeur attendue en base pour ce palier de difficulté est 'club'.
+          // La contrainte matches_mode_check n'autorise pas 'vs_ai_club' ni 'solo' —
+          // la valeur attendue en base pour ces paliers IA est 'club'.
           // On ne change QUE la valeur insérée ; `mode`/`game.mode` restent
-          // 'vs_ai_club' pour la difficulté IA, les récompenses et le replay.
-          const dbMode = mode === 'vs_ai_club' ? 'club' : mode
+          // 'vs_ai_club'/'solo' pour les récompenses, l'affichage et le replay.
+          const dbMode = (mode === 'vs_ai_club' || mode === 'solo') ? 'club' : mode
           const { data: match, error: matchErr } = await supabase.from('matches').insert({
             home_id: state.profile.id, away_id:null, mode: dbMode,
             home_deck_id: deckId, status:'in_progress',
@@ -73,6 +84,7 @@ export async function renderMatchIA(container, ctx) {
           const game = {
             gcDefs:   gcDefs || [],
             matchId:  match?.id, mode, difficulty, formation,
+            isSolo, soloLevel, soloLevelConfig,
             homeTeam, aiTeam,
             homeSubs: subsRaw,
             subsUsed: 0, maxSubs: Math.min(subsRaw.length, 3),
@@ -175,6 +187,122 @@ async function generateAITeam(formation, difficulty) {
   return { lines, subs, gcCards, stadiumDef }
 }
 
+// ── Génération d'équipe IA pilotée par la config d'un niveau Solo ──────────
+// Le choix précis des cartes reste à l'IA ; ces paramètres (note globale visée,
+// nb de liens jaunes/verts, nb de joueurs liés au stade) définissent seulement
+// le profil global recherché — l'IA privilégie un "club coeur" pour maximiser
+// les liens verts (pays+club), un groupe "même pays" pour les liens jaunes,
+// et complète avec le reste du pool en visant la note moyenne demandée.
+function mainNoteOf(p) {
+  const j = p.job || 'ATT'
+  return Number(j==='GK'?p.note_g : j==='DEF'?p.note_d : j==='MIL'?p.note_m : p.note_a) || 0
+}
+
+function pickClosestToAvg(pool, targetAvg, count) {
+  if (count <= 0 || !pool.length) return []
+  const sorted = [...pool].sort((a,b) => Math.abs(mainNoteOf(a)-targetAvg) - Math.abs(mainNoteOf(b)-targetAvg))
+  return sorted.slice(0, Math.min(count, sorted.length))
+}
+
+async function generateAITeamForLevel(formation, levelConfig) {
+  const targetAvg  = Number(levelConfig?.target_note_avg) || 10
+  const nbJaune    = Number(levelConfig?.nb_liens_jaune) || 0
+  const nbVert     = Number(levelConfig?.nb_liens_vert) || 0
+  const nbStade    = Number(levelConfig?.nb_joueurs_stade) || 0
+
+  const { data: players } = await supabase
+    .from('players')
+    .select('id,firstname,surname_real,country_code,club_id,job,job2,note_g,note_d,note_m,note_a,rarity,skin,hair,hair_length,face,clubs(encoded_name,logo_url,country_code)')
+    .eq('is_active', true).limit(300)
+
+  if (!players || players.length < 16) return { lines: generateFakeAITeam(formation), subs: [], gcCards: [], stadiumDef: null }
+
+  // "Club coeur" : celui avec le plus de joueurs disponibles, pour maximiser
+  // les chances de liens verts (mêmes joueurs = même club ET même pays)
+  const clubCounts = {}
+  players.forEach(p => { if (p.club_id) clubCounts[p.club_id] = (clubCounts[p.club_id]||0) + 1 })
+  const coreClubId = Object.entries(clubCounts).sort((a,b)=>b[1]-a[1])[0]?.[0] || null
+  const coreClubPlayers = coreClubId ? players.filter(p => p.club_id === coreClubId) : []
+  const coreCountry = coreClubPlayers[0]?.country_code || null
+
+  // Joueurs du même pays mais d'un autre club (liens jaunes)
+  const sameCountryOtherClub = coreCountry
+    ? players.filter(p => p.country_code === coreCountry && p.club_id !== coreClubId)
+    : []
+
+  const nbCore        = Math.min(coreClubPlayers.length, Math.max(2, nbVert + 1), 16)
+  const nbSameCountry = Math.min(sameCountryOtherClub.length, Math.max(0, nbJaune), 16 - nbCore)
+
+  const selected  = []
+  const usedIds   = new Set()
+  pickClosestToAvg(coreClubPlayers, targetAvg, nbCore).forEach(p => { selected.push(p); usedIds.add(p.id) })
+  pickClosestToAvg(sameCountryOtherClub, targetAvg, nbSameCountry).forEach(p => { selected.push(p); usedIds.add(p.id) })
+
+  const remaining = Math.max(0, 16 - selected.length)
+  const fillPool  = players.filter(p => !usedIds.has(p.id))
+  pickClosestToAvg(fillPool, targetAvg, remaining).forEach(p => { selected.push(p); usedIds.add(p.id) })
+
+  // Répartition dans la formation (mêmes règles que generateAITeam standard)
+  const struct = FORMATIONS[formation] || FORMATIONS['4-4-2']
+  const lines  = { GK:[], DEF:[], MIL:[], ATT:[] }
+  const used   = new Set()
+
+  function makePlayer(p, role, i) {
+    used.add(p.id)
+    return {
+      cardId:'ai-'+p.id+'-'+i, id:p.id,
+      firstname:p.firstname, name:p.surname_real,
+      country_code:p.country_code, club_id:p.club_id,
+      job:p.job, job2:p.job2,
+      note_g:Number(p.note_g)||0, note_d:Number(p.note_d)||0,
+      note_m:Number(p.note_m)||0, note_a:Number(p.note_a)||0,
+      rarity:p.rarity, skin:p.skin, hair:p.hair, hair_length:p.hair_length,
+      clubName:p.clubs?.encoded_name||null, clubLogo:p.clubs?.logo_url||null,
+      boost:0, used:false, _line:role,
+    }
+  }
+
+  for (const role of ['GK','DEF','MIL','ATT']) {
+    const candidates = selected.filter(p => p.job === role && !used.has(p.id))
+    const others     = selected.filter(p => p.job !== role && !used.has(p.id))
+    const sorted     = [...candidates, ...others]
+    const linePlayers = []
+    for (let i = 0; i < struct[role]; i++) {
+      const p = sorted[i]
+      if (p) linePlayers.push(makePlayer(p, role, i))
+    }
+    const cols = getColsForLine(linePlayers.length)
+    linePlayers.forEach((p,i) => { p._col = cols[i] })
+    lines[role] = linePlayers
+  }
+
+  // Remplaçants (5 joueurs restants de la sélection, sinon on pioche dans le pool complet)
+  let subPool = selected.filter(p => !used.has(p.id))
+  if (subPool.length < 5) {
+    const extra = players.filter(p => !used.has(p.id) && !subPool.some(s=>s.id===p.id))
+    subPool = subPool.concat(pickClosestToAvg(extra, targetAvg, 5 - subPool.length))
+  }
+  const subs = subPool.slice(0, 5).map((p, i) => makePlayer(p, p.job, 100+i))
+
+  // GC aléatoires (3 parmi les types disponibles)
+  const GC_TYPES = Object.keys(GC_DEFS)
+  const shuffledGC = GC_TYPES.sort(() => Math.random() - 0.5)
+  const gcCards = shuffledGC.slice(0, 3).map((type, i) => ({
+    id: 'ai-gc-'+i, gc_type: type,
+    name: GC_DEFS[type]?.name || type,
+    icon: GC_DEFS[type]?.icon || '⚡',
+  }))
+
+  // Stade : celui du "club coeur", pour que ~nbStade joueurs en profitent
+  let stadiumDef = null
+  if (nbStade > 0 && coreClubId) {
+    const { data: club } = await supabase.from('clubs').select('id,encoded_name,logo_url,country_code').eq('id', coreClubId).single()
+    if (club) stadiumDef = { club_id: club.id, country_code: null, name: club.encoded_name + ' Stadium', club: { encoded_name: club.encoded_name, logo_url: club.logo_url } }
+  }
+
+  return { lines, subs, gcCards, stadiumDef }
+}
+
 function generateFakeAITeam(formation) {
   const struct = FORMATIONS[formation] || FORMATIONS['4-4-2']
   const lines  = { GK:[], DEF:[], MIL:[], ATT:[] }
@@ -229,7 +357,7 @@ function showOpponentReveal(container, game, ctx) {
   <div class="match-screen" style="display:flex;flex-direction:column;height:100%;overflow:hidden;background:#0a3d1e;color:#fff">
     <div style="flex-shrink:0;padding:10px 16px;background:rgba(0,0,0,0.4);text-align:center">
       <div style="font-size:10px;opacity:.6;letter-spacing:2px;text-transform:uppercase">Équipe adverse</div>
-      <div style="font-size:18px;font-weight:900;color:#ff6b6b">IA (${game.difficulty.toUpperCase()})</div>
+      <div style="font-size:18px;font-weight:900;color:#ff6b6b">${game.isSolo ? `SOLO — NIVEAU ${game.soloLevel}` : `IA (${game.difficulty.toUpperCase()})`}</div>
     </div>
     ${game.aiStadiumDef ? `
     <div style="display:flex;align-items:center;gap:8px;padding:5px 14px;background:linear-gradient(90deg,rgba(30,100,220,0.35),rgba(10,60,180,0.15));border-bottom:1px solid rgba(30,120,255,0.45);flex-shrink:0">
@@ -519,7 +647,7 @@ function renderGame(container, game, ctx) {
       <div style="flex:1;display:flex;align-items:center;justify-content:center;gap:8px">
         <span style="font-size:13px;font-weight:700;color:rgba(255,255,255,0.9);max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${game.clubName}</span>
         <span style="font-size:26px;font-weight:900;color:#FFD700;letter-spacing:2px">${game.homeScore} – ${game.aiScore}</span>
-        <span style="font-size:12px;color:rgba(255,255,255,0.5)">IA (${game.difficulty.toUpperCase()})</span>
+        <span style="font-size:12px;color:rgba(255,255,255,0.5)">${game.isSolo ? `SOLO — NIVEAU ${game.soloLevel}` : `IA (${game.difficulty.toUpperCase()})`}</span>
       </div>
       <button id="view-ai" style="width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.3);color:#fff;font-size:16px;cursor:pointer;flex-shrink:0">👁</button>
     </div>
@@ -1714,7 +1842,27 @@ async function finishMatch(container, game, ctx) {
   const isWin  = game.homeScore > game.aiScore
   const isDraw = game.homeScore === game.aiScore
   const result  = isWin?'victoire':isDraw?'nul':'defaite'
-  const rewards = getRewards(game.mode, result)
+  const rewards = (game.isSolo && game.soloLevelConfig?.reward_credits && isWin)
+    ? Number(game.soloLevelConfig.reward_credits)
+    : getRewards(game.mode, result)
+
+  // Mode Solo : débloquer le niveau suivant en cas de victoire
+  if (game.isSolo && isWin) {
+    try {
+      const { data: progress } = await supabase
+        .from('user_solo_progress').select('unlocked_level').eq('user_id', state.profile.id).maybeSingle()
+      const currentUnlocked = progress?.unlocked_level || 1
+      if (game.soloLevel >= currentUnlocked) {
+        await supabase.from('user_solo_progress').upsert({
+          user_id: state.profile.id,
+          unlocked_level: game.soloLevel + 1,
+          updated_at: new Date().toISOString(),
+        })
+      }
+    } catch (e) {
+      console.warn('[Solo] Erreur mise à jour progression:', e.message)
+    }
+  }
 
   if (game.matchId) {
     await supabase.from('matches').update({
@@ -1743,6 +1891,7 @@ async function finishMatch(container, game, ctx) {
         <div style="font-size:12px;opacity:.8">Récompense</div>
         <div style="font-size:24px;font-weight:900;color:var(--yellow)">+${rewards.toLocaleString('fr')} crédits</div>
       </div>
+      ${(game.isSolo && isWin) ? `<div style="background:rgba(26,107,60,0.25);border:1px solid #1A6B3C;border-radius:12px;padding:10px;margin-bottom:8px;font-size:14px;font-weight:700">🔓 Niveau ${game.soloLevel + 1} débloqué !</div>` : ''}
       <div style="display:flex;gap:10px;margin-top:20px">
         <button class="btn btn-ghost" id="res-home" style="flex:1;color:#fff;border-color:rgba(255,255,255,0.3)">Accueil</button>
         <button class="btn btn-primary" id="res-replay" style="flex:1">Rejouer</button>
@@ -1750,7 +1899,7 @@ async function finishMatch(container, game, ctx) {
     </div>`
   document.body.appendChild(overlay)
   document.getElementById('res-home')?.addEventListener('click',()=>{overlay.remove();_showBottomNav(container);ctx.navigate('home')})
-  document.getElementById('res-replay')?.addEventListener('click',()=>{overlay.remove();_showBottomNav(container);ctx.navigate('match',{matchMode:game.mode})})
+  document.getElementById('res-replay')?.addEventListener('click',()=>{overlay.remove();_showBottomNav(container);ctx.navigate('match', game.isSolo ? {matchMode:game.mode, soloLevel:game.soloLevel} : {matchMode:game.mode})})
 }
 
 function showAITeam(game, ctx) {

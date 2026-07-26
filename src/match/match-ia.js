@@ -140,7 +140,7 @@ async function generateAITeam(formation, difficulty) {
       job:p.job, job2:p.job2,
       note_g:Number(p.note_g)||0, note_d:Number(p.note_d)||0,
       note_m:Number(p.note_m)||0, note_a:Number(p.note_a)||0,
-      rarity:p.rarity, skin:p.skin, hair:p.hair, hair_length:p.hair_length,
+      rarity:p.rarity, skin:p.skin, hair:p.hair, hair_length:p.hair_length, face:p.face,
       clubName:p.clubs?.encoded_name||null, clubLogo:p.clubs?.logo_url||null,
       boost:0, used:false, _line:role,
     }
@@ -256,7 +256,7 @@ async function generateAITeamForLevel(formation, levelConfig) {
       job:p.job, job2:p.job2,
       note_g:Number(p.note_g)||0, note_d:Number(p.note_d)||0,
       note_m:Number(p.note_m)||0, note_a:Number(p.note_a)||0,
-      rarity:p.rarity, skin:p.skin, hair:p.hair, hair_length:p.hair_length,
+      rarity:p.rarity, skin:p.skin, hair:p.hair, hair_length:p.hair_length, face:p.face,
       clubName:p.clubs?.encoded_name||null, clubLogo:p.clubs?.logo_url||null,
       boost:0, used:false, _line:role,
     }

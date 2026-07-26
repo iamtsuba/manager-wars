@@ -336,7 +336,12 @@ function generateSquad(clubId, countryCode, usedSurnamesGlobal = new Set(), stro
     const hair = hairForCountry(cc)
     const len  = pick(ALL_LENGTHS)
 
-    const note     = pickNoteByDistribution(strong, idx)
+    const rarity = pepites.has(idx) ? 'pepite' : papytes.has(idx) ? 'papyte' : 'normal'
+    // Note contrainte par la rareté : Pépite toujours 10-15, Papyte toujours 15-20,
+    // Normal suit la distribution habituelle (1-20 selon la note globale visée)
+    const note = rarity === 'pepite' ? rand(10, 15)
+               : rarity === 'papyte' ? rand(15, 20)
+               : pickNoteByDistribution(strong, idx)
     const hasDual  = dualIdxs.has(idx)
     const noteSec  = hasDual ? Math.max(0, note - 2) : 0
 
@@ -361,7 +366,6 @@ function generateSquad(clubId, countryCode, usedSurnamesGlobal = new Set(), stro
       }
     }
 
-    const rarity = pepites.has(idx) ? 'pepite' : papytes.has(idx) ? 'papyte' : 'normal'
     const surnameReal = pickUniqueSurname(cc)
 
     return {
@@ -903,7 +907,9 @@ async function genOnePlayer(club, opts = {}) {
     return 'normal'
   })()
 
-  const note = rollNoteByDistribution()
+  const note = rarity === 'pepite' ? rand(10, 15)
+             : rarity === 'papyte' ? rand(15, 20)
+             : rollNoteByDistribution()
   const noteSec = job2 ? Math.max(0, note - 2) : 0
 
   let note_g = 0, note_d = 0, note_m = 0, note_a = 0

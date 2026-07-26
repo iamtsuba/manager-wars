@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase.js'
+import { hideV2ChromeNow } from '../home/home2.js'
 
 const GREEN  = '#1A6B3C'
 const YELLOW = '#D4A017'
@@ -462,7 +463,7 @@ export async function openLeague(container, ctx, leagueId) {
   container.querySelectorAll('[data-play-match]').forEach(btn=>{
     btn.addEventListener('click', ()=>{
       const m=todayMatches.find(x=>x.id===btn.dataset.playMatch)
-      if(m) ctx.navigate('match-mini-league',{mlMatchId:m.id,leagueId})
+      if(m) { hideV2ChromeNow(); ctx.navigate('match-mini-league',{mlMatchId:m.id,leagueId}) }
     })
   })
 

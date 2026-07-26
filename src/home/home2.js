@@ -816,6 +816,7 @@ async function loadOngoingMatchBanner(state, toast, navigate) {
   }).join('')
   banner.querySelectorAll('[data-resume]').forEach(btn => {
     btn.addEventListener('click', async () => {
+      hideV2ChromeNow()
       const container = document.getElementById('page-content') || document.getElementById('app')
       if (btn.dataset.mini === '1') {
         const { data: mlM } = await supabase.from('mini_league_matches').select('id, league_id').eq('match_id', btn.dataset.resume).single()
@@ -893,7 +894,7 @@ async function loadMatchInviteBanner(state, toast, navigate) {
       <button id="match-inv-decline" style="padding:6px 12px;border-radius:8px;border:none;background:rgba(255,255,255,0.1);color:#fff;font-size:12px;cursor:pointer">Refuser</button>
     </div>
   </div>`
-  document.getElementById('match-inv-accept')?.addEventListener('click', () => { banner.innerHTML = ''; navigate('match', { matchMode:'friend', friendId:inviterId, friendName:inviterName, isAccepting:true }) })
+  document.getElementById('match-inv-accept')?.addEventListener('click', () => { banner.innerHTML = ''; hideV2ChromeNow(); navigate('match', { matchMode:'friend', friendId:inviterId, friendName:inviterName, isAccepting:true }) })
   document.getElementById('match-inv-decline')?.addEventListener('click', async () => {
     await supabase.from('friend_match_invites').update({ status:'declined' }).eq('id', invites.id)
     banner.innerHTML = ''; toast('Invitation refusée', 'info')

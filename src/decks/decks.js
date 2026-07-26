@@ -1,7 +1,7 @@
 import { supabase } from '../lib/supabase.js'
 import { renderPlayerCard } from '../components/player-card.js'
 import { FORMATION_LINKS, FORMATION_POSITIONS, computeLinks, linkColor, getActiveLinks } from '../match/formation-links.js'
-import { renderStadiumCard } from '../components/special-cards.js'
+import { renderStadiumCard, renderFormationCard } from '../components/special-cards.js'
 import { getPortrait } from '../lib/portrait.js'
 
 // ── Modales in-app (remplacent prompt()/confirm() natifs du navigateur) ──
@@ -336,8 +336,8 @@ function renderBuilder(container, builder, ctx) {
           <!-- Formation -->
           <div style="width:100%;text-align:center">
             <div style="font-size:10px;font-weight:700;color:rgba(255,255,255,0.5);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px">Formation</div>
-            <div id="formation-pc-btn" style="cursor:pointer;width:100px;height:50px;border-radius:8px;background:#1a3a6b;border:2px solid #555;display:flex;align-items:center;justify-content:center;margin:0 auto">
-              <span style="font-size:18px;font-weight:900;color:#fff">${builder.formation}</span>
+            <div id="formation-pc-btn" style="cursor:pointer;margin:0 auto;width:fit-content">
+              ${renderFormationCard(builder.formation, FORMATION_POSITIONS[builder.formation], { width: 100 })}
             </div>
           </div>
           <!-- Stade -->
@@ -354,6 +354,10 @@ function renderBuilder(container, builder, ctx) {
               </div>`}
             </div>
           </div>
+          <!-- Enregistrer (PC uniquement — plus haut, évite le scroll derrière le grand terrain) -->
+          <button class="btn btn-primary" id="save-deck-pc" style="width:100%;margin-top:8px" ${filled < 11 ? 'disabled' : ''}>
+            ${filled < 11 ? `Placez encore ${11-filled}` : '💾 Enregistrer'}
+          </button>
         </div>
 
       </div>
@@ -423,6 +427,8 @@ function renderBuilder(container, builder, ctx) {
   const mobileLayout = container.querySelector('.deck-mobile-layout')
   if (pcLayout)     pcLayout.style.display     = isDesktop ? 'block' : 'none'
   if (mobileLayout) mobileLayout.style.display = isDesktop ? 'none'  : 'block'
+  // Le bouton "Enregistrer" partagé (en bas) fait doublon sur PC avec celui de la barre latérale
+  container.querySelectorAll('#save-deck').forEach(el => { el.closest('.page-body').style.display = isDesktop ? 'none' : 'block' })
 
   renderDeckField(container, builder, positions, ctx)
 
@@ -460,7 +466,7 @@ function renderBuilder(container, builder, ctx) {
   // Stade PC et mobile
   container.querySelectorAll('#add-stad-btn-pc, #add-stad-btn').forEach(el => el.addEventListener('click', () => openStadiumSelector(builder, container, ctx)))
 
-  container.querySelectorAll('#save-deck').forEach(el => el.addEventListener('click', () => saveDeck(builder, ctx)))
+  container.querySelectorAll('#save-deck, #save-deck-pc').forEach(el => el.addEventListener('click', () => saveDeck(builder, ctx)))
 
   // Retirer un remplaçant
   container.querySelectorAll('[data-remove-sub]').forEach(btn => {

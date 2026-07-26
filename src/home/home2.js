@@ -668,15 +668,6 @@ export async function renderHome2(container, { state, navigate, toast }) {
 
       </div>
 
-      <!-- Footer -->
-      <div class="home-footer">
-        <div style="display:flex;align-items:center;gap:8px;background:rgba(212,160,23,0.15);border:1px solid rgba(212,160,23,0.4);border-radius:20px;padding:5px 14px;font-size:11px;font-weight:700;color:#D4A017">
-          🧪 HOME V2 (BÊTA)
-          <button id="back-to-v1-btn" style="background:none;border:none;color:#D4A017;text-decoration:underline;cursor:pointer;font-size:11px;font-weight:700;padding:0">← Revenir à v1</button>
-          <span id="mode-indicator" style="border-left:1px solid rgba(212,160,23,0.4);padding-left:8px;margin-left:2px"></span>
-        </div>
-      </div>
-
     </div>
   </div>`
 
@@ -696,15 +687,6 @@ export async function renderHome2(container, { state, navigate, toast }) {
     const dark = container.querySelector('.home-dark')
     if (dark) dark.style.minHeight = avail + 'px'
   })
-
-  // Indicateur de mode (Mobile / PC)
-  const updateModeIndicator = () => {
-    const el = document.getElementById('mode-indicator')
-    if (!el) return
-    el.textContent = window.innerWidth >= 1024 ? '🖥️ Mode PC' : '📱 Mode Mobile'
-  }
-  updateModeIndicator()
-  window.addEventListener('resize', updateModeIndicator)
 
   document.getElementById('nav-profile-btn')?.addEventListener('click', () => navigate('settings'))
   document.getElementById('nav-rankings-link')?.addEventListener('click', () => navigate('rankings'))
@@ -741,11 +723,6 @@ export async function renderHome2(container, { state, navigate, toast }) {
     })
   }
   document.getElementById('promo-cta-btn')?.addEventListener('click', () => navigate('boosters'))
-
-  document.getElementById('back-to-v1-btn')?.addEventListener('click', () => {
-    teardownV2Chrome()
-    navigate('home')
-  })
 
   loadFriendRequestsBanner(state, toast)
   loadMatchInviteBanner(state, toast, navigate)

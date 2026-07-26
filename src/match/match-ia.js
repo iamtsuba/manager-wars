@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase.js'
+import { computeGlicko2 } from '../ranked/glicko2.js'
 import { renderPlayerCard } from '../components/player-card.js'
 import {
   histPlayer as _histPlayer, withStadBonus, renderLogEntry,
@@ -34,6 +35,7 @@ export async function renderMatchIA(container, ctx) {
   const params = state.params || {}
   const matchMode  = params.matchMode || 'vs_ai_easy'
   const isSolo     = matchMode === 'solo'
+  const isRankedAI = matchMode === 'ranked_ai'
   const soloLevel  = params.soloLevel || 1
   const difficulty = matchMode.replace('vs_ai_','')
   const mode       = matchMode
@@ -45,6 +47,16 @@ export async function renderMatchIA(container, ctx) {
     soloLevelConfig = cfg || { level_number: soloLevel, target_note_avg: 10, nb_liens_jaune: 2, nb_liens_vert: 1, nb_joueurs_stade: 2, reward_credits: 500 }
   }
 
+  // Mode Ranked sans adversaire réel trouvé (fallback après 20s) : l'IA est
+  // calibrée sur le MMR actuel du joueur (note globale ≈ mmr/100, plafonnée 1-20)
+  const rankedAIData = params.rankedData || null
+  let rankedAIConfig = null
+  if (isRankedAI) {
+    const mmr = rankedAIData?.mmr ?? 1000
+    const targetNote = Math.min(20, Math.max(1, Math.round(mmr / 100)))
+    rankedAIConfig = { target_note_avg: targetNote, nb_liens_jaune: 3, nb_liens_vert: 2, nb_joueurs_stade: 3 }
+  }
+
   await loadMatchSetup(container, ctx, matchMode, async ({ deckId, formation, starters, subsRaw, gcCardsEnriched, gcDefs, stadiumDef }) => {
     try {
       let homeTeam = buildTeam(starters, formation)
@@ -54,6 +66,8 @@ export async function renderMatchIA(container, ctx) {
       }
       const aiResult = isSolo
         ? await generateAITeamForLevel(formation, soloLevelConfig)
+        : isRankedAI
+        ? await generateAITeamForLevel(formation, rankedAIConfig)
         : await generateAITeam(formation, difficulty)
       const aiTeam   = aiResult.lines || aiResult  // compatibilité fallback fake
 
@@ -85,6 +99,7 @@ export async function renderMatchIA(container, ctx) {
             gcDefs:   gcDefs || [],
             matchId:  match?.id, mode, difficulty, formation,
             isSolo, soloLevel, soloLevelConfig,
+            isRankedAI, rankedAIData,
             homeTeam, aiTeam,
             homeSubs: subsRaw,
             subsUsed: 0, maxSubs: Math.min(subsRaw.length, 3),
@@ -357,7 +372,7 @@ function showOpponentReveal(container, game, ctx) {
   <div class="match-screen" style="display:flex;flex-direction:column;height:100%;overflow:hidden;background:#0a3d1e;color:#fff">
     <div style="flex-shrink:0;padding:10px 16px;background:rgba(0,0,0,0.4);text-align:center">
       <div style="font-size:10px;opacity:.6;letter-spacing:2px;text-transform:uppercase">Équipe adverse</div>
-      <div style="font-size:18px;font-weight:900;color:#ff6b6b">${game.isSolo ? `SOLO — NIVEAU ${game.soloLevel}` : `IA (${game.difficulty.toUpperCase()})`}</div>
+      <div style="font-size:18px;font-weight:900;color:#ff6b6b">${game.isSolo ? `SOLO — NIVEAU ${game.soloLevel}` : game.isRankedAI ? 'RANKED (IA)' : `IA (${game.difficulty.toUpperCase()})`}</div>
     </div>
     ${game.aiStadiumDef ? `
     <div style="display:flex;align-items:center;gap:8px;padding:5px 14px;background:linear-gradient(90deg,rgba(30,100,220,0.35),rgba(10,60,180,0.15));border-bottom:1px solid rgba(30,120,255,0.45);flex-shrink:0">
@@ -647,7 +662,7 @@ function renderGame(container, game, ctx) {
       <div style="flex:1;display:flex;align-items:center;justify-content:center;gap:8px">
         <span style="font-size:13px;font-weight:700;color:rgba(255,255,255,0.9);max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${game.clubName}</span>
         <span style="font-size:26px;font-weight:900;color:#FFD700;letter-spacing:2px">${game.homeScore} – ${game.aiScore}</span>
-        <span style="font-size:12px;color:rgba(255,255,255,0.5)">${game.isSolo ? `SOLO — NIVEAU ${game.soloLevel}` : `IA (${game.difficulty.toUpperCase()})`}</span>
+        <span style="font-size:12px;color:rgba(255,255,255,0.5)">${game.isSolo ? `SOLO — NIVEAU ${game.soloLevel}` : game.isRankedAI ? 'RANKED (IA)' : `IA (${game.difficulty.toUpperCase()})`}</span>
       </div>
       <button id="view-ai" style="width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.3);color:#fff;font-size:16px;cursor:pointer;flex-shrink:0">👁</button>
     </div>
@@ -1872,6 +1887,30 @@ async function finishMatch(container, game, ctx) {
     }
   }
 
+  // Ranked sans adversaire réel (fallback IA après 20s) : met quand même à jour
+  // le MMR — l'IA est traitée comme un adversaire "miroir" de force équivalente
+  // au joueur (même MMR, RD par défaut), pour rester équitable.
+  let rankedMmrDelta = null
+  if (game.isRankedAI) {
+    try {
+      const { data: myProfile } = await supabase.from('users').select('mmr, mmr_rd, mmr_v').eq('id', state.profile.id).single()
+      if (myProfile) {
+        const myMmr = myProfile.mmr ?? 1000
+        const myRd  = myProfile.mmr_rd ?? 350
+        const myV   = myProfile.mmr_v ?? 0.06
+        const score = isWin ? 1 : isDraw ? 0.5 : 0
+        const isPlacement = game.rankedAIData?.isPlacement || false
+        const myResult = computeGlicko2(myMmr, myRd, myV, myMmr, 350, score, isPlacement)
+        await supabase.from('users').update({
+          mmr: myResult.mmr, mmr_rd: myResult.rd, mmr_v: myResult.v,
+        }).eq('id', state.profile.id)
+        rankedMmrDelta = Math.round(myResult.mmr - myMmr)
+      }
+    } catch (e) {
+      console.warn('[RankedAI] Erreur mise à jour MMR:', e.message)
+    }
+  }
+
   if (game.matchId) {
     await supabase.from('matches').update({
       status:'finished', home_score:game.homeScore, away_score:game.aiScore,
@@ -1900,6 +1939,7 @@ async function finishMatch(container, game, ctx) {
         <div style="font-size:24px;font-weight:900;color:var(--yellow)">+${rewards.toLocaleString('fr')} crédits</div>
       </div>
       ${(game.isSolo && isWin) ? `<div style="background:rgba(26,107,60,0.25);border:1px solid #1A6B3C;border-radius:12px;padding:10px;margin-bottom:8px;font-size:14px;font-weight:700">🔓 Niveau ${game.soloLevel + 1} débloqué !</div>` : ''}
+      ${(game.isRankedAI && rankedMmrDelta !== null) ? `<div style="background:${rankedMmrDelta>=0?'rgba(26,107,60,0.25)':'rgba(224,48,48,0.2)'};border:1px solid ${rankedMmrDelta>=0?'#1A6B3C':'#e03030'};border-radius:12px;padding:10px;margin-bottom:8px;font-size:14px;font-weight:700">MMR ${rankedMmrDelta>=0?'↑ +':'↓ '}${rankedMmrDelta}</div>` : ''}
       <div style="display:flex;gap:10px;margin-top:20px">
         <button class="btn btn-ghost" id="res-home" style="flex:1;color:#fff;border-color:rgba(255,255,255,0.3)">Accueil</button>
         <button class="btn btn-primary" id="res-replay" style="flex:1">Rejouer</button>

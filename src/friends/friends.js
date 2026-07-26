@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase.js'
+import { hideV2ChromeNow } from '../home/home2.js'
 
 // ── Couleurs par défaut ─────────────────────────────────────────────────────
 const GREEN  = '#1A6B3C'
@@ -136,6 +137,7 @@ async function loadFriendsList(state, toast, ctx = {}) {
 
       const isAccepting = !!pendingFromFriend
       console.log('[Friends] clic match', { fid, fname, isAccepting })
+      hideV2ChromeNow()
       navigate('match', { matchMode: 'friend', friendId: fid, friendName: fname, isAccepting })
     })
   })

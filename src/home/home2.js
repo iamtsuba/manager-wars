@@ -393,6 +393,9 @@ export async function renderHome2(container, { state, navigate, toast }) {
       padding: 0 16px 80px; box-sizing: border-box; overflow-y: auto;
     }
     .home-inner { width: 100%; max-width: 640px; display: flex; flex-direction: column; gap: 18px; }
+    /* Les bannières (ami/invitation/match en cours) sont vides tant qu'aucune n'est active :
+       il ne faut alors PAS qu'elles comptent dans le gap flex de .home-inner. */
+    #friend-requests-banner:empty, #match-invite-banner:empty, #ongoing-match-banner:empty { display: none; }
 
     /* ── Profil ── */
     .profile-row { display: flex; align-items: center; gap: 16px; }

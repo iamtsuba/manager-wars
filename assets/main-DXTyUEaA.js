@@ -350,7 +350,7 @@ import{s as v,j as vi,q as zn,t as Ut,u as Oi,F as Hi,o as tt,n as Rt,g as Mt,r 
         border:1.5px solid #ddd;background:#fff;
         font-size:14px;font-weight:700;cursor:pointer;color:#555;
       }
-    </style>`}const Mn="mw_sound_volume";function Wi(){const t=localStorage.getItem(Mn);if(t===null)return 100;const e=parseInt(t,10);return Number.isFinite(e)?Math.max(0,Math.min(100,e)):100}function So(t){localStorage.setItem(Mn,String(Math.max(0,Math.min(100,Math.round(t)))))}function Xi(){return Wi()===0}function fi(t){return Math.max(0,Math.min(1,t*(Wi()/100)))}function Ji(t,e=1){if(Xi())return null;try{const i=new Audio(t);return i.volume=fi(e),i.play().catch(()=>{}),i}catch{return null}}let xt=null,Ci=null,mn=.3;function Cn(t,e=.3){if(mn=e,xt&&Ci===t&&!xt.paused){xt.volume=fi(mn);return}if(It(),!Xi())try{const i=new Audio(t);i.loop=!0,i.volume=fi(e),i.play().catch(()=>{}),xt=i,Ci=t}catch{}}function It(){if(xt)try{xt.pause(),xt.currentTime=0}catch{}xt=null,Ci=null}let Xt=null;function jn(t,e=.6){if(Ue(),!Xi())try{const i=new Audio(t);i.volume=fi(e),i.play().catch(()=>{}),Xt=i}catch{}}function Ue(){if(Xt)try{Xt.pause(),Xt.currentTime=0}catch{}Xt=null}const zo="2026.07.26-1115";async function gn(t,{state:e,navigate:i,toast:n}){var o,a,s;const r=e.profile;r&&(t.innerHTML=`
+    </style>`}const Mn="mw_sound_volume";function Wi(){const t=localStorage.getItem(Mn);if(t===null)return 100;const e=parseInt(t,10);return Number.isFinite(e)?Math.max(0,Math.min(100,e)):100}function So(t){localStorage.setItem(Mn,String(Math.max(0,Math.min(100,Math.round(t)))))}function Xi(){return Wi()===0}function fi(t){return Math.max(0,Math.min(1,t*(Wi()/100)))}function Ji(t,e=1){if(Xi())return null;try{const i=new Audio(t);return i.volume=fi(e),i.play().catch(()=>{}),i}catch{return null}}let xt=null,Ci=null,mn=.3;function Cn(t,e=.3){if(mn=e,xt&&Ci===t&&!xt.paused){xt.volume=fi(mn);return}if(It(),!Xi())try{const i=new Audio(t);i.loop=!0,i.volume=fi(e),i.play().catch(()=>{}),xt=i,Ci=t}catch{}}function It(){if(xt)try{xt.pause(),xt.currentTime=0}catch{}xt=null,Ci=null}let Xt=null;function jn(t,e=.6){if(Ue(),!Xi())try{const i=new Audio(t);i.volume=fi(e),i.play().catch(()=>{}),Xt=i}catch{}}function Ue(){if(Xt)try{Xt.pause(),Xt.currentTime=0}catch{}Xt=null}const zo="2026.07.26-1414";async function gn(t,{state:e,navigate:i,toast:n}){var o,a,s;const r=e.profile;r&&(t.innerHTML=`
   <style>
     .home-dark {
       min-height: 100%;
@@ -589,6 +589,15 @@ import{s as v,j as vi,q as zn,t as Ut,u as Oi,F as Hi,o as tt,n as Rt,g as Mt,r 
       /* Neutralise le padding-top/bottom que certaines pages (ex: Cards) réappliquent sur leur propre .page interne imbriqué */
       body:has(#home2-chrome-marker) #page-content .page { padding-top: 0 !important; padding-bottom: 0 !important; }
 
+      /* ── Pendant un match (.match-screen présent), le bandeau v2 doit totalement disparaître ── */
+      body:has(#home2-chrome-marker) #page-content:has(.match-screen) {
+        padding-top: 0 !important;
+        padding-bottom: 0 !important;
+      }
+      body:has(.match-screen) #home2-chrome-header,
+      body:has(.match-screen) .home2-mobile-top,
+      body:has(.match-screen) .home2-mobile-bottom { display: none !important; }
+
       /* ══════════ Bandeau unique PC (≥1024px) : logo + onglets + credits + parametres ══════════ */
       .home2-chrome-header {
         display: flex; position: fixed; top: 0; left: 0; right: 0; z-index: 500;
@@ -637,6 +646,10 @@ import{s as v,j as vi,q as zn,t as Ut,u as Oi,F as Hi,o as tt,n as Rt,g as Mt,r 
         body:has(#home2-chrome-marker) #page-content {
           padding-top: var(--v2-top-height, 66px) !important;
           padding-bottom: var(--v2-bottom-height, 76px) !important;
+        }
+        body:has(#home2-chrome-marker) #page-content:has(.match-screen) {
+          padding-top: 0 !important;
+          padding-bottom: 0 !important;
         }
 
         /* Bandeau du haut : logo à gauche, crédits + paramètres à droite */
@@ -1147,7 +1160,7 @@ import{s as v,j as vi,q as zn,t as Ut,u as Oi,F as Hi,o as tt,n as Rt,g as Mt,r 
         </div>
       </div>
     </div>
-  </div>`,t.querySelectorAll("[data-action]").forEach(a=>{a.addEventListener("click",()=>{a.style.transform="scale(.96)",setTimeout(()=>a.style.transform="",180);const s=a.dataset.action;if(s==="match-ai"){Nn(i,e);return}if(s==="match-random"){i("match",{matchMode:"random"});return}if(s==="match-friend"){i("friends");return}if(s==="mini-league"){i("mini-league");return}if(s==="ranked"){i("ranked");return}n("Bientôt disponible","info")})})}async function Gn(t,e){var f;const{state:i,navigate:n}=e,r=po(),o=Wi(),a=(f=i==null?void 0:i.profile)==null?void 0:f.is_admin,s="2026.07.26-1115";t.innerHTML=`
+  </div>`,t.querySelectorAll("[data-action]").forEach(a=>{a.addEventListener("click",()=>{a.style.transform="scale(.96)",setTimeout(()=>a.style.transform="",180);const s=a.dataset.action;if(s==="match-ai"){Nn(i,e);return}if(s==="match-random"){i("match",{matchMode:"random"});return}if(s==="match-friend"){i("friends");return}if(s==="mini-league"){i("mini-league");return}if(s==="ranked"){i("ranked");return}n("Bientôt disponible","info")})})}async function Gn(t,e){var f;const{state:i,navigate:n}=e,r=po(),o=Wi(),a=(f=i==null?void 0:i.profile)==null?void 0:f.is_admin,s="2026.07.26-1414";t.innerHTML=`
   <div style="height:100%;overflow-y:auto;background:var(--page-bg)">
 
     <div style="padding:16px;display:flex;flex-direction:column;gap:14px;max-width:520px;margin:0 auto">
@@ -3208,7 +3221,7 @@ import{s as v,j as vi,q as zn,t as Ut,u as Oi,F as Hi,o as tt,n as Rt,g as Mt,r 
     </div>
   </div>`}xo(yo);const ye={user:null,profile:null,page:"home",params:{}};function Pt(t,e="info",i=3e3){const n=document.getElementById("toast");n&&(n.textContent=t,n.className=`show ${e}`,clearTimeout(n._t),n._t=setTimeout(()=>{n.className=""},i))}function Ia(t,e,i=""){document.getElementById("modal-title").textContent=t,document.getElementById("modal-body").innerHTML=e,document.getElementById("modal-footer").innerHTML=i,document.getElementById("modal-overlay").classList.remove("hidden")}function Ri(){document.getElementById("modal-overlay").classList.add("hidden")}async function Zt(){if(!ye.user)return;const{data:t}=await v.from("users").select("*").eq("id",ye.user.id).single();t&&(ye.profile=t)}const co="mw_theme";function po(){return localStorage.getItem(co)||"dark"}function Sa(t){var e;localStorage.setItem(co,t),za(t),(e=ye.profile)!=null&&e.id&&v.from("users").update({theme:t}).eq("id",ye.profile.id).then(()=>{})}function za(t){document.documentElement.setAttribute("data-theme",t)}function Nt(t,e={}){ye.page=t,ye.params=e,uo()}async function uo(){var n,r,o,a;const t=document.getElementById("page-content");if(!t)return;document.querySelectorAll(".bottom-nav a").forEach(s=>{s.classList.toggle("active",s.dataset.page===ye.page)});const e=document.getElementById("nav-credits");e&&ye.profile&&(e.textContent=`💰 ${(ye.profile.credits||0).toLocaleString("fr")}`);const i={state:ye,navigate:Nt,toast:Pt,openModal:Ia,closeModal:Ri,refreshProfile:Zt};switch(t.innerHTML='<div style="padding:40px;text-align:center;color:#aaa">⚽</div>',ye.page){case"home":await gn(t,i);break;case"home2":await Ho(t,i);break;case"game":await Wo(t,i);break;case"settings":await Gn(t,i);break;case"collection":await ir(t,i);break;case"decks":await ji(t,i);break;case"boosters":await gr(t,i);break;case"ranked":await La(t,i);break;case"match":{const s=ye.params&&ye.params.matchMode||"vs_ai_easy";s==="random"?await Ni(t,i,!1):s==="ranked"?await Ni(t,i,!0):s==="friend"?await Zr(t,i,(n=ye.params)==null?void 0:n.friendId,(r=ye.params)==null?void 0:r.friendName):s==="mini_league"||s==="mini-league"?await Tn(t,i,(o=ye.params)==null?void 0:o.mlMatchId,(a=ye.params)==null?void 0:a.leagueId):await zr(t,i);break}case"market":await wa(t,i);break;case"rankings":await Ea(t,i);break;case"matches":await Ta(t,i);break;case"friends":await Eo(t,i);break;case"mini-league":await na(t,i);break;case"match-mini-league":{const s=ye.params||{};await Tn(t,i,s.mlMatchId,s.leagueId);break}default:await gn(t,i)}}function Aa(){var n,r;const t=document.getElementById("app"),e=ye.profile;if(!e)return;const i="/icons/";t.innerHTML=`
     <nav class="top-nav">
-      <div class="logo" id="nav-logo" title="Manager Wars v2026.07.26-1115" style="cursor:pointer">
+      <div class="logo" id="nav-logo" title="Manager Wars v2026.07.26-1414" style="cursor:pointer">
         <img src="${i}logo-withname.png" alt="Manager Wars" style="height:48px;width:auto;display:block">
       </div>
       <div style="display:flex;align-items:center;gap:10px">

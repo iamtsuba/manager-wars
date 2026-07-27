@@ -61,6 +61,36 @@
   --danger: #ff6b6b;
 }
 
+/* ── Thème "club" (nouveau, par défaut) — identique au thème sombre, sauf le
+   fond général qui reprend les couleurs du club du joueur (--club-color1/2,
+   définies dynamiquement en JS selon le profil ; couleurs sombres par défaut
+   en repli si non définies). ── */
+[data-theme="club"] {
+  --nav-bg: #0a0f0a;
+  --nav-fg: #fff;
+  --page-bg: var(--club-color1, #0d1a0f);
+  --page-gradient: radial-gradient(ellipse at 20% 50%, color-mix(in srgb, var(--club-color1, #003c1e) 55%, transparent) 0%, transparent 60%),
+                   radial-gradient(ellipse at 80% 20%, color-mix(in srgb, var(--club-color2, #002850) 40%, transparent) 0%, transparent 55%),
+                   linear-gradient(160deg, var(--club-color1, #0a0f0a) 0%, var(--page-bg-mid, #0d1a0f) 40%, var(--club-color2, #080d08) 100%);
+  --tile-bg: rgba(255,255,255,0.06);
+  --tile-border: rgba(255,255,255,0.1);
+  --tile-fg: #fff;
+  --tile-fg-on-page: #fff;
+  --tile-dark-bg: rgba(0,0,0,0.4);
+  --input-bg: rgba(255,255,255,0.07);
+  --input-border: rgba(255,255,255,0.15);
+  --input-fg: #fff;
+  --card-bg: rgba(255,255,255,0.06);
+  --card-border: rgba(255,255,255,0.1);
+  --btn-primary-bg: var(--green);
+  --btn-primary-fg: #fff;
+  --btn-primary-bg-hover: var(--green-dark);
+  --tile-fg-dim: rgba(255,255,255,0.62);
+  --tile-fg-faint: rgba(255,255,255,0.4);
+  --divider: rgba(255,255,255,0.08);
+  --danger: #ff6b6b;
+}
+
 /* ── Thème "light" (nouveau) — pelouse vert clair, panneaux blancs,
    boutons dorés, bandeaux haut/bas noirs ── */
 [data-theme="light"] {

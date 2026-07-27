@@ -116,8 +116,11 @@ export async function pageUsers(container, { toast }) {
         if (input === null) return
         const newVal = parseInt(input.replace(/\s/g, ''), 10)
         if (isNaN(newVal) || newVal < 0) { toast('Valeur invalide', 'error'); return }
-        const { error } = await supabase.from('users').update({ credits: newVal }).eq('id', userId)
+        const { data, error } = await supabase.rpc('admin_update_user_credits', {
+          p_user_id: userId, p_new_credits: newVal,
+        })
         if (error) { toast(error.message, 'error'); return }
+        if (!data?.success) { toast(data?.error || 'Échec de la mise à jour', 'error'); return }
         toast('Crédits mis à jour ✅', 'success')
         const display = document.getElementById(`credits-display-${userId}`)
         if (display) display.textContent = `${newVal.toLocaleString('fr')} cr.`

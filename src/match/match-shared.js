@@ -201,10 +201,12 @@ export function _showBottomNav(container) {
 export function showGCSelection(container, gcCards, onConfirm) {
   const MAX = 3
 
-  // ── Distinct par gc_type : une seule carte par type ──────
+  // ── Distinct par nom affiché : une seule carte par visuel identique ──────
+  // (dédupe sur le nom plutôt que gc_type, au cas où deux définitions
+  // différentes en base porteraient le même nom/effet visible)
   const seen = new Set()
   const distinctCards = gcCards.filter(card => {
-    const key = card.gc_type || card.id
+    const key = card._gcDef?.name || card.gc_type || card.id
     if (seen.has(key)) return false
     seen.add(key); return true
   })

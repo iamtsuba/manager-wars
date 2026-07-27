@@ -10,7 +10,6 @@ export async function renderRankings(container, ctx) {
   const [{ data: ranked }, { data: miniLeague }, { data: random }] = await Promise.all([
     supabase.from('users')
       .select('id,pseudo,club_name,mmr,rank_tier,ranked_wins,ranked_losses,ranked_draws,placement_matches')
-      .gte('placement_matches', 1)
       .order('mmr', { ascending: false })
       .limit(100),
     supabase.rpc('get_mini_league_leaderboard'),
@@ -41,7 +40,7 @@ export async function renderRankings(container, ctx) {
         const isMe   = u.id === state.profile.id
         const placed = (u.placement_matches||0) < 10
         return `
-          <div class="card-panel" style="display:flex;align-items:center;gap:12px;padding:12px;${isMe ? 'border:2px solid var(--yellow)' : ''}">
+          <div style="display:flex;align-items:center;gap:12px;padding:12px;background:var(--tile-bg,rgba(255,255,255,0.05));border-radius:12px;border:1px solid var(--tile-border,rgba(255,255,255,0.1));${isMe ? 'border:2px solid var(--yellow)' : ''}">
             <div style="width:32px;height:32px;border-radius:50%;background:${i<3?['#D4A017','#a0a0a0','#cd7f32'][i]:'rgba(255,255,255,0.08)'};color:${i<3?'#000':'var(--tile-fg-on-page)'};display:flex;align-items:center;justify-content:center;font-weight:900;flex-shrink:0;font-size:${i<3?'16':'13'}px">${i<3?['🥇','🥈','🥉'][i]:i+1}</div>
             <div style="flex:1;min-width:0">
               <div style="font-weight:700;display:flex;align-items:center;gap:6px;color:var(--tile-fg-on-page)">
@@ -61,7 +60,7 @@ export async function renderRankings(container, ctx) {
     } else if (activeTab === 'mini-league') {
       const list = miniLeague || []
       listEl.innerHTML = list.length > 0 ? list.map((u, i) => `
-        <div class="card-panel" style="display:flex;align-items:center;gap:12px;padding:12px;${u.user_id === state.profile.id ? 'border:2px solid var(--yellow)' : ''}">
+        <div style="display:flex;align-items:center;gap:12px;padding:12px;background:var(--tile-bg,rgba(255,255,255,0.05));border-radius:12px;border:1px solid var(--tile-border,rgba(255,255,255,0.1));${u.user_id === state.profile.id ? 'border:2px solid var(--yellow)' : ''}">
           <div style="width:32px;height:32px;border-radius:50%;background:${podiumBg(i)};color:${podiumFg(i)};display:flex;align-items:center;justify-content:center;font-weight:900;flex-shrink:0;font-size:${i<3?'16':'13'}px">${i<3?['🥇','🥈','🥉'][i]:i+1}</div>
           <div style="flex:1;min-width:0">
             <div style="font-weight:700;color:var(--tile-fg-on-page);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${u.pseudo}</div>
@@ -77,7 +76,7 @@ export async function renderRankings(container, ctx) {
     } else {
       const list = random || []
       listEl.innerHTML = list.length > 0 ? list.map((u, i) => `
-        <div class="card-panel" style="display:flex;align-items:center;gap:12px;padding:12px;${u.user_id === state.profile.id ? 'border:2px solid var(--yellow)' : ''}">
+        <div style="display:flex;align-items:center;gap:12px;padding:12px;background:var(--tile-bg,rgba(255,255,255,0.05));border-radius:12px;border:1px solid var(--tile-border,rgba(255,255,255,0.1));${u.user_id === state.profile.id ? 'border:2px solid var(--yellow)' : ''}">
           <div style="width:32px;height:32px;border-radius:50%;background:${podiumBg(i)};color:${podiumFg(i)};display:flex;align-items:center;justify-content:center;font-weight:900;flex-shrink:0;font-size:${i<3?'16':'13'}px">${i<3?['🥇','🥈','🥉'][i]:i+1}</div>
           <div style="flex:1;min-width:0">
             <div style="font-weight:700;color:var(--tile-fg-on-page);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${u.pseudo}</div>

@@ -71,7 +71,7 @@
 .bottom-nav a.active .nav-label { opacity: 1; }
 
 /* ── Page container ── */
-.page { flex: 1; overflow-y: auto; padding-bottom: 70px; background: var(--page-bg); }
+.page { flex: 1; overflow-y: auto; padding-bottom: 70px; background-color: var(--page-bg); background-image: var(--page-gradient, none); background-attachment: fixed; background-size: 100% 100%; }
 .page-header { padding: 16px; background: var(--tile-bg); color: var(--tile-fg); border-bottom: 1px solid var(--gray-200); }
 .page-header h2 { font-size: 20px; font-weight: 700; margin-bottom: 2px; }
 .page-header p { font-size: 13px; color: var(--gray-600); }

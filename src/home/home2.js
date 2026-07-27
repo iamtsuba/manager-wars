@@ -240,6 +240,16 @@ function teardownV2Chrome() {
 // Masque le bandeau instantanément au clic (avant même la navigation), pour éviter
 // tout flash pendant le chargement du match. Réaffiché automatiquement par
 // ensureV2Chrome() dès qu'une vraie page v2 (hors match) se rend à nouveau.
+// Met à jour instantanément le solde affiché dans le bandeau persistant, sans
+// attendre qu'une page v2 se recharge (utile après l'ouverture d'un booster, etc.)
+export function syncV2Credits(amount) {
+  const label = `💰 ${(amount||0).toLocaleString('fr')}`
+  const el1 = document.getElementById('home2-chrome-credits')
+  const el2 = document.getElementById('home2-mobtop-credits')
+  if (el1) el1.textContent = label
+  if (el2) el2.textContent = label
+}
+
 export function hideV2ChromeNow() {
   const h = document.getElementById('home2-chrome-header'); if (h) h.style.display = 'none'
   const t = document.getElementById('home2-mobile-top');    if (t) t.style.display = 'none'

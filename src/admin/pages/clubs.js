@@ -492,7 +492,17 @@ function renderClubs(container, helpers, countMap = {}) {
   function renderList(list) {
     const el = document.getElementById('clubs-list')
     if (!list.length) { el.innerHTML = '<p style="color:var(--tile-fg-dim);padding:20px;text-align:center">Aucun club.</p>'; return }
-    el.innerHTML = list.map(c => {
+
+    // Regroupement par pays
+    const groups = {}
+    list.forEach(c => {
+      const cc = c.country_code || '—'
+      if (!groups[cc]) groups[cc] = []
+      groups[cc].push(c)
+    })
+    const sortedCountries = Object.keys(groups).sort()
+
+    const rowHTML = (c) => {
       const kit  = buildKitFromClub(c)
       const logo = c.logo_url
         ? `<img src="${c.logo_url}" style="width:36px;height:36px;object-fit:contain;border-radius:8px;flex-shrink:0">`
@@ -511,7 +521,19 @@ function renderClubs(container, helpers, countMap = {}) {
             style="width:22px;height:22px;border-radius:50%;background:#c0392b;border:none;color:#fff;font-size:11px;cursor:pointer;flex-shrink:0"
             onclick="event.stopPropagation()">✕</button>
         </div>`
-    }).join('')
+    }
+
+    el.innerHTML = sortedCountries.map(cc => `
+      <div style="display:flex;align-items:center;gap:8px;padding:8px 4px 4px;margin-top:6px">
+        ${cc !== '—' ? `<img src="https://flagsapi.com/${cc}/flat/24.png" style="width:20px;height:15px;object-fit:cover;border-radius:2px" onerror="this.style.display='none'">` : '<span style="font-size:14px">🌍</span>'}
+        <span style="font-size:11px;font-weight:900;color:var(--tile-fg-dim);letter-spacing:1px">${cc}</span>
+        <span style="font-size:11px;color:var(--tile-fg-dim);background:var(--tile-bg);border:1px solid var(--tile-border);border-radius:10px;padding:1px 8px">${groups[cc].length}</span>
+        <div style="flex:1;height:1px;background:var(--tile-border)"></div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:4px">
+        ${groups[cc].map(rowHTML).join('')}
+      </div>
+    `).join('')
 
     el.querySelectorAll('.club-row').forEach(row => {
       row.addEventListener('click', () => {

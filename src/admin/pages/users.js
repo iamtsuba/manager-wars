@@ -2,12 +2,18 @@ import { supabase } from '../../lib/supabase.js'
 import { getTier } from '../../ranked/glicko2.js'
 
 export async function pageUsers(container, { toast }) {
-  const { data, error } = await supabase
-    .from('users')
-    .select('id,pseudo,club_name,credits,level,wins,draws,losses,trophies_top1,trophies_top2,trophies_top3,is_admin,created_at,mmr,mmr_deviation,rank_tier,placement_matches,ranked_wins,ranked_losses,ranked_draws')
-    .order('created_at', { ascending: false })
+  const [{ data, error }, { data: soloProgress }] = await Promise.all([
+    supabase
+      .from('users')
+      .select('id,pseudo,club_name,credits,level,wins,draws,losses,trophies_top1,trophies_top2,trophies_top3,is_admin,created_at,mmr,mmr_deviation,rank_tier,placement_matches,ranked_wins,ranked_losses,ranked_draws')
+      .order('created_at', { ascending: false }),
+    supabase.from('user_solo_progress').select('user_id, unlocked_level'),
+  ])
 
   if (error) { container.innerHTML = `<p style="color:red">${error.message}</p>`; return }
+
+  const soloLevelMap = {}
+  ;(soloProgress || []).forEach(p => { soloLevelMap[p.user_id] = p.unlocked_level })
 
   const users = data || []
 
@@ -66,8 +72,12 @@ export async function pageUsers(container, { toast }) {
             <div style="font-size:11px;color:var(--gray-600)">${u.club_name || '—'}</div>
           </td>
           <td style="font-size:12px">
-            <div>${(u.credits||0).toLocaleString('fr')} cr.</div>
-            <div style="color:var(--gray-600)">Niv. ${u.level}</div>
+            <div style="display:flex;align-items:center;gap:6px">
+              <span id="credits-display-${u.id}">${(u.credits||0).toLocaleString('fr')} cr.</span>
+              <button class="btn-edit-credits" data-user="${u.id}" data-current="${u.credits||0}"
+                style="background:none;border:none;cursor:pointer;font-size:12px;padding:0;opacity:.7" title="Modifier les crédits">✏️</button>
+            </div>
+            <div style="color:var(--gray-600)">Niv. Solo ${soloLevelMap[u.id] ?? 1}</div>
           </td>
           <td style="font-size:12px">${u.wins}V / ${u.draws}N / ${u.losses}D</td>
           <td style="font-size:12px">🥇${u.trophies_top1} 🥈${u.trophies_top2} 🥉${u.trophies_top3}</td>
@@ -97,6 +107,23 @@ export async function pageUsers(container, { toast }) {
           </td>
         </tr>`
     }).join('')
+
+    document.querySelectorAll('.btn-edit-credits').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const userId = btn.dataset.user
+        const current = Number(btn.dataset.current) || 0
+        const input = prompt('Nouveau solde de crédits :', current)
+        if (input === null) return
+        const newVal = parseInt(input.replace(/\s/g, ''), 10)
+        if (isNaN(newVal) || newVal < 0) { toast('Valeur invalide', 'error'); return }
+        const { error } = await supabase.from('users').update({ credits: newVal }).eq('id', userId)
+        if (error) { toast(error.message, 'error'); return }
+        toast('Crédits mis à jour ✅', 'success')
+        const display = document.getElementById(`credits-display-${userId}`)
+        if (display) display.textContent = `${newVal.toLocaleString('fr')} cr.`
+        btn.dataset.current = newVal
+      })
+    })
 
     document.querySelectorAll('[data-toggle-admin]').forEach(btn => {
       btn.addEventListener('click', async () => {

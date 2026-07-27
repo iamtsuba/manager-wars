@@ -303,7 +303,7 @@ async function fetchPromoBoosters() {
     .from('booster_configs')
     .select('id,name,icon,price_type,price_credits,card_count')
     .eq('is_active', true)
-    .order('created_at', { ascending: false })
+    .order('sort_order', { ascending: true })
     .limit(5)
   return data || []
 }

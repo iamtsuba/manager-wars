@@ -40,6 +40,14 @@ export async function renderMatchIA(container, ctx) {
   const difficulty = matchMode.replace('vs_ai_','')
   const mode       = matchMode
 
+  // DEBUG TEMPORAIRE — à retirer une fois le bug identifié
+  console.log('[DEBUG renderMatchIA]', { matchMode, isRankedAI, hasPresetSetup: !!params.presetSetup, params })
+  const dbg = document.createElement('div')
+  dbg.style.cssText = 'position:fixed;top:4px;left:4px;z-index:99999;background:#000;color:#0f0;font-size:11px;padding:6px 10px;border-radius:6px;font-family:monospace;max-width:90vw;word-break:break-all'
+  dbg.textContent = `DEBUG matchMode="${matchMode}" isRankedAI=${isRankedAI} presetSetup=${!!params.presetSetup}`
+  document.body.appendChild(dbg)
+  setTimeout(() => dbg.remove(), 15000)
+
   // Mode Solo : configuration du niveau (note visée, liens, stade) définie dans l'admin
   let soloLevelConfig = null
   if (isSolo) {

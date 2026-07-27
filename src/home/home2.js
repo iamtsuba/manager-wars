@@ -665,15 +665,15 @@ export async function renderHome2(container, { state, navigate, toast }) {
               <div class="tile-label">RANKED</div>
               <div class="tile-desc">Grimpez dans le classement</div>
             </div>
-            <div class="play-tile play-tile-big tile-mini-league" data-action="mini-league">
-              <img src="${ICON}badge-league.png" class="tile-icon">
-              <div class="tile-label">MINI LEAGUE</div>
-              <div class="tile-desc">Participez à des ligues</div>
-            </div>
-            <div class="play-tile" data-action="match-ai">
+            <div class="play-tile play-tile-big tile-mini-league" data-action="match-ai">
               <img src="${ICON}badge-ai.png" class="tile-icon">
               <div class="tile-label">SOLO</div>
               <div class="tile-desc">Progressez à travers les niveaux</div>
+            </div>
+            <div class="play-tile" data-action="mini-league">
+              <img src="${ICON}badge-league.png" class="tile-icon">
+              <div class="tile-label">MINI LEAGUE</div>
+              <div class="tile-desc">Participez à des ligues</div>
             </div>
             <div class="play-tile" data-action="match-random">
               <img src="${ICON}badge-random.png" class="tile-icon">

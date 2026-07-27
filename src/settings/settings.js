@@ -52,6 +52,10 @@ export async function renderSettings(container, ctx) {
         <div style="font-size:14px;font-weight:900;color:var(--tile-fg-on-page);margin-bottom:4px">🎨 Apparence</div>
         <div style="font-size:12px;color:var(--tile-fg-dim);margin-bottom:14px">Choisis le thème de l'application.</div>
         <div style="display:flex;gap:10px">
+          <button data-theme-choice="club" style="flex:1;padding:14px;border-radius:12px;cursor:pointer;text-align:center;border:2px solid ${theme==='club'?'#D4A017':'var(--tile-border)'};background:${theme==='club'?'rgba(212,160,23,0.12)':'transparent'}">
+            <div style="font-size:22px;margin-bottom:6px">🛡️</div>
+            <div style="font-size:13px;font-weight:700;color:var(--tile-fg-on-page)">Club</div>
+          </button>
           <button data-theme-choice="dark" style="flex:1;padding:14px;border-radius:12px;cursor:pointer;text-align:center;border:2px solid ${theme==='dark'?'#D4A017':'var(--tile-border)'};background:${theme==='dark'?'rgba(212,160,23,0.12)':'transparent'}">
             <div style="font-size:22px;margin-bottom:6px">🌙</div>
             <div style="font-size:13px;font-weight:700;color:var(--tile-fg-on-page)">Sombre</div>
@@ -133,6 +137,7 @@ export async function renderSettings(container, ctx) {
     state.profile.club_color2 = c2.value
     errEl.style.color = '#2ecc71'
     errEl.textContent = '✅ Modifications enregistrées.'
+    if (getTheme() === 'club') setTheme('club') // rafraîchit le fond aux nouvelles couleurs
   })
 
   const slider = container.querySelector('#volume-slider')

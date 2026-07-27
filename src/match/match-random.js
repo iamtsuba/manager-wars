@@ -137,7 +137,6 @@ async function showMatchmakingSearch(container, ctx, deckId, formation, starters
       if (pollTimer) { clearInterval(pollTimer); pollTimer = null }
       try { await supabase.rpc('cancel_matchmaking', { p_user_id: state.profile.id }) } catch (e) { console.error('[Matchmaking] cancel error:', e) }
       toast('Aucun adversaire trouvé — match contre une IA calibrée sur votre niveau', 'info', 4000)
-      console.log('[DEBUG match-random] Basculement fallback IA, navigate vers ranked_ai avec presetSetup')
       navigate('match', {
         matchMode: 'ranked_ai', rankedData,
         presetSetup: { deckId, formation, starters, subsRaw, gcCardsEnriched: myGC, gcDefs, stadiumDef },

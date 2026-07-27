@@ -82,7 +82,7 @@ async function showMatchmakingSearch(container, ctx, deckId, formation, starters
   // existante) ; random simple utilise try_matchmake (user_id + deck_id).
   const myId = state.user.id
   const { data: result, error } = isRanked
-    ? await supabase.rpc('try_matchmake_ranked', { p_user_id: myId, p_deck_id: deckId, p_mmr: myMmr })
+    ? await supabase.rpc('try_matchmake_ranked', { p_user_id: myId, p_deck_id: deckId, p_mmr: myMmr, p_range: 200 })
     : await supabase.rpc('try_matchmake', { p_user_id: myId, p_deck_id: deckId })
 
   if (error || !result?.success) {

@@ -982,26 +982,50 @@ async function openCardDetail(card, allPlayerCards, countByPlayer, ctx) {
 
 
       <!-- Infos -->
-      <div style="flex:1;min-width:160px;display:flex;flex-direction:column;gap:10px">
+      <div style="flex:1;min-width:220px;display:flex;flex-direction:column;gap:12px">
+
+        <!-- Rareté + carte évolutive -->
         <div>
-          <div style="font-size:11px;color:#888;margin-bottom:2px">RARETÉ</div>
-          <div style="font-weight:700;color:${p.rarity==='normal' ? '#555' : (p.rarity==='papyte' ? '#707070' : rarColor)}">${p.rarity.toUpperCase()}</div>
+          <div style="font-size:11px;color:#888;letter-spacing:.5px;margin-bottom:3px">RARETÉ</div>
+          <div style="font-weight:900;font-size:15px;color:${p.rarity==='normal' ? '#555' : (p.rarity==='papyte' ? '#707070' : rarColor)}">${p.rarity.toUpperCase()}</div>
           ${(p.rarity==='pepite'||p.rarity==='papyte') ? `
-          <div style="margin-top:6px;background:${rarColor}18;border-left:3px solid ${rarColor};border-radius:0 6px 6px 0;padding:6px 10px">
-            <div style="font-size:11px;font-weight:700;color:${rarColor};margin-bottom:2px">✨ Carte évolutive</div>
-            <div style="font-size:11px;color:#555;line-height:1.5">
+          <div style="margin-top:8px;background:${rarColor}12;border-left:3px solid ${rarColor};border-radius:0 8px 8px 0;padding:10px 12px">
+            <div style="font-size:11px;font-weight:700;color:${rarColor};margin-bottom:4px">✨ Carte évolutive</div>
+            <div style="font-size:11px;color:#555;line-height:1.5;margin-bottom:6px">
               ${p.rarity==='pepite'
                 ? `⬆️ Bonus évolution : <b style="color:#D4A017">+30%</b>`
                 : `⬇️ Malus évolution : <b style="color:#909090">-30%</b>`}
             </div>
+            <div style="font-size:10.5px;color:#888;line-height:1.5;font-style:italic;border-top:1px solid ${rarColor}30;padding-top:6px">
+              ${p.rarity==='pepite'
+                ? `Une carte Pépite est promise à un grand avenir : à force d'évoluer, elle peut un jour devenir une Légende.`
+                : `Une carte Papyte peut devenir une légende dans le temps ou prendre sa retraite...`}
+            </div>
           </div>` : ''}
         </div>
-        <div>
-          <div style="font-size:11px;color:#888;margin-bottom:2px">POSTE</div>
-          <div style="font-weight:700">${p.job}${p.job2?' / '+p.job2:''}</div>
+
+        <!-- Grille d'infos : Pays / Club / Postes -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px 16px;background:#f8f8f8;border-radius:10px;padding:10px 12px">
+          <div>
+            <div style="font-size:10px;color:#999;letter-spacing:.5px">PAYS</div>
+            <div style="font-weight:700;font-size:13px;color:#333">${country || '—'}</div>
+          </div>
+          <div>
+            <div style="font-size:10px;color:#999;letter-spacing:.5px">CLUB</div>
+            <div style="font-weight:700;font-size:13px;color:#333;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.clubs?.encoded_name || '—'}</div>
+          </div>
+          <div>
+            <div style="font-size:10px;color:#999;letter-spacing:.5px">POSTE PRINCIPAL</div>
+            <div style="font-weight:700;font-size:13px;color:${JOB_COLORS[p.job]||'#333'}">${p.job}</div>
+          </div>
+          <div>
+            <div style="font-size:10px;color:#999;letter-spacing:.5px">POSTE SECONDAIRE</div>
+            <div style="font-weight:700;font-size:13px;color:${p.job2?(JOB_COLORS[p.job2]||'#333'):'#bbb'}">${p.job2 || 'Aucun'}</div>
+          </div>
         </div>
+
         <div>
-          <div style="font-size:11px;color:#888;margin-bottom:6px">NOTES</div>
+          <div style="font-size:11px;color:#888;letter-spacing:.5px;margin-bottom:6px">NOTES</div>
           <div style="display:flex;align-items:center;gap:6px">
             ${[['GK',p.note_g],['DEF',p.note_d],['MIL',p.note_m],['ATT',p.note_a]].map(([j,n]) => {
               const col = JOB_COLORS[j]
@@ -1019,8 +1043,8 @@ async function openCardDetail(card, allPlayerCards, countByPlayer, ctx) {
           </div>
         </div>
         <div>
-          <div style="font-size:11px;color:#888;margin-bottom:2px">EN COLLECTION</div>
-          <div style="font-weight:700;font-size:18px">×${count}</div>
+          <div style="font-size:11px;color:#888;letter-spacing:.5px;margin-bottom:2px">EN COLLECTION</div>
+          <div style="font-weight:900;font-size:18px;color:#1A6B3C">×${count}</div>
         </div>
       </div>
     </div>

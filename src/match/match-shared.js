@@ -545,7 +545,7 @@ export function renderCardRow(players, accentColor, total, phase, formation) {
       else if (phase === 'defense' && (role === 'GK' || role === 'DEF' || role === 'MIL')) extraNote += 10
       else if (!phase) extraNote += 10
     }
-    html += renderPlayerCard(p, { width: 40, role, extraNote })
+    html += renderPlayerCard({ ...p, _evolution_bonus: 0, evolution_bonus: 0 }, { width: 40, role, extraNote })
     if (i < shown.length - 1) {
       const next = shown[i+1]
       // N'affiche un lien coloré que si les 2 joueurs sont VRAIMENT adjacents

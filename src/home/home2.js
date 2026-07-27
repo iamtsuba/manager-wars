@@ -11,7 +11,6 @@ const APP_VERSION = (typeof __BUILD_TIME__ !== 'undefined' && __BUILD_TIME__)
 
 const V2_TABS = [
   { key: 'home2',      route: 'home2',      label: 'HOME',     icon: 'nav-home.png' },
-  { key: 'game',       route: 'game',       label: 'GAME',     emoji: '🎮' },
   { key: 'cards',      route: 'collection', label: 'CARDS',    icon: 'nav-collection.png' },
   { key: 'decks',      route: 'decks',      label: 'DECKS',    icon: 'nav-decks.png' },
   { key: 'boosters',   route: 'boosters',   label: 'BOOSTERS', icon: 'nav-boosters.png' },

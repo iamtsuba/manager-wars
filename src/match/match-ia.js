@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase.js'
 import { computeGlicko2 } from '../ranked/glicko2.js'
+import { hideV2ChromeNow } from '../home/home2.js'
 import { renderPlayerCard } from '../components/player-card.js'
 import {
   histPlayer as _histPlayer, withStadBonus, renderLogEntry,
@@ -39,14 +40,6 @@ export async function renderMatchIA(container, ctx) {
   const soloLevel  = params.soloLevel || 1
   const difficulty = matchMode.replace('vs_ai_','')
   const mode       = matchMode
-
-  // DEBUG TEMPORAIRE — à retirer une fois le bug identifié
-  console.log('[DEBUG renderMatchIA]', { matchMode, isRankedAI, hasPresetSetup: !!params.presetSetup, params })
-  const dbg = document.createElement('div')
-  dbg.style.cssText = 'position:fixed;top:4px;left:4px;z-index:99999;background:#000;color:#0f0;font-size:11px;padding:6px 10px;border-radius:6px;font-family:monospace;max-width:90vw;word-break:break-all'
-  dbg.textContent = `DEBUG matchMode="${matchMode}" isRankedAI=${isRankedAI} presetSetup=${!!params.presetSetup}`
-  document.body.appendChild(dbg)
-  setTimeout(() => dbg.remove(), 15000)
 
   // Mode Solo : configuration du niveau (note visée, liens, stade) définie dans l'admin
   let soloLevelConfig = null
@@ -1951,22 +1944,35 @@ async function finishMatch(container, game, ctx) {
   }
 
   // Ranked sans adversaire réel (fallback IA après 20s) : met quand même à jour
-  // le MMR — l'IA est traitée comme un adversaire "miroir" de force équivalente
-  // au joueur (même MMR, RD par défaut), pour rester équitable.
+  // le MMR via LA MÊME RPC que les vrais matchs PvP (update_mmr_after_ranked),
+  // pour que placement_matches / ranked_wins / ranked_losses / ranked_draws
+  // s'incrémentent correctement (ces compteurs vivent uniquement dans la RPC).
+  // L'IA n'ayant pas de vrai compte, on utilise un UUID sentinelle en away_id.
+  const AI_SENTINEL_ID = '00000000-0000-0000-0000-000000000000'
   let rankedMmrDelta = null
   if (game.isRankedAI) {
     try {
-      const { data: myProfile } = await supabase.from('users').select('mmr, mmr_deviation, mmr_volatility').eq('id', state.profile.id).single()
+      const { data: myProfile } = await supabase.from('users').select('mmr, mmr_deviation, mmr_volatility, placement_matches').eq('id', state.profile.id).single()
       if (myProfile) {
         const myMmr = myProfile.mmr ?? 1000
         const myRd  = myProfile.mmr_deviation ?? 350
         const myV   = myProfile.mmr_volatility ?? 0.06
         const score = isWin ? 1 : isDraw ? 0.5 : 0
-        const isPlacement = game.rankedAIData?.isPlacement || false
+        const isPlacement = (myProfile.placement_matches ?? 0) < 10
         const myResult = computeGlicko2(myMmr, myRd, myV, myMmr, 350, score, isPlacement)
-        await supabase.from('users').update({
-          mmr: myResult.newMmr, mmr_deviation: myResult.newRd, mmr_volatility: myResult.newSigma,
-        }).eq('id', state.profile.id)
+        const winnerId = isDraw ? null : (isWin ? state.profile.id : AI_SENTINEL_ID)
+        await supabase.rpc('update_mmr_after_ranked', {
+          p_match_id     : game.matchId,
+          p_winner_id    : winnerId,
+          p_home_id      : state.profile.id,
+          p_away_id      : AI_SENTINEL_ID,
+          p_home_delta   : myResult.delta,
+          p_away_delta   : 0,
+          p_home_new_rd  : myResult.newRd,
+          p_away_new_rd  : 350,
+          p_home_new_vol : myResult.newSigma,
+          p_away_new_vol : 0.06,
+        })
         rankedMmrDelta = myResult.delta
       }
     } catch (e) {
@@ -1993,27 +1999,48 @@ async function finishMatch(container, game, ctx) {
   const overlay = document.createElement('div')
   overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.88);display:flex;align-items:center;justify-content:center;z-index:2000'
   overlay.innerHTML=`
-    <div style="text-align:center;padding:40px;color:#fff;max-width:360px">
+    <div style="text-align:center;padding:40px;color:#fff;max-width:380px;width:100%">
       <div style="font-size:72px;margin-bottom:12px">${isWin?'🏆':isDraw?'🤝':'😔'}</div>
       <h2 style="font-size:28px;font-weight:900;margin-bottom:8px">${isWin?'Victoire !':isDraw?'Match nul':'Défaite'}</h2>
       <div style="font-size:48px;font-weight:900;margin:12px 0">${game.homeScore} – ${game.aiScore}</div>
-      <div style="background:rgba(212,160,23,0.2);border:1px solid var(--yellow);border-radius:12px;padding:12px;margin:16px 0">
-        <div style="font-size:12px;opacity:.8">Récompense</div>
-        <div style="font-size:24px;font-weight:900;color:var(--yellow)">+${rewards.toLocaleString('fr')} crédits</div>
+
+      <div style="display:grid;grid-template-columns:${(game.isRankedAI && rankedMmrDelta !== null) ? '1fr 1fr' : '1fr'};gap:10px;margin:16px 0">
+        <div style="background:rgba(212,160,23,0.15);border:1px solid var(--yellow);border-radius:14px;padding:14px 10px">
+          <div style="font-size:11px;opacity:.7;margin-bottom:4px">Récompense</div>
+          <div style="font-size:20px;font-weight:900;color:var(--yellow);white-space:nowrap">+${rewards.toLocaleString('fr')} cr.</div>
+        </div>
+        ${(game.isRankedAI && rankedMmrDelta !== null) ? `
+        <div style="background:${rankedMmrDelta>=0?'rgba(26,107,60,0.2)':'rgba(224,48,48,0.15)'};border:1px solid ${rankedMmrDelta>=0?'#1A6B3C':'#e03030'};border-radius:14px;padding:14px 10px">
+          <div style="font-size:11px;opacity:.7;margin-bottom:4px">MMR</div>
+          <div style="font-size:20px;font-weight:900;color:${rankedMmrDelta>=0?'#4caf50':'#ff6b6b'};white-space:nowrap">${rankedMmrDelta>=0?'↑ +':'↓ '}${rankedMmrDelta}</div>
+        </div>` : ''}
       </div>
-      ${(game.isSolo && isWin) ? `<div style="background:rgba(26,107,60,0.25);border:1px solid #1A6B3C;border-radius:12px;padding:10px;margin-bottom:8px;font-size:14px;font-weight:700">🔓 Niveau ${game.soloLevel + 1} débloqué !</div>` : ''}
-      ${(game.isRankedAI && rankedMmrDelta !== null) ? `<div style="background:${rankedMmrDelta>=0?'rgba(26,107,60,0.25)':'rgba(224,48,48,0.2)'};border:1px solid ${rankedMmrDelta>=0?'#1A6B3C':'#e03030'};border-radius:12px;padding:10px;margin-bottom:8px;font-size:14px;font-weight:700">MMR ${rankedMmrDelta>=0?'↑ +':'↓ '}${rankedMmrDelta}</div>` : ''}
-      <div style="display:flex;gap:10px;margin-top:20px">
-        <button class="btn btn-ghost" id="res-home" style="flex:1;color:#fff;border-color:rgba(255,255,255,0.3)">Accueil</button>
-        <button class="btn btn-primary" id="res-replay" style="flex:1">${game.isRankedAI ? '🔄 Nouveau match' : 'Rejouer'}</button>
+
+      ${(game.isSolo && isWin) ? `<div style="background:rgba(26,107,60,0.2);border:1px solid #1A6B3C;border-radius:14px;padding:12px;margin-bottom:12px;font-size:14px;font-weight:700">🔓 Niveau ${game.soloLevel + 1} débloqué !</div>` : ''}
+
+      <div style="display:flex;gap:10px;margin-top:8px">
+        <button class="btn btn-ghost" id="res-home" style="flex:1;color:#fff;border-color:rgba(255,255,255,0.3);padding:12px 8px;font-size:14px;white-space:nowrap">Accueil</button>
+        <button class="btn btn-primary" id="res-replay" style="flex:1;padding:12px 8px;font-size:14px;white-space:nowrap">${game.isRankedAI ? '🔄 Nouveau match' : 'Rejouer'}</button>
       </div>
-      ${(game.isSolo && isWin) ? `<button class="btn btn-primary" id="res-next-level" style="width:100%;margin-top:10px;background:#D4A017;border-color:#D4A017">▶️ Niveau ${game.soloLevel + 1}</button>` : ''}
+      ${(game.isSolo && isWin) ? `<button class="btn btn-primary" id="res-next-level" style="width:100%;margin-top:10px;padding:12px;font-size:14px;background:#D4A017;border-color:#D4A017">▶️ Niveau ${game.soloLevel + 1}</button>` : ''}
     </div>`
   document.body.appendChild(overlay)
   document.getElementById('res-home')?.addEventListener('click',()=>{overlay.remove();_showBottomNav(container);ctx.navigate('home')})
-  document.getElementById('res-replay')?.addEventListener('click',()=>{
+  document.getElementById('res-replay')?.addEventListener('click', async () => {
     overlay.remove(); _showBottomNav(container)
-    if (game.isRankedAI) { ctx.navigate('ranked'); return }
+    if (game.isRankedAI) {
+      // Relance directement une nouvelle recherche Ranked (pas juste le menu)
+      const { data: p } = await supabase.from('users').select('mmr, mmr_deviation, mmr_volatility, placement_matches').eq('id', ctx.state.profile.id).single()
+      hideV2ChromeNow()
+      ctx.navigate('match', {
+        matchMode : 'ranked',
+        rankedData: {
+          mmr: p?.mmr ?? 1000, rd: p?.mmr_deviation ?? 350, sigma: p?.mmr_volatility ?? 0.06,
+          isPlacement: (p?.placement_matches ?? 0) < 10,
+        },
+      })
+      return
+    }
     ctx.navigate('match', game.isSolo ? {matchMode:game.mode, soloLevel:game.soloLevel} : {matchMode:game.mode})
   })
   document.getElementById('res-next-level')?.addEventListener('click',()=>{overlay.remove();_showBottomNav(container);ctx.navigate('match', {matchMode:'solo', soloLevel:game.soloLevel+1})})

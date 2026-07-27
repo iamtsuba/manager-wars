@@ -177,15 +177,17 @@ async function loadMarket(container, ctx) {
     const flagUrl2 = p.country_code ? `https://flagsapi.com/${p.country_code.slice(0,2).toUpperCase()}/flat/64.png` : null
     const noteCol1m = JOB_COLORS[p.job] || '#bbb'
     const noteCol2m = p.job2 ? (JOB_COLORS[p.job2] || '#bbb') : null
+    const noteTxt1m = p.job === 'GK' ? '#fff' : noteCol1m
+    const noteTxt2m = p.job2 === 'GK' ? '#fff' : noteCol2m
     return `<div class="card-panel" style="display:flex;align-items:center;gap:10px;padding:10px 12px;overflow:hidden;${isSold?'opacity:0.7':''}">
       ${flagUrl2 ? `<img src="${flagUrl2}" style="width:32px;height:24px;object-fit:cover;border-radius:3px;flex-shrink:0">` : `<span style="font-size:20px">🌍</span>`}
       ${p.clubs?.logo_url ? `<img src="${p.clubs.logo_url}" style="width:28px;height:28px;object-fit:contain;flex-shrink:0">` : ''}
       <div style="display:flex;gap:4px;flex-shrink:0">
         <div style="width:36px;height:36px;border-radius:6px;background:#111;border:2px solid ${noteCol1m};display:flex;align-items:center;justify-content:center">
-          <span style="font-size:14px;font-weight:900;color:${noteCol1m};font-family:Arial Black,Arial">${note1}</span>
+          <span style="font-size:14px;font-weight:900;color:${noteTxt1m};font-family:Arial Black,Arial">${note1}</span>
         </div>
         ${note2 ? `<div style="width:36px;height:36px;border-radius:6px;background:#111;border:2px solid ${noteCol2m};display:flex;align-items:center;justify-content:center">
-          <span style="font-size:14px;font-weight:900;color:${noteCol2m};font-family:Arial Black,Arial">${note2}</span>
+          <span style="font-size:14px;font-weight:900;color:${noteTxt2m};font-family:Arial Black,Arial">${note2}</span>
         </div>` : ''}
       </div>
       <div style="flex:1;min-width:0">

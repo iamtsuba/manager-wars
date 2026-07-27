@@ -137,6 +137,20 @@ export function ensureV2Chrome(navigate, p, activeRouteKey, ICON) {
         .home2-mobile-bottom .home2-chrome-tab-emoji { font-size: 29px; }
         .home2-mobile-bottom .home2-chrome-tab { font-size: 9px; }
       }
+
+      /* ══════════ Drapeau global "en match" (recherche, choix deck, choix GC, jeu...) ══════════
+         Posé par hideV2ChromeNow() dès le clic sur un mode, retiré uniquement quand une vraie
+         page Home/Game se recharge. Couvre TOUS les écrans du parcours de match, quel que soit
+         leur balisage interne, sans avoir à détecter chaque écran individuellement. Placé en
+         dernier pour l'emporter sur les règles précédentes (spécificité égale + !important). */
+      body.v2-match-flow #home2-chrome-header,
+      body.v2-match-flow .home2-mobile-top,
+      body.v2-match-flow .home2-mobile-bottom { display: none !important; }
+      body.v2-match-flow #page-content,
+      body.v2-match-flow #page-content .page {
+        padding-top: 0 !important;
+        padding-bottom: 0 !important;
+      }
     `
     document.head.appendChild(style)
   }
@@ -212,6 +226,7 @@ export function ensureV2Chrome(navigate, p, activeRouteKey, ICON) {
   document.getElementById('home2-mobtop-credits') && (document.getElementById('home2-mobtop-credits').textContent = credAmount)
 
   // Réaffiche le bandeau (annule un éventuel hideV2ChromeNow() laissé par une navigation précédente vers un match)
+  document.body.classList.remove('v2-match-flow')
   header.style.display = ''
   topBar.style.display = ''
   bottomBar.style.display = ''
@@ -251,6 +266,7 @@ export function syncV2Credits(amount) {
 }
 
 export function hideV2ChromeNow() {
+  document.body.classList.add('v2-match-flow')
   const h = document.getElementById('home2-chrome-header'); if (h) h.style.display = 'none'
   const t = document.getElementById('home2-mobile-top');    if (t) t.style.display = 'none'
   const b = document.getElementById('home2-mobile-bottom'); if (b) b.style.display = 'none'

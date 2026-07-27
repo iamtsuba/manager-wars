@@ -18,6 +18,37 @@ export async function renderSettings(container, ctx) {
     <div style="padding:16px;display:flex;flex-direction:column;gap:14px;max-width:520px;margin:0 auto">
 
       <div style="background:var(--tile-bg);border:1px solid var(--tile-border);border-radius:14px;padding:18px">
+        <div style="font-size:14px;font-weight:900;color:var(--tile-fg-on-page);margin-bottom:4px">🛡️ Mon équipe</div>
+        <div style="font-size:12px;color:var(--tile-fg-dim);margin-bottom:14px">Ton pseudo, le nom et les couleurs de ton club.</div>
+
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div>
+            <label style="font-size:11px;font-weight:700;color:var(--tile-fg-dim);display:block;margin-bottom:4px">PSEUDO</label>
+            <input id="team-pseudo" value="${(state.profile.pseudo||'').replace(/"/g,'&quot;')}"
+              style="width:100%;box-sizing:border-box;padding:10px;border-radius:8px;border:1.5px solid var(--tile-border);background:var(--input-bg,#fff);color:var(--input-fg,#111);font-size:14px">
+          </div>
+          <div>
+            <label style="font-size:11px;font-weight:700;color:var(--tile-fg-dim);display:block;margin-bottom:4px">NOM DU CLUB</label>
+            <input id="team-club-name" value="${(state.profile.club_name||'').replace(/"/g,'&quot;')}"
+              style="width:100%;box-sizing:border-box;padding:10px;border-radius:8px;border:1.5px solid var(--tile-border);background:var(--input-bg,#fff);color:var(--input-fg,#111);font-size:14px">
+          </div>
+          <div style="display:flex;gap:14px">
+            <div style="flex:1">
+              <label style="font-size:11px;font-weight:700;color:var(--tile-fg-dim);display:block;margin-bottom:4px">COULEUR 1</label>
+              <input type="color" id="team-color1" value="${state.profile.club_color1||'#1A6B3C'}" style="width:100%;height:38px;padding:2px;border-radius:8px;border:1.5px solid var(--tile-border);cursor:pointer">
+            </div>
+            <div style="flex:1">
+              <label style="font-size:11px;font-weight:700;color:var(--tile-fg-dim);display:block;margin-bottom:4px">COULEUR 2</label>
+              <input type="color" id="team-color2" value="${state.profile.club_color2||'#D4A017'}" style="width:100%;height:38px;padding:2px;border-radius:8px;border:1.5px solid var(--tile-border);cursor:pointer">
+            </div>
+          </div>
+          <div id="team-preview" style="height:48px;border-radius:10px;margin-top:2px"></div>
+          <div id="team-error" style="font-size:12px;color:#ff6b6b;min-height:14px"></div>
+          <button id="team-save" class="btn btn-primary" style="width:100%;padding:12px;border-radius:10px;font-weight:700;font-size:14px">💾 Enregistrer</button>
+        </div>
+      </div>
+
+      <div style="background:var(--tile-bg);border:1px solid var(--tile-border);border-radius:14px;padding:18px">
         <div style="font-size:14px;font-weight:900;color:var(--tile-fg-on-page);margin-bottom:4px">🎨 Apparence</div>
         <div style="font-size:12px;color:var(--tile-fg-dim);margin-bottom:14px">Choisis le thème de l'application.</div>
         <div style="display:flex;gap:10px">
@@ -66,6 +97,45 @@ export async function renderSettings(container, ctx) {
       setTheme(btn.dataset.themeChoice)
       renderSettings(container, ctx)
     })
+  })
+
+  // ── Mon équipe : aperçu live des couleurs + sauvegarde ──────────────────
+  const c1 = container.querySelector('#team-color1')
+  const c2 = container.querySelector('#team-color2')
+  const preview = container.querySelector('#team-preview')
+  const updatePreview = () => {
+    if (preview) preview.style.background = `linear-gradient(135deg, ${c1.value} 50%, ${c2.value} 50%)`
+  }
+  updatePreview()
+  c1?.addEventListener('input', updatePreview)
+  c2?.addEventListener('input', updatePreview)
+
+  container.querySelector('#team-save')?.addEventListener('click', async () => {
+    const errEl = container.querySelector('#team-error')
+    const saveBtn = container.querySelector('#team-save')
+    const pseudo = container.querySelector('#team-pseudo').value.trim()
+    const clubName = container.querySelector('#team-club-name').value.trim()
+    if (pseudo.length < 3) { errEl.textContent = 'Pseudo trop court (min. 3 caractères).'; return }
+    if (clubName.length < 2) { errEl.textContent = 'Nom de club trop court.'; return }
+
+    saveBtn.disabled = true; saveBtn.textContent = '⏳ Enregistrement...'
+    errEl.textContent = ''
+
+    const { error } = await supabase.from('users').update({
+      pseudo, club_name: clubName,
+      club_color1: c1.value, club_color2: c2.value,
+    }).eq('id', state.profile.id)
+
+    saveBtn.disabled = false; saveBtn.textContent = '💾 Enregistrer'
+
+    if (error) { errEl.textContent = error.message; return }
+
+    state.profile.pseudo = pseudo
+    state.profile.club_name = clubName
+    state.profile.club_color1 = c1.value
+    state.profile.club_color2 = c2.value
+    errEl.style.color = '#2ecc71'
+    errEl.textContent = '✅ Modifications enregistrées.'
   })
 
   const slider = container.querySelector('#volume-slider')

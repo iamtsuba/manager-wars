@@ -37,14 +37,18 @@ export function ensureV2Chrome(navigate, p, activeRouteKey, ICON) {
       /* Neutralise le padding-top/bottom que certaines pages (ex: Cards) réappliquent sur leur propre .page interne imbriqué */
       body:has(#home2-chrome-marker) #page-content .page { padding-top: 0 !important; padding-bottom: 0 !important; }
 
-      /* ── Pendant un match (.match-screen présent), le bandeau v2 doit totalement disparaître ── */
-      body:has(#home2-chrome-marker) #page-content:has(.match-screen) {
+      /* ── Pendant un match ou l'écran "Choisis ton deck", le bandeau v2 doit totalement disparaître ── */
+      body:has(#home2-chrome-marker) #page-content:has(.match-screen),
+      body:has(#home2-chrome-marker) #page-content:has(#deck-select-screen) {
         padding-top: 0 !important;
         padding-bottom: 0 !important;
       }
       body:has(.match-screen) #home2-chrome-header,
       body:has(.match-screen) .home2-mobile-top,
-      body:has(.match-screen) .home2-mobile-bottom { display: none !important; }
+      body:has(.match-screen) .home2-mobile-bottom,
+      body:has(#deck-select-screen) #home2-chrome-header,
+      body:has(#deck-select-screen) .home2-mobile-top,
+      body:has(#deck-select-screen) .home2-mobile-bottom { display: none !important; }
 
       /* ══════════ Bandeau unique PC (≥1024px) : logo + onglets + credits + parametres ══════════ */
       .home2-chrome-header {
@@ -95,7 +99,8 @@ export function ensureV2Chrome(navigate, p, activeRouteKey, ICON) {
           padding-top: var(--v2-top-height, 56px) !important;
           padding-bottom: var(--v2-bottom-height, 76px) !important;
         }
-        body:has(#home2-chrome-marker) #page-content:has(.match-screen) {
+        body:has(#home2-chrome-marker) #page-content:has(.match-screen),
+        body:has(#home2-chrome-marker) #page-content:has(#deck-select-screen) {
           padding-top: 0 !important;
           padding-bottom: 0 !important;
         }

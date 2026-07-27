@@ -823,6 +823,8 @@ async function openCardDetail(card, allPlayerCards, countByPlayer, ctx) {
     .order('note_min', { ascending: false }) // règle la plus précise en premier
     .limit(1)
   const directPrice = priceConfigs?.[0]?.price ?? DIRECT_SELL_PRICE[rarity] ?? 1000
+  const priceMin = priceConfigs?.[0]?.price_min ?? null
+  const priceMax = priceConfigs?.[0]?.price_max ?? null
 
   // Règles revente marché : Légende non vendable
   const canMarket = p.rarity !== 'legende'
@@ -887,6 +889,10 @@ async function openCardDetail(card, allPlayerCards, countByPlayer, ctx) {
         <!-- Vente directe : un seul exemplaire = c'est cette carte qui part sur le marché -->
         <div style="background:#f0fdf4;border:2px solid #1A6B3C;border-radius:12px;padding:14px">
           <div style="font-size:12px;font-weight:700;color:#1A6B3C;margin-bottom:8px">🛒 Mettre cette carte en vente</div>
+          ${(priceMin !== null && priceMax !== null) ? `
+          <div style="font-size:11px;color:#555;margin-bottom:8px;background:#fff;border-radius:6px;padding:6px 10px">
+            💰 Fourchette autorisée : <b>${priceMin.toLocaleString('fr')}</b> – <b>${priceMax.toLocaleString('fr')}</b> cr.
+          </div>` : ''}
           <div style="display:flex;gap:8px">
             <input type="number" id="single-sell-price" min="1" placeholder="Prix"
               value="${p.sell_price||5000}"

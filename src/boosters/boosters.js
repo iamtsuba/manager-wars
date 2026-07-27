@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase.js'
+import { syncV2Credits } from '../home/home2.js'
 import { renderPlayerCard } from '../components/player-card.js'
 import { FORMATION_POSITIONS } from '../match/formation-links.js'
 import { loadActiveBoosters, drawCard, rollDropRate, recordBoosterClaim } from './booster-engine.js'
@@ -297,6 +298,8 @@ async function openMixedBooster(profile, booster) {
     const { error } = await supabase.from('users')
       .update({ credits: profile.credits - booster.cost }).eq('id', profile.id)
     if (error) throw error
+    profile.credits -= booster.cost
+    syncV2Credits(profile.credits)
   }
   const allowDup = booster.allow_duplicates !== false  // true par défaut
   // Joueurs déjà possédés (pour réduire les doublons quand le pool le permet)
@@ -415,6 +418,8 @@ async function openPlayersBooster(profile, count, cost) {
     const { error } = await supabase.from('users')
       .update({ credits: profile.credits - cost }).eq('id', profile.id)
     if (error) throw error
+    profile.credits -= cost
+    syncV2Credits(profile.credits)
   }
 
   const { data: players } = await supabase
@@ -460,6 +465,8 @@ async function openGCBooster(profile, count, cost) {
   const { error } = await supabase.from('users')
     .update({ credits: profile.credits - cost }).eq('id', profile.id)
   if (error) throw error
+  profile.credits -= cost
+  syncV2Credits(profile.credits)
 
   // Charger les GC actifs depuis la DB (ou fallback hardcodé)
   const { data: dbGC } = await supabase.from('gc_definitions')
@@ -486,6 +493,8 @@ async function openFormationBooster(profile, cost) {
   const { error } = await supabase.from('users')
     .update({ credits: profile.credits - cost }).eq('id', profile.id)
   if (error) throw error
+  profile.credits -= cost
+  syncV2Credits(profile.credits)
 
   // Détecter doublon (formation déjà possédée)
   const { data: ownedF } = await supabase.from('cards')

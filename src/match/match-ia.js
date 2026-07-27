@@ -48,14 +48,9 @@ export async function renderMatchIA(container, ctx) {
   }
 
   // Mode Ranked sans adversaire réel trouvé (fallback après 20s) : l'IA est
-  // calibrée sur le MMR actuel du joueur (note globale ≈ mmr/100, plafonnée 1-20)
+  // calibrée sur la force RÉELLE de l'équipe du joueur (note totale ±10%,
+  // même nombre de liens jaunes/verts) — calculé plus bas une fois homeTeam construit.
   const rankedAIData = params.rankedData || null
-  let rankedAIConfig = null
-  if (isRankedAI) {
-    const mmr = rankedAIData?.mmr ?? 1000
-    const targetNote = Math.min(20, Math.max(1, Math.round(mmr / 100)))
-    rankedAIConfig = { target_note_avg: targetNote, nb_liens_jaune: 3, nb_liens_vert: 2, nb_joueurs_stade: 3 }
-  }
 
   // Fallback IA Ranked : le deck et les GC ont déjà été choisis lors de la
   // recherche d'adversaire réel — on ne les redemande pas, on lance direct.
@@ -68,6 +63,22 @@ export async function renderMatchIA(container, ctx) {
         homeTeam = applyStadiumBonus(homeTeam, stadiumDef)
         applyStadiumBonusToSubs(subsRaw, stadiumDef)
       }
+
+      // Fallback IA Ranked : calibrer l'IA sur la force RÉELLE de mon équipe
+      // (note totale ±10% de la mienne, même nombre de liens jaunes/verts)
+      let rankedAIConfig = null
+      if (isRankedAI) {
+        const myTotalNote = sumTeamNote(homeTeam)
+        const { jaune, vert } = countTeamLinks(homeTeam, formation)
+        const variance = 0.9 + Math.random() * 0.2 // entre -10% et +10%
+        rankedAIConfig = {
+          target_note_avg:  Math.max(1, Math.round((myTotalNote * variance) / 16)),
+          nb_liens_jaune:   jaune,
+          nb_liens_vert:    vert,
+          nb_joueurs_stade: stadiumDef ? 3 : 0,
+        }
+      }
+
       const aiResult = isSolo
         ? await generateAITeamForLevel(formation, soloLevelConfig)
         : isRankedAI
@@ -222,6 +233,36 @@ async function generateAITeam(formation, difficulty) {
 // le profil global recherché — l'IA privilégie un "club coeur" pour maximiser
 // les liens verts (pays+club), un groupe "même pays" pour les liens jaunes,
 // et complète avec le reste du pool en visant la note moyenne demandée.
+// ── Force réelle d'une équipe (pour calibrer l'IA du fallback Ranked) ──────
+function sumTeamNote(team) {
+  let sum = 0
+  for (const role of ['GK','DEF','MIL','ATT']) {
+    (team[role]||[]).forEach(p => {
+      const r = p._line || role
+      const note = Number(r==='GK'?p.note_g:r==='DEF'?p.note_d:r==='MIL'?p.note_m:p.note_a) || 0
+      sum += note + (p.boost||0)
+    })
+  }
+  return sum
+}
+
+function countTeamLinks(team, formation) {
+  const slots = {}
+  for (const role of ['GK','DEF','MIL','ATT']) {
+    (team[role]||[]).forEach((p,i) => { slots[`${role}${i+1}`] = p })
+  }
+  const FLINKS = getActiveLinks(formation) || FORMATION_LINKS[formation] || []
+  let jaune = 0, vert = 0
+  for (const [posA, posB] of FLINKS) {
+    const pA = slots[posA], pB = slots[posB]
+    if (!pA || !pB) continue
+    const lc = linkColor(pA, pB)
+    if (lc === '#00ff88') vert++
+    else if (lc === '#FFD700') jaune++
+  }
+  return { jaune, vert }
+}
+
 function mainNoteOf(p) {
   const j = p.job || 'ATT'
   return Number(j==='GK'?p.note_g : j==='DEF'?p.note_d : j==='MIL'?p.note_m : p.note_a) || 0
@@ -1907,18 +1948,18 @@ async function finishMatch(container, game, ctx) {
   let rankedMmrDelta = null
   if (game.isRankedAI) {
     try {
-      const { data: myProfile } = await supabase.from('users').select('mmr, mmr_rd, mmr_v').eq('id', state.profile.id).single()
+      const { data: myProfile } = await supabase.from('users').select('mmr, mmr_deviation, mmr_volatility').eq('id', state.profile.id).single()
       if (myProfile) {
         const myMmr = myProfile.mmr ?? 1000
-        const myRd  = myProfile.mmr_rd ?? 350
-        const myV   = myProfile.mmr_v ?? 0.06
+        const myRd  = myProfile.mmr_deviation ?? 350
+        const myV   = myProfile.mmr_volatility ?? 0.06
         const score = isWin ? 1 : isDraw ? 0.5 : 0
         const isPlacement = game.rankedAIData?.isPlacement || false
         const myResult = computeGlicko2(myMmr, myRd, myV, myMmr, 350, score, isPlacement)
         await supabase.from('users').update({
-          mmr: myResult.mmr, mmr_rd: myResult.rd, mmr_v: myResult.v,
+          mmr: myResult.newMmr, mmr_deviation: myResult.newRd, mmr_volatility: myResult.newSigma,
         }).eq('id', state.profile.id)
-        rankedMmrDelta = Math.round(myResult.mmr - myMmr)
+        rankedMmrDelta = myResult.delta
       }
     } catch (e) {
       console.warn('[RankedAI] Erreur mise à jour MMR:', e.message)
@@ -1956,13 +1997,17 @@ async function finishMatch(container, game, ctx) {
       ${(game.isRankedAI && rankedMmrDelta !== null) ? `<div style="background:${rankedMmrDelta>=0?'rgba(26,107,60,0.25)':'rgba(224,48,48,0.2)'};border:1px solid ${rankedMmrDelta>=0?'#1A6B3C':'#e03030'};border-radius:12px;padding:10px;margin-bottom:8px;font-size:14px;font-weight:700">MMR ${rankedMmrDelta>=0?'↑ +':'↓ '}${rankedMmrDelta}</div>` : ''}
       <div style="display:flex;gap:10px;margin-top:20px">
         <button class="btn btn-ghost" id="res-home" style="flex:1;color:#fff;border-color:rgba(255,255,255,0.3)">Accueil</button>
-        <button class="btn btn-primary" id="res-replay" style="flex:1">Rejouer</button>
+        <button class="btn btn-primary" id="res-replay" style="flex:1">${game.isRankedAI ? '🔄 Nouveau match' : 'Rejouer'}</button>
       </div>
       ${(game.isSolo && isWin) ? `<button class="btn btn-primary" id="res-next-level" style="width:100%;margin-top:10px;background:#D4A017;border-color:#D4A017">▶️ Niveau ${game.soloLevel + 1}</button>` : ''}
     </div>`
   document.body.appendChild(overlay)
   document.getElementById('res-home')?.addEventListener('click',()=>{overlay.remove();_showBottomNav(container);ctx.navigate('home')})
-  document.getElementById('res-replay')?.addEventListener('click',()=>{overlay.remove();_showBottomNav(container);ctx.navigate('match', game.isSolo ? {matchMode:game.mode, soloLevel:game.soloLevel} : {matchMode:game.mode})})
+  document.getElementById('res-replay')?.addEventListener('click',()=>{
+    overlay.remove(); _showBottomNav(container)
+    if (game.isRankedAI) { ctx.navigate('ranked'); return }
+    ctx.navigate('match', game.isSolo ? {matchMode:game.mode, soloLevel:game.soloLevel} : {matchMode:game.mode})
+  })
   document.getElementById('res-next-level')?.addEventListener('click',()=>{overlay.remove();_showBottomNav(container);ctx.navigate('match', {matchMode:'solo', soloLevel:game.soloLevel+1})})
 }
 

@@ -137,7 +137,10 @@ async function showMatchmakingSearch(container, ctx, deckId, formation, starters
       if (pollTimer) { clearInterval(pollTimer); pollTimer = null }
       try { await supabase.rpc('cancel_matchmaking', { p_user_id: state.profile.id }) } catch (e) { console.error('[Matchmaking] cancel error:', e) }
       toast('Aucun adversaire trouvé — match contre une IA calibrée sur votre niveau', 'info', 4000)
-      navigate('match', { matchMode: 'ranked_ai', rankedData })
+      navigate('match', {
+        matchMode: 'ranked_ai', rankedData,
+        presetSetup: { deckId, formation, starters, subsRaw, gcCardsEnriched: myGC, gcDefs, stadiumDef },
+      })
     }, 20000)
   } else {
     setTimeout(() => { if (!cancelled) cleanup() }, 120000)

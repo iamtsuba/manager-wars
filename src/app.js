@@ -70,7 +70,7 @@ export async function refreshProfile() {
 const THEME_KEY = 'mw_theme'
 
 export function getTheme() {
-  return localStorage.getItem(THEME_KEY) || 'dark' // par défaut : thème sombre actuel
+  return localStorage.getItem(THEME_KEY) || 'club' // par défaut : thème club (fond aux couleurs du club)
 }
 
 export function setTheme(theme) {
@@ -84,6 +84,10 @@ export function setTheme(theme) {
 
 function applyTheme(theme) {
   document.documentElement.setAttribute('data-theme', theme)
+  if (theme === 'club') {
+    document.documentElement.style.setProperty('--club-color1', state.profile?.club_color1 || '#0a0f0a')
+    document.documentElement.style.setProperty('--club-color2', state.profile?.club_color2 || '#080d08')
+  }
 }
 
 // ── NAVIGATE — point d'entrée unique ─────────────────────
@@ -336,8 +340,8 @@ function renderPublicLanding(root, { onPlay }) {
 
 // ── BOOTSTRAP ─────────────────────────────────────────────
 async function init() {
-  // Applique le thème choisi (sombre par défaut, ou la préférence sauvegardée)
-  document.documentElement.setAttribute('data-theme', getTheme())
+  // Applique le thème choisi (club par défaut, ou la préférence sauvegardée)
+  applyTheme(getTheme())
 
   document.getElementById('modal-overlay').addEventListener('click', e => {
     if (e.target === e.currentTarget) closeModal()
@@ -356,6 +360,7 @@ async function init() {
 
   state.user = session.user
   await refreshProfile()
+  applyTheme(getTheme())
   hideLoader()
 
   // Charger les liens de formation personnalisés depuis l'admin (si définis)
@@ -371,7 +376,7 @@ async function init() {
   }
 
   if (!state.profile) {
-    renderSetup(document.getElementById('app'), { state, navigate: async () => { await refreshProfile(); launchApp() }, toast, refreshProfile })
+    renderSetup(document.getElementById('app'), { state, navigate: async () => { await refreshProfile(); applyTheme(getTheme()); launchApp() }, toast, refreshProfile })
     return
   }
 

@@ -438,10 +438,14 @@ function renderBuilder(container, builder, ctx) {
   // Formation mobile et PC : même modal
   const openFormationModal = () => {
     const { openModal, closeModal } = ctx
-    const bodyHtml = `<div style="display:flex;flex-wrap:wrap;gap:8px;padding:8px">
-      ${formationOptions.map(f =>
-        `<div data-forma="${f}" style="cursor:pointer;padding:10px 16px;border-radius:8px;background:${f===builder.formation?'#1A6B3C':'#f0f0f0'};color:${f===builder.formation?'#fff':'#111'};font-weight:900;font-size:16px;border:2px solid ${f===builder.formation?'#1A6B3C':'#ddd'}">${f}</div>`
-      ).join('')}
+    const uniqueFormations = [...new Set(formationOptions)]
+    const bodyHtml = `<div style="display:flex;flex-wrap:wrap;gap:12px;padding:8px;justify-content:center">
+      ${uniqueFormations.map(f => {
+        const selected = f === builder.formation
+        return `<div data-forma="${f}" style="cursor:pointer;border-radius:10px;${selected?'box-shadow:0 0 0 3px #1A6B3C':''}">
+          ${renderFormationCard(f, FORMATION_POSITIONS[f], { width: 90 })}
+        </div>`
+      }).join('')}
     </div>`
     openModal('⚽ Choisir une formation', bodyHtml)
     // Attacher les listeners directement sur les éléments rendus
@@ -586,7 +590,13 @@ function renderDeckField(container, builder, positions, ctx) {
 // ── Sélecteur de stade ───────────────────────────────────
 function openStadiumSelector(builder, container, ctx) {
   const { openModal, closeModal } = ctx
-  const cards = builder.stadiumCards || []
+  // Une seule carte par stade unique, même si plusieurs exemplaires sont possédés
+  const seenStadiums = new Set()
+  const cards = (builder.stadiumCards || []).filter(c => {
+    const key = c.stadium_id || c.id
+    if (seenStadiums.has(key)) return false
+    seenStadiums.add(key); return true
+  })
 
   openModal('🏟️ Choisir un stade',
     `<div style="display:flex;flex-wrap:wrap;gap:10px;padding:8px">

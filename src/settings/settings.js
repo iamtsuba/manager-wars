@@ -24,8 +24,8 @@ export async function renderSettings(container, ctx) {
         <div style="display:flex;flex-direction:column;gap:10px">
           <div>
             <label style="font-size:11px;font-weight:700;color:var(--tile-fg-dim);display:block;margin-bottom:4px">PSEUDO</label>
-            <input id="team-pseudo" value="${(state.profile.pseudo||'').replace(/"/g,'&quot;')}"
-              style="width:100%;box-sizing:border-box;padding:10px;border-radius:8px;border:1.5px solid var(--tile-border);background:var(--input-bg,#fff);color:var(--input-fg,#111);font-size:14px">
+            <input id="team-pseudo" value="${(state.profile.pseudo||'').replace(/"/g,'&quot;')}" readonly disabled
+              style="width:100%;box-sizing:border-box;padding:10px;border-radius:8px;border:1.5px solid var(--tile-border);background:var(--tile-bg);color:var(--tile-fg-dim);font-size:14px;cursor:not-allowed">
           </div>
           <div>
             <label style="font-size:11px;font-weight:700;color:var(--tile-fg-dim);display:block;margin-bottom:4px">NOM DU CLUB</label>
@@ -113,16 +113,14 @@ export async function renderSettings(container, ctx) {
   container.querySelector('#team-save')?.addEventListener('click', async () => {
     const errEl = container.querySelector('#team-error')
     const saveBtn = container.querySelector('#team-save')
-    const pseudo = container.querySelector('#team-pseudo').value.trim()
     const clubName = container.querySelector('#team-club-name').value.trim()
-    if (pseudo.length < 3) { errEl.textContent = 'Pseudo trop court (min. 3 caractères).'; return }
     if (clubName.length < 2) { errEl.textContent = 'Nom de club trop court.'; return }
 
     saveBtn.disabled = true; saveBtn.textContent = '⏳ Enregistrement...'
     errEl.textContent = ''
 
     const { error } = await supabase.from('users').update({
-      pseudo, club_name: clubName,
+      club_name: clubName,
       club_color1: c1.value, club_color2: c2.value,
     }).eq('id', state.profile.id)
 
@@ -130,7 +128,6 @@ export async function renderSettings(container, ctx) {
 
     if (error) { errEl.textContent = error.message; return }
 
-    state.profile.pseudo = pseudo
     state.profile.club_name = clubName
     state.profile.club_color1 = c1.value
     state.profile.club_color2 = c2.value

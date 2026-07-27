@@ -57,7 +57,11 @@ export async function renderMatchIA(container, ctx) {
     rankedAIConfig = { target_note_avg: targetNote, nb_liens_jaune: 3, nb_liens_vert: 2, nb_joueurs_stade: 3 }
   }
 
-  await loadMatchSetup(container, ctx, matchMode, async ({ deckId, formation, starters, subsRaw, gcCardsEnriched, gcDefs, stadiumDef }) => {
+  // Fallback IA Ranked : le deck et les GC ont déjà été choisis lors de la
+  // recherche d'adversaire réel — on ne les redemande pas, on lance direct.
+  const presetSetup = params.presetSetup || null
+
+  async function runMatchSetupCallback({ deckId, formation, starters, subsRaw, gcCardsEnriched, gcDefs, stadiumDef }) {
     try {
       let homeTeam = buildTeam(starters, formation)
       if (stadiumDef) {
@@ -77,7 +81,7 @@ export async function renderMatchIA(container, ctx) {
           // la valeur attendue en base pour ces paliers IA est 'club'.
           // On ne change QUE la valeur insérée ; `mode`/`game.mode` restent
           // 'vs_ai_club'/'solo' pour les récompenses, l'affichage et le replay.
-          const dbMode = (mode === 'vs_ai_club' || mode === 'solo') ? 'club' : mode
+          const dbMode = (mode === 'vs_ai_club' || mode === 'solo' || mode === 'ranked_ai') ? 'club' : mode
           const { data: match, error: matchErr } = await supabase.from('matches').insert({
             home_id: state.profile.id, away_id:null, mode: dbMode,
             home_deck_id: deckId, status:'in_progress',
@@ -125,13 +129,23 @@ export async function renderMatchIA(container, ctx) {
         }
       }
 
+      // Fallback IA Ranked : les GC ont déjà été choisis en amont (myGC) —
+      // on ne redemande pas, on lance directement avec cette sélection.
+      if (isRankedAI && presetSetup) { launchMatch(presetSetup.gcCardsEnriched || []); return }
       if (!gcCardsEnriched.length) { launchMatch([]); return }
       showGCSelection(container, gcCardsEnriched, launchMatch)
     } catch (e) {
       console.error('[MatchIA] Exception setup:', e)
       showMsg(container, '⚠️', 'Erreur de préparation du match : ' + e.message, 'Retour', () => ctx.navigate('home'))
     }
-  })
+  }
+
+  if (presetSetup) {
+    // Deck déjà choisi (fallback IA Ranked) : on saute entièrement le sélecteur de deck
+    await runMatchSetupCallback(presetSetup)
+  } else {
+    await loadMatchSetup(container, ctx, matchMode, runMatchSetupCallback)
+  }
 }
 
 async function generateAITeam(formation, difficulty) {

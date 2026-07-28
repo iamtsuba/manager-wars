@@ -954,7 +954,7 @@ import{s as v,j as Ei,q as jo,t as Bt,u as Li,F as Ii,o as nt,n as Ht,g as Ct,r 
         </div>
       </div>
     </div>
-  </div>`,t.querySelectorAll("[data-action]").forEach(a=>{a.addEventListener("click",()=>{a.style.transform="scale(.96)",setTimeout(()=>a.style.transform="",180);const s=a.dataset.action;if(s==="match-ai"){Oo(i,e);return}if(s==="match-random"){mt(),i("match",{matchMode:"random"});return}if(s==="match-friend"){i("friends");return}if(s==="mini-league"){i("mini-league");return}if(s==="ranked"){i("ranked");return}o("Bientôt disponible","info")})})}async function Ko(t,e){var p,u;const{state:i,navigate:o}=e,r=oi(),n=Xi(),a=(p=i==null?void 0:i.profile)==null?void 0:p.is_admin,s="2026.07.28-1438";t.innerHTML=`
+  </div>`,t.querySelectorAll("[data-action]").forEach(a=>{a.addEventListener("click",()=>{a.style.transform="scale(.96)",setTimeout(()=>a.style.transform="",180);const s=a.dataset.action;if(s==="match-ai"){Oo(i,e);return}if(s==="match-random"){mt(),i("match",{matchMode:"random"});return}if(s==="match-friend"){i("friends");return}if(s==="mini-league"){i("mini-league");return}if(s==="ranked"){i("ranked");return}o("Bientôt disponible","info")})})}async function Ko(t,e){var p,u;const{state:i,navigate:o}=e,r=oi(),n=Xi(),a=(p=i==null?void 0:i.profile)==null?void 0:p.is_admin,s="2026.07.28-1457";t.innerHTML=`
   <div style="height:100%;overflow-y:auto;background:var(--page-bg)">
 
     <div style="padding:16px;display:flex;flex-direction:column;gap:14px;max-width:520px;margin:0 auto">
@@ -1773,14 +1773,19 @@ import{s as v,j as Ei,q as jo,t as Bt,u as Li,F as Ii,o as nt,n as Ht,g as Ct,r 
       </div>
     </div>
   `,document.body.appendChild(t),t.addEventListener("click",e=>{e.target===t&&t.remove()}),document.getElementById("odds-close").addEventListener("click",()=>t.remove())}function br(){return new Promise(t=>{const e=document.createElement("div");e.style.cssText=`
-      position:fixed;inset:0;background:rgba(0,0,0,0.88);
+      position:fixed;inset:0;background:rgba(0,0,0,0.92);
       display:flex;flex-direction:column;align-items:center;
-      justify-content:center;z-index:9999;gap:12px;color:#fff;
+      justify-content:center;z-index:9999;gap:14px;color:#fff;padding:16px;
     `,e.innerHTML=`
       <div style="font-size:11px;color:rgba(255,255,255,0.4);letter-spacing:2px;text-transform:uppercase">Publicité</div>
-      <div style="font-size:64px;font-weight:900;line-height:1" id="mw-ad-cd">5</div>
-      <div style="font-size:13px;color:rgba(255,255,255,0.5)">Votre booster arrive dans un instant…</div>
-    `,document.body.appendChild(e);let i=5;const o=setInterval(()=>{i--;const r=document.getElementById("mw-ad-cd");r&&(r.textContent=i),i<=0&&(clearInterval(o),e.remove(),t(!0))},1e3)})}async function xr(t,{state:e,navigate:i,toast:o,refreshProfile:r}){var x,b;const{data:n}=await v.from("users").select("*").eq("id",e.user.id).single();n&&(e.profile=n);let a=Array.isArray((x=e.profile)==null?void 0:x.pending_boosters)?[...e.profile.pending_boosters]:[];if(!a.length){await v.from("users").update({onboarding_done:!0}).eq("id",e.user.id),i("home");return}let s=null;try{const p=(await Xo()).find(u=>(u.name||"").toLowerCase().includes("new player"));p&&(s=Qo(p))}catch(g){console.warn('[Onboarding] Config "Booster (new player)" introuvable, fallback taux par défaut',g)}const c=a.length;let d=0;t.innerHTML=`
+      <div style="width:400px;max-width:100%;height:400px;max-height:60vh;background:rgba(255,255,255,0.04);border-radius:10px;overflow:hidden;display:flex;align-items:center;justify-content:center">
+        <ins class="adsbygoogle"
+          style="display:inline-block;width:400px;height:400px"
+          data-ad-client="ca-pub-5827602487507112"
+          data-ad-slot="6638827438"></ins>
+      </div>
+      <div style="font-size:13px;color:rgba(255,255,255,0.5)">Ton booster arrive dans <span id="mw-ad-cd">15</span>s…</div>
+    `,document.body.appendChild(e);try{(window.adsbygoogle=window.adsbygoogle||[]).push({})}catch(r){console.warn("[AdSense]",r)}let i=15;const o=setInterval(()=>{i--;const r=document.getElementById("mw-ad-cd");r&&(r.textContent=i),i<=0&&(clearInterval(o),e.remove(),t(!0))},1e3)})}async function xr(t,{state:e,navigate:i,toast:o,refreshProfile:r}){var x,b;const{data:n}=await v.from("users").select("*").eq("id",e.user.id).single();n&&(e.profile=n);let a=Array.isArray((x=e.profile)==null?void 0:x.pending_boosters)?[...e.profile.pending_boosters]:[];if(!a.length){await v.from("users").update({onboarding_done:!0}).eq("id",e.user.id),i("home");return}let s=null;try{const p=(await Xo()).find(u=>(u.name||"").toLowerCase().includes("new player"));p&&(s=Qo(p))}catch(g){console.warn('[Onboarding] Config "Booster (new player)" introuvable, fallback taux par défaut',g)}const c=a.length;let d=0;t.innerHTML=`
   <div class="page" style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(160deg,#0a3d1e,#063015);padding:24px">
     <div style="max-width:420px;text-align:center;color:#fff">
       <div style="font-size:56px;margin-bottom:10px">🎁</div>
@@ -3100,7 +3105,7 @@ import{s as v,j as Ei,q as jo,t as Bt,u as Li,F as Ii,o as nt,n as Ht,g as Ct,r 
     </div>
   </div>`}yn(vn);const ve={user:null,profile:null,page:"home",params:{}};function Nt(t,e="info",i=3e3){const o=document.getElementById("toast");o&&(o.textContent=t,o.className=`show ${e}`,clearTimeout(o._t),o._t=setTimeout(()=>{o.className=""},i))}function $a(t,e,i=""){document.getElementById("modal-title").textContent=t,document.getElementById("modal-body").innerHTML=e,document.getElementById("modal-footer").innerHTML=i,document.getElementById("modal-overlay").classList.remove("hidden")}function Wi(){document.getElementById("modal-overlay").classList.add("hidden")}async function ti(){if(!ve.user)return;const{data:t}=await v.from("users").select("*").eq("id",ve.user.id).single();t&&(ve.profile=t)}const mn="mw_theme";function oi(){return localStorage.getItem(mn)||"club"}function Mo(t){var e;localStorage.setItem(mn,t),xi(t),(e=ve.profile)!=null&&e.id&&v.from("users").update({theme:t}).eq("id",ve.profile.id).then(()=>{})}function xi(t){var e,i;document.documentElement.setAttribute("data-theme",t),t==="club"&&(document.documentElement.style.setProperty("--club-color1",((e=ve.profile)==null?void 0:e.club_color1)||"#0a0f0a"),document.documentElement.style.setProperty("--club-color2",((i=ve.profile)==null?void 0:i.club_color2)||"#080d08"))}function Gt(t,e={}){ve.page=t,ve.params=e,gn()}async function gn(){var o,r,n,a;const t=document.getElementById("page-content");if(!t)return;document.querySelectorAll(".bottom-nav a").forEach(s=>{s.classList.toggle("active",s.dataset.page===ve.page)});const e=document.getElementById("nav-credits");e&&ve.profile&&(e.textContent=`💰 ${(ve.profile.credits||0).toLocaleString("fr")}`);const i={state:ve,navigate:Gt,toast:Nt,openModal:$a,closeModal:Wi,refreshProfile:ti};switch(t.innerHTML='<div style="padding:40px;text-align:center;color:#aaa">⚽</div>',ve.page){case"home":await qi(t,i);break;case"home2":await qi(t,i);break;case"game":await On(t,i);break;case"settings":await Ko(t,i);break;case"collection":await Xn(t,i);break;case"decks":await Gi(t,i);break;case"boosters":await dr(t,i);break;case"ranked":await _a(t,i);break;case"match":{const s=ve.params&&ve.params.matchMode||"vs_ai_easy";s==="random"?await Vi(t,i,!1):s==="ranked"?await Vi(t,i,!0):s==="friend"?await Wr(t,i,(o=ve.params)==null?void 0:o.friendId,(r=ve.params)==null?void 0:r.friendName):s==="mini_league"||s==="mini-league"?await Ao(t,i,(n=ve.params)==null?void 0:n.mlMatchId,(a=ve.params)==null?void 0:a.leagueId):await $r(t,i);break}case"market":await xa(t,i);break;case"rankings":await wa(t,i);break;case"matches":await ka(t,i);break;case"friends":await Pn(t,i);break;case"mini-league":await Zr(t,i);break;case"match-mini-league":{const s=ve.params||{};await Ao(t,i,s.mlMatchId,s.leagueId);break}default:await qi(t,i)}}function Ea(){var o,r;const t=document.getElementById("app"),e=ve.profile;if(!e)return;const i="/icons/";t.innerHTML=`
     <nav class="top-nav">
-      <div class="logo" id="nav-logo" title="Manager Wars v2026.07.28-1438" style="cursor:pointer">
+      <div class="logo" id="nav-logo" title="Manager Wars v2026.07.28-1457" style="cursor:pointer">
         <img src="${i}logo-withname.png" alt="Manager Wars" style="height:48px;width:auto;display:block">
       </div>
       <div style="display:flex;align-items:center;gap:10px">

@@ -1063,7 +1063,7 @@ async function saveClub(club, isEdit, container, helpers) {
       btn.textContent = '🏟️ Création du stade…'
       const { data: stadDef, error: eSD } = await supabase
         .from('stadium_definitions')
-        .insert({ name: `Stade de ${realName}`, club_id: clubId, country_code: countryCode })
+        .insert({ name: `Stade de ${realName}`, club_id: clubId, country_code: null })
         .select().single()
       if (eSD) console.warn('[Stadium] Erreur def stade:', eSD.message)
       else if (stadDef) {

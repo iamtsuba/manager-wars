@@ -217,13 +217,20 @@
 
 /* ── Setup screen ── */
 .setup-screen {
-  min-height: 100vh; background: var(--green-dark);
+  min-height: 100vh; background-color: var(--page-bg); background-image: var(--page-gradient, none);
   display: flex; align-items: center; justify-content: center; padding: 16px;
 }
 .setup-box {
   background: #fff; border-radius: var(--radius-lg);
   padding: 2rem; width: 100%; max-width: 420px;
   box-shadow: 0 8px 40px rgba(0,0,0,0.3);
+  color: #1a1a1a;
+}
+.setup-box h2, .setup-box h3, .setup-box p, .setup-box span,
+.setup-box div, .setup-box label { color: inherit; }
+.setup-box p, .setup-box .form-group > div { color: var(--gray-600); }
+.setup-box input, .setup-box select, .setup-box textarea {
+  background: #fff; color: #1a1a1a; border-color: var(--gray-200);
 }
 .setup-step { display: none; }
 .setup-step.active { display: block; }

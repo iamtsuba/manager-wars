@@ -152,23 +152,25 @@ async function load(container, helpers) {
       <!-- Récompenses de saison par palier de classement -->
       <div class="card-panel">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;flex-wrap:wrap;gap:8px">
-          <div style="font-weight:700;font-size:14px">🏆 Récompenses de saison ${active ? `— ${active.name}` : ''}</div>
-          <button id="add-reward-tier-btn" class="btn btn-primary btn-sm" ${!active ? 'disabled title="Aucune saison active"' : ''}>+ Ajouter un palier</button>
+          <div style="font-weight:700;font-size:14px">🏆 Récompenses de saison</div>
+          <button id="add-reward-tier-btn" class="btn btn-primary btn-sm" ${!list.length ? 'disabled title="Crée d\'abord une saison"' : ''}>+ Ajouter un palier</button>
         </div>
         <div style="font-size:12px;color:var(--tile-fg-dim);margin-bottom:12px">
-          Paliers de classement (TOP 1, TOP 3, TOP 10...) pour la saison actuellement active. Chaque palier peut donner des crédits,
+          Paliers de classement (TOP 1, TOP 3, TOP 10...) associés à une saison Ranked. Chaque palier peut donner des crédits,
           des cartes joueur spécifiques et/ou des boosters, à partir d'une date d'activation optionnelle.
         </div>
-        ${!active ? '<div style="color:var(--tile-fg-dim);font-size:13px;padding:10px">Active une saison pour configurer ses récompenses.</div>' : `
+        ${!list.length ? '<div style="color:var(--tile-fg-dim);font-size:13px;padding:10px">Crée une saison pour configurer ses récompenses.</div>' : `
         <div class="table-wrap">
           <table>
             <thead>
-              <tr><th>Palier</th><th>Classement</th><th style="text-align:right">Crédits</th><th style="text-align:center">Cartes</th><th style="text-align:center">Boosters</th><th>Activation</th><th>Statut</th><th>Actions</th></tr>
+              <tr><th>Saison</th><th>Palier</th><th>Classement</th><th style="text-align:right">Crédits</th><th style="text-align:center">Cartes</th><th style="text-align:center">Boosters</th><th>Activation</th><th>Statut</th><th>Actions</th></tr>
             </thead>
             <tbody>
-              ${(rewardTiers||[]).filter(t => t.season_id === active.id).map(t => {
+              ${(rewardTiers||[]).map(t => {
                 const isActive = !t.activate_at || new Date(t.activate_at) <= new Date()
+                const seasonName = list.find(s => s.id === t.season_id)?.name || '—'
                 return `<tr>
+                  <td style="font-size:12px">${seasonName}</td>
                   <td><b>${t.label}</b></td>
                   <td>${t.rank_min === t.rank_max ? `#${t.rank_min}` : `#${t.rank_min}–${t.rank_max}`}</td>
                   <td style="text-align:right">${(t.credits||0).toLocaleString('fr')}</td>
@@ -189,7 +191,7 @@ async function load(container, helpers) {
                     <button class="btn btn-danger btn-sm" data-delete-tier="${t.id}">🗑️</button>
                   </td>
                 </tr>`
-              }).join('') || '<tr><td colspan="8" style="text-align:center;color:var(--tile-fg-dim);padding:16px">Aucun palier configuré.</td></tr>'}
+              }).join('') || '<tr><td colspan="9" style="text-align:center;color:var(--tile-fg-dim);padding:16px">Aucun palier configuré.</td></tr>'}
             </tbody>
           </table>
         </div>`}
@@ -250,12 +252,12 @@ async function load(container, helpers) {
 
   // ── Récompenses de saison : ajouter / modifier ────────────
   document.getElementById('add-reward-tier-btn')?.addEventListener('click', () => {
-    openRewardTierModal(null, active, boosterList || [], { toast, openModal, closeModal, reload: () => load(container, helpers) })
+    openRewardTierModal(null, list, active, boosterList || [], { toast, openModal, closeModal, reload: () => load(container, helpers) })
   })
   container.querySelectorAll('[data-edit-tier]').forEach(btn => {
     const tier = (rewardTiers||[]).find(t => t.id === btn.dataset.editTier)
     btn.addEventListener('click', () => {
-      openRewardTierModal(tier, active, boosterList || [], { toast, openModal, closeModal, reload: () => load(container, helpers) })
+      openRewardTierModal(tier, list, active, boosterList || [], { toast, openModal, closeModal, reload: () => load(container, helpers) })
     })
   })
 
@@ -286,8 +288,9 @@ async function load(container, helpers) {
 }
 
 // ── Modal création / modification ───────────────────────────
-function openRewardTierModal(tier, season, boosterList, { toast, openModal, closeModal, reload }) {
+function openRewardTierModal(tier, seasons, defaultSeason, boosterList, { toast, openModal, closeModal, reload }) {
   const isEdit = !!tier
+  const selectedSeasonId = tier?.season_id ?? defaultSeason?.id ?? seasons[0]?.id ?? null
   let selectedPlayers = [] // { id, label }
 
   const toLocalDatetime = (iso) => {
@@ -298,6 +301,12 @@ function openRewardTierModal(tier, season, boosterList, { toast, openModal, clos
 
   const bodyHTML = `
     <div style="display:flex;flex-direction:column;gap:12px">
+      <div>
+        <label>SAISON RANKED</label>
+        <select id="rt-season">
+          ${seasons.map(s => `<option value="${s.id}" ${s.id === selectedSeasonId ? 'selected' : ''}>${s.name}${s.is_active ? ' (active)' : ''}</option>`).join('')}
+        </select>
+      </div>
       <div>
         <label>LIBELLÉ</label>
         <input id="rt-label" value="${tier?.label || ''}" placeholder="Ex: TOP 1, TOP 10...">
@@ -399,6 +408,7 @@ function openRewardTierModal(tier, season, boosterList, { toast, openModal, clos
 
   document.getElementById('rt-save')?.addEventListener('click', async () => {
     const errEl = document.getElementById('rt-error')
+    const seasonId = parseInt(document.getElementById('rt-season').value)
     const label = document.getElementById('rt-label').value.trim()
     const rankMin = parseInt(document.getElementById('rt-rank-min').value) || 1
     const rankMax = parseInt(document.getElementById('rt-rank-max').value) || 1
@@ -409,9 +419,10 @@ function openRewardTierModal(tier, season, boosterList, { toast, openModal, clos
 
     if (!label) { errEl.textContent = 'Le libellé est obligatoire.'; return }
     if (rankMin > rankMax) { errEl.textContent = 'Le classement min doit être ≤ au max.'; return }
+    if (!seasonId) { errEl.textContent = 'Choisis une saison.'; return }
 
     const payload = {
-      season_id: season.id, label, rank_min: rankMin, rank_max: rankMax, credits,
+      season_id: seasonId, label, rank_min: rankMin, rank_max: rankMax, credits,
       booster_config_ids: boosterIds, player_ids: selectedPlayers.map(p => p.id),
       activate_at: activateAt,
     }

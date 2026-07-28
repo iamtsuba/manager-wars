@@ -687,6 +687,16 @@ export async function renderHome2(container, { state, navigate, toast }) {
             </div>
           </div>
 
+          <!-- Publicité Google AdSense -->
+          <div style="margin-top:18px;min-height:100px;border-radius:14px;overflow:hidden;background:rgba(255,255,255,0.03)">
+            <ins class="adsbygoogle"
+              style="display:block"
+              data-ad-client="ca-pub-5827602487507112"
+              data-ad-slot="REMPLACE_PAR_TON_AD_SLOT_ID"
+              data-ad-format="auto"
+              data-full-width-responsive="true"></ins>
+          </div>
+
           ${promoBoosters.length ? `
           <div class="promo-banner" id="promo-banner">
             <div id="promo-slide-content" style="display:flex;align-items:center;gap:14px;flex:1;min-width:0">
@@ -764,6 +774,9 @@ export async function renderHome2(container, { state, navigate, toast }) {
   document.getElementById('promo-cta-btn')?.addEventListener('click', () => navigate('boosters'))
 
   loadFriendRequestsBanner(state, toast)
+
+  // Déclenche le rendu de la pub AdSense (obligatoire après insertion dans le DOM)
+  try { (window.adsbygoogle = window.adsbygoogle || []).push({}) } catch (e) { console.warn('[AdSense]', e) }
   loadMatchInviteBanner(state, toast, navigate)
   loadOngoingMatchBanner(state, toast, navigate)
   checkUnclaimedMiniLeaguePrizes(state, toast)

@@ -692,7 +692,7 @@ export async function renderHome2(container, { state, navigate, toast }) {
             <ins class="adsbygoogle"
               style="display:block"
               data-ad-client="ca-pub-5827602487507112"
-              data-ad-slot="REMPLACE_PAR_TON_AD_SLOT_ID"
+              data-ad-slot="2344359207"
               data-ad-format="auto"
               data-full-width-responsive="true"></ins>
           </div>

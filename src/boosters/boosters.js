@@ -1157,18 +1157,26 @@ function showAd() {
   return new Promise(resolve => {
     const overlay = document.createElement('div')
     overlay.style.cssText = `
-      position:fixed;inset:0;background:rgba(0,0,0,0.88);
+      position:fixed;inset:0;background:rgba(0,0,0,0.92);
       display:flex;flex-direction:column;align-items:center;
-      justify-content:center;z-index:9999;gap:12px;color:#fff;
+      justify-content:center;z-index:9999;gap:14px;color:#fff;padding:16px;
     `
     overlay.innerHTML = `
       <div style="font-size:11px;color:rgba(255,255,255,0.4);letter-spacing:2px;text-transform:uppercase">Publicité</div>
-      <div style="font-size:64px;font-weight:900;line-height:1" id="mw-ad-cd">5</div>
-      <div style="font-size:13px;color:rgba(255,255,255,0.5)">Votre booster arrive dans un instant…</div>
+      <div style="width:400px;max-width:100%;height:400px;max-height:60vh;background:rgba(255,255,255,0.04);border-radius:10px;overflow:hidden;display:flex;align-items:center;justify-content:center">
+        <ins class="adsbygoogle"
+          style="display:inline-block;width:400px;height:400px"
+          data-ad-client="ca-pub-5827602487507112"
+          data-ad-slot="6638827438"></ins>
+      </div>
+      <div style="font-size:13px;color:rgba(255,255,255,0.5)">Ton booster arrive dans <span id="mw-ad-cd">15</span>s…</div>
     `
     document.body.appendChild(overlay)
 
-    let remaining = 5
+    // Déclenche le rendu de la pub AdSense
+    try { (window.adsbygoogle = window.adsbygoogle || []).push({}) } catch (e) { console.warn('[AdSense]', e) }
+
+    let remaining = 15
     const interval = setInterval(() => {
       remaining--
       const cd = document.getElementById('mw-ad-cd')

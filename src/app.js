@@ -383,7 +383,13 @@ async function init() {
   // Onboarding : si des boosters de démarrage sont en attente, les faire ouvrir d'abord
   const pendingBoosters = Array.isArray(state.profile.pending_boosters) ? state.profile.pending_boosters : []
   if (!state.profile.onboarding_done && pendingBoosters.length > 0) {
-    renderStarterOnboarding(document.getElementById('app'), { state, navigate: () => launchApp(), toast, refreshProfile })
+    renderStarterOnboarding(document.getElementById('app'), {
+      state, toast, refreshProfile,
+      navigate: () => {
+        launchApp()
+        setTimeout(() => checkAndShowTutorial(state.profile, navigate, toast), 800)
+      },
+    })
     return
   }
 

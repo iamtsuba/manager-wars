@@ -27,9 +27,12 @@ async function load(container, helpers) {
 
   container.innerHTML = `
     <div style="padding:20px;max-width:1100px;margin:0 auto">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;gap:10px;flex-wrap:wrap">
         <h2 style="font-size:20px;font-weight:900;color:var(--tile-fg-on-page)">🏟️ Stades</h2>
-        <button id="st-add-btn" class="btn btn-primary">+ Créer un stade</button>
+        <div style="display:flex;gap:8px">
+          <button id="st-gen-countries-btn" class="btn btn-ghost">🌍 Créer les stades Pays manquants</button>
+          <button id="st-add-btn" class="btn btn-primary">+ Créer un stade</button>
+        </div>
       </div>
 
       <div style="display:flex;flex-wrap:wrap;gap:14px" id="st-list">
@@ -38,6 +41,30 @@ async function load(container, helpers) {
     </div>`
 
   document.getElementById('st-add-btn')?.addEventListener('click', () => openStadiumModal(null, clubs, container, helpers))
+
+  document.getElementById('st-gen-countries-btn')?.addEventListener('click', async () => {
+    const { toast } = helpers
+    // Pays "sans club" déjà couverts par un stade Pays (club_id null + ce country_code)
+    const existingCountryStads = new Set(
+      (stads || []).filter(s => !s.club_id && s.country_code).map(s => s.country_code)
+    )
+    const missing = COUNTRIES.filter(([code]) => !existingCountryStads.has(code))
+    if (!missing.length) { toast('Tous les pays ont déjà un stade.', 'info'); return }
+    if (!confirm(`Créer ${missing.length} stade(s) "Pays" manquant(s) ?`)) return
+
+    const rows = missing.map(([code, name]) => ({
+      name: `Stade ${name}`, club_id: null, country_code: code,
+    }))
+    const { data: created, error } = await supabase.from('stadium_definitions').insert(rows).select()
+    if (error) { toast('Erreur : ' + error.message, 'error'); return }
+
+    // Créer la carte associée pour chaque nouveau stade
+    if (created?.length) {
+      await supabase.from('cards').insert(created.map(s => ({ card_type: 'stadium', stadium_id: s.id })))
+    }
+    toast(`${created?.length || 0} stade(s) Pays créé(s) ✅`, 'success')
+    load(container, helpers)
+  })
 
   container.querySelectorAll('[data-edit-stadium]').forEach(el => {
     el.addEventListener('click', () => {

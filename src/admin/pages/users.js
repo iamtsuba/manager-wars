@@ -2,18 +2,21 @@ import { supabase } from '../../lib/supabase.js'
 import { getTier } from '../../ranked/glicko2.js'
 
 export async function pageUsers(container, { toast }) {
-  const [{ data, error }, { data: soloProgress }] = await Promise.all([
+  const [{ data, error }, { data: soloProgress }, { data: emails }] = await Promise.all([
     supabase
       .from('users')
       .select('id,pseudo,club_name,credits,level,wins,draws,losses,trophies_top1,trophies_top2,trophies_top3,is_admin,created_at,mmr,mmr_deviation,rank_tier,placement_matches,ranked_wins,ranked_losses,ranked_draws')
       .order('created_at', { ascending: false }),
     supabase.from('user_solo_progress').select('user_id, unlocked_level'),
+    supabase.rpc('admin_get_user_emails'),
   ])
 
   if (error) { container.innerHTML = `<p style="color:red">${error.message}</p>`; return }
 
   const soloLevelMap = {}
   ;(soloProgress || []).forEach(p => { soloLevelMap[p.user_id] = p.unlocked_level })
+  const emailMap = {}
+  ;(emails || []).forEach(e => { emailMap[e.id] = e.email })
 
   const users = data || []
 
@@ -70,6 +73,7 @@ export async function pageUsers(container, { toast }) {
           <td>
             <div style="font-weight:700">${u.pseudo}</div>
             <div style="font-size:11px;color:var(--gray-600)">${u.club_name || '—'}</div>
+            <div style="font-size:10.5px;color:var(--gray-600)">${emailMap[u.id] || '—'}</div>
           </td>
           <td style="font-size:12px">
             <div style="display:flex;align-items:center;gap:6px">

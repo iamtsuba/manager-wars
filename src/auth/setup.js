@@ -166,7 +166,7 @@ export function renderSetup(container, { state, navigate, toast, refreshProfile 
         club_name:   club,
         club_color1: clubColor1,
         club_color2: clubColor2,
-        credits:     10000,
+        credits:     15000,
       })
       if (profileErr) throw profileErr
 

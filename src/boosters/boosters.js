@@ -1245,7 +1245,7 @@ export async function renderStarterOnboarding(container, { state, navigate, toas
       <p style="font-size:13px;color:rgba(255,255,255,0.55);margin-bottom:24px">
         Ouvre-les un par un pour découvrir tes cartes !
       </p>
-      <button class="btn btn-primary" id="onboard-start" style="width:100%;font-size:16px;padding:14px">
+      <button class="btn btn-primary" id="onboard-start" style="width:100%;font-size:16px;padding:14px;text-align:center;display:flex;align-items:center;justify-content:center">
         Ouvrir mon 1er booster 🎉
       </button>
     </div>

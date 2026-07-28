@@ -18,11 +18,13 @@ export async function renderRankedSeasons(container, { toast, openModal, closeMo
 async function load(container, helpers) {
   const { toast, openModal, closeModal } = helpers
 
-  const [{ data: seasons, error }, { data: stats }] = await Promise.all([
+  const [{ data: seasons, error }, { data: stats }, { data: rewardTiers }, { data: boosterList }] = await Promise.all([
     supabase.from('ranked_seasons').select('*').order('start_at', { ascending: false }),
     supabase.from('users')
       .select('mmr,rank_tier,placement_matches')
       .gte('placement_matches', 1),
+    supabase.from('season_reward_tiers').select('*').order('rank_min'),
+    supabase.from('booster_configs').select('id,name').order('sort_order'),
   ])
 
   if (error) { container.innerHTML = `<p style="color:red">${error.message}</p>`; return }
@@ -146,6 +148,52 @@ async function load(container, helpers) {
           </table>
         </div>
       </div>
+
+      <!-- Récompenses de saison par palier de classement -->
+      <div class="card-panel">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;flex-wrap:wrap;gap:8px">
+          <div style="font-weight:700;font-size:14px">🏆 Récompenses de saison ${active ? `— ${active.name}` : ''}</div>
+          <button id="add-reward-tier-btn" class="btn btn-primary btn-sm" ${!active ? 'disabled title="Aucune saison active"' : ''}>+ Ajouter un palier</button>
+        </div>
+        <div style="font-size:12px;color:var(--tile-fg-dim);margin-bottom:12px">
+          Paliers de classement (TOP 1, TOP 3, TOP 10...) pour la saison actuellement active. Chaque palier peut donner des crédits,
+          des cartes joueur spécifiques et/ou des boosters, à partir d'une date d'activation optionnelle.
+        </div>
+        ${!active ? '<div style="color:var(--tile-fg-dim);font-size:13px;padding:10px">Active une saison pour configurer ses récompenses.</div>' : `
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Palier</th><th>Classement</th><th style="text-align:right">Crédits</th><th style="text-align:center">Cartes</th><th style="text-align:center">Boosters</th><th>Activation</th><th>Statut</th><th>Actions</th></tr>
+            </thead>
+            <tbody>
+              ${(rewardTiers||[]).filter(t => t.season_id === active.id).map(t => {
+                const isActive = !t.activate_at || new Date(t.activate_at) <= new Date()
+                return `<tr>
+                  <td><b>${t.label}</b></td>
+                  <td>${t.rank_min === t.rank_max ? `#${t.rank_min}` : `#${t.rank_min}–${t.rank_max}`}</td>
+                  <td style="text-align:right">${(t.credits||0).toLocaleString('fr')}</td>
+                  <td style="text-align:center">${(t.player_ids||[]).length}</td>
+                  <td style="text-align:center">${(t.booster_config_ids||[]).length}</td>
+                  <td style="font-size:12px">${t.activate_at ? fmt(t.activate_at) : 'Immédiat'}</td>
+                  <td>
+                    ${t.distributed_at
+                      ? `<span style="background:#555;color:#ccc;padding:2px 8px;border-radius:10px;font-size:11px">Distribué le ${fmt(t.distributed_at)}</span>`
+                      : isActive
+                        ? '<span style="background:#1A6B3C;color:#fff;padding:2px 8px;border-radius:10px;font-size:11px">● Prêt</span>'
+                        : '<span style="background:#e67e22;color:#fff;padding:2px 8px;border-radius:10px;font-size:11px">⏳ Programmé</span>'
+                    }
+                  </td>
+                  <td style="white-space:nowrap">
+                    <button class="btn btn-ghost btn-sm" data-edit-tier="${t.id}">✏️</button>
+                    <button class="btn btn-primary btn-sm" data-distribute-tier="${t.id}" ${!isActive?'disabled':''}>🎁 Distribuer</button>
+                    <button class="btn btn-danger btn-sm" data-delete-tier="${t.id}">🗑️</button>
+                  </td>
+                </tr>`
+              }).join('') || '<tr><td colspan="8" style="text-align:center;color:var(--tile-fg-dim);padding:16px">Aucun palier configuré.</td></tr>'}
+            </tbody>
+          </table>
+        </div>`}
+      </div>
     </div>`
 
   // ── Créer une saison ─────────────────────────────────────
@@ -199,9 +247,185 @@ async function load(container, helpers) {
       load(container, helpers)
     })
   })
+
+  // ── Récompenses de saison : ajouter / modifier ────────────
+  document.getElementById('add-reward-tier-btn')?.addEventListener('click', () => {
+    openRewardTierModal(null, active, boosterList || [], { toast, openModal, closeModal, reload: () => load(container, helpers) })
+  })
+  container.querySelectorAll('[data-edit-tier]').forEach(btn => {
+    const tier = (rewardTiers||[]).find(t => t.id === btn.dataset.editTier)
+    btn.addEventListener('click', () => {
+      openRewardTierModal(tier, active, boosterList || [], { toast, openModal, closeModal, reload: () => load(container, helpers) })
+    })
+  })
+
+  // ── Récompenses de saison : distribuer ────────────────────
+  container.querySelectorAll('[data-distribute-tier]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const tier = (rewardTiers||[]).find(t => t.id === btn.dataset.distributeTier)
+      if (!confirm(`Distribuer les récompenses du palier "${tier?.label}" à tous les joueurs concernés ?`)) return
+      btn.disabled = true; btn.textContent = '⏳...'
+      const { data, error } = await supabase.rpc('admin_distribute_season_reward', { p_tier_id: btn.dataset.distributeTier })
+      if (error) { toast(error.message, 'error'); btn.disabled = false; btn.textContent = '🎁 Distribuer'; return }
+      if (!data?.success) { toast(data?.error || 'Échec de la distribution', 'error'); btn.disabled = false; btn.textContent = '🎁 Distribuer'; return }
+      toast(`Récompenses distribuées à ${data.rewarded} joueur(s) ✅`, 'success')
+      load(container, helpers)
+    })
+  })
+
+  // ── Récompenses de saison : supprimer ──────────────────────
+  container.querySelectorAll('[data-delete-tier]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      if (!confirm('Supprimer ce palier de récompense ?')) return
+      const { error } = await supabase.from('season_reward_tiers').delete().eq('id', btn.dataset.deleteTier)
+      if (error) { toast(error.message, 'error'); return }
+      toast('Palier supprimé', 'success')
+      load(container, helpers)
+    })
+  })
 }
 
 // ── Modal création / modification ───────────────────────────
+function openRewardTierModal(tier, season, boosterList, { toast, openModal, closeModal, reload }) {
+  const isEdit = !!tier
+  let selectedPlayers = [] // { id, label }
+
+  const toLocalDatetime = (iso) => {
+    if (!iso) return ''
+    const d = new Date(iso)
+    return new Date(d.getTime() - d.getTimezoneOffset()*60000).toISOString().slice(0,16)
+  }
+
+  const bodyHTML = `
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div>
+        <label>LIBELLÉ</label>
+        <input id="rt-label" value="${tier?.label || ''}" placeholder="Ex: TOP 1, TOP 10...">
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div>
+          <label>CLASSEMENT MIN</label>
+          <input id="rt-rank-min" type="number" min="1" value="${tier?.rank_min ?? 1}">
+        </div>
+        <div>
+          <label>CLASSEMENT MAX</label>
+          <input id="rt-rank-max" type="number" min="1" value="${tier?.rank_max ?? 1}">
+        </div>
+      </div>
+      <div>
+        <label>CRÉDITS OFFERTS</label>
+        <input id="rt-credits" type="number" min="0" value="${tier?.credits ?? 0}">
+      </div>
+      <div>
+        <label>DATE D'ACTIVATION (optionnel — vide = immédiat)</label>
+        <input id="rt-activate-at" type="datetime-local" value="${toLocalDatetime(tier?.activate_at)}">
+      </div>
+      <div>
+        <label>BOOSTERS OFFERTS</label>
+        <div style="display:flex;flex-direction:column;gap:6px;max-height:140px;overflow-y:auto;background:#f7f7f7;border-radius:8px;padding:8px">
+          ${boosterList.length ? boosterList.map(b => `
+            <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;color:#333">
+              <input type="checkbox" class="rt-booster-cb" value="${b.id}" ${(tier?.booster_config_ids||[]).includes(b.id)?'checked':''}>
+              ${b.name}
+            </label>`).join('') : '<div style="color:#999;font-size:12px">Aucun booster configuré.</div>'}
+        </div>
+      </div>
+      <div>
+        <label>CARTES JOUEUR SPÉCIFIQUES GARANTIES</label>
+        <div style="display:flex;gap:8px;margin-bottom:8px">
+          <input id="rt-player-search" placeholder="Rechercher un joueur par nom..." style="flex:1">
+          <button id="rt-player-search-btn" class="btn btn-ghost btn-sm" style="white-space:nowrap">🔍 Chercher</button>
+        </div>
+        <div id="rt-player-results" style="display:none;flex-direction:column;gap:4px;max-height:120px;overflow-y:auto;background:#f7f7f7;border-radius:8px;padding:6px;margin-bottom:8px"></div>
+        <div id="rt-player-chips" style="display:flex;flex-wrap:wrap;gap:6px"></div>
+      </div>
+      <div id="rt-error" style="font-size:12px;color:#ff6b6b;min-height:14px"></div>
+    </div>
+  `
+  const footerHTML = `
+    <button id="rt-cancel" class="btn btn-ghost">Annuler</button>
+    <button id="rt-save" class="btn btn-primary">💾 Enregistrer</button>
+  `
+  openModal(isEdit ? `Modifier : ${tier.label}` : 'Nouveau palier de récompense', bodyHTML, footerHTML)
+
+  function renderChips() {
+    const el = document.getElementById('rt-player-chips')
+    if (!el) return
+    el.innerHTML = selectedPlayers.map(p => `
+      <span style="display:inline-flex;align-items:center;gap:6px;background:#1A6B3C;color:#fff;font-size:12px;font-weight:700;padding:4px 8px;border-radius:14px">
+        ${p.label}
+        <button data-remove-player="${p.id}" style="background:none;border:none;color:#fff;cursor:pointer;font-size:12px;padding:0">✕</button>
+      </span>`).join('')
+    el.querySelectorAll('[data-remove-player]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        selectedPlayers = selectedPlayers.filter(p => p.id !== btn.dataset.removePlayer)
+        renderChips()
+      })
+    })
+  }
+
+  // Pré-remplit les cartes déjà sélectionnées en cas d'édition
+  if (tier?.player_ids?.length) {
+    supabase.from('players').select('id,firstname,surname_real').in('id', tier.player_ids).then(({ data }) => {
+      selectedPlayers = (data||[]).map(p => ({ id: p.id, label: `${p.firstname} ${p.surname_real}` }))
+      renderChips()
+    })
+  }
+
+  document.getElementById('rt-player-search-btn')?.addEventListener('click', async () => {
+    const q = document.getElementById('rt-player-search').value.trim()
+    if (q.length < 2) return
+    const { data } = await supabase.from('players').select('id,firstname,surname_real,rarity')
+      .or(`firstname.ilike.%${q}%,surname_real.ilike.%${q}%`).limit(10)
+    const resultsEl = document.getElementById('rt-player-results')
+    if (!data?.length) { resultsEl.style.display = 'flex'; resultsEl.innerHTML = '<div style="color:#999;font-size:12px;padding:4px">Aucun résultat.</div>'; return }
+    resultsEl.style.display = 'flex'
+    resultsEl.innerHTML = data.map(p => `
+      <div data-add-player="${p.id}" data-label="${p.firstname} ${p.surname_real}" style="cursor:pointer;padding:6px 8px;border-radius:6px;font-size:13px;color:#333" onmouseover="this.style.background='#eee'" onmouseout="this.style.background=''">
+        ${p.firstname} ${p.surname_real} <span style="color:#999;font-size:11px">(${p.rarity})</span>
+      </div>`).join('')
+    resultsEl.querySelectorAll('[data-add-player]').forEach(el => {
+      el.addEventListener('click', () => {
+        const id = el.dataset.addPlayer
+        if (!selectedPlayers.some(p => p.id === id)) selectedPlayers.push({ id, label: el.dataset.label })
+        renderChips()
+        resultsEl.style.display = 'none'
+        document.getElementById('rt-player-search').value = ''
+      })
+    })
+  })
+
+  document.getElementById('rt-cancel')?.addEventListener('click', () => closeModal())
+
+  document.getElementById('rt-save')?.addEventListener('click', async () => {
+    const errEl = document.getElementById('rt-error')
+    const label = document.getElementById('rt-label').value.trim()
+    const rankMin = parseInt(document.getElementById('rt-rank-min').value) || 1
+    const rankMax = parseInt(document.getElementById('rt-rank-max').value) || 1
+    const credits = parseInt(document.getElementById('rt-credits').value) || 0
+    const activateAtRaw = document.getElementById('rt-activate-at').value
+    const activateAt = activateAtRaw ? new Date(activateAtRaw).toISOString() : null
+    const boosterIds = [...document.querySelectorAll('.rt-booster-cb:checked')].map(cb => cb.value)
+
+    if (!label) { errEl.textContent = 'Le libellé est obligatoire.'; return }
+    if (rankMin > rankMax) { errEl.textContent = 'Le classement min doit être ≤ au max.'; return }
+
+    const payload = {
+      season_id: season.id, label, rank_min: rankMin, rank_max: rankMax, credits,
+      booster_config_ids: boosterIds, player_ids: selectedPlayers.map(p => p.id),
+      activate_at: activateAt,
+    }
+
+    const { error } = isEdit
+      ? await supabase.from('season_reward_tiers').update(payload).eq('id', tier.id)
+      : await supabase.from('season_reward_tiers').insert(payload)
+    if (error) { errEl.textContent = error.message; return }
+
+    toast(isEdit ? 'Palier modifié ✅' : 'Palier créé ✅', 'success')
+    closeModal()
+    reload()
+  })
+}
 function openSeasonModal(season, { toast, openModal, closeModal, reload }) {
   const isEdit = !!season
 

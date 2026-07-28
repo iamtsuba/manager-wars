@@ -158,6 +158,10 @@ input, select, textarea {
   font-family: var(--font); background: var(--input-bg, #fff); color: var(--input-fg, #1a1a1a);
   transition: border-color .15s;
 }
+input[type="checkbox"], input[type="radio"] {
+  width: 16px; height: 16px; padding: 0; border-radius: 4px; flex-shrink: 0;
+  accent-color: var(--green); cursor: pointer;
+}
 input::placeholder, textarea::placeholder { color: var(--tile-fg-dim); opacity: .8; }
 input:focus, select:focus, textarea:focus {
   outline: none; border-color: var(--green);

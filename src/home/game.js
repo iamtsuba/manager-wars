@@ -7,7 +7,7 @@ export async function renderGame(container, { state, navigate, toast }) {
   if (!p) return
 
   const ICON = import.meta.env.BASE_URL + 'icons/'
-  ensureV2Chrome(navigate, p, 'game', ICON)
+  ensureV2Chrome(navigate, p, 'game', ICON, toast)
 
   container.innerHTML = `
   <style>

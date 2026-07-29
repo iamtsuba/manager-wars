@@ -290,7 +290,7 @@ export function openCreditsAdOffer(profile, toast) {
     btn.addEventListener('click', () => {
       overlay.remove()
       startCreditsAdFlow(
-        parseInt(btn.dataset.ads), parseInt(btn.dataset.seconds), parseInt(btn.dataset.credits),
+        parseInt(btn.dataset.ads), 5, parseInt(btn.dataset.credits),
         profile, toast
       )
     })

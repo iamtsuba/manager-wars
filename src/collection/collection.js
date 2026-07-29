@@ -127,6 +127,7 @@ export async function renderCollection(container, ctx) {
   let activeFilter = 'Tous'
   let searchQ      = ''
   let showAll      = false
+  let dupesOnly    = false
 
   // Trier les cartes joueurs : GK → DEF → MIL → ATT
   function sortedCards() {
@@ -250,8 +251,15 @@ export async function renderCollection(container, ctx) {
                 color:${f===activeFilter?'#fff':'#555'}">
               ${f}
             </button>`).join('')}
+          <button id="dupes-only-btn" title="Voir les cartes en plusieurs exemplaires"
+            style="flex-shrink:0;margin-left:auto;padding:5px 10px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;
+              border:1.5px solid ${dupesOnly?'var(--yellow)':'var(--tile-border)'};
+              background:${dupesOnly?'var(--yellow)':'#fff'};
+              color:${dupesOnly?'#111':'#555'}">
+            🗂️×2
+          </button>
           <button id="show-all-btn"
-            style="flex-shrink:0;margin-left:auto;padding:4px 12px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;
+            style="flex-shrink:0;padding:4px 12px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;
               border:1.5px solid ${showAll?'var(--yellow)':'var(--tile-border)'};
               background:${showAll?'var(--yellow)':'#fff'};
               color:${showAll?'#111':'#555'}; font-size:18px; padding:5px 10px">
@@ -269,6 +277,11 @@ export async function renderCollection(container, ctx) {
           renderFilters()
           renderCards()
         })
+      })
+      document.getElementById('dupes-only-btn').addEventListener('click', () => {
+        dupesOnly = !dupesOnly
+        renderFilters()
+        renderCards()
       })
       document.getElementById('show-all-btn').addEventListener('click', () => {
         showAll = !showAll
@@ -514,7 +527,14 @@ export async function renderCollection(container, ctx) {
         if (!byPlayer[pid]) { byPlayer[pid] = [] }
         byPlayer[pid].push(card)
       })
-      const deduped = Object.values(byPlayer).map(cards => bestCard(cards))
+      const deduped = Object.values(byPlayer)
+        .map(cards => bestCard(cards))
+        .filter(card => !dupesOnly || (countByPlayer[card.player.id] || 1) > 1)
+
+      if (dupesOnly && !deduped.length) {
+        grid.innerHTML = '<div style="width:100%;text-align:center;padding:40px;color:var(--tile-fg-dim)">Aucune carte en plusieurs exemplaires.</div>'
+        return
+      }
 
       renderBigAndStrip(
         deduped,

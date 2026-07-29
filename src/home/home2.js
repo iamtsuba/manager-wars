@@ -10,10 +10,10 @@ const APP_VERSION = (typeof __BUILD_TIME__ !== 'undefined' && __BUILD_TIME__)
 // ── Helpers ──────────────────────────────────────────────────────────────
 
 const V2_TABS = [
-  { key: 'home2',      route: 'home2',      label: 'HOME',     icon: 'nav-home.png' },
-  { key: 'cards',      route: 'collection', label: 'CARDS',    icon: 'nav-collection.png' },
-  { key: 'decks',      route: 'decks',      label: 'DECKS',    icon: 'nav-decks.png' },
-  { key: 'boosters',   route: 'boosters',   label: 'BOOSTERS', icon: 'nav-boosters.png' },
+  { key: 'home2',      route: 'home2',      label: 'ACCUEIL',  icon: 'nav-home.png' },
+  { key: 'cards',      route: 'collection', label: 'CARTES',   icon: 'nav-collection.png' },
+  { key: 'decks',      route: 'decks',      label: 'EQUIPES',  icon: 'nav-decks.png' },
+  { key: 'boosters',   route: 'boosters',   label: 'BOUTIQUE', icon: 'nav-boosters.png' },
   { key: 'market',     route: 'market',     label: 'MERCATO',  icon: 'nav-market.png' },
 ]
 

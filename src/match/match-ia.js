@@ -205,13 +205,13 @@ async function generateAITeam(formation, difficulty) {
   const subPool = players.filter(p => !used.has(p.id))
   const subs = subPool.slice(0, 5).map((p, i) => makePlayer(p, p.job, 100+i))
 
-  // GC aléatoires IA (3 parmi les types disponibles)
-  const GC_TYPES = Object.keys(GC_DEFS)
-  const shuffled = GC_TYPES.sort(() => Math.random() - 0.5)
-  const gcCards = shuffled.slice(0, 3).map((type, i) => ({
-    id: 'ai-gc-'+i, gc_type: type,
-    name: GC_DEFS[type]?.name || type,
-    icon: GC_DEFS[type]?.icon || '⚡',
+  // GC réelles IA (3 parmi les cartes actives configurées en admin)
+  const { data: realGcDefs } = await supabase.from('gc_definitions').select('*').eq('is_active', true)
+  const shuffledDefs = [...(realGcDefs || [])].sort(() => Math.random() - 0.5)
+  const gcCards = shuffledDefs.slice(0, 3).map((def, i) => ({
+    id: 'ai-gc-'+i, gc_type: def.name,
+    name: def.name, icon: '⚡',
+    effect_type: def.effect_type, effect_params: def.effect_params || {},
   }))
 
   // Stade IA : choisir un club présent dans l'équipe IA, donner +10 à ses joueurs
@@ -355,13 +355,13 @@ async function generateAITeamForLevel(formation, levelConfig) {
   }
   const subs = subPool.slice(0, 5).map((p, i) => makePlayer(p, p.job, 100+i))
 
-  // GC aléatoires (3 parmi les types disponibles)
-  const GC_TYPES = Object.keys(GC_DEFS)
-  const shuffledGC = GC_TYPES.sort(() => Math.random() - 0.5)
-  const gcCards = shuffledGC.slice(0, 3).map((type, i) => ({
-    id: 'ai-gc-'+i, gc_type: type,
-    name: GC_DEFS[type]?.name || type,
-    icon: GC_DEFS[type]?.icon || '⚡',
+  // GC réelles (3 parmi les cartes actives configurées en admin)
+  const { data: realGcDefs2 } = await supabase.from('gc_definitions').select('*').eq('is_active', true)
+  const shuffledGC = [...(realGcDefs2 || [])].sort(() => Math.random() - 0.5)
+  const gcCards = shuffledGC.slice(0, 3).map((def, i) => ({
+    id: 'ai-gc-'+i, gc_type: def.name,
+    name: def.name, icon: '⚡',
+    effect_type: def.effect_type, effect_params: def.effect_params || {},
   }))
 
   // Stade : celui du "club coeur", pour que ~nbStade joueurs en profitent
@@ -1229,33 +1229,73 @@ function aiMaySub(game) {
   game.log.push({ text: `🔄 IA : ${sameLine.firstname} ${sameLine.name} remplace ${out.firstname} ${out.name}`, type:'info' })
 }
 
+// ── Applique automatiquement l'effet d'une carte GC pour l'IA (équivalent
+// non-interactif de GC_ENGINE : l'IA choisit ses cibles elle-même) ─────────
+function aiApplyGCEffect(def, game) {
+  const params = def.effect_params || {}
+  const value  = params.value  || 1
+  const count  = params.count  || 1
+  const roles  = params.roles  || []
+  const target = params.target || 'home' // 'home' = cible le joueur humain, 'ai' = cible sa propre équipe
+
+  switch (def.effect_type) {
+    case 'BOOST_STAT': {
+      const pool = Object.values(game.aiTeam).flat().filter(p => !p.used && (!roles.length || roles.includes(p._line)))
+      const picks = pool.sort(() => Math.random()-0.5).slice(0, count)
+      picks.forEach(p => { p.boost = (p.boost||0) + value })
+      if (picks.length) game.log.push({ text: `⚡ IA : +${value} sur ${picks.length} joueur(s)`, type:'gc' })
+      break
+    }
+    case 'DEBUFF_STAT': {
+      const team = target === 'ai' ? game.aiTeam : game.homeTeam
+      const pool = Object.values(team).flat().filter(p => !p.used && (!roles.length || roles.includes(p._line)))
+      const picks = pool.sort(() => Math.random()-0.5).slice(0, count)
+      picks.forEach(p => { p.boost = (p.boost||0) - value })
+      if (picks.length) game.log.push({ text: `🎯 IA : -${value} sur ${picks.length} joueur(s)${target!=='ai'?' (vous)':''}`, type:'gc' })
+      break
+    }
+    case 'GRAY_PLAYER': {
+      const team = target === 'ai' ? game.aiTeam : game.homeTeam
+      const pool = Object.values(team).flat().filter(p => !p.used && (!roles.length || roles.includes(p._line)))
+      const picks = pool.sort(() => Math.random()-0.5).slice(0, count)
+      picks.forEach(p => { p.used = true })
+      if (picks.length) game.log.push({ text: `❌ IA : ${picks.length} joueur(s)${target!=='ai'?' (vous)':''} exclu(s)`, type:'gc' })
+      break
+    }
+    case 'REVIVE_PLAYER': {
+      const pool = Object.values(game.aiTeam).flat().filter(p => p.used)
+      const picks = pool.sort(() => Math.random()-0.5).slice(0, count)
+      picks.forEach(p => { p.used = false })
+      if (picks.length) game.log.push({ text: `💫 IA : ${picks.length} joueur(s) ressuscité(s)`, type:'gc' })
+      break
+    }
+    case 'REMOVE_GOAL':
+      if (game.homeScore > 0) { game.homeScore--; game.log.push({ text: '🚫 IA : votre dernier but est annulé !', type:'gc' }) }
+      break
+    case 'ADD_GOAL_DRAW':
+      if (game.homeScore === game.aiScore) { game.aiScore++; game.log.push({ text: '🎯 IA : but bonus (match nul) !', type:'gc' }) }
+      break
+    case 'ADD_SUB':
+      game.aiMaxSubs = (game.aiMaxSubs||3) + value
+      game.log.push({ text: `🔄 IA : +${value} remplacement(s)`, type:'gc' })
+      break
+    default: break
+  }
+}
+
 function aiMayPlayGC(game) {
   if (!game.aiGcCards?.length) return
   const available = game.aiGcCards.filter(gc => !game.aiUsedGc.includes(gc.id))
   if (!available.length) return
-  // 30% de chance de jouer un GC par tour
-  if (Math.random() > 0.30) return
+  // 50% de chance de jouer un GC par tour (au lieu de 30%, l'IA doit s'en servir plus souvent)
+  if (Math.random() > 0.50) return
   const gc = available[Math.floor(Math.random() * available.length)]
   game.aiUsedGc.push(gc.id)
-  // Appliquer l'effet GC côté IA
-  const def = GC_DEFS[gc.gc_type] || {}
-  switch(gc.gc_type) {
-    case 'Boost+2': {
-      const targets = Object.values(game.aiTeam).flat().filter(p => !p.used)
-      if (targets.length) { const t = targets[Math.floor(Math.random()*targets.length)]; t.boost = (t.boost||0)+2 }
-      break
-    }
-    case 'Boost+3': {
-      const targets = Object.values(game.aiTeam).flat().filter(p => !p.used)
-      if (targets.length) { const t = targets[Math.floor(Math.random()*targets.length)]; t.boost = (t.boost||0)+3 }
-      break
-    }
-    case 'Remplacement+': game.aiMaxSubs = (game.aiMaxSubs||3)+1; break
-    case 'Bouclier':      game.modifiers.ai.shield = true; break
-    case 'Nul+1':         game.modifiers.ai.drawBonus = (game.modifiers.ai.drawBonus||0)+1; break
-    default: break
+  if (gc.effect_type) {
+    aiApplyGCEffect(gc, game)
+  } else {
+    game.log.push({ text: `⚡ IA joue ${gc.icon||'⚡'} ${gc.name}`, type:'gc' })
   }
-  game.log.push({ text: `⚡ IA joue ${gc.icon||'⚡'} ${gc.name}`, type:'gc' })
 }
 
 function aiTurn(container, game, ctx) {

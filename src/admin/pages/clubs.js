@@ -558,24 +558,38 @@ function renderClubs(container, helpers, countMap = {}) {
 // ── Générateur de logo "drapeau" 3×3 avec texte centré ──────────────────
 function openFlagBuilderModal(helpers) {
   const { openModal, closeModal } = helpers
-  const defaultColors = ['#00AEEF','#ffffff','#00AEEF','#ffffff','#00AEEF','#ffffff','#00AEEF','#ffffff','#00AEEF']
-  let colors = [...defaultColors]
+  const GRID = 6
+  const CELL = 40
+  const TOTAL = CELL * GRID
+
+  // Palette par défaut : damier 2 couleurs
+  const colors = []
+  for (let row = 0; row < GRID; row++) {
+    for (let col = 0; col < GRID; col++) {
+      colors.push((row + col) % 2 === 0 ? '#00AEEF' : '#ffffff')
+    }
+  }
   let text = 'OP'
   let textColor = '#D4A017'
+  let textSize = 50     // en % de la hauteur totale du canvas
+  let textOffsetX = 0   // en % de la largeur totale, décalage depuis le centre
+  let textOffsetY = 0   // en % de la hauteur totale, décalage depuis le centre
 
   function buildSVG() {
-    const size = 60
     let squares = ''
-    for (let row = 0; row < 3; row++) {
-      for (let col = 0; col < 3; col++) {
-        const i = row * 3 + col
-        squares += `<rect x="${col*size}" y="${row*size}" width="${size}" height="${size}" fill="${colors[i]}"/>`
+    for (let row = 0; row < GRID; row++) {
+      for (let col = 0; col < GRID; col++) {
+        const i = row * GRID + col
+        squares += `<rect x="${col*CELL}" y="${row*CELL}" width="${CELL}" height="${CELL}" fill="${colors[i]}"/>`
       }
     }
-    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${size*3} ${size*3}">
+    const cx = TOTAL/2 + (textOffsetX/100) * TOTAL
+    const cy = TOTAL/2 + (textOffsetY/100) * TOTAL
+    const fontSize = (textSize/100) * TOTAL
+    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${TOTAL} ${TOTAL}">
       ${squares}
-      <text x="${size*1.5}" y="${size*1.5}" text-anchor="middle" dominant-baseline="central"
-        font-family="Arial Black, Arial, sans-serif" font-weight="900" font-size="${size*1.5}"
+      <text x="${cx}" y="${cy}" text-anchor="middle" dominant-baseline="central"
+        font-family="Arial Black, Arial, sans-serif" font-weight="900" font-size="${fontSize}"
         fill="${textColor}">${(text||'').toUpperCase().slice(0,3)}</text>
     </svg>`
   }
@@ -585,8 +599,8 @@ function openFlagBuilderModal(helpers) {
   }
 
   const bodyHTML = `
-    <div style="display:flex;flex-direction:column;gap:16px;align-items:center">
-      <div id="flag-preview" style="width:200px;height:200px;border-radius:12px;overflow:hidden;box-shadow:0 2px 10px rgba(0,0,0,0.15)"></div>
+    <div style="display:flex;flex-direction:column;gap:14px;align-items:center;max-height:70vh;overflow-y:auto;padding-right:4px">
+      <div id="flag-preview" style="width:200px;height:200px;border-radius:12px;overflow:hidden;box-shadow:0 2px 10px rgba(0,0,0,0.15);flex-shrink:0"></div>
 
       <div>
         <label>TEXTE (3 caractères max)</label>
@@ -597,10 +611,23 @@ function openFlagBuilderModal(helpers) {
         <input type="color" id="flag-text-color" value="${textColor}" style="width:44px;height:32px;padding:2px;cursor:pointer">
       </div>
 
+      <div style="width:260px">
+        <label>TAILLE DU TEXTE (<span id="flag-size-val">${textSize}</span>%)</label>
+        <input type="range" id="flag-text-size" min="10" max="120" value="${textSize}" style="width:100%">
+      </div>
+      <div style="width:260px">
+        <label>POSITION HORIZONTALE (<span id="flag-x-val">${textOffsetX}</span>)</label>
+        <input type="range" id="flag-text-x" min="-50" max="50" value="${textOffsetX}" style="width:100%">
+      </div>
+      <div style="width:260px">
+        <label>POSITION VERTICALE (<span id="flag-y-val">${textOffsetY}</span>)</label>
+        <input type="range" id="flag-text-y" min="-50" max="50" value="${textOffsetY}" style="width:100%">
+      </div>
+
       <div>
-        <label style="display:block;text-align:center;margin-bottom:8px">Couleurs des 9 carrés</label>
-        <div style="display:grid;grid-template-columns:repeat(3,44px);gap:4px">
-          ${colors.map((c, i) => `<input type="color" class="flag-square-color" data-i="${i}" value="${c}" style="width:44px;height:44px;padding:2px;border-radius:6px;cursor:pointer">`).join('')}
+        <label style="display:block;text-align:center;margin-bottom:8px">Couleurs des ${GRID*GRID} carrés</label>
+        <div style="display:grid;grid-template-columns:repeat(${GRID},28px);gap:3px">
+          ${colors.map((c, i) => `<input type="color" class="flag-square-color" data-i="${i}" value="${c}" style="width:28px;height:28px;padding:1px;border-radius:4px;cursor:pointer">`).join('')}
         </div>
       </div>
     </div>
@@ -609,7 +636,7 @@ function openFlagBuilderModal(helpers) {
     <button id="flag-cancel" class="btn btn-ghost">Annuler</button>
     <button id="flag-use" class="btn btn-primary">✅ Utiliser ce logo</button>
   `
-  openModal('🎨 Générer un logo (3×3)', bodyHTML, footerHTML)
+  openModal(`🎨 Générer un logo (${GRID}×${GRID})`, bodyHTML, footerHTML)
 
   function repaint() {
     document.getElementById('flag-preview').innerHTML = buildSVG()
@@ -623,6 +650,21 @@ function openFlagBuilderModal(helpers) {
   })
   document.getElementById('flag-text-color').addEventListener('input', (e) => {
     textColor = e.target.value
+    repaint()
+  })
+  document.getElementById('flag-text-size').addEventListener('input', (e) => {
+    textSize = parseInt(e.target.value)
+    document.getElementById('flag-size-val').textContent = textSize
+    repaint()
+  })
+  document.getElementById('flag-text-x').addEventListener('input', (e) => {
+    textOffsetX = parseInt(e.target.value)
+    document.getElementById('flag-x-val').textContent = textOffsetX
+    repaint()
+  })
+  document.getElementById('flag-text-y').addEventListener('input', (e) => {
+    textOffsetY = parseInt(e.target.value)
+    document.getElementById('flag-y-val').textContent = textOffsetY
     repaint()
   })
   document.querySelectorAll('.flag-square-color').forEach(input => {
@@ -696,7 +738,7 @@ async function openClubPanel(club, container, helpers) {
           <div style="flex:1">
             <input type="file" id="m-logo-file" accept="image/png,image/jpeg,image/webp,image/svg+xml">
             <div style="font-size:11px;color:var(--tile-fg-dim);margin-top:4px">PNG/JPG/WEBP/SVG — remplace le logo actuel si un fichier est choisi</div>
-            <button type="button" id="m-open-flag-builder" class="btn btn-ghost btn-sm" style="margin-top:8px">🎨 Générer un logo (3×3)</button>
+            <button type="button" id="m-open-flag-builder" class="btn btn-ghost btn-sm" style="margin-top:8px">🎨 Générer un logo (6×6)</button>
           </div>
         </div>
         <input type="hidden" id="m-logo-url-current" value="${club?.logo_url || ''}">

@@ -4,6 +4,7 @@ import { GC_DEFS } from '../match/game-logic.js'
 import { FORMATION_LINKS, FORMATION_POSITIONS } from '../match/formation-links.js'
 import { renderGCCard, renderStadiumCard, renderFormationCard as renderFormationCardTpl } from '../components/special-cards.js'
 import { getPortrait } from '../lib/portrait.js'
+import { ensureV2Chrome } from '../home/home2.js'
 
 // ── Constantes ─────────────────────────────────────────────
 const RAR_COLORS  = { normal:'#ccc', pepite:'#D4A017', papyte:'#909090', legende:'#7a28b8' }
@@ -69,6 +70,7 @@ function renderMissingCard(p) {
 // ── Page principale ────────────────────────────────────────
 export async function renderCollection(container, ctx) {
   const { state, navigate, toast, openModal, closeModal } = ctx
+  ensureV2Chrome(navigate, state.profile, 'cards', import.meta.env.BASE_URL + 'icons/', toast)
   container.innerHTML = '<div class="page" style="padding:40px;text-align:center;color:#aaa">⚽ Chargement...</div>'
 
   const { data: cards } = await supabase
@@ -238,7 +240,7 @@ export async function renderCollection(container, ctx) {
 
     if (activeTab === 'player') {
       bar.innerHTML = `
-        <input id="col-search" placeholder="🔍 Rechercher un joueur..." style="font-size:13px" value="${searchQ}">
+        <input id="col-search" placeholder="🔍 Rechercher un joueur..." style="font-size:13px;background:#fff;color:#1a1a1a" value="${searchQ}">
         <div style="display:flex;gap:6px;overflow-x:auto;padding-bottom:2px;align-items:center">
           ${JOB_FILTERS.map(f => `
             <button class="filter-btn" data-job="${f}"

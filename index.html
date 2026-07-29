@@ -33,8 +33,28 @@
 </script>
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-5827602487507112" crossorigin="anonymous"></script>
   <script src="/cookie-consent.js" defer></script>
+
+  <!-- Traduction automatique (Google Translate) : traduit l'app selon la
+       langue du navigateur si elle n'est pas déjà en français. Bandeau
+       Google masqué visuellement, seule la traduction du texte est gardée. -->
+  <script>
+    (function () {
+      var browserLang = (navigator.language || navigator.userLanguage || 'fr').slice(0, 2).toLowerCase()
+      if (browserLang !== 'fr') {
+        document.cookie = 'googtrans=/fr/' + browserLang + '; path=/'
+      }
+    })()
+  </script>
+  <style>
+    /* Masque le bandeau Google Translate mais garde la traduction active */
+    .goog-te-banner-frame, .goog-te-gadget-icon, #goog-gt-tt, .goog-tooltip, .goog-tooltip:hover { display: none !important; }
+    body { top: 0 !important; }
+    .goog-text-highlight { background: none !important; box-shadow: none !important; }
+  </style>
 </head>
 <body>
+  <div id="google_translate_element" style="display:none"></div>
+
   <!-- Loader initial -->
   <div id="app-loader" style="
     position:fixed;inset:0;background:#000;
@@ -88,6 +108,13 @@
       position: relative;
     }
   </style>
+
+  <script type="text/javascript">
+    function googleTranslateElementInit() {
+      new google.translate.TranslateElement({ pageLanguage: 'fr', autoDisplay: false }, 'google_translate_element')
+    }
+  </script>
+  <script type="text/javascript" src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
 
   <script type="module" src="/src/app.js"></script>
   <!-- Fallback pour les crawlers sans JS -->

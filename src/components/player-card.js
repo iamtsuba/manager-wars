@@ -29,7 +29,7 @@ function getClubLogoUrl(p) {
   const url = import.meta?.env?.VITE_SUPABASE_URL || ''
   const logo = p?.clubs?.logo_url || p?.clubLogo
   if (!logo) return null
-  if (logo.startsWith('http')) return logo
+  if (logo.startsWith('http') || logo.startsWith('data:')) return logo
   return url ? `${url}/storage/v1/object/public/assets/clubs/${logo}` : null
 }
 

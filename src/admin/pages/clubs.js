@@ -555,6 +555,94 @@ function renderClubs(container, helpers, countMap = {}) {
 }
 
 // ── Panneau droit (fiche club + joueurs) ────────────────────────────────
+// ── Générateur de logo "drapeau" 3×3 avec texte centré ──────────────────
+function openFlagBuilderModal(helpers) {
+  const { openModal, closeModal } = helpers
+  const defaultColors = ['#00AEEF','#ffffff','#00AEEF','#ffffff','#00AEEF','#ffffff','#00AEEF','#ffffff','#00AEEF']
+  let colors = [...defaultColors]
+  let text = 'OP'
+  let textColor = '#D4A017'
+
+  function buildSVG() {
+    const size = 60
+    let squares = ''
+    for (let row = 0; row < 3; row++) {
+      for (let col = 0; col < 3; col++) {
+        const i = row * 3 + col
+        squares += `<rect x="${col*size}" y="${row*size}" width="${size}" height="${size}" fill="${colors[i]}"/>`
+      }
+    }
+    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${size*3} ${size*3}">
+      ${squares}
+      <text x="${size*1.5}" y="${size*1.5}" text-anchor="middle" dominant-baseline="central"
+        font-family="Arial Black, Arial, sans-serif" font-weight="900" font-size="${size*1.5}"
+        fill="${textColor}">${(text||'').toUpperCase().slice(0,3)}</text>
+    </svg>`
+  }
+
+  function svgToDataUrl(svg) {
+    return 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svg)))
+  }
+
+  const bodyHTML = `
+    <div style="display:flex;flex-direction:column;gap:16px;align-items:center">
+      <div id="flag-preview" style="width:200px;height:200px;border-radius:12px;overflow:hidden;box-shadow:0 2px 10px rgba(0,0,0,0.15)"></div>
+
+      <div>
+        <label>TEXTE (3 caractères max)</label>
+        <input id="flag-text" maxlength="3" value="${text}" style="width:120px;text-align:center;font-weight:900;text-transform:uppercase">
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <label style="margin:0">Couleur du texte</label>
+        <input type="color" id="flag-text-color" value="${textColor}" style="width:44px;height:32px;padding:2px;cursor:pointer">
+      </div>
+
+      <div>
+        <label style="display:block;text-align:center;margin-bottom:8px">Couleurs des 9 carrés</label>
+        <div style="display:grid;grid-template-columns:repeat(3,44px);gap:4px">
+          ${colors.map((c, i) => `<input type="color" class="flag-square-color" data-i="${i}" value="${c}" style="width:44px;height:44px;padding:2px;border-radius:6px;cursor:pointer">`).join('')}
+        </div>
+      </div>
+    </div>
+  `
+  const footerHTML = `
+    <button id="flag-cancel" class="btn btn-ghost">Annuler</button>
+    <button id="flag-use" class="btn btn-primary">✅ Utiliser ce logo</button>
+  `
+  openModal('🎨 Générer un logo (3×3)', bodyHTML, footerHTML)
+
+  function repaint() {
+    document.getElementById('flag-preview').innerHTML = buildSVG()
+  }
+  repaint()
+
+  document.getElementById('flag-text').addEventListener('input', (e) => {
+    text = e.target.value.toUpperCase().slice(0, 3)
+    e.target.value = text
+    repaint()
+  })
+  document.getElementById('flag-text-color').addEventListener('input', (e) => {
+    textColor = e.target.value
+    repaint()
+  })
+  document.querySelectorAll('.flag-square-color').forEach(input => {
+    input.addEventListener('input', (e) => {
+      colors[parseInt(e.target.dataset.i)] = e.target.value
+      repaint()
+    })
+  })
+
+  document.getElementById('flag-cancel')?.addEventListener('click', () => closeModal())
+  document.getElementById('flag-use')?.addEventListener('click', () => {
+    const dataUrl = svgToDataUrl(buildSVG())
+    const hiddenInput = document.getElementById('m-logo-url-current')
+    if (hiddenInput) hiddenInput.value = dataUrl
+    const preview = document.getElementById('logo-preview')
+    if (preview) preview.innerHTML = `<img src="${dataUrl}" style="width:100%;height:100%;object-fit:contain">`
+    closeModal()
+  })
+}
+
 async function openClubPanel(club, container, helpers) {
   const { toast } = helpers
   const isEdit = !!club
@@ -608,6 +696,7 @@ async function openClubPanel(club, container, helpers) {
           <div style="flex:1">
             <input type="file" id="m-logo-file" accept="image/png,image/jpeg,image/webp,image/svg+xml">
             <div style="font-size:11px;color:var(--tile-fg-dim);margin-top:4px">PNG/JPG/WEBP/SVG — remplace le logo actuel si un fichier est choisi</div>
+            <button type="button" id="m-open-flag-builder" class="btn btn-ghost btn-sm" style="margin-top:8px">🎨 Générer un logo (3×3)</button>
           </div>
         </div>
         <input type="hidden" id="m-logo-url-current" value="${club?.logo_url || ''}">
@@ -686,6 +775,10 @@ async function openClubPanel(club, container, helpers) {
       document.getElementById('logo-preview').innerHTML = `<img src="${reader.result}" style="width:100%;height:100%;object-fit:contain">`
     }
     reader.readAsDataURL(file)
+  })
+
+  document.getElementById('m-open-flag-builder')?.addEventListener('click', () => {
+    openFlagBuilderModal(helpers)
   })
 
   refreshKit()

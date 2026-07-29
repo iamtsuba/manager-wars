@@ -22,7 +22,7 @@ const V2_TABS = [
 // à navigate() qui ne remplace que #page-content. Masque le top-nav/bottom-nav
 // globaux tant qu'il est présent, et se retire uniquement via "Revenir à v1"
 // ou déconnexion. Ne touche jamais aux fichiers des autres pages.
-export function ensureV2Chrome(navigate, p, activeRouteKey, ICON) {
+export function ensureV2Chrome(navigate, p, activeRouteKey, ICON, toast) {
   if (!document.getElementById('home2-chrome-style')) {
     const style = document.createElement('style')
     style.id = 'home2-chrome-style'
@@ -176,7 +176,7 @@ export function ensureV2Chrome(navigate, p, activeRouteKey, ICON) {
     `
     document.body.appendChild(header)
     header.querySelector('#home2-chrome-settings-btn').addEventListener('click', () => navigate('settings'))
-    header.querySelector('#home2-chrome-credits').addEventListener('click', () => openCreditsAdOffer(p))
+    header.querySelector('#home2-chrome-credits').addEventListener('click', () => openCreditsAdOffer(p, toast))
   }
 
   // ── Bandeau mobile du haut : logo + crédits + paramètres ──
@@ -194,7 +194,7 @@ export function ensureV2Chrome(navigate, p, activeRouteKey, ICON) {
     `
     document.body.appendChild(topBar)
     topBar.querySelector('#home2-mobtop-settings-btn').addEventListener('click', () => navigate('settings'))
-    topBar.querySelector('#home2-mobtop-credits').addEventListener('click', () => openCreditsAdOffer(p))
+    topBar.querySelector('#home2-mobtop-credits').addEventListener('click', () => openCreditsAdOffer(p, toast))
   }
 
   // ── Bandeau mobile du bas : onglets ──
@@ -263,7 +263,7 @@ const CREDITS_AD_OFFERS = [
   { ads: 3, seconds: 15, credits: 15000 },
 ]
 
-export function openCreditsAdOffer(profile) {
+export function openCreditsAdOffer(profile, toast) {
   const overlay = document.createElement('div')
   overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.85);display:flex;align-items:center;justify-content:center;z-index:9999;padding:16px'
   overlay.innerHTML = `
@@ -291,13 +291,13 @@ export function openCreditsAdOffer(profile) {
       overlay.remove()
       startCreditsAdFlow(
         parseInt(btn.dataset.ads), parseInt(btn.dataset.seconds), parseInt(btn.dataset.credits),
-        profile
+        profile, toast
       )
     })
   })
 }
 
-function startCreditsAdFlow(totalAds, secondsPerAd, totalCredits, profile) {
+function startCreditsAdFlow(totalAds, secondsPerAd, totalCredits, profile, toast) {
   let currentAd = 1
 
   const overlay = document.createElement('div')
@@ -497,7 +497,7 @@ export async function renderHome2(container, { state, navigate, toast }) {
   if (!p) return
 
   const ICON = import.meta.env.BASE_URL + 'icons/'
-  ensureV2Chrome(navigate, p, 'home2', ICON)
+  ensureV2Chrome(navigate, p, 'home2', ICON, toast)
   const mmr    = p.mmr ?? 1000
   const tier   = getTier(mmr)
   const sub    = getSubTier(mmr, tier)

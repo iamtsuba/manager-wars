@@ -86,7 +86,12 @@ export async function renderSettings(container, ctx) {
         ⚙️ Administration Mode
       </a>` : ''}
 
-      <button id="settings-logout" class="btn" style="width:100%;padding:14px;border-radius:12px;border:1.5px solid #ff6b6b;background:transparent;color:#ff6b6b;font-weight:700;font-size:14px;cursor:pointer;margin-top:${isAdmin?'0':'6px'}">
+      <a href="https://discord.gg/aaMKMA8VS" target="_blank" rel="noopener" id="settings-discord"
+        style="width:100%;box-sizing:border-box;padding:14px;border-radius:12px;border:none;background:#5865F2;color:#fff;font-weight:900;font-size:14px;cursor:pointer;margin-top:${isAdmin?'10px':'6px'};text-align:center;text-decoration:none;display:flex;align-items:center;justify-content:center;gap:8px">
+        💬 Rejoindre le Discord
+      </a>
+
+      <button id="settings-logout" class="btn" style="width:100%;padding:14px;border-radius:12px;border:1.5px solid #ff6b6b;background:transparent;color:#ff6b6b;font-weight:700;font-size:14px;cursor:pointer;margin-top:10px;display:flex;align-items:center;justify-content:center">
         Déconnexion
       </button>
 

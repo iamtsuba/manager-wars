@@ -127,8 +127,24 @@ export async function renderDecks(container, ctx) {
   container.innerHTML = '<div class="page" style="padding:40px;text-align:center;color:#aaa">⚽ Chargement...</div>'
 
   const { data: decks } = await supabase
-    .from('decks').select('id,name,formation_card_id')
+    .from('decks').select('id,name,formation,stadium_card_id')
     .eq('owner_id', state.profile.id).order('created_at', { ascending: false })
+
+  // Récupère l'image du stade lié à chaque deck (via la carte stade -> sa définition)
+  const stadiumCardIds = [...new Set((decks||[]).map(d => d.stadium_card_id).filter(Boolean))]
+  let stadiumImgByCardId = {}
+  if (stadiumCardIds.length) {
+    const { data: stadCards } = await supabase
+      .from('cards').select('id, stadium_id, stadium_definitions(image_url, country_code, club:clubs(logo_url))')
+      .in('id', stadiumCardIds)
+    ;(stadCards||[]).forEach(c => {
+      const def = c.stadium_definitions
+      const img = def?.club?.logo_url
+        || (def?.image_url ? `${import.meta.env.BASE_URL}icons/${def.image_url}` : null)
+        || (def?.country_code ? `https://flagsapi.com/${def.country_code}/flat/64.png` : null)
+      stadiumImgByCardId[c.id] = img
+    })
+  }
 
   container.innerHTML = `
   <div style="height:100%;overflow:hidden;background:var(--page-bg)">
@@ -141,8 +157,17 @@ export async function renderDecks(container, ctx) {
         ${decks?.length > 0 ? decks.map(d => `
           <div class="card-panel" data-open-deck="${d.id}"
             style="display:flex;justify-content:space-between;align-items:center;padding:14px;cursor:pointer">
-            <div style="font-weight:700;font-size:15px;flex:1">${d.name}</div>
-            <div style="display:flex;gap:6px" onclick="event.stopPropagation()">
+            <div style="display:flex;align-items:center;gap:10px;flex:1;min-width:0">
+              ${stadiumImgByCardId[d.stadium_card_id]
+                ? `<img src="${stadiumImgByCardId[d.stadium_card_id]}" style="width:32px;height:32px;object-fit:contain;border-radius:6px;flex-shrink:0;background:rgba(255,255,255,0.06)">`
+                : `<div style="width:32px;height:32px;border-radius:6px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:16px;opacity:.4">🏟️</div>`
+              }
+              <div style="min-width:0">
+                <div style="font-weight:700;font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${d.name}</div>
+                <div style="font-size:11px;color:var(--tile-fg-dim)">${d.formation || '—'}</div>
+              </div>
+            </div>
+            <div style="display:flex;gap:6px;flex-shrink:0" onclick="event.stopPropagation()">
               <button class="btn btn-ghost btn-sm" data-rename="${d.id}" data-name="${d.name}">✏️</button>
               <button class="btn btn-ghost btn-sm" style="color:var(--red,#c0392b)" data-delete="${d.id}" data-name="${d.name}">🗑️</button>
             </div>

@@ -289,11 +289,12 @@ async function openDeckBuilder(deckId, container, ctx) {
     else if (!builder.subs.includes(dc.card_id)) builder.subs.push(dc.card_id)
   })
 
-  renderBuilder(container, builder, ctx)
+  renderBuilder(container, builder, ctx, true)
 }
 
-function renderBuilder(container, builder, ctx) {
+function renderBuilder(container, builder, ctx, isInitialRender = false) {
   const { navigate } = ctx
+  if (!isInitialRender) scheduleAutosave(builder, ctx)
   const struct    = FORMATIONS[builder.formation]
   const positions = buildPositions(builder.formation)
   const filled    = positions.filter(p => builder.slots[p]).length
@@ -383,6 +384,7 @@ function renderBuilder(container, builder, ctx) {
           <button class="btn btn-primary" id="save-deck-pc" style="width:100%;margin-top:8px" ${filled < 11 ? 'disabled' : ''}>
             ${filled < 11 ? `Placez encore ${11-filled}` : '💾 Enregistrer'}
           </button>
+          <div class="autosave-indicator" style="text-align:center;font-size:11px;color:var(--tile-fg-dim);margin-top:6px;opacity:0;transition:opacity .3s"></div>
         </div>
 
       </div>
@@ -443,6 +445,7 @@ function renderBuilder(container, builder, ctx) {
       <button class="btn btn-primary" id="save-deck" style="width:100%" ${filled < 11 ? 'disabled' : ''}>
         ${filled < 11 ? `Placez encore ${11-filled} joueur(s)` : '💾 Enregistrer le deck'}
       </button>
+      <div class="autosave-indicator" style="text-align:center;font-size:11px;color:var(--tile-fg-dim);margin-top:6px;opacity:0;transition:opacity .3s"></div>
     </div>
   </div>`
 
@@ -785,9 +788,7 @@ function openSubSelector(builder, container, ctx) {
 }
 
 // ── Sauvegarde ────────────────────────────────────────────
-async function saveDeck(builder, ctx) {
-  const { state, toast, navigate } = ctx
-
+async function persistDeck(builder) {
   const matchingFormation = builder.formationCards.find(c => c.formation === builder.formation)
   const formationCardId   = matchingFormation?.id || builder.formationCardId
 
@@ -808,10 +809,40 @@ async function saveDeck(builder, ctx) {
   })
 
   if (inserts.length > 0) {
-    const { error } = await supabase.from('deck_cards').insert(inserts)
-    if (error) { toast(error.message, 'error'); return }
+    return await supabase.from('deck_cards').insert(inserts)
   }
+  return { error: null }
+}
 
+// Auto-enregistrement en arrière-plan, débounce pour éviter d'écrire à chaque
+// micro-changement (attend une courte pause dans les modifications)
+let _autosaveTimer = null
+function scheduleAutosave(builder, ctx) {
+  const { toast } = ctx
+  clearTimeout(_autosaveTimer)
+  const indicators = document.querySelectorAll('.autosave-indicator')
+  indicators.forEach(el => { el.textContent = '⏳ Enregistrement...'; el.style.opacity = '1'; el.style.color = '' })
+  _autosaveTimer = setTimeout(async () => {
+    const { error } = await persistDeck(builder)
+    const inds = document.querySelectorAll('.autosave-indicator')
+    if (error) {
+      inds.forEach(el => { el.textContent = '⚠️ Erreur d\'enregistrement'; el.style.color = '#ff6b6b' })
+      toast(error.message, 'error')
+      return
+    }
+    inds.forEach(el => {
+      el.textContent = '✅ Enregistré'
+      el.style.color = ''
+      setTimeout(() => { el.style.opacity = '0' }, 1500)
+    })
+  }, 600)
+}
+
+async function saveDeck(builder, ctx) {
+  const { toast, navigate } = ctx
+  clearTimeout(_autosaveTimer)
+  const { error } = await persistDeck(builder)
+  if (error) { toast(error.message, 'error'); return }
   toast('Deck enregistré ✅', 'success')
   navigate('decks')
 }

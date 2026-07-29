@@ -176,7 +176,7 @@ export function ensureV2Chrome(navigate, p, activeRouteKey, ICON) {
     `
     document.body.appendChild(header)
     header.querySelector('#home2-chrome-settings-btn').addEventListener('click', () => navigate('settings'))
-    header.querySelector('#home2-chrome-credits').addEventListener('click', () => navigate('boosters'))
+    header.querySelector('#home2-chrome-credits').addEventListener('click', () => openCreditsAdOffer(state, toast))
   }
 
   // ── Bandeau mobile du haut : logo + crédits + paramètres ──
@@ -194,7 +194,7 @@ export function ensureV2Chrome(navigate, p, activeRouteKey, ICON) {
     `
     document.body.appendChild(topBar)
     topBar.querySelector('#home2-mobtop-settings-btn').addEventListener('click', () => navigate('settings'))
-    topBar.querySelector('#home2-mobtop-credits').addEventListener('click', () => navigate('boosters'))
+    topBar.querySelector('#home2-mobtop-credits').addEventListener('click', () => openCreditsAdOffer(state, toast))
   }
 
   // ── Bandeau mobile du bas : onglets ──
@@ -256,6 +256,118 @@ function teardownV2Chrome() {
 // ensureV2Chrome() dès qu'une vraie page v2 (hors match) se rend à nouveau.
 // Met à jour instantanément le solde affiché dans le bandeau persistant, sans
 // attendre qu'une page v2 se recharge (utile après l'ouverture d'un booster, etc.)
+// ── Popup "Regarder des pubs pour des crédits" ──────────────────────────
+const CREDITS_AD_OFFERS = [
+  { ads: 1, seconds: 5,  credits: 4500 },
+  { ads: 2, seconds: 10, credits: 9500 },
+  { ads: 3, seconds: 15, credits: 15000 },
+]
+
+export function openCreditsAdOffer(state, toast) {
+  const overlay = document.createElement('div')
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.85);display:flex;align-items:center;justify-content:center;z-index:9999;padding:16px'
+  overlay.innerHTML = `
+    <div style="background:#111a12;border:1px solid rgba(255,255,255,0.1);border-radius:16px;padding:24px;max-width:400px;width:100%;color:#fff">
+      <div style="font-size:18px;font-weight:900;margin-bottom:4px">💰 Gagner des crédits</div>
+      <div style="font-size:12px;color:rgba(255,255,255,0.5);margin-bottom:18px">Regarde une ou plusieurs publicités pour recevoir des crédits gratuits.</div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        ${CREDITS_AD_OFFERS.map(o => `
+          <button class="credits-ad-offer-btn" data-ads="${o.ads}" data-seconds="${o.seconds}" data-credits="${o.credits}"
+            style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-radius:12px;border:1.5px solid rgba(212,160,23,0.4);background:rgba(212,160,23,0.08);cursor:pointer;color:#fff;font-family:inherit">
+            <div style="text-align:left">
+              <div style="font-weight:700;font-size:14px">${o.ads} pub${o.ads>1?'s':''} (${o.seconds}s)</div>
+              <div style="font-size:11px;color:rgba(255,255,255,0.5)">Regarde ${o.ads} publicité${o.ads>1?'s':''}</div>
+            </div>
+            <div style="font-weight:900;color:#D4A017;font-size:16px;white-space:nowrap">+${o.credits.toLocaleString('fr')} cr.</div>
+          </button>`).join('')}
+      </div>
+      <button id="credits-ad-cancel" style="width:100%;margin-top:16px;padding:10px;border-radius:10px;border:1px solid rgba(255,255,255,0.2);background:none;color:rgba(255,255,255,0.7);cursor:pointer;font-family:inherit">Annuler</button>
+    </div>`
+  document.body.appendChild(overlay)
+
+  overlay.querySelector('#credits-ad-cancel').addEventListener('click', () => overlay.remove())
+  overlay.querySelectorAll('.credits-ad-offer-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      overlay.remove()
+      startCreditsAdFlow(
+        parseInt(btn.dataset.ads), parseInt(btn.dataset.seconds), parseInt(btn.dataset.credits),
+        state, toast
+      )
+    })
+  })
+}
+
+function startCreditsAdFlow(totalAds, secondsPerAd, totalCredits, state, toast) {
+  let currentAd = 1
+
+  const overlay = document.createElement('div')
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.94);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;gap:14px;color:#fff;padding:16px'
+  document.body.appendChild(overlay)
+
+  function renderAdStep() {
+    overlay.innerHTML = `
+      <div style="font-size:11px;color:rgba(255,255,255,0.4);letter-spacing:2px;text-transform:uppercase">Publicité ${currentAd}/${totalAds}</div>
+      <div style="width:400px;max-width:100%;height:400px;max-height:55vh;background:rgba(255,255,255,0.04);border-radius:10px;overflow:hidden;display:flex;align-items:center;justify-content:center">
+        <ins class="adsbygoogle"
+          style="display:inline-block;width:400px;height:400px"
+          data-ad-client="ca-pub-5827602487507112"
+          data-ad-slot="6638827438"></ins>
+      </div>
+      <div id="credits-ad-status" style="font-size:13px;color:rgba(255,255,255,0.5)">Chargement… <span id="credits-ad-cd">${secondsPerAd}</span>s</div>
+      <div id="credits-ad-next-zone" style="width:280px;max-width:100%"></div>
+    `
+    try { (window.adsbygoogle = window.adsbygoogle || []).push({}) } catch (e) { console.warn('[AdSense]', e) }
+
+    let remaining = secondsPerAd
+    const interval = setInterval(() => {
+      remaining--
+      const cd = overlay.querySelector('#credits-ad-cd')
+      if (cd) cd.textContent = remaining
+      if (remaining <= 0) {
+        clearInterval(interval)
+        onAdComplete()
+      }
+    }, 1000)
+  }
+
+  function onAdComplete() {
+    const status = overlay.querySelector('#credits-ad-status')
+    const zone = overlay.querySelector('#credits-ad-next-zone')
+    if (currentAd < totalAds) {
+      if (status) status.textContent = 'Publicité terminée ✅'
+      if (zone) zone.innerHTML = `
+        <button id="credits-ad-next-btn" class="btn btn-primary" style="width:100%;padding:12px;font-size:14px">
+          Suivant (${currentAd}/${totalAds}) →
+        </button>`
+      overlay.querySelector('#credits-ad-next-btn')?.addEventListener('click', () => {
+        currentAd++
+        renderAdStep()
+      })
+    } else {
+      if (status) status.textContent = 'Toutes les publicités ont été vues ✅'
+      if (zone) zone.innerHTML = `
+        <button id="credits-ad-claim-btn" class="btn btn-primary" style="width:100%;padding:12px;font-size:14px;background:#D4A017;border-color:#D4A017">
+          🎁 Récupérer ${totalCredits.toLocaleString('fr')} crédits
+        </button>`
+      overlay.querySelector('#credits-ad-claim-btn')?.addEventListener('click', async () => {
+        const btn = overlay.querySelector('#credits-ad-claim-btn')
+        btn.disabled = true; btn.textContent = '⏳...'
+        const newCredits = (state.profile.credits || 0) + totalCredits
+        const { error } = await supabase.from('users').update({ credits: newCredits }).eq('id', state.profile.id)
+        if (error) { toast(error.message, 'error'); btn.disabled = false; return }
+        state.profile.credits = newCredits
+        syncV2Credits(newCredits)
+        toast(`+${totalCredits.toLocaleString('fr')} crédits ✅`, 'success')
+        overlay.remove()
+      })
+    }
+  }
+
+  renderAdStep()
+}
+
+// ── Popup "Regarder des pubs pour des crédits" (fin) ────────────────────
+
 export function syncV2Credits(amount) {
   const label = `💰 ${(amount||0).toLocaleString('fr')}`
   const el1 = document.getElementById('home2-chrome-credits')
@@ -687,16 +799,6 @@ export async function renderHome2(container, { state, navigate, toast }) {
             </div>
           </div>
 
-          <!-- Publicité Google AdSense -->
-          <div style="margin-top:18px;min-height:100px;border-radius:14px;overflow:hidden;background:rgba(255,255,255,0.03)">
-            <ins class="adsbygoogle"
-              style="display:block"
-              data-ad-client="ca-pub-5827602487507112"
-              data-ad-slot="2344359207"
-              data-ad-format="auto"
-              data-full-width-responsive="true"></ins>
-          </div>
-
           ${promoBoosters.length ? `
           <div class="promo-banner" id="promo-banner">
             <div id="promo-slide-content" style="display:flex;align-items:center;gap:14px;flex:1;min-width:0">
@@ -775,8 +877,6 @@ export async function renderHome2(container, { state, navigate, toast }) {
 
   loadFriendRequestsBanner(state, toast)
 
-  // Déclenche le rendu de la pub AdSense (obligatoire après insertion dans le DOM)
-  try { (window.adsbygoogle = window.adsbygoogle || []).push({}) } catch (e) { console.warn('[AdSense]', e) }
   loadMatchInviteBanner(state, toast, navigate)
   loadOngoingMatchBanner(state, toast, navigate)
   checkUnclaimedMiniLeaguePrizes(state, toast)

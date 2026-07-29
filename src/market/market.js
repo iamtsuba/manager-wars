@@ -1,6 +1,7 @@
 import { supabase } from '../lib/supabase.js'
 import { renderPlayerCard } from '../components/player-card.js'
 import { flagImgUrl } from '../match/match-shared.js'
+import { ensureV2Chrome } from '../home/home2.js'
 
 const JOB_COLORS  = { GK:'#111111', DEF:'#bb2020', MIL:'#D4A017', ATT:'#1A6B3C' }
 const RARITY_COLORS = { normal:'#ccc', pepite:'#D4A017', papyte:'#909090', legende:'#7a28b8' }
@@ -45,7 +46,8 @@ export async function renderMarket(container, ctx) {
 }
 
 async function loadMarket(container, ctx) {
-  const { state, toast } = ctx
+  const { state, toast, navigate } = ctx
+  ensureV2Chrome(navigate, state.profile, 'market', import.meta.env.BASE_URL + 'icons/', toast)
 
   const { data: activeListings } = await supabase
     .from('market_listings')

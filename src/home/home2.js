@@ -176,7 +176,7 @@ export function ensureV2Chrome(navigate, p, activeRouteKey, ICON) {
     `
     document.body.appendChild(header)
     header.querySelector('#home2-chrome-settings-btn').addEventListener('click', () => navigate('settings'))
-    header.querySelector('#home2-chrome-credits').addEventListener('click', () => openCreditsAdOffer(state, toast))
+    header.querySelector('#home2-chrome-credits').addEventListener('click', () => openCreditsAdOffer(p))
   }
 
   // ── Bandeau mobile du haut : logo + crédits + paramètres ──
@@ -194,7 +194,7 @@ export function ensureV2Chrome(navigate, p, activeRouteKey, ICON) {
     `
     document.body.appendChild(topBar)
     topBar.querySelector('#home2-mobtop-settings-btn').addEventListener('click', () => navigate('settings'))
-    topBar.querySelector('#home2-mobtop-credits').addEventListener('click', () => openCreditsAdOffer(state, toast))
+    topBar.querySelector('#home2-mobtop-credits').addEventListener('click', () => openCreditsAdOffer(p))
   }
 
   // ── Bandeau mobile du bas : onglets ──
@@ -263,7 +263,7 @@ const CREDITS_AD_OFFERS = [
   { ads: 3, seconds: 15, credits: 15000 },
 ]
 
-export function openCreditsAdOffer(state, toast) {
+export function openCreditsAdOffer(profile) {
   const overlay = document.createElement('div')
   overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.85);display:flex;align-items:center;justify-content:center;z-index:9999;padding:16px'
   overlay.innerHTML = `
@@ -291,13 +291,13 @@ export function openCreditsAdOffer(state, toast) {
       overlay.remove()
       startCreditsAdFlow(
         parseInt(btn.dataset.ads), parseInt(btn.dataset.seconds), parseInt(btn.dataset.credits),
-        state, toast
+        profile
       )
     })
   })
 }
 
-function startCreditsAdFlow(totalAds, secondsPerAd, totalCredits, state, toast) {
+function startCreditsAdFlow(totalAds, secondsPerAd, totalCredits, profile) {
   let currentAd = 1
 
   const overlay = document.createElement('div')
@@ -352,10 +352,10 @@ function startCreditsAdFlow(totalAds, secondsPerAd, totalCredits, state, toast) 
       overlay.querySelector('#credits-ad-claim-btn')?.addEventListener('click', async () => {
         const btn = overlay.querySelector('#credits-ad-claim-btn')
         btn.disabled = true; btn.textContent = '⏳...'
-        const newCredits = (state.profile.credits || 0) + totalCredits
-        const { error } = await supabase.from('users').update({ credits: newCredits }).eq('id', state.profile.id)
+        const newCredits = (profile.credits || 0) + totalCredits
+        const { error } = await supabase.from('users').update({ credits: newCredits }).eq('id', profile.id)
         if (error) { toast(error.message, 'error'); btn.disabled = false; return }
-        state.profile.credits = newCredits
+        profile.credits = newCredits
         syncV2Credits(newCredits)
         toast(`+${totalCredits.toLocaleString('fr')} crédits ✅`, 'success')
         overlay.remove()

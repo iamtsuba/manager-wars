@@ -1,5 +1,5 @@
 import { supabase } from '../lib/supabase.js'
-import { syncV2Credits } from '../home/home2.js'
+import { syncV2Credits, ensureV2Chrome } from '../home/home2.js'
 import { renderPlayerCard } from '../components/player-card.js'
 import { FORMATION_POSITIONS } from '../match/formation-links.js'
 import { loadActiveBoosters, drawCard, rollDropRate, recordBoosterClaim } from './booster-engine.js'
@@ -77,6 +77,7 @@ function dbToUI(b) {
 }
 
 export async function renderBoosters(container, { state, navigate, toast }) {
+  ensureV2Chrome(navigate, state.profile, 'boosters', import.meta.env.BASE_URL + 'icons/', toast)
   const credits = state.profile?.credits || 0
   container.innerHTML = '<div class="page" style="padding:40px;text-align:center;color:#aaa">⏳ Chargement...</div>'
 

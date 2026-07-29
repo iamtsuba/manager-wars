@@ -3,6 +3,7 @@ import { renderPlayerCard } from '../components/player-card.js'
 import { FORMATION_LINKS, FORMATION_POSITIONS, computeLinks, linkColor, getActiveLinks } from '../match/formation-links.js'
 import { renderStadiumCard, renderFormationCard } from '../components/special-cards.js'
 import { getPortrait } from '../lib/portrait.js'
+import { ensureV2Chrome } from '../home/home2.js'
 
 // ── Modales in-app (remplacent prompt()/confirm() natifs du navigateur) ──
 function showPromptModal(title, defaultValue = '') {
@@ -124,6 +125,7 @@ function renderMiniCardHTML(p, w=44, h=58) {
 
 export async function renderDecks(container, ctx) {
   const { state, navigate, toast } = ctx
+  ensureV2Chrome(navigate, state.profile, 'decks', import.meta.env.BASE_URL + 'icons/', toast)
   container.innerHTML = '<div class="page" style="padding:40px;text-align:center;color:#aaa">⚽ Chargement...</div>'
 
   const { data: decks } = await supabase

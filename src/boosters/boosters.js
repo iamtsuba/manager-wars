@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase.js'
 import { syncV2Credits, ensureV2Chrome } from '../home/home2.js'
+import { isFeatureEnabled, showFeatureDisabledPopup } from '../lib/featureFlags.js'
 import { renderPlayerCard } from '../components/player-card.js'
 import { FORMATION_POSITIONS } from '../match/formation-links.js'
 import { loadActiveBoosters, drawCard, rollDropRate, recordBoosterClaim } from './booster-engine.js'
@@ -189,6 +190,7 @@ async function openBooster(booster, { state, toast, navigate, container }) {
   }
 
   if (booster.isPub) {
+    if (!(await isFeatureEnabled('pub_mode'))) { showFeatureDisabledPopup(); return }
     await showAd()
   }
 

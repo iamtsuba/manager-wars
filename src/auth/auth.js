@@ -223,6 +223,7 @@ export function renderAuth(container, { navigate, toast }) {
         const errEl    = document.getElementById('reg-error')
         errEl.textContent = ''
         if (!email || !password || !confirm) { errEl.textContent = 'Remplissez tous les champs.'; return }
+        if (!email.includes('@') || !email.includes('.')) { errEl.textContent = 'Adresse email invalide.'; return }
         if (password.length < 6) { errEl.textContent = 'Mot de passe trop court (min. 6 caractères).'; return }
         if (password !== confirm) { errEl.textContent = 'Les mots de passe ne correspondent pas.'; return }
         // Double vérification côté serveur (le blocage du bouton peut être contourné côté client)
@@ -230,9 +231,22 @@ export function renderAuth(container, { navigate, toast }) {
         if (!recheck) { errEl.textContent = 'Code d\'accès incorrect.'; return }
         const btn = document.getElementById('reg-btn')
         btn.textContent = '⏳ Création…'; btn.disabled = true
-        const { error } = await supabase.auth.signUp({ email, password })
+        const { data: signUpData, error } = await supabase.auth.signUp({ email, password })
         btn.textContent = '🚀 Créer mon compte'; btn.disabled = false
-        if (error) { errEl.textContent = error.message; return }
+        if (error) {
+          if (error.message.includes('already registered') || error.message.includes('already exists') || error.message.includes('User already')) {
+            errEl.textContent = 'Un compte existe déjà avec cette adresse email.'
+          } else {
+            errEl.textContent = error.message
+          }
+          return
+        }
+        // Supabase renvoie parfois un "succès" silencieux (sans erreur) pour un email déjà
+        // enregistré, avec un tableau identities vide — signe qu'aucun nouveau compte n'a été créé
+        if (signUpData?.user && Array.isArray(signUpData.user.identities) && signUpData.user.identities.length === 0) {
+          errEl.textContent = 'Un compte existe déjà avec cette adresse email.'
+          return
+        }
         toast('Compte créé ! Connecte-toi pour commencer.', 'success', 4000)
         activeTab = 'login'
         render()

@@ -1,4 +1,5 @@
 import { supabase } from '../../lib/supabase.js'
+import { invalidateFeatureFlagsCache } from '../../lib/featureFlags.js'
 
 export async function pageDashboard(container) {
   // Récupérer les stats
@@ -9,6 +10,7 @@ export async function pageDashboard(container) {
     { count: nbStadiums },
     { count: nbOnline },
     { data: signupPwdData },
+    { data: featureFlags },
   ] = await Promise.all([
     supabase.from('players').select('*', { count:'exact', head:true }),
     supabase.from('clubs').select('*', { count:'exact', head:true }),
@@ -16,6 +18,7 @@ export async function pageDashboard(container) {
     supabase.from('stadium_definitions').select('*', { count:'exact', head:true }),
     supabase.from('users').select('*', { count:'exact', head:true }).gt('last_seen_at', new Date(Date.now() - 3*60*1000).toISOString()),
     supabase.rpc('get_signup_password'),
+    supabase.from('app_feature_flags').select('*').order('key'),
   ])
   const currentSignupPwd = signupPwdData || ''
 
@@ -64,11 +67,42 @@ export async function pageDashboard(container) {
       </div>
       <div id="signup-pwd-status" style="font-size:12px;margin-top:8px;min-height:16px"></div>
     </div>
+    <div class="card-panel" style="margin-top:20px">
+      <h3 style="font-size:14px;margin-bottom:4px;font-weight:600;color:var(--tile-fg-on-page)">🧪 Modes activables</h3>
+      <div style="font-size:12px;color:var(--tile-fg-dim);margin-bottom:14px">Active/désactive des fonctionnalités entières de l'app. Quand désactivé, un popup "Module en cours de développement" s'affiche à la place.</div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        ${(featureFlags||[]).map(f => `
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-radius:10px;background:var(--tile-bg);border:1px solid var(--tile-border)">
+            <div>
+              <div style="font-weight:700;font-size:14px;color:var(--tile-fg-on-page)">${f.label}</div>
+              <div style="font-size:11px;color:var(--tile-fg-dim)">${f.enabled ? '✅ Activé' : '⛔ Désactivé'}</div>
+            </div>
+            <button class="feature-flag-toggle" data-key="${f.key}" data-enabled="${f.enabled}"
+              style="width:52px;height:28px;border-radius:20px;border:none;cursor:pointer;position:relative;background:${f.enabled?'#1A6B3C':'#555'};transition:background .2s">
+              <span style="position:absolute;top:3px;left:${f.enabled?'27px':'3px'};width:22px;height:22px;border-radius:50%;background:#fff;transition:left .2s"></span>
+            </button>
+          </div>
+        `).join('') || '<div style="font-size:12px;color:var(--tile-fg-dim)">Aucun mode configuré — lance la migration correspondante.</div>'}
+      </div>
+    </div>
   `
   // Liaison navigation depuis les boutons
   window.adminNav = (page) => {
     document.querySelector(`[data-page="${page}"]`)?.click()
   }
+
+  container.querySelectorAll('.feature-flag-toggle').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const key = btn.dataset.key
+      const newVal = btn.dataset.enabled !== 'true'
+      btn.disabled = true
+      const { error } = await supabase.from('app_feature_flags').update({ enabled: newVal, updated_at: new Date().toISOString() }).eq('key', key)
+      btn.disabled = false
+      if (error) { alert(error.message); return }
+      invalidateFeatureFlagsCache()
+      pageDashboard(container)
+    })
+  })
 
   document.getElementById('signup-pwd-save')?.addEventListener('click', async () => {
     const val = document.getElementById('signup-pwd-input').value.trim()

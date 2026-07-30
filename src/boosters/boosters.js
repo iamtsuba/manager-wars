@@ -108,7 +108,7 @@ export async function claimPendingReward(reward, profile, toast, refreshProfile)
     else if (b.type === 'player') newCards = await openPlayersBooster(profile, b.cardCount, 0)
     else newCards = await openMixedBooster(profile, { ...b, cost: 0 })
 
-    return { type: 'booster', name: cfg.name, cards: newCards }
+    return { type: 'booster', name: cfg.name, cards: newCards, boosterUI: b }
   }
 
   throw new Error('Type de récompense inconnu.')
@@ -553,7 +553,7 @@ async function openFormationBooster(profile, cost) {
 // ── Animation FIFA ─────────────────────────────────────────
 // Phase 1 : booster qui tremble et s'ouvre
 // Phase 2 : les cartes apparaissent une par une avec flip
-function showBoosterAnimation(cards, booster, navigate, onClose = null) {
+export function showBoosterAnimation(cards, booster, navigate, onClose = null) {
   // Guard : si aucune carte (insert DB échoué), afficher message d'erreur
   if (!cards || cards.length === 0) {
     const ov = document.createElement('div')

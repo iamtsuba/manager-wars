@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase.js'
+import { isFeatureEnabled, showFeatureDisabledPopup } from '../lib/featureFlags.js'
 import { showPendingPopup } from '../friends/friends.js'
 import { stopBGM } from '../lib/sound.js'
 import { getTier, getTierProgress } from '../ranked/glicko2.js'
@@ -263,7 +264,9 @@ const CREDITS_AD_OFFERS = [
   { ads: 3, seconds: 15, credits: 15000 },
 ]
 
-export function openCreditsAdOffer(profile, toast) {
+export async function openCreditsAdOffer(profile, toast) {
+  if (!(await isFeatureEnabled('pub_mode'))) { showFeatureDisabledPopup(); return }
+
   const overlay = document.createElement('div')
   overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.85);display:flex;align-items:center;justify-content:center;z-index:9999;padding:16px'
   overlay.innerHTML = `

@@ -4,6 +4,7 @@ import { showPendingPopup } from '../friends/friends.js'
 import { stopBGM } from '../lib/sound.js'
 import { getTier, getTierProgress } from '../ranked/glicko2.js'
 import { claimPendingReward } from '../boosters/boosters.js'
+import { renderPlayerCard } from '../components/player-card.js'
 
 const APP_VERSION = (typeof __BUILD_TIME__ !== 'undefined' && __BUILD_TIME__)
   ? __BUILD_TIME__
@@ -381,7 +382,11 @@ async function openPendingRewardsPopup(state, toast) {
   async function render() {
     const { data: rewards } = await supabase
       .from('pending_rewards')
-      .select('*, player:players(firstname, surname_real), booster:booster_configs(name)')
+      .select(`*,
+        player:players(id, firstname, surname_real, country_code, club_id, job, job2,
+          note_g, note_d, note_m, note_a, rarity, skin, hair, hair_length, face,
+          clubs(encoded_name, logo_url)),
+        booster:booster_configs(name, image_url)`)
       .eq('user_id', state.profile.id).eq('claimed', false)
       .order('created_at', { ascending: true })
 
@@ -393,11 +398,25 @@ async function openPendingRewardsPopup(state, toast) {
       return
     }
 
+    const rewardVisual = (r) => {
+      if (r.reward_type === 'credits') {
+        return `<div style="width:56px;height:56px;border-radius:12px;background:rgba(212,160,23,0.15);display:flex;align-items:center;justify-content:center;font-size:28px;flex-shrink:0">💰</div>`
+      }
+      if (r.reward_type === 'card' && r.player) {
+        return `<div style="flex-shrink:0">${renderPlayerCard(r.player, { width: 56 })}</div>`
+      }
+      if (r.reward_type === 'booster') {
+        const imgName = r.booster?.image_url || 'booster-players.png'
+        return `<img src="${import.meta.env.BASE_URL}icons/${imgName}" style="width:56px;height:56px;object-fit:contain;border-radius:12px;background:rgba(255,255,255,0.05);flex-shrink:0">`
+      }
+      return `<div style="width:56px;height:56px;border-radius:12px;background:rgba(255,255,255,0.05);display:flex;align-items:center;justify-content:center;font-size:28px;flex-shrink:0">❓</div>`
+    }
+
     const rewardLabel = (r) => {
-      if (r.reward_type === 'credits') return { icon: '💰', text: `${(r.credits_amount||0).toLocaleString('fr')} crédits` }
-      if (r.reward_type === 'card')    return { icon: '🃏', text: `${r.player?.firstname||''} ${r.player?.surname_real||''}`.trim() || 'Carte joueur' }
-      if (r.reward_type === 'booster') return { icon: '🎁', text: r.booster?.name || 'Booster' }
-      return { icon: '❓', text: 'Récompense' }
+      if (r.reward_type === 'credits') return `${(r.credits_amount||0).toLocaleString('fr')} crédits`
+      if (r.reward_type === 'card')    return `${r.player?.firstname||''} ${r.player?.surname_real||''}`.trim() || 'Carte joueur'
+      if (r.reward_type === 'booster') return r.booster?.name || 'Booster'
+      return 'Récompense'
     }
 
     overlay.innerHTML = `
@@ -405,17 +424,16 @@ async function openPendingRewardsPopup(state, toast) {
         <div style="font-size:18px;font-weight:900;margin-bottom:4px">🎁 Tes récompenses</div>
         <div style="font-size:12px;color:rgba(255,255,255,0.5);margin-bottom:16px">${rewards.length} récompense${rewards.length>1?'s':''} à récupérer</div>
         <div style="display:flex;flex-direction:column;gap:10px">
-          ${rewards.map(r => {
-            const { icon, text } = rewardLabel(r)
-            return `<div style="display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:12px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1)">
-              <div style="font-size:24px">${icon}</div>
+          ${rewards.map(r => `
+            <div style="display:flex;align-items:center;gap:14px;padding:12px 14px;border-radius:12px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1)">
+              ${rewardVisual(r)}
               <div style="flex:1;min-width:0">
-                <div style="font-weight:700;font-size:13px">${text}</div>
+                <div style="font-weight:700;font-size:13px">${rewardLabel(r)}</div>
                 ${r.tier_label ? `<div style="font-size:10px;color:rgba(255,255,255,0.4)">${r.tier_label}</div>` : ''}
               </div>
               <button class="claim-reward-btn btn btn-primary btn-sm" data-id="${r.id}" style="white-space:nowrap">Récupérer</button>
             </div>`
-          }).join('')}
+          ).join('')}
         </div>
         <button id="pending-rewards-close" class="btn btn-ghost" style="width:100%;margin-top:16px">Fermer</button>
       </div>`

@@ -142,6 +142,8 @@ async function load(container, helpers) {
                       <td>${statusBadge(s)}</td>
                       <td style="display:flex;gap:6px;flex-wrap:wrap">
                         <button class="btn btn-ghost btn-sm" data-edit="${s.id}">✏️ Modifier</button>
+                        <button class="btn btn-ghost btn-sm" data-rewards-for="${s.id}" style="color:#D4A017;border-color:#D4A017">🏆 Récompenses</button>
+                        ${!s.is_active ? `<button class="btn btn-yellow btn-sm" data-launch="${s.id}">▶ Lancer la saison</button>` : ''}
                         ${!s.is_active ? `<button class="btn btn-primary btn-sm" data-activate="${s.id}">▶ Activer</button>` : `<button class="btn btn-ghost btn-sm" data-deactivate="${s.id}" style="color:#e67e22">⏹ Désactiver</button>`}
                         ${isPast ? `<button class="btn btn-danger btn-sm" data-delete="${s.id}">🗑</button>` : ''}
                       </td>
@@ -153,7 +155,7 @@ async function load(container, helpers) {
       </div>
 
       <!-- Récompenses de saison par palier de classement -->
-      <div class="card-panel">
+      <div class="card-panel" id="rewards-section">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;flex-wrap:wrap;gap:8px">
           <div style="font-weight:700;font-size:14px">🏆 Récompenses de saison</div>
           <button id="add-reward-tier-btn" class="btn btn-primary btn-sm" ${!list.length ? 'disabled title="Crée d\'abord une saison"' : ''}>+ Ajouter un palier</button>
@@ -231,6 +233,39 @@ async function load(container, helpers) {
       // Mettre à jour current_season_id sur tous les joueurs ayant joué ranked
       await supabase.from('users').update({ current_season_id: id }).gt('placement_matches', 0)
       toast('Saison activée ✅', 'success')
+      load(container, helpers)
+    })
+  })
+
+  // ── Récompenses : défile vers la section et pré-sélectionne la saison ──
+  container.querySelectorAll('[data-rewards-for]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const seasonId = parseInt(btn.dataset.rewardsFor)
+      document.getElementById('rewards-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      const season = list.find(s => s.id === seasonId)
+      openRewardTierModal(null, list, season, boosterList || [], { toast, openModal, closeModal, reload: () => load(container, helpers) })
+    })
+  })
+
+  // ── Lancer la saison : log du classement + reset MMR + activation ──────
+  container.querySelectorAll('[data-launch]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const seasonId = parseInt(btn.dataset.launch)
+      const season = list.find(s => s.id === seasonId)
+      if (!confirm(
+        `Lancer "${season?.name}" ?\n\n` +
+        `Ceci va :\n` +
+        `• Journaliser le classement actuel dans l'historique\n` +
+        `• Recalculer le MMR de TOUS les joueurs (reset doux)\n` +
+        `• Activer cette saison\n\n` +
+        `Action irréversible. Continuer ?`
+      )) return
+      btn.disabled = true; btn.textContent = '⏳ Lancement...'
+      const { data, error } = await supabase.rpc('admin_launch_season', { p_season_id: seasonId })
+      btn.disabled = false; btn.textContent = '▶ Lancer la saison'
+      if (error) { toast(error.message, 'error'); return }
+      if (!data?.success) { toast(data?.error || 'Échec du lancement', 'error'); return }
+      toast(`Saison lancée ✅ (${data.logged} classement(s) archivé(s), ${data.reset} joueur(s) recalculé(s))`, 'success')
       load(container, helpers)
     })
   })

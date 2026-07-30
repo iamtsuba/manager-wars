@@ -32,16 +32,83 @@ export async function renderRanked(container, ctx) {
 
   // Si aucune saison active : mode ranked suspendu
   if (!season) {
+    const mmr      = profile.mmr ?? 1000
+    const tier     = getTier(mmr)
+    const progress = getTierProgress(mmr)
+
+    // Aperçu du MMR recalculé pour la saison suivante (reset doux : compression
+    // à 50% vers la moyenne 1000, comme les jeux compétitifs classiques)
+    const nextMmr  = Math.round(1000 + (mmr - 1000) * 0.5)
+    const nextTierPreview = getTier(nextMmr)
+
+    const { data: top100 } = await supabase
+      .from('users')
+      .select('id, pseudo, club_name, mmr, rank_tier')
+      .order('mmr', { ascending: false })
+      .limit(100)
+
+    const myRank = (top100 || []).findIndex(u => u.id === profile.id) + 1
+
     container.innerHTML = `
-    <div style="min-height:100%;background:linear-gradient(160deg,#1a1a1a,#2a2a2a);padding:16px;display:flex;flex-direction:column;gap:16px">
+    <div style="min-height:100%;background:linear-gradient(160deg,#1a1a1a,#2a2a2a);padding:16px;overflow-y:auto;display:flex;flex-direction:column;gap:16px">
       <div style="display:flex;align-items:center;gap:10px">
         <button id="ranked-back" style="background:rgba(255,255,255,0.1);border:none;border-radius:10px;padding:8px 12px;color:#fff;font-size:15px;cursor:pointer">←</button>
         <div style="flex:1;text-align:center;font-size:16px;font-weight:900;color:#fff;letter-spacing:2px;text-transform:uppercase">MODE RANKED</div>
       </div>
-      <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;text-align:center;padding:40px">
-        <div style="font-size:64px">⏸️</div>
-        <div style="font-size:20px;font-weight:900;color:#fff">Ranked en pause</div>
-        <div style="font-size:14px;color:rgba(255,255,255,0.5);max-width:260px">Aucune saison n'est active pour le moment. Revenez bientôt !</div>
+
+      <div style="text-align:center;padding:12px 0">
+        <div style="font-size:44px">⏸️</div>
+        <div style="font-size:18px;font-weight:900;color:#fff;margin-top:6px">Ranked en pause</div>
+        <div style="font-size:13px;color:rgba(255,255,255,0.5);max-width:280px;margin:6px auto 0">Aucune saison n'est active pour le moment. Revenez bientôt !</div>
+      </div>
+
+      <!-- Ton classement actuel -->
+      <div style="background:rgba(0,0,0,0.3);border-radius:16px;padding:18px;text-align:center;border:2px solid ${tier.color}40">
+        <div style="font-size:11px;color:rgba(255,255,255,0.5);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px">Ton classement</div>
+        <div style="font-size:44px;margin-bottom:2px">${tier.emoji}</div>
+        <div style="font-size:18px;font-weight:900;color:${tier.color};letter-spacing:2px;text-transform:uppercase">${tier.label}</div>
+        <div style="font-size:12px;color:rgba(255,255,255,0.4);margin-top:4px">MMR ${mmr} ${myRank ? `· #${myRank} au classement général` : ''}</div>
+      </div>
+
+      <!-- Top 100 -->
+      <div>
+        <div style="font-size:13px;font-weight:700;color:#fff;margin-bottom:8px">🏆 Classement général — Top 100</div>
+        <div style="display:flex;flex-direction:column;gap:6px;max-height:320px;overflow-y:auto">
+          ${(top100||[]).map((u, i) => {
+            const t = getTier(u.mmr ?? 1000)
+            const isMe = u.id === profile.id
+            return `<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:10px;
+              background:${isMe?'rgba(212,160,23,0.15)':'rgba(0,0,0,0.25)'};
+              border:1px solid ${isMe?'#D4A017':'transparent'}">
+              <div style="width:26px;text-align:center;font-size:12px;font-weight:900;color:rgba(255,255,255,0.5)">#${i+1}</div>
+              <div style="font-size:18px">${t.emoji}</div>
+              <div style="flex:1;min-width:0">
+                <div style="font-size:13px;font-weight:700;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${u.pseudo}</div>
+                <div style="font-size:10px;color:rgba(255,255,255,0.4)">${u.club_name||'—'}</div>
+              </div>
+              <div style="font-size:13px;font-weight:900;color:${t.color}">${u.mmr ?? 1000}</div>
+            </div>`
+          }).join('') || '<div style="text-align:center;color:rgba(255,255,255,0.4);font-size:12px;padding:16px">Aucun classement disponible.</div>'}
+        </div>
+      </div>
+
+      <!-- Aperçu saison suivante -->
+      <div style="background:rgba(0,0,0,0.3);border-radius:16px;padding:18px;border:1.5px dashed rgba(255,255,255,0.2)">
+        <div style="font-size:11px;color:rgba(255,255,255,0.5);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;text-align:center">📅 Aperçu — prochaine saison</div>
+        <div style="display:flex;align-items:center;justify-content:center;gap:24px">
+          <div style="text-align:center;opacity:.6">
+            <div style="font-size:11px;color:rgba(255,255,255,0.4)">Actuel</div>
+            <div style="font-size:24px">${tier.emoji}</div>
+            <div style="font-size:12px;font-weight:700;color:${tier.color}">${mmr}</div>
+          </div>
+          <div style="font-size:20px;color:rgba(255,255,255,0.3)">→</div>
+          <div style="text-align:center">
+            <div style="font-size:11px;color:rgba(255,255,255,0.4)">Recalculé</div>
+            <div style="font-size:28px">${nextTierPreview.emoji}</div>
+            <div style="font-size:14px;font-weight:900;color:${nextTierPreview.color}">${nextMmr}</div>
+          </div>
+        </div>
+        <div style="font-size:11px;color:rgba(255,255,255,0.35);text-align:center;margin-top:10px">Ton MMR est recalculé vers la moyenne à chaque nouvelle saison, pour repartir sur des bases équilibrées.</div>
       </div>
     </div>`
     document.getElementById('ranked-back')?.addEventListener('click', () => navigate('home'))

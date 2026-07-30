@@ -106,9 +106,12 @@ async function load(container, helpers) {
       </div>`}
 
       <!-- Header + bouton créer -->
-      <div style="display:flex;justify-content:space-between;align-items:center">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
         <div style="font-weight:700;font-size:14px">Toutes les saisons (${list.length})</div>
-        <button class="btn btn-primary" id="create-season-btn">+ Nouvelle saison</button>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-yellow" id="start-new-season-btn">🚀 Démarrer une nouvelle saison</button>
+          <button class="btn btn-primary" id="create-season-btn">+ Nouvelle saison (sans reset)</button>
+        </div>
       </div>
 
       <!-- Liste des saisons -->
@@ -201,6 +204,10 @@ async function load(container, helpers) {
   // ── Créer une saison ─────────────────────────────────────
   document.getElementById('create-season-btn')?.addEventListener('click', () => {
     openSeasonModal(null, { toast, openModal, closeModal, reload: () => load(container, helpers) })
+  })
+
+  document.getElementById('start-new-season-btn')?.addEventListener('click', () => {
+    openStartNewSeasonModal(active, { toast, openModal, closeModal, reload: () => load(container, helpers) })
   })
 
   // ── Modifier ─────────────────────────────────────────────
@@ -437,6 +444,79 @@ function openRewardTierModal(tier, seasons, defaultSeason, boosterList, { toast,
     reload()
   })
 }
+// ── Démarrer une nouvelle saison avec reset doux du MMR ─────────────────
+function openStartNewSeasonModal(currentSeason, { toast, openModal, closeModal, reload }) {
+  const today = new Date()
+  const in30d = new Date(today.getTime() + 30*86400000)
+  const toLocalDate = (d) => d.toISOString().slice(0, 10)
+
+  const bodyHTML = `
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div style="background:#fff3cd;border:1.5px solid #e6a817;border-radius:10px;padding:12px 14px;color:#7a5c00;font-size:13px;line-height:1.5">
+        ⚠️ <b>Action irréversible.</b> ${currentSeason ? `La saison actuelle ("${currentSeason.name}") sera clôturée et ` : ''}
+        le MMR de <b>tous les joueurs</b> sera recalculé (compression à 50% vers la moyenne 1000, RD remis à 350,
+        matchs de placement remis à 0). Les statistiques de carrière (V/N/D) ne sont pas affectées.
+      </div>
+      <div>
+        <label>NOM DE LA SAISON</label>
+        <input id="sns-name" placeholder="Ex: Saison 2">
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div>
+          <label>DATE DE DÉBUT</label>
+          <input id="sns-start" type="date" value="${toLocalDate(today)}">
+        </div>
+        <div>
+          <label>DATE DE FIN</label>
+          <input id="sns-end" type="date" value="${toLocalDate(in30d)}">
+        </div>
+      </div>
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;color:#333">
+        <input type="checkbox" id="sns-confirm">
+        Je comprends que cette action va recalculer le MMR de tous les joueurs et ne peut pas être annulée.
+      </label>
+      <div id="sns-error" style="font-size:12px;color:#ff6b6b;min-height:14px"></div>
+    </div>
+  `
+  const footerHTML = `
+    <button id="sns-cancel" class="btn btn-ghost">Annuler</button>
+    <button id="sns-launch" class="btn btn-primary">🚀 Démarrer la saison</button>
+  `
+  openModal('Démarrer une nouvelle saison', bodyHTML, footerHTML)
+
+  document.getElementById('sns-cancel')?.addEventListener('click', () => closeModal())
+  document.getElementById('sns-launch')?.addEventListener('click', async () => {
+    const errEl = document.getElementById('sns-error')
+    const name = document.getElementById('sns-name').value.trim()
+    const startRaw = document.getElementById('sns-start').value
+    const endRaw = document.getElementById('sns-end').value
+    const confirmed = document.getElementById('sns-confirm').checked
+
+    if (!name) { errEl.textContent = 'Le nom de la saison est requis.'; return }
+    if (!startRaw || !endRaw) { errEl.textContent = 'Les deux dates sont requises.'; return }
+    if (new Date(startRaw) >= new Date(endRaw)) { errEl.textContent = 'La date de fin doit être après la date de début.'; return }
+    if (!confirmed) { errEl.textContent = 'Coche la case de confirmation pour continuer.'; return }
+
+    const btn = document.getElementById('sns-launch')
+    btn.disabled = true; btn.textContent = '⏳ Recalcul en cours...'
+
+    const { data, error } = await supabase.rpc('admin_start_new_season', {
+      p_name: name,
+      p_start_at: new Date(startRaw).toISOString(),
+      p_end_at: new Date(endRaw).toISOString(),
+    })
+
+    btn.disabled = false; btn.textContent = '🚀 Démarrer la saison'
+
+    if (error) { errEl.textContent = error.message; return }
+    if (!data?.success) { errEl.textContent = data?.error || 'Échec de l\'opération.'; return }
+
+    toast(`Nouvelle saison démarrée ✅ (${data.users_reset} joueur(s) recalculé(s))`, 'success')
+    closeModal()
+    reload()
+  })
+}
+
 function openSeasonModal(season, { toast, openModal, closeModal, reload }) {
   const isEdit = !!season
 

@@ -60,7 +60,7 @@ export function ensureV2Chrome(navigate, p, activeRouteKey, ICON, toast) {
         padding: 14px 20px; box-sizing: border-box;
       }
       .home2-chrome-logo { flex-shrink: 0; display: flex; align-items: center; }
-      .home2-chrome-logo img { height: 52px; width: auto; display: block; }
+      .home2-chrome-logo img { height: 72px; width: auto; display: block; }
       .home2-chrome-tabs { display: flex; gap: 10px; flex: 1; min-width: 0; justify-content: center; overflow-x: auto; scrollbar-width: none; }
       .home2-chrome-tabs::-webkit-scrollbar { display: none; }
       .home2-chrome-tab {
@@ -114,7 +114,7 @@ export function ensureV2Chrome(navigate, p, activeRouteKey, ICON, toast) {
           background: #05080a; border-bottom: 1px solid rgba(255,255,255,0.1);
           padding: 10px 14px; box-sizing: border-box;
         }
-        .home2-mobile-top .home2-chrome-logo img { height: 34px; }
+        .home2-mobile-top .home2-chrome-logo img { height: 46px; }
         .home2-mobile-top .home2-chrome-right { gap: 8px; }
         .home2-mobile-top .home2-chrome-credits { padding: 6px 12px; font-size: 13px; }
         .home2-mobile-top .home2-chrome-settings-pill {

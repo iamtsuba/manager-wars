@@ -3,7 +3,7 @@ import { isFeatureEnabled, showFeatureDisabledPopup } from '../lib/featureFlags.
 import { showPendingPopup } from '../friends/friends.js'
 import { stopBGM } from '../lib/sound.js'
 import { getTier, getTierProgress } from '../ranked/glicko2.js'
-import { claimPendingReward } from '../boosters/boosters.js'
+import { claimPendingReward, showBoosterAnimation } from '../boosters/boosters.js'
 import { renderPlayerCard } from '../components/player-card.js'
 
 const APP_VERSION = (typeof __BUILD_TIME__ !== 'undefined' && __BUILD_TIME__)
@@ -374,7 +374,7 @@ function startCreditsAdFlow(totalAds, secondsPerAd, totalCredits, profile, toast
 // ── Popup "Regarder des pubs pour des crédits" (fin) ────────────────────
 
 // ── Popup de réclamation des récompenses en attente ─────────────────────
-async function openPendingRewardsPopup(state, toast) {
+async function openPendingRewardsPopup(state, toast, navigate) {
   const overlay = document.createElement('div')
   overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.85);display:flex;align-items:center;justify-content:center;z-index:9999;padding:16px'
   document.body.appendChild(overlay)
@@ -454,7 +454,11 @@ async function openPendingRewardsPopup(state, toast) {
           } else if (result.type === 'card') {
             toast(`Carte reçue : ${result.player?.firstname||''} ${result.player?.surname_real||''} ✅`, 'success')
           } else if (result.type === 'booster') {
-            toast(`Booster "${result.name}" ouvert — ${result.cards?.length||0} carte(s) reçue(s) ✅`, 'success')
+            overlay.remove()
+            showBoosterAnimation(result.cards, result.boosterUI, navigate, () => {
+              openPendingRewardsPopup(state, toast, navigate)
+            })
+            return
           }
         } catch (e) {
           toast(e.message || 'Erreur lors de la réclamation', 'error')
@@ -992,7 +996,7 @@ export async function renderHome2(container, { state, navigate, toast }) {
   loadFriendRequestsBanner(state, toast)
 
   document.getElementById('pending-rewards-banner')?.addEventListener('click', () => {
-    openPendingRewardsPopup(state, toast)
+    openPendingRewardsPopup(state, toast, navigate)
   })
 
   loadMatchInviteBanner(state, toast, navigate)

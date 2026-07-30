@@ -3,6 +3,7 @@ import { isFeatureEnabled, showFeatureDisabledPopup } from '../lib/featureFlags.
 import { showPendingPopup } from '../friends/friends.js'
 import { stopBGM } from '../lib/sound.js'
 import { getTier, getTierProgress } from '../ranked/glicko2.js'
+import { claimPendingReward } from '../boosters/boosters.js'
 
 const APP_VERSION = (typeof __BUILD_TIME__ !== 'undefined' && __BUILD_TIME__)
   ? __BUILD_TIME__
@@ -371,6 +372,86 @@ function startCreditsAdFlow(totalAds, secondsPerAd, totalCredits, profile, toast
 
 // ── Popup "Regarder des pubs pour des crédits" (fin) ────────────────────
 
+// ── Popup de réclamation des récompenses en attente ─────────────────────
+async function openPendingRewardsPopup(state, toast) {
+  const overlay = document.createElement('div')
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.85);display:flex;align-items:center;justify-content:center;z-index:9999;padding:16px'
+  document.body.appendChild(overlay)
+
+  async function render() {
+    const { data: rewards } = await supabase
+      .from('pending_rewards')
+      .select('*, player:players(firstname, surname_real), booster:booster_configs(name)')
+      .eq('user_id', state.profile.id).eq('claimed', false)
+      .order('created_at', { ascending: true })
+
+    if (!rewards?.length) {
+      overlay.remove()
+      // Rafraîchit la bannière (disparaît puisqu'il n'y a plus rien à réclamer)
+      const banner = document.getElementById('pending-rewards-banner')
+      if (banner) banner.remove()
+      return
+    }
+
+    const rewardLabel = (r) => {
+      if (r.reward_type === 'credits') return { icon: '💰', text: `${(r.credits_amount||0).toLocaleString('fr')} crédits` }
+      if (r.reward_type === 'card')    return { icon: '🃏', text: `${r.player?.firstname||''} ${r.player?.surname_real||''}`.trim() || 'Carte joueur' }
+      if (r.reward_type === 'booster') return { icon: '🎁', text: r.booster?.name || 'Booster' }
+      return { icon: '❓', text: 'Récompense' }
+    }
+
+    overlay.innerHTML = `
+      <div style="background:#111a12;border:1px solid rgba(255,255,255,0.1);border-radius:16px;padding:24px;max-width:420px;width:100%;max-height:80vh;overflow-y:auto;color:#fff">
+        <div style="font-size:18px;font-weight:900;margin-bottom:4px">🎁 Tes récompenses</div>
+        <div style="font-size:12px;color:rgba(255,255,255,0.5);margin-bottom:16px">${rewards.length} récompense${rewards.length>1?'s':''} à récupérer</div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          ${rewards.map(r => {
+            const { icon, text } = rewardLabel(r)
+            return `<div style="display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:12px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1)">
+              <div style="font-size:24px">${icon}</div>
+              <div style="flex:1;min-width:0">
+                <div style="font-weight:700;font-size:13px">${text}</div>
+                ${r.tier_label ? `<div style="font-size:10px;color:rgba(255,255,255,0.4)">${r.tier_label}</div>` : ''}
+              </div>
+              <button class="claim-reward-btn btn btn-primary btn-sm" data-id="${r.id}" style="white-space:nowrap">Récupérer</button>
+            </div>`
+          }).join('')}
+        </div>
+        <button id="pending-rewards-close" class="btn btn-ghost" style="width:100%;margin-top:16px">Fermer</button>
+      </div>`
+
+    overlay.querySelector('#pending-rewards-close')?.addEventListener('click', () => overlay.remove())
+
+    overlay.querySelectorAll('.claim-reward-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const reward = rewards.find(r => r.id === btn.dataset.id)
+        btn.disabled = true; btn.textContent = '⏳...'
+        try {
+          const result = await claimPendingReward(reward, state.profile, toast, null)
+          await supabase.from('pending_rewards').update({ claimed: true, claimed_at: new Date().toISOString() }).eq('id', reward.id)
+
+          if (result.type === 'credits') {
+            syncV2Credits(state.profile.credits)
+            toast(`+${result.amount.toLocaleString('fr')} crédits ✅`, 'success')
+          } else if (result.type === 'card') {
+            toast(`Carte reçue : ${result.player?.firstname||''} ${result.player?.surname_real||''} ✅`, 'success')
+          } else if (result.type === 'booster') {
+            toast(`Booster "${result.name}" ouvert — ${result.cards?.length||0} carte(s) reçue(s) ✅`, 'success')
+          }
+        } catch (e) {
+          toast(e.message || 'Erreur lors de la réclamation', 'error')
+          btn.disabled = false; btn.textContent = 'Récupérer'
+          return
+        }
+        render() // rafraîchit la liste (retire celle réclamée)
+      })
+    })
+  }
+
+  render()
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove() })
+}
+
 export function syncV2Credits(amount) {
   const label = `💰 ${(amount||0).toLocaleString('fr')}`
   const el1 = document.getElementById('home2-chrome-credits')
@@ -507,10 +588,11 @@ export async function renderHome2(container, { state, navigate, toast }) {
   const prog   = getTierProgress(mmr)
   const nextRP = isFinite(tier.max) ? tier.max + 1 : null
 
-  const [{ list: topUsers, iAmInTop, myPosition }, news, promoBoosters] = await Promise.all([
+  const [{ list: topUsers, iAmInTop, myPosition }, news, promoBoosters, { count: pendingRewardsCount }] = await Promise.all([
     fetchTopRanking(p.id),
     fetchNews(5),
-    fetchPromoBoosters()
+    fetchPromoBoosters(),
+    supabase.from('pending_rewards').select('*', { count: 'exact', head: true }).eq('user_id', p.id).eq('claimed', false)
   ])
 
   const rankRowHTML = (u, i) => `
@@ -772,6 +854,17 @@ export async function renderHome2(container, { state, navigate, toast }) {
 
         <!-- Colonne centrale : Jouer + promo -->
         <div class="home2-col-center">
+          ${pendingRewardsCount > 0 ? `
+          <div id="pending-rewards-banner" style="cursor:pointer;display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:14px;
+            background:linear-gradient(135deg,rgba(212,160,23,0.25),rgba(212,160,23,0.1));border:1.5px solid #D4A017;margin-bottom:14px">
+            <div style="font-size:28px">🎁</div>
+            <div style="flex:1">
+              <div style="font-weight:900;font-size:14px;color:#fff">Tu as des récompenses à récupérer !</div>
+              <div style="font-size:12px;color:rgba(255,255,255,0.6)">${pendingRewardsCount} récompense${pendingRewardsCount>1?'s':''} en attente</div>
+            </div>
+            <div style="font-size:20px;color:#D4A017">→</div>
+          </div>` : ''}
+
           <div class="play-section-header"><span class="slashes">///</span><h4>JOUER</h4><span class="slashes">///</span></div>
 
           <div class="play-grid">
@@ -879,6 +972,10 @@ export async function renderHome2(container, { state, navigate, toast }) {
   document.getElementById('promo-cta-btn')?.addEventListener('click', () => navigate('boosters'))
 
   loadFriendRequestsBanner(state, toast)
+
+  document.getElementById('pending-rewards-banner')?.addEventListener('click', () => {
+    openPendingRewardsPopup(state, toast)
+  })
 
   loadMatchInviteBanner(state, toast, navigate)
   loadOngoingMatchBanner(state, toast, navigate)

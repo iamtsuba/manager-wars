@@ -77,6 +77,43 @@ function dbToUI(b) {
   }
 }
 
+// ── Réclamation d'une récompense en attente (crédits / carte / booster) ──
+// Réutilise les VRAIES fonctions d'ouverture de booster (pas de réimplémentation)
+export async function claimPendingReward(reward, profile, toast, refreshProfile) {
+  if (reward.reward_type === 'credits') {
+    const newCredits = (profile.credits || 0) + (reward.credits_amount || 0)
+    const { error } = await supabase.from('users').update({ credits: newCredits }).eq('id', profile.id)
+    if (error) throw error
+    profile.credits = newCredits
+    if (refreshProfile) await refreshProfile()
+    return { type: 'credits', amount: reward.credits_amount }
+  }
+
+  if (reward.reward_type === 'card') {
+    const { data: player } = await supabase.from('players').select('firstname, surname_real, rarity').eq('id', reward.player_id).single()
+    const { error } = await supabase.from('cards').insert({ owner_id: profile.id, player_id: reward.player_id, card_type: 'player' })
+    if (error) throw error
+    return { type: 'card', player }
+  }
+
+  if (reward.reward_type === 'booster') {
+    const { data: cfg } = await supabase.from('booster_configs').select('*').eq('id', reward.booster_config_id).single()
+    const { data: rates } = await supabase.from('booster_drop_rates').select('*').eq('booster_id', reward.booster_config_id)
+    if (!cfg) throw new Error('Booster introuvable (peut-être supprimé depuis).')
+
+    const b = dbToUI({ ...cfg, rates })
+    let newCards = []
+    if (b.type === 'formation') newCards = await openFormationBooster(profile, 0)
+    else if (b.type === 'game_changer') newCards = await openGCBooster(profile, b.cardCount, 0)
+    else if (b.type === 'player') newCards = await openPlayersBooster(profile, b.cardCount, 0)
+    else newCards = await openMixedBooster(profile, { ...b, cost: 0 })
+
+    return { type: 'booster', name: cfg.name, cards: newCards }
+  }
+
+  throw new Error('Type de récompense inconnu.')
+}
+
 export async function renderBoosters(container, { state, navigate, toast }) {
   ensureV2Chrome(navigate, state.profile, 'boosters', import.meta.env.BASE_URL + 'icons/', toast)
   const credits = state.profile?.credits || 0

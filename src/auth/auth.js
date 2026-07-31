@@ -9,10 +9,10 @@ export function renderAuth(container, { navigate, toast }) {
     const isLogin = activeTab === 'login'
     container.innerHTML = `
     <div style="
-      min-height:100vh; min-height:100dvh;
+      position:fixed; inset:0; z-index:20;
       background:linear-gradient(180deg,#0a0a12 0%,#0f1a10 60%,#0a1628 100%);
       display:flex; flex-direction:column; align-items:center; justify-content:flex-start;
-      padding:24px 16px; position:relative; overflow-y:auto; overflow-x:hidden;
+      padding:24px 16px; overflow-y:auto; overflow-x:hidden; -webkit-overflow-scrolling:touch;
     ">
       <!-- Particules décoratives -->
       <div style="position:absolute;inset:0;pointer-events:none;overflow:hidden">

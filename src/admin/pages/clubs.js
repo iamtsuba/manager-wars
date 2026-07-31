@@ -561,11 +561,11 @@ function openFlagBuilderModal(helpers) {
   let GRID = 6
   const CELL = 36
 
-  function makeCheckerboard(n) {
+  function makeWhiteGrid(n) {
     return new Array(n * n).fill('#ffffff')
   }
 
-  let colors = makeCheckerboard(GRID)
+  let colors = makeWhiteGrid(GRID)
   let text = 'OP'
   let textColor = '#D4A017'
   let textSize = 50
@@ -594,10 +594,10 @@ function openFlagBuilderModal(helpers) {
       if (!t) return ''
       const cx = total/2 + (offX/100) * total
       const cy = total/2 + (offY/100) * total
-      const fontSize = (size/100) * total
+      const fontSize = (size/100) * total * (t.length > 3 ? 3 / t.length : 1)
       return `<text x="${cx}" y="${cy}" text-anchor="middle" dominant-baseline="central"
         font-family="Arial Black, Arial, sans-serif" font-weight="900" font-size="${fontSize}"
-        fill="${color}">${t.toUpperCase().slice(0,3)}</text>`
+        fill="${color}">${t}</text>`
     }
     return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${total} ${total}">
       ${squares}
@@ -610,78 +610,61 @@ function openFlagBuilderModal(helpers) {
     return 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svg)))
   }
 
+  const textBlockHTML = (n, label, val, color, size, offX, offY) => `
+    <div style="background:#f7f7f7;border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:8px">
+      <div style="font-weight:700;font-size:12px;color:#333">${label}</div>
+      <input id="flag-text${n}" maxlength="20" value="${val}" placeholder="${n===2?'Vide = désactivé':''}" style="font-weight:900">
+      <div style="display:flex;align-items:center;gap:8px">
+        <label style="margin:0;font-size:11px;white-space:nowrap">Couleur</label>
+        <input type="color" id="flag-text${n}-color" value="${color}" style="width:40px;height:28px;padding:2px;cursor:pointer">
+      </div>
+      <div>
+        <label style="font-size:10px">Taille (<span id="flag-size${n}-val">${size}</span>%)</label>
+        <input type="range" id="flag-text${n}-size" min="5" max="120" value="${size}" style="width:100%">
+      </div>
+      <div>
+        <label style="font-size:10px">Position H (<span id="flag-x${n}-val">${offX}</span>)</label>
+        <input type="range" id="flag-text${n}-x" min="-50" max="50" value="${offX}" style="width:100%">
+      </div>
+      <div>
+        <label style="font-size:10px">Position V (<span id="flag-y${n}-val">${offY}</span>)</label>
+        <input type="range" id="flag-text${n}-y" min="-50" max="50" value="${offY}" style="width:100%">
+      </div>
+    </div>
+  `
+
   const bodyHTML = `
     <div id="flag-builder-wide"></div>
     <style>
-      .modal:has(#flag-builder-wide) { max-width: 920px !important; }
+      .modal:has(#flag-builder-wide) { max-width: 980px !important; }
     </style>
-    <div style="display:flex;gap:24px;flex-wrap:wrap">
-      <div style="flex:0 0 260px;display:flex;flex-direction:column;gap:14px;align-items:center">
-        <div id="flag-preview" style="width:240px;height:240px;border-radius:12px;overflow:hidden;box-shadow:0 2px 10px rgba(0,0,0,0.15)"></div>
-
+    <div style="display:grid;grid-template-columns:200px 1fr 1fr;gap:16px;margin-bottom:16px">
+      <div style="display:flex;flex-direction:column;gap:10px;align-items:center">
+        <div id="flag-preview" style="width:180px;height:180px;border-radius:12px;overflow:hidden;box-shadow:0 2px 10px rgba(0,0,0,0.15)"></div>
         <div style="width:100%">
-          <label>TAILLE DE LA GRILLE</label>
-          <div style="display:flex;gap:6px">
-            ${[6,9,12].map(n => `<button type="button" class="btn ${n===GRID?'btn-primary':'btn-ghost'} btn-sm flag-grid-size" data-n="${n}" style="flex:1">${n}×${n}</button>`).join('')}
+          <label style="font-size:11px">TAILLE DE LA GRILLE</label>
+          <div style="display:flex;gap:4px">
+            ${[6,9,12].map(n => `<button type="button" class="btn ${n===GRID?'btn-primary':'btn-ghost'} btn-sm flag-grid-size" data-n="${n}" style="flex:1;padding:6px 4px">${n}×${n}</button>`).join('')}
           </div>
-        </div>
-
-        <div style="width:100%">
-          <label>TEXTE 1 (3 caractères max)</label>
-          <input id="flag-text" maxlength="3" value="${text}" style="text-align:center;font-weight:900;text-transform:uppercase">
-        </div>
-        <div style="display:flex;align-items:center;gap:8px;width:100%">
-          <label style="margin:0;white-space:nowrap">Couleur</label>
-          <input type="color" id="flag-text-color" value="${textColor}" style="width:44px;height:32px;padding:2px;cursor:pointer">
-        </div>
-        <div style="width:100%">
-          <label>Taille (<span id="flag-size-val">${textSize}</span>%)</label>
-          <input type="range" id="flag-text-size" min="10" max="120" value="${textSize}" style="width:100%">
-        </div>
-        <div style="width:100%">
-          <label>Position H (<span id="flag-x-val">${textOffsetX}</span>)</label>
-          <input type="range" id="flag-text-x" min="-50" max="50" value="${textOffsetX}" style="width:100%">
-        </div>
-        <div style="width:100%">
-          <label>Position V (<span id="flag-y-val">${textOffsetY}</span>)</label>
-          <input type="range" id="flag-text-y" min="-50" max="50" value="${textOffsetY}" style="width:100%">
-        </div>
-
-        <div style="width:100%;border-top:1px solid #eee;margin-top:4px;padding-top:12px">
-          <label>TEXTE 2 — optionnel (3 caractères max)</label>
-          <input id="flag-text2" maxlength="3" value="${text2}" placeholder="Vide = désactivé" style="text-align:center;font-weight:900;text-transform:uppercase">
-        </div>
-        <div style="display:flex;align-items:center;gap:8px;width:100%">
-          <label style="margin:0;white-space:nowrap">Couleur</label>
-          <input type="color" id="flag-text2-color" value="${text2Color}" style="width:44px;height:32px;padding:2px;cursor:pointer">
-        </div>
-        <div style="width:100%">
-          <label>Taille (<span id="flag-size2-val">${text2Size}</span>%)</label>
-          <input type="range" id="flag-text2-size" min="10" max="120" value="${text2Size}" style="width:100%">
-        </div>
-        <div style="width:100%">
-          <label>Position H (<span id="flag-x2-val">${text2OffsetX}</span>)</label>
-          <input type="range" id="flag-text2-x" min="-50" max="50" value="${text2OffsetX}" style="width:100%">
-        </div>
-        <div style="width:100%">
-          <label>Position V (<span id="flag-y2-val">${text2OffsetY}</span>)</label>
-          <input type="range" id="flag-text2-y" min="-50" max="50" value="${text2OffsetY}" style="width:100%">
         </div>
       </div>
 
-      <div style="flex:1;min-width:280px">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-          <label style="margin:0">Couleurs des ${GRID*GRID} carrés — clique un carré, puis Ctrl+C / Ctrl+V pour copier-coller sa couleur</label>
-        </div>
-        <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap">
+      ${textBlockHTML(1, 'TEXTE 1 (20 caractères max)', text, textColor, textSize, textOffsetX, textOffsetY)}
+      ${textBlockHTML(2, 'TEXTE 2 — optionnel (20 caractères max)', text2, text2Color, text2Size, text2OffsetX, text2OffsetY)}
+    </div>
+
+    <div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:8px">
+        <label style="margin:0;font-size:12px">Couleurs des ${GRID*GRID} carrés — clique un carré, puis Ctrl+C / Ctrl+V pour copier-coller sa couleur</label>
+        <div style="display:flex;gap:6px;align-items:center">
           <button type="button" id="flag-copy-btn" class="btn btn-ghost btn-sm" disabled>📋 Copier</button>
           <button type="button" id="flag-paste-btn" class="btn btn-ghost btn-sm" disabled>📥 Coller</button>
           <span id="flag-clipboard-preview" style="display:none;align-items:center;gap:6px;font-size:12px;color:#666">
             Copié : <span id="flag-clipboard-swatch" style="display:inline-block;width:16px;height:16px;border-radius:4px;border:1px solid #ccc"></span>
           </span>
         </div>
-        <div id="flag-squares-grid" style="display:grid;gap:2px"></div>
       </div>
+      <div id="flag-squares-grid" style="display:grid;gap:2px;justify-content:center"></div>
     </div>
   `
   const footerHTML = `
@@ -693,7 +676,7 @@ function openFlagBuilderModal(helpers) {
   function renderSquaresGrid() {
     const el = document.getElementById('flag-squares-grid')
     if (!el) return
-    const sw = GRID >= 12 ? 26 : GRID >= 9 ? 32 : 40
+    const sw = GRID >= 12 ? 30 : GRID >= 9 ? 36 : 44
     el.style.gridTemplateColumns = `repeat(${GRID}, ${sw}px)`
     el.innerHTML = colors.map((c, i) => `
       <div class="flag-square" data-i="${i}" style="width:${sw}px;height:${sw}px;border-radius:4px;background:${c};cursor:pointer;
@@ -745,8 +728,6 @@ function openFlagBuilderModal(helpers) {
   document.getElementById('flag-copy-btn')?.addEventListener('click', copySelectedColor)
   document.getElementById('flag-paste-btn')?.addEventListener('click', pasteToSelectedColor)
 
-  // Raccourcis clavier Ctrl+C / Ctrl+V (Cmd sur Mac) pour copier-coller la
-  // couleur du carré sélectionné, tant que le popup est ouvert.
   function flagKeydownHandler(e) {
     if (!document.getElementById('flag-squares-grid')) {
       document.removeEventListener('keydown', flagKeydownHandler)
@@ -764,10 +745,11 @@ function openFlagBuilderModal(helpers) {
       const n = parseInt(btn.dataset.n)
       if (n === GRID) return
       GRID = n
-      colors = makeCheckerboard(GRID)
+      colors = makeWhiteGrid(GRID)
       selectedSquare = null
       clipboardColor = null
-      document.getElementById('flag-clipboard-preview').style.display = 'none'
+      const cp = document.getElementById('flag-clipboard-preview')
+      if (cp) cp.style.display = 'none'
       renderSquaresGrid()
       updateCopyPasteButtons()
       repaint()
@@ -786,49 +768,37 @@ function openFlagBuilderModal(helpers) {
   updateCopyPasteButtons()
   repaint()
 
-  document.getElementById('flag-text').addEventListener('input', (e) => {
-    text = e.target.value.toUpperCase().slice(0, 3)
-    e.target.value = text
-    repaint()
-  })
-  document.getElementById('flag-text-color').addEventListener('input', (e) => { textColor = e.target.value; repaint() })
-  document.getElementById('flag-text-size').addEventListener('input', (e) => {
-    textSize = parseInt(e.target.value)
-    document.getElementById('flag-size-val').textContent = textSize
-    repaint()
-  })
-  document.getElementById('flag-text-x').addEventListener('input', (e) => {
-    textOffsetX = parseInt(e.target.value)
-    document.getElementById('flag-x-val').textContent = textOffsetX
-    repaint()
-  })
-  document.getElementById('flag-text-y').addEventListener('input', (e) => {
-    textOffsetY = parseInt(e.target.value)
-    document.getElementById('flag-y-val').textContent = textOffsetY
-    repaint()
-  })
-
-  document.getElementById('flag-text2').addEventListener('input', (e) => {
-    text2 = e.target.value.toUpperCase().slice(0, 3)
-    e.target.value = text2
-    repaint()
-  })
-  document.getElementById('flag-text2-color').addEventListener('input', (e) => { text2Color = e.target.value; repaint() })
-  document.getElementById('flag-text2-size').addEventListener('input', (e) => {
-    text2Size = parseInt(e.target.value)
-    document.getElementById('flag-size2-val').textContent = text2Size
-    repaint()
-  })
-  document.getElementById('flag-text2-x').addEventListener('input', (e) => {
-    text2OffsetX = parseInt(e.target.value)
-    document.getElementById('flag-x2-val').textContent = text2OffsetX
-    repaint()
-  })
-  document.getElementById('flag-text2-y').addEventListener('input', (e) => {
-    text2OffsetY = parseInt(e.target.value)
-    document.getElementById('flag-y2-val').textContent = text2OffsetY
-    repaint()
-  })
+  function wireTextControls(n) {
+    document.getElementById(`flag-text${n}`).addEventListener('input', (e) => {
+      const v = e.target.value.slice(0, 20)
+      if (n === 1) text = v; else text2 = v
+      repaint()
+    })
+    document.getElementById(`flag-text${n}-color`).addEventListener('input', (e) => {
+      if (n === 1) textColor = e.target.value; else text2Color = e.target.value
+      repaint()
+    })
+    document.getElementById(`flag-text${n}-size`).addEventListener('input', (e) => {
+      const v = parseInt(e.target.value)
+      if (n === 1) textSize = v; else text2Size = v
+      document.getElementById(`flag-size${n}-val`).textContent = v
+      repaint()
+    })
+    document.getElementById(`flag-text${n}-x`).addEventListener('input', (e) => {
+      const v = parseInt(e.target.value)
+      if (n === 1) textOffsetX = v; else text2OffsetX = v
+      document.getElementById(`flag-x${n}-val`).textContent = v
+      repaint()
+    })
+    document.getElementById(`flag-text${n}-y`).addEventListener('input', (e) => {
+      const v = parseInt(e.target.value)
+      if (n === 1) textOffsetY = v; else text2OffsetY = v
+      document.getElementById(`flag-y${n}-val`).textContent = v
+      repaint()
+    })
+  }
+  wireTextControls(1)
+  wireTextControls(2)
 
   document.getElementById('flag-cancel')?.addEventListener('click', () => closeModal())
   document.getElementById('flag-use')?.addEventListener('click', () => {
@@ -840,7 +810,6 @@ function openFlagBuilderModal(helpers) {
     closeModal()
   })
 }
-
 
 async function openClubPanel(club, container, helpers) {
   const { toast } = helpers

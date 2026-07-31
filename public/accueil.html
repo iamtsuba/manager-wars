@@ -520,7 +520,7 @@ async function fetchAdminTutorialSteps() {
     if (res.ok) {
       const data = await res.json()
       if (Array.isArray(data) && data.length > 0) {
-        return data.map(s => ({ emoji: s.emoji, title: s.title, color: s.color, content: s.content, image_url: s.image_url || null }))
+        return data.map(s => ({ emoji: s.emoji, title: s.title, color: s.color, content: s.content, image_url: s.image_url ? `/icons/${s.image_url}` : null }))
       }
     }
   } catch (e) {
@@ -536,7 +536,7 @@ async function fetchAdminTutorialSteps() {
     if (res.ok) {
       const data = await res.json()
       if (Array.isArray(data) && data.length > 0) {
-        return data.map(s => ({ emoji: s.emoji, title: s.title, color: s.color, content: s.content, image_url: s.image_url || null }))
+        return data.map(s => ({ emoji: s.emoji, title: s.title, color: s.color, content: s.content, image_url: s.image_url ? `/icons/${s.image_url}` : null }))
       }
     }
   } catch (e) {

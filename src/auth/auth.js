@@ -12,7 +12,7 @@ export function renderAuth(container, { navigate, toast }) {
       position:fixed; inset:0; z-index:20;
       background:linear-gradient(180deg,#0a0a12 0%,#0f1a10 60%,#0a1628 100%);
       display:flex; flex-direction:column; align-items:center; justify-content:flex-start;
-      padding:24px 16px; overflow-y:auto; overflow-x:hidden; -webkit-overflow-scrolling:touch;
+      padding:12px 16px; overflow-y:auto; overflow-x:hidden; -webkit-overflow-scrolling:touch;
     ">
       <!-- Particules décoratives -->
       <div style="position:absolute;inset:0;pointer-events:none;overflow:hidden">
@@ -21,9 +21,9 @@ export function renderAuth(container, { navigate, toast }) {
       </div>
 
       <!-- Logo -->
-      <div style="margin-bottom:28px;text-align:center;animation:authFadeIn .5s ease">
-        <img src="${BASE}icons/logo-withname.png" alt="Manager Wars" style="height:72px;width:auto;filter:drop-shadow(0 4px 16px rgba(212,160,23,0.4))">
-        <div style="font-size:13px;color:rgba(255,255,255,0.5);margin-top:8px;letter-spacing:1px">LE JEU DE CARTES FOOTBALL STRATÉGIQUE</div>
+      <div style="margin-bottom:10px;text-align:center;animation:authFadeIn .5s ease">
+        <img src="${BASE}icons/logo-withname.png" alt="Manager Wars" style="height:44px;width:auto;filter:drop-shadow(0 4px 16px rgba(212,160,23,0.4))">
+        <div style="font-size:10px;color:rgba(255,255,255,0.5);margin-top:3px;letter-spacing:1px">LE JEU DE CARTES FOOTBALL STRATÉGIQUE</div>
       </div>
 
       <!-- Carte principale -->
@@ -40,14 +40,14 @@ export function renderAuth(container, { navigate, toast }) {
         <!-- Onglets -->
         <div style="display:flex;border-bottom:1px solid rgba(255,255,255,0.08)">
           <button id="tab-login-btn" style="
-            flex:1;padding:16px;border:none;background:${isLogin?'rgba(26,107,60,0.3)':'transparent'};
+            flex:1;padding:10px;border:none;background:${isLogin?'rgba(26,107,60,0.3)':'transparent'};
             color:${isLogin?'#fff':'rgba(255,255,255,0.4)'};
             font-size:14px;font-weight:${isLogin?'900':'600'};cursor:pointer;
             border-bottom:2px solid ${isLogin?'#22c55e':'transparent'};
             transition:all .2s;
           ">Connexion</button>
           <button id="tab-reg-btn" style="
-            flex:1;padding:16px;border:none;background:${!isLogin?'rgba(26,107,60,0.3)':'transparent'};
+            flex:1;padding:10px;border:none;background:${!isLogin?'rgba(26,107,60,0.3)':'transparent'};
             color:${!isLogin?'#fff':'rgba(255,255,255,0.4)'};
             font-size:14px;font-weight:${!isLogin?'900':'600'};cursor:pointer;
             border-bottom:2px solid ${!isLogin?'#22c55e':'transparent'};
@@ -55,14 +55,14 @@ export function renderAuth(container, { navigate, toast }) {
           ">Inscription</button>
         </div>
 
-        <div style="padding:24px">
+        <div style="padding:14px">
           ${isLogin ? `
           <!-- CONNEXION -->
-          <div style="display:flex;flex-direction:column;gap:14px">
+          <div style="display:flex;flex-direction:column;gap:8px">
             <div>
-              <label style="font-size:11px;font-weight:700;color:rgba(255,255,255,0.5);display:block;margin-bottom:6px;letter-spacing:.5px">EMAIL</label>
+              <label style="font-size:10px;font-weight:700;color:rgba(255,255,255,0.5);display:block;margin-bottom:3px;letter-spacing:.5px">EMAIL</label>
               <input type="email" id="login-email" placeholder="manager@example.com" autocomplete="email" style="
-                width:100%;box-sizing:border-box;padding:12px 14px;
+                width:100%;box-sizing:border-box;padding:8px 12px;
                 background:rgba(255,255,255,0.06);border:1.5px solid rgba(255,255,255,0.12);
                 border-radius:10px;font-size:15px;color:#fff;outline:none;
                 transition:border-color .2s;
@@ -70,9 +70,9 @@ export function renderAuth(container, { navigate, toast }) {
               >
             </div>
             <div>
-              <label style="font-size:11px;font-weight:700;color:rgba(255,255,255,0.5);display:block;margin-bottom:6px;letter-spacing:.5px">MOT DE PASSE</label>
+              <label style="font-size:10px;font-weight:700;color:rgba(255,255,255,0.5);display:block;margin-bottom:3px;letter-spacing:.5px">MOT DE PASSE</label>
               <input type="password" id="login-password" placeholder="••••••••" autocomplete="current-password" style="
-                width:100%;box-sizing:border-box;padding:12px 14px;
+                width:100%;box-sizing:border-box;padding:8px 12px;
                 background:rgba(255,255,255,0.06);border:1.5px solid rgba(255,255,255,0.12);
                 border-radius:10px;font-size:15px;color:#fff;outline:none;
                 transition:border-color .2s;
@@ -81,7 +81,7 @@ export function renderAuth(container, { navigate, toast }) {
             </div>
             <div id="login-error" style="font-size:12px;color:#f87171;min-height:16px;text-align:center"></div>
             <button id="login-btn" style="
-              width:100%;padding:14px;border-radius:12px;border:none;
+              width:100%;padding:10px;border-radius:12px;border:none;
               background:linear-gradient(135deg,#1A6B3C,#22c55e);
               color:#fff;font-size:15px;font-weight:900;cursor:pointer;
               box-shadow:0 4px 16px rgba(34,197,94,0.3);
@@ -92,47 +92,47 @@ export function renderAuth(container, { navigate, toast }) {
           </div>
           ` : `
           <!-- INSCRIPTION -->
-          <div style="display:flex;flex-direction:column;gap:14px">
+          <div style="display:flex;flex-direction:column;gap:8px">
             <div>
-              <label style="font-size:11px;font-weight:700;color:rgba(255,255,255,0.5);display:block;margin-bottom:6px;letter-spacing:.5px">EMAIL</label>
+              <label style="font-size:10px;font-weight:700;color:rgba(255,255,255,0.5);display:block;margin-bottom:3px;letter-spacing:.5px">EMAIL</label>
               <input type="email" id="reg-email" placeholder="manager@example.com" autocomplete="email" style="
-                width:100%;box-sizing:border-box;padding:12px 14px;
+                width:100%;box-sizing:border-box;padding:8px 12px;
                 background:rgba(255,255,255,0.06);border:1.5px solid rgba(255,255,255,0.12);
                 border-radius:10px;font-size:15px;color:#fff;outline:none;
               " onfocus="this.style.borderColor='#22c55e'" onblur="this.style.borderColor='rgba(255,255,255,0.12)'"
               >
             </div>
             <div>
-              <label style="font-size:11px;font-weight:700;color:rgba(255,255,255,0.5);display:block;margin-bottom:6px;letter-spacing:.5px">MOT DE PASSE (min. 6 caractères)</label>
+              <label style="font-size:10px;font-weight:700;color:rgba(255,255,255,0.5);display:block;margin-bottom:3px;letter-spacing:.5px">MOT DE PASSE (min. 6 caractères)</label>
               <input type="password" id="reg-password" placeholder="••••••••" autocomplete="new-password" style="
-                width:100%;box-sizing:border-box;padding:12px 14px;
+                width:100%;box-sizing:border-box;padding:8px 12px;
                 background:rgba(255,255,255,0.06);border:1.5px solid rgba(255,255,255,0.12);
                 border-radius:10px;font-size:15px;color:#fff;outline:none;
               " onfocus="this.style.borderColor='#22c55e'" onblur="this.style.borderColor='rgba(255,255,255,0.12)'"
               >
             </div>
             <div>
-              <label style="font-size:11px;font-weight:700;color:rgba(255,255,255,0.5);display:block;margin-bottom:6px;letter-spacing:.5px">CONFIRMER LE MOT DE PASSE</label>
+              <label style="font-size:10px;font-weight:700;color:rgba(255,255,255,0.5);display:block;margin-bottom:3px;letter-spacing:.5px">CONFIRMER LE MOT DE PASSE</label>
               <input type="password" id="reg-confirm" placeholder="••••••••" autocomplete="new-password" style="
-                width:100%;box-sizing:border-box;padding:12px 14px;
+                width:100%;box-sizing:border-box;padding:8px 12px;
                 background:rgba(255,255,255,0.06);border:1.5px solid rgba(255,255,255,0.12);
                 border-radius:10px;font-size:15px;color:#fff;outline:none;
               " onfocus="this.style.borderColor='#22c55e'" onblur="this.style.borderColor='rgba(255,255,255,0.12)'"
               >
             </div>
             <div>
-              <label style="font-size:11px;font-weight:700;color:rgba(255,255,255,0.5);display:block;margin-bottom:6px;letter-spacing:.5px">CODE D'ACCÈS</label>
+              <label style="font-size:10px;font-weight:700;color:rgba(255,255,255,0.5);display:block;margin-bottom:3px;letter-spacing:.5px">CODE D'ACCÈS</label>
               <input type="password" id="reg-access-code" placeholder="Code fourni par l'administrateur" autocomplete="off" style="
-                width:100%;box-sizing:border-box;padding:12px 14px;
+                width:100%;box-sizing:border-box;padding:8px 12px;
                 background:rgba(255,255,255,0.06);border:1.5px solid rgba(255,255,255,0.12);
                 border-radius:10px;font-size:15px;color:#fff;outline:none;
               " onfocus="this.style.borderColor='#22c55e'" onblur="this.style.borderColor='rgba(255,255,255,0.12)'"
               >
-              <div id="access-code-status" style="font-size:11px;margin-top:5px;min-height:14px"></div>
+              <div id="access-code-status" style="font-size:10px;margin-top:3px;min-height:12px"></div>
             </div>
             <div id="reg-error" style="font-size:12px;color:#f87171;min-height:16px;text-align:center"></div>
             <button id="reg-btn" disabled style="
-              width:100%;padding:14px;border-radius:12px;border:none;
+              width:100%;padding:10px;border-radius:12px;border:none;
               background:linear-gradient(135deg,#1A6B3C,#22c55e);
               color:#fff;font-size:15px;font-weight:900;cursor:not-allowed;
               box-shadow:0 4px 16px rgba(34,197,94,0.3);
@@ -149,10 +149,10 @@ export function renderAuth(container, { navigate, toast }) {
       </div>
 
       <!-- Badges décoratifs -->
-      <div style="display:flex;gap:12px;margin-top:24px;animation:authFadeIn .5s ease .2s both">
-        <div style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:20px;padding:6px 14px;font-size:11px;color:rgba(255,255,255,0.4)">⚽ 100% Gratuit</div>
-        <div style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:20px;padding:6px 14px;font-size:11px;color:rgba(255,255,255,0.4)">🃏 Cartes uniques</div>
-        <div style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:20px;padding:6px 14px;font-size:11px;color:rgba(255,255,255,0.4)">🏆 Classements</div>
+      <div style="display:flex;gap:8px;margin-top:10px;animation:authFadeIn .5s ease .2s both">
+        <div style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:20px;padding:4px 10px;font-size:10px;color:rgba(255,255,255,0.4)">⚽ 100% Gratuit</div>
+        <div style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:20px;padding:4px 10px;font-size:10px;color:rgba(255,255,255,0.4)">🃏 Cartes uniques</div>
+        <div style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:20px;padding:4px 10px;font-size:10px;color:rgba(255,255,255,0.4)">🏆 Classements</div>
       </div>
     </div>
     <style>

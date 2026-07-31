@@ -384,7 +384,10 @@
 
 <!-- Tutoriel autonome (accessible sans compte) -->
 <script>
-const STEPS = [
+// Tutoriel : contenu de secours (identique au tutoriel par défaut de l'app),
+// utilisé si la récupération depuis l'admin échoue ou si aucune étape n'y
+// est configurée.
+const FALLBACK_STEPS = [
   {
     emoji: '⚽',
     title: 'Bienvenue dans Manager Wars !',
@@ -483,43 +486,49 @@ const STEPS = [
       <li>Vends tes doublons pour gagner des crédits</li>
       <li>Trouve la carte parfaite pour compléter ton deck</li>
       <li>Filtre par poste, rareté, note, pays ou club</li>
-    </ul>
-    <p>💰 Les crédits s'obtiennent aussi en remportant des matchs et en ouvrant des boosters.</p>`
+    </ul>`
   },
   {
-    emoji: '🏆',
-    title: 'Les Mini Leagues',
-    color: '#5b3a8c',
-    content: `<p>Défie plusieurs managers dans un <strong>championnat privé</strong> !</p>
-    <ul>
-      <li>3 à 8 joueurs par league</li>
-      <li>Mode <em>Aller</em> ou <em>Aller-Retour</em></li>
-      <li>Chaque joueur mise des crédits — le pot est distribué au podium :<br>
-        🥇 70% · 🥈 20% · 🥉 10%</li>
-      <li>Leagues publiques ou privées (mot de passe)</li>
-    </ul>
-    <p>Le classement se met à jour après chaque match joué.</p>`
-  },
-  {
-    emoji: '🎯',
-    title: 'Tu es prêt !',
+    emoji: '🎮',
+    title: 'Les Modes de Jeu',
     color: '#1A6B3C',
-    content: `<p>Tu connais maintenant toutes les bases de <strong>Manager Wars</strong>.</p>
-    <p>Pour bien démarrer :</p>
+    content: `<p>Plusieurs façons de jouer :</p>
     <ol>
-      <li>📦 Ouvre des <strong>boosters</strong> pour obtenir tes premières cartes</li>
-      <li>📋 Crée ton premier <strong>deck</strong></li>
-      <li>🤖 Entraîne-toi en <strong>Match IA</strong></li>
-      <li>⚔️ Lance-toi dans le <strong>Match Aléatoire</strong> ou une <strong>Mini League</strong> !</li>
+      <li>🏅 <strong>Ranked</strong> — grimpe le classement saisonnier</li>
+      <li>🤖 <strong>Solo</strong> — progresse à travers des niveaux contre l'IA</li>
+      <li>🎲 <strong>Random</strong> — matchmaking instantané contre un manager en ligne</li>
+      <li>🤝 <strong>Ami</strong> — défie un manager de ta liste</li>
+      <li>🏆 <strong>Mini League</strong> — affronte plusieurs managers dans une ligue</li>
     </ol>
     <p style="margin-top:12px;font-size:13px;color:#888">Tu peux revoir ce tutoriel depuis les paramètres à tout moment.</p>`
   },
 ]
 
+// ── Configuration Supabase (accès public en lecture seule) ────────────────
+const SUPABASE_URL = 'https://fcnwclxlkytdfjotqkta.supabase.co'
+const SUPABASE_ANON_KEY = 'REMPLACE_PAR_TA_CLE_ANON_PUBLIQUE'
 
-(function() {
+async function fetchAdminTutorialSteps() {
+  try {
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/tutorial_steps?is_active=eq.true&order=step_order.asc`,
+      { headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` } }
+    )
+    if (!res.ok) return null
+    const data = await res.json()
+    if (!Array.isArray(data) || data.length === 0) return null
+    return data.map(s => ({ emoji: s.emoji, title: s.title, color: s.color, content: s.content }))
+  } catch (e) {
+    console.warn('[Tutoriel] Récupération admin échouée, tuto par défaut utilisé :', e)
+    return null
+  }
+}
+
+(function () {
+  let STEPS = FALLBACK_STEPS
   let currentStep = 0
   let overlay = null
+  let stepsLoaded = false
 
   function closeTutorial() {
     if (overlay) { overlay.remove(); overlay = null }
@@ -539,12 +548,11 @@ const STEPS = [
     overlay.querySelector('#pt-next').textContent = isLast ? 'Terminer' : 'Suivant →'
   }
 
-  function openTutorial() {
-    currentStep = 0
+  function buildOverlay() {
     overlay = document.createElement('div')
     overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.85);display:flex;align-items:center;justify-content:center;z-index:9999;padding:16px'
     overlay.innerHTML = `
-      <div style="background:#111a12;border:1px solid rgba(255,255,255,0.1);border-radius:16px;padding:28px;max-width:460px;width:100%;max-height:85vh;overflow-y:auto">
+      <div style="background:#111a12;border:1px solid rgba(255,255,255,0.1);border-radius:16px;padding:28px;max-width:460px;width:100%;max-height:85vh;overflow-y:auto;position:relative">
         <div id="pt-body"></div>
         <div style="display:flex;align-items:center;justify-content:space-between;margin-top:24px;gap:12px">
           <button id="pt-prev" style="background:none;border:1px solid rgba(255,255,255,0.2);color:#fff;padding:10px 18px;border-radius:10px;cursor:pointer;font-size:14px">← Précédent</button>
@@ -555,9 +563,6 @@ const STEPS = [
       </div>
     `
     document.body.appendChild(overlay)
-    overlay.style.position = 'fixed'
-    overlay.querySelector('div').style.position = 'relative'
-
     overlay.querySelector('#pt-close').addEventListener('click', closeTutorial)
     overlay.addEventListener('click', (e) => { if (e.target === overlay) closeTutorial() })
     overlay.querySelector('#pt-prev').addEventListener('click', () => {
@@ -567,13 +572,28 @@ const STEPS = [
       if (currentStep < STEPS.length - 1) { currentStep++; renderStep() }
       else closeTutorial()
     })
+  }
+
+  async function openTutorial() {
+    currentStep = 0
+    if (!stepsLoaded) {
+      const adminSteps = await fetchAdminTutorialSteps()
+      if (adminSteps) STEPS = adminSteps
+      stepsLoaded = true
+    }
+    buildOverlay()
     renderStep()
   }
 
-  document.getElementById('open-tutorial-btn')?.addEventListener('click', (e) => {
-    e.preventDefault()
-    openTutorial()
-  })
+  const btn = document.getElementById('open-tutorial-btn')
+  if (btn) {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault()
+      openTutorial()
+    })
+  } else {
+    console.warn('[Tutoriel] Bouton #open-tutorial-btn introuvable sur la page.')
+  }
 })()
 </script>
 

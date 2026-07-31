@@ -578,7 +578,7 @@ function openFlagBuilderModal(helpers) {
   let text2OffsetX = 0
   let text2OffsetY = 35
 
-  let selectedSquare = null
+  let selectedSquares = new Set()
   let clipboardColor = null
 
   function buildSVG() {
@@ -655,7 +655,7 @@ function openFlagBuilderModal(helpers) {
 
     <div>
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:8px">
-        <label style="margin:0;font-size:12px">Couleurs des ${GRID*GRID} carrés — clique un carré, puis Ctrl+C / Ctrl+V pour copier-coller sa couleur</label>
+        <label style="margin:0;font-size:12px">Couleurs des ${GRID*GRID} carrés — clique un carré (Ctrl/Shift+clic pour en sélectionner plusieurs), puis Ctrl+C / Ctrl+V pour copier-coller la couleur sur toute la sélection</label>
         <div style="display:flex;gap:6px;align-items:center">
           <button type="button" id="flag-copy-btn" class="btn btn-ghost btn-sm" disabled>📋 Copier</button>
           <button type="button" id="flag-paste-btn" class="btn btn-ghost btn-sm" disabled>📥 Coller</button>
@@ -680,11 +680,18 @@ function openFlagBuilderModal(helpers) {
     el.style.gridTemplateColumns = `repeat(${GRID}, ${sw}px)`
     el.innerHTML = colors.map((c, i) => `
       <div class="flag-square" data-i="${i}" style="width:${sw}px;height:${sw}px;border-radius:4px;background:${c};cursor:pointer;
-        box-sizing:border-box;border:${selectedSquare===i?'3px solid #1A6B3C':'1px solid rgba(0,0,0,0.15)'}"></div>
+        box-sizing:border-box;border:${selectedSquares.has(i)?'3px solid #1A6B3C':'1px solid rgba(0,0,0,0.15)'}"></div>
     `).join('')
     el.querySelectorAll('.flag-square').forEach(sq => {
-      sq.addEventListener('click', () => {
-        selectedSquare = parseInt(sq.dataset.i)
+      sq.addEventListener('click', (e) => {
+        const i = parseInt(sq.dataset.i)
+        // Ctrl/Cmd/Shift + clic = ajoute/retire de la sélection ; clic simple = repart d'une sélection unique
+        if (e.ctrlKey || e.metaKey || e.shiftKey) {
+          if (selectedSquares.has(i)) selectedSquares.delete(i)
+          else selectedSquares.add(i)
+        } else {
+          selectedSquares = new Set([i])
+        }
         renderSquaresGrid()
         updateCopyPasteButtons()
       })
@@ -705,13 +712,15 @@ function openFlagBuilderModal(helpers) {
   function updateCopyPasteButtons() {
     const copyBtn = document.getElementById('flag-copy-btn')
     const pasteBtn = document.getElementById('flag-paste-btn')
-    copyBtn.disabled = selectedSquare === null
-    pasteBtn.disabled = selectedSquare === null || clipboardColor === null
+    copyBtn.disabled = selectedSquares.size === 0
+    pasteBtn.disabled = selectedSquares.size === 0 || clipboardColor === null
   }
 
   function copySelectedColor() {
-    if (selectedSquare === null) return
-    clipboardColor = colors[selectedSquare]
+    if (selectedSquares.size === 0) return
+    // Copie la couleur du premier carré sélectionné
+    const first = [...selectedSquares][0]
+    clipboardColor = colors[first]
     const previewEl = document.getElementById('flag-clipboard-preview')
     const swatchEl = document.getElementById('flag-clipboard-swatch')
     if (previewEl) previewEl.style.display = 'inline-flex'
@@ -719,8 +728,8 @@ function openFlagBuilderModal(helpers) {
     updateCopyPasteButtons()
   }
   function pasteToSelectedColor() {
-    if (selectedSquare === null || clipboardColor === null) return
-    colors[selectedSquare] = clipboardColor
+    if (selectedSquares.size === 0 || clipboardColor === null) return
+    selectedSquares.forEach(i => { colors[i] = clipboardColor })
     renderSquaresGrid()
     repaint()
   }
@@ -734,7 +743,7 @@ function openFlagBuilderModal(helpers) {
       return
     }
     const isModifier = e.ctrlKey || e.metaKey
-    if (!isModifier || selectedSquare === null) return
+    if (!isModifier || selectedSquares.size === 0) return
     if (e.key === 'c' || e.key === 'C') { e.preventDefault(); copySelectedColor() }
     else if (e.key === 'v' || e.key === 'V') { e.preventDefault(); pasteToSelectedColor() }
   }
@@ -746,7 +755,7 @@ function openFlagBuilderModal(helpers) {
       if (n === GRID) return
       GRID = n
       colors = makeWhiteGrid(GRID)
-      selectedSquare = null
+      selectedSquares = new Set()
       clipboardColor = null
       const cp = document.getElementById('flag-clipboard-preview')
       if (cp) cp.style.display = 'none'

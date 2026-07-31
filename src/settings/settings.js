@@ -2,9 +2,10 @@
 import { supabase } from '../lib/supabase.js'
 import { getTheme, setTheme } from '../app.js'
 import { getVolume, setVolume, playSound } from '../lib/sound.js'
+import { replayTutorial } from '../tutorial/tutorial.js'
 
 export async function renderSettings(container, ctx) {
-  const { state, navigate } = ctx
+  const { state, navigate, toast } = ctx
   const theme = getTheme()
   const volume = getVolume()
   const isAdmin = state?.profile?.is_admin
@@ -86,8 +87,13 @@ export async function renderSettings(container, ctx) {
         ⚙️ Administration Mode
       </a>` : ''}
 
+      <button id="settings-tutorial"
+        style="width:100%;box-sizing:border-box;padding:14px;border-radius:12px;border:1.5px solid rgba(255,255,255,0.15);background:transparent;color:var(--tile-fg-on-page);font-weight:700;font-size:14px;cursor:pointer;margin-top:${isAdmin?'10px':'6px'};text-align:center;display:flex;align-items:center;justify-content:center;gap:8px">
+        📖 Revoir le tutoriel
+      </button>
+
       <a href="https://discord.gg/aaMKMA8VS" target="_blank" rel="noopener" id="settings-discord"
-        style="width:100%;box-sizing:border-box;padding:14px;border-radius:12px;border:none;background:#5865F2;color:#fff;font-weight:900;font-size:14px;cursor:pointer;margin-top:${isAdmin?'10px':'6px'};text-align:center;text-decoration:none;display:flex;align-items:center;justify-content:center;gap:8px">
+        style="width:100%;box-sizing:border-box;padding:14px;border-radius:12px;border:none;background:#5865F2;color:#fff;font-weight:900;font-size:14px;cursor:pointer;margin-top:10px;text-align:center;text-decoration:none;display:flex;align-items:center;justify-content:center;gap:8px">
         💬 Rejoindre le Discord
       </a>
 
@@ -155,6 +161,10 @@ export async function renderSettings(container, ctx) {
   })
   container.querySelector('#volume-test').addEventListener('click', () => {
     _testAudio = playSound(`${import.meta.env.BASE_URL}sounds/match-opening.mp3`, 1)
+  })
+
+  container.querySelector('#settings-tutorial')?.addEventListener('click', () => {
+    replayTutorial(state.profile, navigate, toast)
   })
 
   container.querySelector('#settings-logout').addEventListener('click', async () => {

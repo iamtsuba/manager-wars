@@ -47,7 +47,7 @@
 
   .topbar{display:flex; align-items:center; justify-content:space-between; padding:22px 0}
   .brand{display:flex; align-items:center; gap:10px; font-family:'Barlow Condensed'; font-weight:900; font-size:22px}
-  .brand img{height:48px; width:auto; display:block}
+  .brand img{height:72px; width:auto; display:block}
   .topbar nav a{color:var(--ink-dim); text-decoration:none; font-size:14px; margin-left:26px}
   .topbar nav a:hover{color:var(--ink)}
   .btn{
@@ -149,7 +149,7 @@
       <div class="hero-ctas">
         <a class="btn" href="/">Jouer maintenant</a>
         <a class="btn ghost" href="#comment-ca-marche">Voir les règles</a>
-        <a class="btn ghost" href="/?tutorial=1">🎬 Voir le tutoriel</a>
+        <a class="btn ghost" href="#" id="open-tutorial-btn">🎬 Voir le tutoriel</a>
       </div>
     </div>
 
@@ -380,6 +380,202 @@
     </div>
   </div>
 </footer>
+
+
+<!-- Tutoriel autonome (accessible sans compte) -->
+<script>
+const STEPS = [
+  {
+    emoji: '⚽',
+    title: 'Bienvenue dans Manager Wars !',
+    color: '#1A6B3C',
+    content: `<p>Tu es désormais un <strong>manager de football</strong> virtuel.</p>
+    <p>Ton objectif : constituer la meilleure équipe de cartes, affronter d'autres managers et gravir les échelons du classement.</p>
+    <p>Ce tutoriel va t'apprendre les bases en quelques étapes. C'est parti ! 🚀</p>`
+  },
+  {
+    emoji: '🃏',
+    title: 'Ta Collection de Cartes',
+    color: '#D4A017',
+    content: `<p>Chaque carte représente un <strong>joueur de football</strong> avec :</p>
+    <ul>
+      <li>🟢 Un <strong>poste principal</strong> (GK, DEF, MIL, ATT) et sa note</li>
+      <li>⭐ Un <strong>poste secondaire</strong> optionnel</li>
+      <li>🌍 Une nationalité et un club</li>
+    </ul>
+    <p>Les cartes ont 4 raretés :<br>
+      <span style="color:#ccc">■</span> Normal &nbsp;
+      <span style="color:#D4A017">■</span> Pépite &nbsp;
+      <span style="color:#909090">■</span> Papyte &nbsp;
+      <span style="color:#7a28b8">■</span> Légende
+    </p>
+    <p>Ouvre des <strong>boosters</strong> pour agrandir ta collection !</p>`
+  },
+  {
+    emoji: '📋',
+    title: 'Construire ton Deck',
+    color: '#1A6B3C',
+    content: `<p>Avant de jouer, tu dois créer un <strong>deck de 11 joueurs</strong> dans l'onglet <em>Decks</em>.</p>
+    <ul>
+      <li>Choisis une <strong>formation</strong> (4-3-3, 4-4-2, 5-3-2…)</li>
+      <li>Place un joueur sur chaque poste</li>
+      <li>Un joueur joue mieux sur son poste principal</li>
+      <li>Tu peux préparer plusieurs decks pour différentes stratégies</li>
+    </ul>
+    <p>💡 Un bon deck est la clé de la victoire !</p>`
+  },
+  {
+    emoji: '🏟️',
+    title: 'Comment se déroule un Match ?',
+    color: '#1A6B3C',
+    content: `<p>Un match se joue en <strong>3 phases</strong> :</p>
+    <ol>
+      <li>⚽ <strong>Milieu de terrain</strong> — un joueur de chaque équipe s'affronte. Le gagnant donne la possession à son équipe.</li>
+      <li>🛡️ <strong>Attaque vs Défense</strong> — les attaquants affrontent les défenseurs. Si l'attaque passe, l'équipe marque.</li>
+      <li>🧤 <strong>Tir au but</strong> — si l'attaque passe la défense, elle affronte le gardien. Un but est marqué si elle gagne !</li>
+    </ol>
+    <p>Le match se joue en <strong>plusieurs rounds</strong>. Le meilleur score à la fin remporte la victoire.</p>`
+  },
+  {
+    emoji: '⚡',
+    title: 'Les Cartes Game Changer',
+    color: '#7a28b8',
+    content: `<p>Les <strong>Game Changer</strong> sont des cartes spéciales qui peuvent retourner un match !</p>
+    <ul>
+      <li>⚡ <strong>VAR</strong> — annule le dernier but adverse</li>
+      <li>👥 <strong>Remplacement</strong> — effectue un remplacement supplémentaire</li>
+      <li>🌧️ <strong>Météo pluvieuse</strong> — réduit les stats des attaquants adverses</li>
+      <li>🟥 <strong>Carton rouge</strong> — exclut un joueur adverse</li>
+      <li>⚽ <strong>Coup franc</strong> — ajoute un but en cas de match nul</li>
+    </ul>
+    <p>Tu peux jouer jusqu'à <strong>3 Game Changer</strong> par match. Utilise-les au bon moment !</p>`
+  },
+  {
+    emoji: '🔄',
+    title: 'Les Remplacements',
+    color: '#1A6B3C',
+    content: `<p>Au cours d'un match, tu peux effectuer des <strong>remplacements</strong>.</p>
+    <ul>
+      <li>Tu as droit à <strong>3 remplacements</strong> par match (plus avec certains GC)</li>
+      <li>Un joueur remplacé ne peut plus jouer</li>
+      <li>Si un joueur clé est éliminé par l'adversaire, pense à le remplacer vite !</li>
+    </ul>
+    <p>💡 Garde tes remplacements pour les moments critiques.</p>`
+  },
+  {
+    emoji: '📈',
+    title: 'Cartes Évolutives',
+    color: '#D4A017',
+    content: `<p>Certaines cartes évoluent avec tes résultats :</p>
+    <ul>
+      <li>⭐ <strong>Pépite</strong> — Démarre à sa note minimale. <span style="color:#22c55e">+2</span> en victoire, <span style="color:#cc2222">−1</span> en défaite.</li>
+      <li>💎 <strong>Papyte</strong> — Démarre à sa note maximale. <span style="color:#22c55e">+1</span> en victoire, <span style="color:#cc2222">−2</span> en défaite.</li>
+    </ul>
+    <p>Les <strong>notes secondaires</strong> évoluent du même delta.</p>
+    <p>Prends soin de tes Pépites — une série de défaites peut les affaiblir !</p>`
+  },
+  {
+    emoji: '🛒',
+    title: 'Le Marché des Transferts',
+    color: '#111',
+    content: `<p>Tu peux <strong>acheter et vendre</strong> des cartes sur le marché !</p>
+    <ul>
+      <li>Vends tes doublons pour gagner des crédits</li>
+      <li>Trouve la carte parfaite pour compléter ton deck</li>
+      <li>Filtre par poste, rareté, note, pays ou club</li>
+    </ul>
+    <p>💰 Les crédits s'obtiennent aussi en remportant des matchs et en ouvrant des boosters.</p>`
+  },
+  {
+    emoji: '🏆',
+    title: 'Les Mini Leagues',
+    color: '#5b3a8c',
+    content: `<p>Défie plusieurs managers dans un <strong>championnat privé</strong> !</p>
+    <ul>
+      <li>3 à 8 joueurs par league</li>
+      <li>Mode <em>Aller</em> ou <em>Aller-Retour</em></li>
+      <li>Chaque joueur mise des crédits — le pot est distribué au podium :<br>
+        🥇 70% · 🥈 20% · 🥉 10%</li>
+      <li>Leagues publiques ou privées (mot de passe)</li>
+    </ul>
+    <p>Le classement se met à jour après chaque match joué.</p>`
+  },
+  {
+    emoji: '🎯',
+    title: 'Tu es prêt !',
+    color: '#1A6B3C',
+    content: `<p>Tu connais maintenant toutes les bases de <strong>Manager Wars</strong>.</p>
+    <p>Pour bien démarrer :</p>
+    <ol>
+      <li>📦 Ouvre des <strong>boosters</strong> pour obtenir tes premières cartes</li>
+      <li>📋 Crée ton premier <strong>deck</strong></li>
+      <li>🤖 Entraîne-toi en <strong>Match IA</strong></li>
+      <li>⚔️ Lance-toi dans le <strong>Match Aléatoire</strong> ou une <strong>Mini League</strong> !</li>
+    </ol>
+    <p style="margin-top:12px;font-size:13px;color:#888">Tu peux revoir ce tutoriel depuis les paramètres à tout moment.</p>`
+  },
+]
+
+
+(function() {
+  let currentStep = 0
+  let overlay = null
+
+  function closeTutorial() {
+    if (overlay) { overlay.remove(); overlay = null }
+  }
+
+  function renderStep() {
+    const s = STEPS[currentStep]
+    const isFirst = currentStep === 0
+    const isLast = currentStep === STEPS.length - 1
+    overlay.querySelector('#pt-body').innerHTML = `
+      <div style="font-size:52px;text-align:center;margin-bottom:8px">${s.emoji}</div>
+      <h3 style="text-align:center;color:${s.color};font-size:22px;margin:0 0 16px">${s.title}</h3>
+      <div style="color:#e8ece7;font-size:15px;line-height:1.6">${s.content}</div>
+    `
+    overlay.querySelector('#pt-progress').textContent = `${currentStep + 1} / ${STEPS.length}`
+    overlay.querySelector('#pt-prev').style.visibility = isFirst ? 'hidden' : 'visible'
+    overlay.querySelector('#pt-next').textContent = isLast ? 'Terminer' : 'Suivant →'
+  }
+
+  function openTutorial() {
+    currentStep = 0
+    overlay = document.createElement('div')
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.85);display:flex;align-items:center;justify-content:center;z-index:9999;padding:16px'
+    overlay.innerHTML = `
+      <div style="background:#111a12;border:1px solid rgba(255,255,255,0.1);border-radius:16px;padding:28px;max-width:460px;width:100%;max-height:85vh;overflow-y:auto">
+        <div id="pt-body"></div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-top:24px;gap:12px">
+          <button id="pt-prev" style="background:none;border:1px solid rgba(255,255,255,0.2);color:#fff;padding:10px 18px;border-radius:10px;cursor:pointer;font-size:14px">← Précédent</button>
+          <span id="pt-progress" style="color:rgba(255,255,255,0.4);font-size:12px"></span>
+          <button id="pt-next" style="background:#D4A017;border:none;color:#141000;font-weight:700;padding:10px 18px;border-radius:10px;cursor:pointer;font-size:14px">Suivant →</button>
+        </div>
+        <button id="pt-close" style="position:absolute;top:14px;right:20px;background:none;border:none;color:rgba(255,255,255,0.5);font-size:20px;cursor:pointer">✕</button>
+      </div>
+    `
+    document.body.appendChild(overlay)
+    overlay.style.position = 'fixed'
+    overlay.querySelector('div').style.position = 'relative'
+
+    overlay.querySelector('#pt-close').addEventListener('click', closeTutorial)
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) closeTutorial() })
+    overlay.querySelector('#pt-prev').addEventListener('click', () => {
+      if (currentStep > 0) { currentStep--; renderStep() }
+    })
+    overlay.querySelector('#pt-next').addEventListener('click', () => {
+      if (currentStep < STEPS.length - 1) { currentStep++; renderStep() }
+      else closeTutorial()
+    })
+    renderStep()
+  }
+
+  document.getElementById('open-tutorial-btn')?.addEventListener('click', (e) => {
+    e.preventDefault()
+    openTutorial()
+  })
+})()
+</script>
 
 </body>
 </html>

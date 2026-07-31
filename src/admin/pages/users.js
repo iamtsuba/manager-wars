@@ -104,9 +104,13 @@ export async function pageUsers(container, { toast }) {
               ? '<span style="color:#1A6B3C;font-weight:700;font-size:12px">✅ Admin</span>'
               : '<span style="color:#aaa;font-size:12px">Manager</span>'}
           </td>
-          <td>
+          <td style="display:flex;gap:4px">
             <button class="btn btn-ghost btn-sm" data-toggle-admin="${u.id}" data-is-admin="${u.is_admin}">
               ${u.is_admin ? '🔒 Retirer' : '🔓 Admin'}
+            </button>
+            <button class="btn btn-ghost btn-sm" data-delete-manager="${u.id}" data-pseudo="${u.pseudo}"
+              style="color:var(--red,#bb2020);" title="Supprimer ce Manager et TOUT ce qui le lie">
+              🗑️
             </button>
           </td>
         </tr>`
@@ -139,6 +143,24 @@ export async function pageUsers(container, { toast }) {
         const { error } = await supabase.from('users').update({ is_admin: newVal }).eq('id', btn.dataset.toggleAdmin)
         if (error) toast(error.message, 'error')
         else { toast('Rôle mis à jour ✅', 'success'); pageUsers(container, { toast }) }
+      })
+    })
+
+    // Supprimer un Manager (cascade delete)
+    document.querySelectorAll('[data-delete-manager]').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const userId = btn.dataset.deleteManager
+        const pseudo = btn.dataset.pseudo
+        if (!confirm(`⚠️ ATTENTION: Supprimer le Manager "${pseudo}" supprimera DÉFINITIVEMENT:\n- Tous ses decks\n- Toutes ses cartes\n- Tous ses matchs\n- Tous ses résultats ranked\n- Tout ce qui le lie en base\n\nContinuer ?`)) return
+        if (!confirm(`Êtes-vous vraiment sûr ? Cette action est IRRÉVERSIBLE.`)) return
+
+        btn.disabled = true
+        btn.textContent = '⏳'
+        const { data, error } = await supabase.rpc('delete_manager_cascade', { p_user_id: userId })
+        if (error) { toast(`Erreur: ${error.message}`, 'error'); btn.disabled = false; btn.textContent = '🗑️'; return }
+        if (!data?.success) { toast(`Erreur: ${data?.error || 'Suppression échouée'}`, 'error'); btn.disabled = false; btn.textContent = '🗑️'; return }
+        toast(`Manager "${pseudo}" supprimé et ${Object.values(data.deleted).reduce((a,b)=>a+b)} entrées supprimées ✅`, 'success')
+        pageUsers(container, { toast })
       })
     })
   }

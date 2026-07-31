@@ -1,4 +1,4 @@
-import{s as _,i as Et,r as we,a as $e,A as _t,l as wt,g as $t,K as Re,D as F,b as It,S as kt,c as O,H as Lt,R as Bt,e as pe,d as Xe,f as At,h as St,E as Ct,j as Tt,N as Mt,M as zt,B as Rt,k as Dt,F as ge,m as De,n as jt,o as et,p as be,q as Nt}from"./special-cards-DNsLLa5x.js";async function tt(e){var o;const[{count:t},{count:n},{count:a},{count:u},{count:d},{data:g},{data:v}]=await Promise.all([_.from("players").select("*",{count:"exact",head:!0}),_.from("clubs").select("*",{count:"exact",head:!0}),_.from("users").select("*",{count:"exact",head:!0}),_.from("stadium_definitions").select("*",{count:"exact",head:!0}),_.from("users").select("*",{count:"exact",head:!0}).gt("last_seen_at",new Date(Date.now()-18e4).toISOString()),_.rpc("get_signup_password"),_.from("app_feature_flags").select("*").order("key")]),h=g||"";e.innerHTML=`
+import{s as _,i as Et,r as we,a as $e,A as _t,l as wt,g as $t,K as Re,D as F,b as It,S as kt,c as O,H as Lt,R as Bt,e as pe,d as Xe,f as At,h as St,E as Ct,j as Tt,N as Mt,M as zt,B as Rt,k as Dt,F as ge,m as De,n as jt,o as et,p as be,q as Nt}from"./special-cards-Bn7RhUuk.js";async function tt(e){var o;const[{count:t},{count:n},{count:a},{count:u},{count:d},{data:g},{data:v}]=await Promise.all([_.from("players").select("*",{count:"exact",head:!0}),_.from("clubs").select("*",{count:"exact",head:!0}),_.from("users").select("*",{count:"exact",head:!0}),_.from("stadium_definitions").select("*",{count:"exact",head:!0}),_.from("users").select("*",{count:"exact",head:!0}).gt("last_seen_at",new Date(Date.now()-18e4).toISOString()),_.rpc("get_signup_password"),_.from("app_feature_flags").select("*").order("key")]),h=g||"";e.innerHTML=`
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:24px">
 
       <!-- Managers -->
@@ -1127,7 +1127,7 @@ Achraf,Hakimi,,MA,PARIS FC,DEF,MIL,0,7,5,3,pepite,5,9,metisse,noir,court,20000
       </div>
 
       <!-- Formulaire -->
-      <div id="article-form" style="display:none;margin-top:24px;background:#fff;border-radius:12px;padding:20px;box-shadow:0 1px 8px rgba(0,0,0,0.1)">
+      <div id="article-form" class="admin-light-card" style="display:none;margin-top:24px;background:#fff;border-radius:12px;padding:20px;box-shadow:0 1px 8px rgba(0,0,0,0.1)">
         <h3 id="form-title" style="font-size:16px;font-weight:900;margin-bottom:16px">Nouvel article</h3>
         <input type="hidden" id="form-id">
         <div style="display:flex;flex-direction:column;gap:12px">
@@ -1167,7 +1167,7 @@ Achraf,Hakimi,,MA,PARIS FC,DEF,MIL,0,7,5,3,pepite,5,9,metisse,noir,court,20000
         </div>
       </div>
     </div>`,document.getElementById("add-article").addEventListener("click",()=>Ge(null)),document.getElementById("form-cancel").addEventListener("click",()=>{document.getElementById("article-form").style.display="none"}),document.getElementById("form-save").addEventListener("click",()=>Mn(e)),e.querySelectorAll("[data-edit-row]").forEach(n=>{const a=(t||[]).find(u=>u.id===n.dataset.editRow);a&&n.addEventListener("click",()=>Ge(a))}),e.querySelectorAll("[data-delete]").forEach(n=>{n.addEventListener("click",async()=>{confirm("Supprimer cet article ?")&&(await _.from("patch_notes").delete().eq("id",n.dataset.delete),await Ae(e))})})}function Cn(e){const t=new Date(e.published_at).toLocaleDateString("fr-FR",{day:"2-digit",month:"short",year:"numeric"});return`
-    <div data-edit-row="${e.id}" style="background:#fff;border-radius:10px;padding:14px 16px;box-shadow:0 1px 4px rgba(0,0,0,0.08);display:flex;gap:12px;align-items:flex-start;cursor:pointer">
+    <div data-edit-row="${e.id}" class="admin-light-card" style="background:#fff;border-radius:10px;padding:14px 16px;box-shadow:0 1px 4px rgba(0,0,0,0.08);display:flex;gap:12px;align-items:flex-start;cursor:pointer">
       ${e.image_url?`<img src="${e.image_url}" style="width:60px;height:60px;object-fit:cover;border-radius:8px;flex-shrink:0">`:""}
       <div style="flex:1;min-width:0">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:2px">

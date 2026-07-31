@@ -4,7 +4,7 @@ import{s as h,t as Ho,u as Uo,n as ut,g as Bt,p as nt,v as si,o as Ut,r as Ae,k 
       position:fixed; inset:0; z-index:20;
       background:linear-gradient(180deg,#0a0a12 0%,#0f1a10 60%,#0a1628 100%);
       display:flex; flex-direction:column; align-items:center; justify-content:flex-start;
-      padding:24px 16px; overflow-y:auto; overflow-x:hidden; -webkit-overflow-scrolling:touch;
+      padding:12px 16px; overflow-y:auto; overflow-x:hidden; -webkit-overflow-scrolling:touch;
     ">
       <!-- Particules décoratives -->
       <div style="position:absolute;inset:0;pointer-events:none;overflow:hidden">
@@ -13,9 +13,9 @@ import{s as h,t as Ho,u as Uo,n as ut,g as Bt,p as nt,v as si,o as Ut,r as Ae,k 
       </div>
 
       <!-- Logo -->
-      <div style="margin-bottom:28px;text-align:center;animation:authFadeIn .5s ease">
-        <img src="${An}icons/logo-withname.png" alt="Manager Wars" style="height:72px;width:auto;filter:drop-shadow(0 4px 16px rgba(212,160,23,0.4))">
-        <div style="font-size:13px;color:rgba(255,255,255,0.5);margin-top:8px;letter-spacing:1px">LE JEU DE CARTES FOOTBALL STRATÉGIQUE</div>
+      <div style="margin-bottom:10px;text-align:center;animation:authFadeIn .5s ease">
+        <img src="${An}icons/logo-withname.png" alt="Manager Wars" style="height:44px;width:auto;filter:drop-shadow(0 4px 16px rgba(212,160,23,0.4))">
+        <div style="font-size:10px;color:rgba(255,255,255,0.5);margin-top:3px;letter-spacing:1px">LE JEU DE CARTES FOOTBALL STRATÉGIQUE</div>
       </div>
 
       <!-- Carte principale -->
@@ -32,14 +32,14 @@ import{s as h,t as Ho,u as Uo,n as ut,g as Bt,p as nt,v as si,o as Ut,r as Ae,k 
         <!-- Onglets -->
         <div style="display:flex;border-bottom:1px solid rgba(255,255,255,0.08)">
           <button id="tab-login-btn" style="
-            flex:1;padding:16px;border:none;background:${n?"rgba(26,107,60,0.3)":"transparent"};
+            flex:1;padding:10px;border:none;background:${n?"rgba(26,107,60,0.3)":"transparent"};
             color:${n?"#fff":"rgba(255,255,255,0.4)"};
             font-size:14px;font-weight:${n?"900":"600"};cursor:pointer;
             border-bottom:2px solid ${n?"#22c55e":"transparent"};
             transition:all .2s;
           ">Connexion</button>
           <button id="tab-reg-btn" style="
-            flex:1;padding:16px;border:none;background:${n?"transparent":"rgba(26,107,60,0.3)"};
+            flex:1;padding:10px;border:none;background:${n?"transparent":"rgba(26,107,60,0.3)"};
             color:${n?"rgba(255,255,255,0.4)":"#fff"};
             font-size:14px;font-weight:${n?"600":"900"};cursor:pointer;
             border-bottom:2px solid ${n?"transparent":"#22c55e"};
@@ -47,14 +47,14 @@ import{s as h,t as Ho,u as Uo,n as ut,g as Bt,p as nt,v as si,o as Ut,r as Ae,k 
           ">Inscription</button>
         </div>
 
-        <div style="padding:24px">
+        <div style="padding:14px">
           ${n?`
           <!-- CONNEXION -->
-          <div style="display:flex;flex-direction:column;gap:14px">
+          <div style="display:flex;flex-direction:column;gap:8px">
             <div>
-              <label style="font-size:11px;font-weight:700;color:rgba(255,255,255,0.5);display:block;margin-bottom:6px;letter-spacing:.5px">EMAIL</label>
+              <label style="font-size:10px;font-weight:700;color:rgba(255,255,255,0.5);display:block;margin-bottom:3px;letter-spacing:.5px">EMAIL</label>
               <input type="email" id="login-email" placeholder="manager@example.com" autocomplete="email" style="
-                width:100%;box-sizing:border-box;padding:12px 14px;
+                width:100%;box-sizing:border-box;padding:8px 12px;
                 background:rgba(255,255,255,0.06);border:1.5px solid rgba(255,255,255,0.12);
                 border-radius:10px;font-size:15px;color:#fff;outline:none;
                 transition:border-color .2s;
@@ -62,9 +62,9 @@ import{s as h,t as Ho,u as Uo,n as ut,g as Bt,p as nt,v as si,o as Ut,r as Ae,k 
               >
             </div>
             <div>
-              <label style="font-size:11px;font-weight:700;color:rgba(255,255,255,0.5);display:block;margin-bottom:6px;letter-spacing:.5px">MOT DE PASSE</label>
+              <label style="font-size:10px;font-weight:700;color:rgba(255,255,255,0.5);display:block;margin-bottom:3px;letter-spacing:.5px">MOT DE PASSE</label>
               <input type="password" id="login-password" placeholder="••••••••" autocomplete="current-password" style="
-                width:100%;box-sizing:border-box;padding:12px 14px;
+                width:100%;box-sizing:border-box;padding:8px 12px;
                 background:rgba(255,255,255,0.06);border:1.5px solid rgba(255,255,255,0.12);
                 border-radius:10px;font-size:15px;color:#fff;outline:none;
                 transition:border-color .2s;
@@ -73,7 +73,7 @@ import{s as h,t as Ho,u as Uo,n as ut,g as Bt,p as nt,v as si,o as Ut,r as Ae,k 
             </div>
             <div id="login-error" style="font-size:12px;color:#f87171;min-height:16px;text-align:center"></div>
             <button id="login-btn" style="
-              width:100%;padding:14px;border-radius:12px;border:none;
+              width:100%;padding:10px;border-radius:12px;border:none;
               background:linear-gradient(135deg,#1A6B3C,#22c55e);
               color:#fff;font-size:15px;font-weight:900;cursor:pointer;
               box-shadow:0 4px 16px rgba(34,197,94,0.3);
@@ -84,47 +84,47 @@ import{s as h,t as Ho,u as Uo,n as ut,g as Bt,p as nt,v as si,o as Ut,r as Ae,k 
           </div>
           `:`
           <!-- INSCRIPTION -->
-          <div style="display:flex;flex-direction:column;gap:14px">
+          <div style="display:flex;flex-direction:column;gap:8px">
             <div>
-              <label style="font-size:11px;font-weight:700;color:rgba(255,255,255,0.5);display:block;margin-bottom:6px;letter-spacing:.5px">EMAIL</label>
+              <label style="font-size:10px;font-weight:700;color:rgba(255,255,255,0.5);display:block;margin-bottom:3px;letter-spacing:.5px">EMAIL</label>
               <input type="email" id="reg-email" placeholder="manager@example.com" autocomplete="email" style="
-                width:100%;box-sizing:border-box;padding:12px 14px;
+                width:100%;box-sizing:border-box;padding:8px 12px;
                 background:rgba(255,255,255,0.06);border:1.5px solid rgba(255,255,255,0.12);
                 border-radius:10px;font-size:15px;color:#fff;outline:none;
               " onfocus="this.style.borderColor='#22c55e'" onblur="this.style.borderColor='rgba(255,255,255,0.12)'"
               >
             </div>
             <div>
-              <label style="font-size:11px;font-weight:700;color:rgba(255,255,255,0.5);display:block;margin-bottom:6px;letter-spacing:.5px">MOT DE PASSE (min. 6 caractères)</label>
+              <label style="font-size:10px;font-weight:700;color:rgba(255,255,255,0.5);display:block;margin-bottom:3px;letter-spacing:.5px">MOT DE PASSE (min. 6 caractères)</label>
               <input type="password" id="reg-password" placeholder="••••••••" autocomplete="new-password" style="
-                width:100%;box-sizing:border-box;padding:12px 14px;
+                width:100%;box-sizing:border-box;padding:8px 12px;
                 background:rgba(255,255,255,0.06);border:1.5px solid rgba(255,255,255,0.12);
                 border-radius:10px;font-size:15px;color:#fff;outline:none;
               " onfocus="this.style.borderColor='#22c55e'" onblur="this.style.borderColor='rgba(255,255,255,0.12)'"
               >
             </div>
             <div>
-              <label style="font-size:11px;font-weight:700;color:rgba(255,255,255,0.5);display:block;margin-bottom:6px;letter-spacing:.5px">CONFIRMER LE MOT DE PASSE</label>
+              <label style="font-size:10px;font-weight:700;color:rgba(255,255,255,0.5);display:block;margin-bottom:3px;letter-spacing:.5px">CONFIRMER LE MOT DE PASSE</label>
               <input type="password" id="reg-confirm" placeholder="••••••••" autocomplete="new-password" style="
-                width:100%;box-sizing:border-box;padding:12px 14px;
+                width:100%;box-sizing:border-box;padding:8px 12px;
                 background:rgba(255,255,255,0.06);border:1.5px solid rgba(255,255,255,0.12);
                 border-radius:10px;font-size:15px;color:#fff;outline:none;
               " onfocus="this.style.borderColor='#22c55e'" onblur="this.style.borderColor='rgba(255,255,255,0.12)'"
               >
             </div>
             <div>
-              <label style="font-size:11px;font-weight:700;color:rgba(255,255,255,0.5);display:block;margin-bottom:6px;letter-spacing:.5px">CODE D'ACCÈS</label>
+              <label style="font-size:10px;font-weight:700;color:rgba(255,255,255,0.5);display:block;margin-bottom:3px;letter-spacing:.5px">CODE D'ACCÈS</label>
               <input type="password" id="reg-access-code" placeholder="Code fourni par l'administrateur" autocomplete="off" style="
-                width:100%;box-sizing:border-box;padding:12px 14px;
+                width:100%;box-sizing:border-box;padding:8px 12px;
                 background:rgba(255,255,255,0.06);border:1.5px solid rgba(255,255,255,0.12);
                 border-radius:10px;font-size:15px;color:#fff;outline:none;
               " onfocus="this.style.borderColor='#22c55e'" onblur="this.style.borderColor='rgba(255,255,255,0.12)'"
               >
-              <div id="access-code-status" style="font-size:11px;margin-top:5px;min-height:14px"></div>
+              <div id="access-code-status" style="font-size:10px;margin-top:3px;min-height:12px"></div>
             </div>
             <div id="reg-error" style="font-size:12px;color:#f87171;min-height:16px;text-align:center"></div>
             <button id="reg-btn" disabled style="
-              width:100%;padding:14px;border-radius:12px;border:none;
+              width:100%;padding:10px;border-radius:12px;border:none;
               background:linear-gradient(135deg,#1A6B3C,#22c55e);
               color:#fff;font-size:15px;font-weight:900;cursor:not-allowed;
               box-shadow:0 4px 16px rgba(34,197,94,0.3);
@@ -141,10 +141,10 @@ import{s as h,t as Ho,u as Uo,n as ut,g as Bt,p as nt,v as si,o as Ut,r as Ae,k 
       </div>
 
       <!-- Badges décoratifs -->
-      <div style="display:flex;gap:12px;margin-top:24px;animation:authFadeIn .5s ease .2s both">
-        <div style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:20px;padding:6px 14px;font-size:11px;color:rgba(255,255,255,0.4)">⚽ 100% Gratuit</div>
-        <div style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:20px;padding:6px 14px;font-size:11px;color:rgba(255,255,255,0.4)">🃏 Cartes uniques</div>
-        <div style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:20px;padding:6px 14px;font-size:11px;color:rgba(255,255,255,0.4)">🏆 Classements</div>
+      <div style="display:flex;gap:8px;margin-top:10px;animation:authFadeIn .5s ease .2s both">
+        <div style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:20px;padding:4px 10px;font-size:10px;color:rgba(255,255,255,0.4)">⚽ 100% Gratuit</div>
+        <div style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:20px;padding:4px 10px;font-size:10px;color:rgba(255,255,255,0.4)">🃏 Cartes uniques</div>
+        <div style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:20px;padding:4px 10px;font-size:10px;color:rgba(255,255,255,0.4)">🏆 Classements</div>
       </div>
     </div>
     <style>
@@ -1385,7 +1385,7 @@ import{s as h,t as Ho,u as Uo,n as ut,g as Bt,p as nt,v as si,o as Ut,r as Ae,k 
           </button>
         </div>
       </div>
-    `,r.querySelectorAll("ul,ol").forEach(g=>{g.style.paddingLeft="20px",g.style.marginTop="6px",g.style.marginBottom="6px"}),r.querySelectorAll("li").forEach(g=>{g.style.marginBottom="4px"}),r.querySelectorAll("p").forEach(g=>{g.style.marginBottom="8px"}),(l=r.querySelector("#tuto-prev"))==null||l.addEventListener("click",()=>{o--,n()}),(p=r.querySelector("#tuto-next"))==null||p.addEventListener("click",()=>{c?a():(o++,n())}),(b=r.querySelector("#tuto-skip"))==null||b.addEventListener("click",()=>{confirm("Passer le tutoriel ? Tu pourras le revoir plus tard depuis les paramètres.")&&a()})},a=async()=>{r.remove(),t!=null&&t.id&&await h.from("users").update({tutorial_done:!0}).eq("id",t.id),i==null||i()};document.body.appendChild(r),n()}async function dn(t,e,i){let o=[];const{data:r,error:n}=await h.rpc("get_tutorial_steps");if(!n&&(r==null?void 0:r.length)>0)o=r;else{const{data:d,error:c}=await h.from("tutorial_steps").select("*").eq("is_active",!0).order("step_order");!c&&(d==null?void 0:d.length)>0?o=d:i&&i("[Tutorial] DB vide ou inaccessible — tuto local utilisé","warning",5e3)}const a=o.length>0?o.map(d=>({emoji:d.emoji,title:d.title,color:d.color,content:d.content,image_url:d.image_url||null})):an;sn(t,a,()=>e("settings"))}async function So(t,e,i){if(!t||t.tutorial_done)return;let o=[];const{data:r,error:n}=await h.rpc("get_tutorial_steps");if(!n&&(r==null?void 0:r.length)>0)o=r,console.log(`[Tutorial] RPC OK → ${o.length} étapes`);else{const{data:d,error:c}=await h.from("tutorial_steps").select("*").eq("is_active",!0).order("step_order");!c&&(d==null?void 0:d.length)>0?(o=d,console.log(`[Tutorial] Direct OK → ${o.length} étapes`)):(console.warn(`[Tutorial] Aucune étape DB (RPC: ${n==null?void 0:n.message}, Direct: ${c==null?void 0:c.message})`),i&&i("[Tutorial] DB vide ou inaccessible — tuto local utilisé","warning",5e3))}const a=o.length>0?o.map(d=>({emoji:d.emoji,title:d.title,color:d.color,content:d.content,image_url:d.image_url||null})):an;sn(t,a,()=>e("boosters"))}async function ln(t,e){var y,u,w;const{state:i,navigate:o,toast:r}=e,n=ai(),a=Zi(),d=(y=i==null?void 0:i.profile)==null?void 0:y.is_admin,c="2026.07.31-2340";t.innerHTML=`
+    `,r.querySelectorAll("ul,ol").forEach(g=>{g.style.paddingLeft="20px",g.style.marginTop="6px",g.style.marginBottom="6px"}),r.querySelectorAll("li").forEach(g=>{g.style.marginBottom="4px"}),r.querySelectorAll("p").forEach(g=>{g.style.marginBottom="8px"}),(l=r.querySelector("#tuto-prev"))==null||l.addEventListener("click",()=>{o--,n()}),(p=r.querySelector("#tuto-next"))==null||p.addEventListener("click",()=>{c?a():(o++,n())}),(b=r.querySelector("#tuto-skip"))==null||b.addEventListener("click",()=>{confirm("Passer le tutoriel ? Tu pourras le revoir plus tard depuis les paramètres.")&&a()})},a=async()=>{r.remove(),t!=null&&t.id&&await h.from("users").update({tutorial_done:!0}).eq("id",t.id),i==null||i()};document.body.appendChild(r),n()}async function dn(t,e,i){let o=[];const{data:r,error:n}=await h.rpc("get_tutorial_steps");if(!n&&(r==null?void 0:r.length)>0)o=r;else{const{data:d,error:c}=await h.from("tutorial_steps").select("*").eq("is_active",!0).order("step_order");!c&&(d==null?void 0:d.length)>0?o=d:i&&i("[Tutorial] DB vide ou inaccessible — tuto local utilisé","warning",5e3)}const a=o.length>0?o.map(d=>({emoji:d.emoji,title:d.title,color:d.color,content:d.content,image_url:d.image_url||null})):an;sn(t,a,()=>e("settings"))}async function So(t,e,i){if(!t||t.tutorial_done)return;let o=[];const{data:r,error:n}=await h.rpc("get_tutorial_steps");if(!n&&(r==null?void 0:r.length)>0)o=r,console.log(`[Tutorial] RPC OK → ${o.length} étapes`);else{const{data:d,error:c}=await h.from("tutorial_steps").select("*").eq("is_active",!0).order("step_order");!c&&(d==null?void 0:d.length)>0?(o=d,console.log(`[Tutorial] Direct OK → ${o.length} étapes`)):(console.warn(`[Tutorial] Aucune étape DB (RPC: ${n==null?void 0:n.message}, Direct: ${c==null?void 0:c.message})`),i&&i("[Tutorial] DB vide ou inaccessible — tuto local utilisé","warning",5e3))}const a=o.length>0?o.map(d=>({emoji:d.emoji,title:d.title,color:d.color,content:d.content,image_url:d.image_url||null})):an;sn(t,a,()=>e("boosters"))}async function ln(t,e){var y,u,w;const{state:i,navigate:o,toast:r}=e,n=ai(),a=Zi(),d=(y=i==null?void 0:i.profile)==null?void 0:y.is_admin,c="2026.07.31-2345";t.innerHTML=`
   <div style="height:100%;overflow-y:auto;background:var(--page-bg)">
 
     <div style="padding:16px;display:flex;flex-direction:column;gap:14px;max-width:520px;margin:0 auto">
@@ -3242,7 +3242,7 @@ import{s as h,t as Ho,u as Uo,n as ut,g as Bt,p as nt,v as si,o as Ut,r as Ae,k 
     </div>
   </div>`}Tn(zn);const he={user:null,profile:null,page:"home",params:{}};function yt(t,e="info",i=3e3){const o=document.getElementById("toast");o&&(o.textContent=t,o.className=`show ${e}`,clearTimeout(o._t),o._t=setTimeout(()=>{o.className=""},i))}function Da(t,e,i=""){document.getElementById("modal-title").textContent=t,document.getElementById("modal-body").innerHTML=e,document.getElementById("modal-footer").innerHTML=i,document.getElementById("modal-overlay").classList.remove("hidden")}function Qi(){document.getElementById("modal-overlay").classList.add("hidden")}async function ni(){if(!he.user)return;const{data:t}=await h.from("users").select("*").eq("id",he.user.id).single();t&&(he.profile=t)}const $n="mw_theme";function ai(){return localStorage.getItem($n)||"dark"}function Go(t){var e;localStorage.setItem($n,t),vi(t),(e=he.profile)!=null&&e.id&&h.from("users").update({theme:t}).eq("id",he.profile.id).then(()=>{})}function vi(t){var e,i;document.documentElement.setAttribute("data-theme",t),t==="club"&&(document.documentElement.style.setProperty("--club-color1",((e=he.profile)==null?void 0:e.club_color1)||"#0a0f0a"),document.documentElement.style.setProperty("--club-color2",((i=he.profile)==null?void 0:i.club_color2)||"#080d08"))}function $t(t,e={}){he.page=t,he.params=e,En()}async function En(){var o,r,n,a;const t=document.getElementById("page-content");if(!t)return;document.querySelectorAll(".bottom-nav a").forEach(d=>{d.classList.toggle("active",d.dataset.page===he.page)});const e=document.getElementById("nav-credits");e&&he.profile&&(e.textContent=`💰 ${(he.profile.credits||0).toLocaleString("fr")}`);const i={state:he,navigate:$t,toast:yt,openModal:Da,closeModal:Qi,refreshProfile:ni};switch(t.innerHTML='<div style="padding:40px;text-align:center;color:#aaa">⚽</div>',he.page){case"home":await Fi(t,i);break;case"home2":await Fi(t,i);break;case"game":await br(t,i);break;case"settings":await ln(t,i);break;case"collection":await Er(t,i);break;case"decks":await Ui(t,i);break;case"boosters":await Gn(t,i);break;case"ranked":await qa(t,i);break;case"match":{const d=he.params&&he.params.matchMode||"vs_ai_easy";d==="random"?await Xi(t,i,!1):d==="ranked"?await Xi(t,i,!0):d==="friend"?await ua(t,i,(o=he.params)==null?void 0:o.friendId,(r=he.params)==null?void 0:r.friendName):d==="mini_league"||d==="mini-league"?await Ro(t,i,(n=he.params)==null?void 0:n.mlMatchId,(a=he.params)==null?void 0:a.leagueId):await Rr(t,i);break}case"market":await za(t,i);break;case"rankings":await ja(t,i);break;case"matches":await Ba(t,i);break;case"friends":await fr(t,i);break;case"mini-league":await xa(t,i);break;case"match-mini-league":{const d=he.params||{};await Ro(t,i,d.mlMatchId,d.leagueId);break}default:await Fi(t,i)}}function Fa(){var o,r;const t=document.getElementById("app"),e=he.profile;if(!e)return;const i="/icons/";t.innerHTML=`
     <nav class="top-nav">
-      <div class="logo" id="nav-logo" title="Manager Wars v2026.07.31-2340" style="cursor:pointer">
+      <div class="logo" id="nav-logo" title="Manager Wars v2026.07.31-2345" style="cursor:pointer">
         <img src="${i}logo-withname.png" alt="Manager Wars" style="height:48px;width:auto;display:block">
       </div>
       <div style="display:flex;align-items:center;gap:10px">

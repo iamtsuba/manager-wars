@@ -550,6 +550,32 @@ async function openFormationBooster(profile, cost) {
   return (created || []).map(c => ({ ...c, isDuplicate: isDup }))
 }
 
+// ── Booster Stade DB (taux configurés en admin) ────────────
+async function openStadiumBooster(profile, cost) {
+  if (cost > 0) {
+    const { error } = await supabase.from('users')
+      .update({ credits: profile.credits - cost }).eq('id', profile.id)
+    if (error) throw error
+    profile.credits -= cost
+    syncV2Credits(profile.credits)
+  }
+
+  // Détecter doublon (stade déjà possédé)
+  const { data: ownedS } = await supabase.from('cards')
+    .select('stadium_id').eq('owner_id', profile.id).eq('card_type', 'stadium')
+  const ownedStadiums = new Set((ownedS||[]).map(c => c.stadium_id).filter(Boolean))
+
+  const { data: allStadiums } = await supabase.from('stadium_definitions').select('id')
+  if (!allStadiums?.length) throw new Error('Aucun stade configuré en base.')
+
+  const chosen = allStadiums[Math.floor(Math.random() * allStadiums.length)]
+  const isDup = ownedStadiums.has(chosen.id)
+  const { data: created, error: insertErr } = await supabase.from('cards')
+    .insert({ owner_id: profile.id, card_type: 'stadium', stadium_id: chosen.id }).select()
+  if (insertErr) console.error('[Booster Stade] Erreur insert:', insertErr.message, insertErr)
+  return (created || []).map(c => ({ ...c, isDuplicate: isDup }))
+}
+
 // ── Animation FIFA ─────────────────────────────────────────
 // Phase 1 : booster qui tremble et s'ouvre
 // Phase 2 : les cartes apparaissent une par une avec flip
@@ -1280,7 +1306,8 @@ export async function renderStarterOnboarding(container, { state, navigate, toas
       <div style="font-size:14px;color:#FFD700;font-weight:700;line-height:1.8;margin-bottom:24px">
         ⚽ 4 boosters de 5 joueurs<br>
         ⚡ 1 booster Game Changer<br>
-        📋 1 booster Formation
+        📋 1 booster Formation<br>
+        🏟️ 1 booster Stade
       </div>
       <p style="font-size:13px;color:rgba(255,255,255,0.55);margin-bottom:24px">
         Ouvre-les un par un pour découvrir tes cartes !
@@ -1318,6 +1345,8 @@ export async function renderStarterOnboarding(container, { state, navigate, toas
         newCards = await openFormationBooster(state.profile, 0)
       } else if (spec.type === 'game_changer') {
         newCards = await openGCBooster(state.profile, spec.count || 3, 0)
+      } else if (spec.type === 'stadium') {
+        newCards = await openStadiumBooster(state.profile, 0)
       } else {
         // Booster Joueurs : se baser sur "Booster (new player)" + ses taux de drop
         if (newPlayerBooster && newPlayerBooster.rates?.length) {
@@ -1349,6 +1378,8 @@ export async function renderStarterOnboarding(container, { state, navigate, toas
       ? { name: 'Booster Formation', type: 'formation', img: `${import.meta.env.BASE_URL}icons/booster-formation.png` }
       : spec.type === 'game_changer'
       ? { name: 'Booster Game Changer', type: 'game_changer', img: `${import.meta.env.BASE_URL}icons/booster-gamechanger.png` }
+      : spec.type === 'stadium'
+      ? { name: 'Booster Stade', type: 'stadium', img: `${import.meta.env.BASE_URL}icons/booster-stadium.png` }
       : { name: `Booster Joueurs (${index}/${total})`, type: 'player', img: (newPlayerBooster?.img) || `${import.meta.env.BASE_URL}icons/booster-players.png` }
 
     // Lancer l'animation, puis enchaîner au booster suivant

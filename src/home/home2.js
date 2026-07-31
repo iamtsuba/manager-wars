@@ -995,8 +995,6 @@ export async function renderHome2(container, { state, navigate, toast, openModal
             <div class="rank-progress-track"><div class="rank-progress-fill" style="width:${prog}%"></div></div>
           </div>
 
-          <button class="profile-view-btn" id="nav-profile-btn">Voir mon profil 📤</button>
-
           <div class="ranking-widget">
             <div class="ranking-widget-header"><h4>CLASSEMENT</h4><a id="nav-rankings-link">Voir plus</a></div>
             ${topUsers.map((u,i) => rankRowHTML(u,i)).join('')}
@@ -1093,7 +1091,6 @@ export async function renderHome2(container, { state, navigate, toast, openModal
     if (dark) dark.style.minHeight = avail + 'px'
   })
 
-  document.getElementById('nav-profile-btn')?.addEventListener('click', () => openProfileBIModal(state, openModal, closeModal))
   document.getElementById('nav-rankings-link')?.addEventListener('click', () => navigate('rankings'))
   document.getElementById('nav-rankings-cta')?.addEventListener('click', () => navigate('rankings'))
   document.getElementById('rank-inline-link-btn')?.addEventListener('click', () => navigate('rankings'))

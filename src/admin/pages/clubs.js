@@ -558,24 +558,37 @@ function renderClubs(container, helpers, countMap = {}) {
 // ── Générateur de logo "drapeau" 3×3 avec texte centré ──────────────────
 function openFlagBuilderModal(helpers) {
   const { openModal, closeModal } = helpers
-  const GRID = 6
-  const CELL = 40
-  const TOTAL = CELL * GRID
+  let GRID = 6
+  const CELL = 36
 
-  // Palette par défaut : damier 2 couleurs
-  const colors = []
-  for (let row = 0; row < GRID; row++) {
-    for (let col = 0; col < GRID; col++) {
-      colors.push((row + col) % 2 === 0 ? '#00AEEF' : '#ffffff')
+  function makeCheckerboard(n) {
+    const arr = []
+    for (let row = 0; row < n; row++) {
+      for (let col = 0; col < n; col++) {
+        arr.push((row + col) % 2 === 0 ? '#00AEEF' : '#ffffff')
+      }
     }
+    return arr
   }
+
+  let colors = makeCheckerboard(GRID)
   let text = 'OP'
   let textColor = '#D4A017'
-  let textSize = 50     // en % de la hauteur totale du canvas
-  let textOffsetX = 0   // en % de la largeur totale, décalage depuis le centre
-  let textOffsetY = 0   // en % de la hauteur totale, décalage depuis le centre
+  let textSize = 50
+  let textOffsetX = 0
+  let textOffsetY = 0
+
+  let text2 = ''
+  let text2Color = '#ffffff'
+  let text2Size = 25
+  let text2OffsetX = 0
+  let text2OffsetY = 35
+
+  let selectedSquare = null
+  let clipboardColor = null
 
   function buildSVG() {
+    const total = CELL * GRID
     let squares = ''
     for (let row = 0; row < GRID; row++) {
       for (let col = 0; col < GRID; col++) {
@@ -583,14 +596,19 @@ function openFlagBuilderModal(helpers) {
         squares += `<rect x="${col*CELL}" y="${row*CELL}" width="${CELL}" height="${CELL}" fill="${colors[i]}"/>`
       }
     }
-    const cx = TOTAL/2 + (textOffsetX/100) * TOTAL
-    const cy = TOTAL/2 + (textOffsetY/100) * TOTAL
-    const fontSize = (textSize/100) * TOTAL
-    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${TOTAL} ${TOTAL}">
-      ${squares}
-      <text x="${cx}" y="${cy}" text-anchor="middle" dominant-baseline="central"
+    const textEl = (t, color, size, offX, offY) => {
+      if (!t) return ''
+      const cx = total/2 + (offX/100) * total
+      const cy = total/2 + (offY/100) * total
+      const fontSize = (size/100) * total
+      return `<text x="${cx}" y="${cy}" text-anchor="middle" dominant-baseline="central"
         font-family="Arial Black, Arial, sans-serif" font-weight="900" font-size="${fontSize}"
-        fill="${textColor}">${(text||'').toUpperCase().slice(0,3)}</text>
+        fill="${color}">${t.toUpperCase().slice(0,3)}</text>`
+    }
+    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${total} ${total}">
+      ${squares}
+      ${textEl(text, textColor, textSize, textOffsetX, textOffsetY)}
+      ${textEl(text2, text2Color, text2Size, text2OffsetX, text2OffsetY)}
     </svg>`
   }
 
@@ -599,36 +617,76 @@ function openFlagBuilderModal(helpers) {
   }
 
   const bodyHTML = `
-    <div style="display:flex;flex-direction:column;gap:14px;align-items:center;max-height:70vh;overflow-y:auto;padding-right:4px">
-      <div id="flag-preview" style="width:200px;height:200px;border-radius:12px;overflow:hidden;box-shadow:0 2px 10px rgba(0,0,0,0.15);flex-shrink:0"></div>
+    <div id="flag-builder-wide"></div>
+    <style>
+      .modal:has(#flag-builder-wide) { max-width: 920px !important; }
+    </style>
+    <div style="display:flex;gap:24px;flex-wrap:wrap">
+      <div style="flex:0 0 260px;display:flex;flex-direction:column;gap:14px;align-items:center">
+        <div id="flag-preview" style="width:240px;height:240px;border-radius:12px;overflow:hidden;box-shadow:0 2px 10px rgba(0,0,0,0.15)"></div>
 
-      <div>
-        <label>TEXTE (3 caractères max)</label>
-        <input id="flag-text" maxlength="3" value="${text}" style="width:120px;text-align:center;font-weight:900;text-transform:uppercase">
-      </div>
-      <div style="display:flex;align-items:center;gap:8px">
-        <label style="margin:0">Couleur du texte</label>
-        <input type="color" id="flag-text-color" value="${textColor}" style="width:44px;height:32px;padding:2px;cursor:pointer">
-      </div>
-
-      <div style="width:260px">
-        <label>TAILLE DU TEXTE (<span id="flag-size-val">${textSize}</span>%)</label>
-        <input type="range" id="flag-text-size" min="10" max="120" value="${textSize}" style="width:100%">
-      </div>
-      <div style="width:260px">
-        <label>POSITION HORIZONTALE (<span id="flag-x-val">${textOffsetX}</span>)</label>
-        <input type="range" id="flag-text-x" min="-50" max="50" value="${textOffsetX}" style="width:100%">
-      </div>
-      <div style="width:260px">
-        <label>POSITION VERTICALE (<span id="flag-y-val">${textOffsetY}</span>)</label>
-        <input type="range" id="flag-text-y" min="-50" max="50" value="${textOffsetY}" style="width:100%">
-      </div>
-
-      <div>
-        <label style="display:block;text-align:center;margin-bottom:8px">Couleurs des ${GRID*GRID} carrés</label>
-        <div style="display:grid;grid-template-columns:repeat(${GRID},28px);gap:3px">
-          ${colors.map((c, i) => `<input type="color" class="flag-square-color" data-i="${i}" value="${c}" style="width:28px;height:28px;padding:1px;border-radius:4px;cursor:pointer">`).join('')}
+        <div style="width:100%">
+          <label>TAILLE DE LA GRILLE</label>
+          <div style="display:flex;gap:6px">
+            ${[6,9,12].map(n => `<button type="button" class="btn ${n===GRID?'btn-primary':'btn-ghost'} btn-sm flag-grid-size" data-n="${n}" style="flex:1">${n}×${n}</button>`).join('')}
+          </div>
         </div>
+
+        <div style="width:100%">
+          <label>TEXTE 1 (3 caractères max)</label>
+          <input id="flag-text" maxlength="3" value="${text}" style="text-align:center;font-weight:900;text-transform:uppercase">
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;width:100%">
+          <label style="margin:0;white-space:nowrap">Couleur</label>
+          <input type="color" id="flag-text-color" value="${textColor}" style="width:44px;height:32px;padding:2px;cursor:pointer">
+        </div>
+        <div style="width:100%">
+          <label>Taille (<span id="flag-size-val">${textSize}</span>%)</label>
+          <input type="range" id="flag-text-size" min="10" max="120" value="${textSize}" style="width:100%">
+        </div>
+        <div style="width:100%">
+          <label>Position H (<span id="flag-x-val">${textOffsetX}</span>)</label>
+          <input type="range" id="flag-text-x" min="-50" max="50" value="${textOffsetX}" style="width:100%">
+        </div>
+        <div style="width:100%">
+          <label>Position V (<span id="flag-y-val">${textOffsetY}</span>)</label>
+          <input type="range" id="flag-text-y" min="-50" max="50" value="${textOffsetY}" style="width:100%">
+        </div>
+
+        <div style="width:100%;border-top:1px solid #eee;margin-top:4px;padding-top:12px">
+          <label>TEXTE 2 — optionnel (3 caractères max)</label>
+          <input id="flag-text2" maxlength="3" value="${text2}" placeholder="Vide = désactivé" style="text-align:center;font-weight:900;text-transform:uppercase">
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;width:100%">
+          <label style="margin:0;white-space:nowrap">Couleur</label>
+          <input type="color" id="flag-text2-color" value="${text2Color}" style="width:44px;height:32px;padding:2px;cursor:pointer">
+        </div>
+        <div style="width:100%">
+          <label>Taille (<span id="flag-size2-val">${text2Size}</span>%)</label>
+          <input type="range" id="flag-text2-size" min="10" max="120" value="${text2Size}" style="width:100%">
+        </div>
+        <div style="width:100%">
+          <label>Position H (<span id="flag-x2-val">${text2OffsetX}</span>)</label>
+          <input type="range" id="flag-text2-x" min="-50" max="50" value="${text2OffsetX}" style="width:100%">
+        </div>
+        <div style="width:100%">
+          <label>Position V (<span id="flag-y2-val">${text2OffsetY}</span>)</label>
+          <input type="range" id="flag-text2-y" min="-50" max="50" value="${text2OffsetY}" style="width:100%">
+        </div>
+      </div>
+
+      <div style="flex:1;min-width:280px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+          <label style="margin:0">Couleurs des ${GRID*GRID} carrés — clique un carré pour le sélectionner</label>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap">
+          <button type="button" id="flag-copy-btn" class="btn btn-ghost btn-sm" disabled>📋 Copier</button>
+          <button type="button" id="flag-paste-btn" class="btn btn-ghost btn-sm" disabled>📥 Coller</button>
+          <span id="flag-clipboard-preview" style="display:none;align-items:center;gap:6px;font-size:12px;color:#666">
+            Copié : <span id="flag-clipboard-swatch" style="display:inline-block;width:16px;height:16px;border-radius:4px;border:1px solid #ccc"></span>
+          </span>
+        </div>
+        <div id="flag-squares-grid" style="display:grid;gap:2px"></div>
       </div>
     </div>
   `
@@ -638,9 +696,83 @@ function openFlagBuilderModal(helpers) {
   `
   openModal(`🎨 Générer un logo (${GRID}×${GRID})`, bodyHTML, footerHTML)
 
-  function repaint() {
-    document.getElementById('flag-preview').innerHTML = buildSVG()
+  function renderSquaresGrid() {
+    const el = document.getElementById('flag-squares-grid')
+    if (!el) return
+    const sw = GRID >= 12 ? 26 : GRID >= 9 ? 32 : 40
+    el.style.gridTemplateColumns = `repeat(${GRID}, ${sw}px)`
+    el.innerHTML = colors.map((c, i) => `
+      <div class="flag-square" data-i="${i}" style="width:${sw}px;height:${sw}px;border-radius:4px;background:${c};cursor:pointer;
+        box-sizing:border-box;border:${selectedSquare===i?'3px solid #1A6B3C':'1px solid rgba(0,0,0,0.15)'}"></div>
+    `).join('')
+    el.querySelectorAll('.flag-square').forEach(sq => {
+      sq.addEventListener('click', () => {
+        selectedSquare = parseInt(sq.dataset.i)
+        renderSquaresGrid()
+        updateCopyPasteButtons()
+      })
+      sq.addEventListener('dblclick', () => {
+        const i = parseInt(sq.dataset.i)
+        const input = document.createElement('input')
+        input.type = 'color'
+        input.value = colors[i]
+        input.style.position = 'fixed'; input.style.opacity = '0'
+        document.body.appendChild(input)
+        input.addEventListener('input', () => { colors[i] = input.value; renderSquaresGrid(); repaint() })
+        input.addEventListener('change', () => input.remove())
+        input.click()
+      })
+    })
   }
+
+  function updateCopyPasteButtons() {
+    const copyBtn = document.getElementById('flag-copy-btn')
+    const pasteBtn = document.getElementById('flag-paste-btn')
+    copyBtn.disabled = selectedSquare === null
+    pasteBtn.disabled = selectedSquare === null || clipboardColor === null
+  }
+
+  document.getElementById('flag-copy-btn')?.addEventListener('click', () => {
+    if (selectedSquare === null) return
+    clipboardColor = colors[selectedSquare]
+    const previewEl = document.getElementById('flag-clipboard-preview')
+    const swatchEl = document.getElementById('flag-clipboard-swatch')
+    if (previewEl) previewEl.style.display = 'inline-flex'
+    if (swatchEl) swatchEl.style.background = clipboardColor
+    updateCopyPasteButtons()
+  })
+  document.getElementById('flag-paste-btn')?.addEventListener('click', () => {
+    if (selectedSquare === null || clipboardColor === null) return
+    colors[selectedSquare] = clipboardColor
+    renderSquaresGrid()
+    repaint()
+  })
+
+  document.querySelectorAll('.flag-grid-size').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const n = parseInt(btn.dataset.n)
+      if (n === GRID) return
+      GRID = n
+      colors = makeCheckerboard(GRID)
+      selectedSquare = null
+      clipboardColor = null
+      document.getElementById('flag-clipboard-preview').style.display = 'none'
+      renderSquaresGrid()
+      updateCopyPasteButtons()
+      repaint()
+      document.querySelectorAll('.flag-grid-size').forEach(b => {
+        b.classList.toggle('btn-primary', parseInt(b.dataset.n) === GRID)
+        b.classList.toggle('btn-ghost', parseInt(b.dataset.n) !== GRID)
+      })
+    })
+  })
+
+  function repaint() {
+    const el = document.getElementById('flag-preview')
+    if (el) el.innerHTML = buildSVG()
+  }
+  renderSquaresGrid()
+  updateCopyPasteButtons()
   repaint()
 
   document.getElementById('flag-text').addEventListener('input', (e) => {
@@ -648,10 +780,7 @@ function openFlagBuilderModal(helpers) {
     e.target.value = text
     repaint()
   })
-  document.getElementById('flag-text-color').addEventListener('input', (e) => {
-    textColor = e.target.value
-    repaint()
-  })
+  document.getElementById('flag-text-color').addEventListener('input', (e) => { textColor = e.target.value; repaint() })
   document.getElementById('flag-text-size').addEventListener('input', (e) => {
     textSize = parseInt(e.target.value)
     document.getElementById('flag-size-val').textContent = textSize
@@ -667,11 +796,27 @@ function openFlagBuilderModal(helpers) {
     document.getElementById('flag-y-val').textContent = textOffsetY
     repaint()
   })
-  document.querySelectorAll('.flag-square-color').forEach(input => {
-    input.addEventListener('input', (e) => {
-      colors[parseInt(e.target.dataset.i)] = e.target.value
-      repaint()
-    })
+
+  document.getElementById('flag-text2').addEventListener('input', (e) => {
+    text2 = e.target.value.toUpperCase().slice(0, 3)
+    e.target.value = text2
+    repaint()
+  })
+  document.getElementById('flag-text2-color').addEventListener('input', (e) => { text2Color = e.target.value; repaint() })
+  document.getElementById('flag-text2-size').addEventListener('input', (e) => {
+    text2Size = parseInt(e.target.value)
+    document.getElementById('flag-size2-val').textContent = text2Size
+    repaint()
+  })
+  document.getElementById('flag-text2-x').addEventListener('input', (e) => {
+    text2OffsetX = parseInt(e.target.value)
+    document.getElementById('flag-x2-val').textContent = text2OffsetX
+    repaint()
+  })
+  document.getElementById('flag-text2-y').addEventListener('input', (e) => {
+    text2OffsetY = parseInt(e.target.value)
+    document.getElementById('flag-y2-val').textContent = text2OffsetY
+    repaint()
   })
 
   document.getElementById('flag-cancel')?.addEventListener('click', () => closeModal())
@@ -684,6 +829,7 @@ function openFlagBuilderModal(helpers) {
     closeModal()
   })
 }
+
 
 async function openClubPanel(club, container, helpers) {
   const { toast } = helpers

@@ -598,7 +598,143 @@ async function showFullJournalPopup() {
   ov.addEventListener('click', e => { if (e.target === ov) ov.remove() })
 }
 
-export async function renderHome2(container, { state, navigate, toast }) {
+// ── Popup BI Profil : classement par saison + meilleures cartes ──────────
+const JOB_NOTE_KEY = { GK:'note_g', DEF:'note_d', MIL:'note_m', ATT:'note_a' }
+function noteForPlayer(p) {
+  const key = JOB_NOTE_KEY[p?.job] || 'note_m'
+  return (Number(p?.[key]) || 0) + (Number(p?._evolution_bonus) || 0)
+}
+
+function biCardBlock(title, player, subLabel) {
+  if (!player) {
+    return `<div class="bi-card-block">
+      <div class="bi-card-title">${title}</div>
+      <div class="bi-card-empty">Aucune donnée pour l'instant</div>
+    </div>`
+  }
+  return `<div class="bi-card-block">
+    <div class="bi-card-title">${title}</div>
+    <div class="bi-card-visual">${renderPlayerCard(player, { width: 130 })}</div>
+    ${subLabel ? `<div class="bi-card-sub">${subLabel}</div>` : ''}
+  </div>`
+}
+
+async function openProfileBIModal(state, openModal, closeModal) {
+  const uid = state.profile.id
+
+  openModal('📊 Mon profil', `<div style="padding:30px;text-align:center;color:var(--gray-600)">⏳ Chargement des statistiques...</div>`, `<button class="btn btn-ghost" id="bi-close">Fermer</button>`)
+  document.getElementById('bi-close')?.addEventListener('click', closeModal)
+
+  const PLAYER_SELECT = `id, firstname, surname_real, country_code, job, job2, note_g, note_d, note_m, note_a, rarity, face, clubs(encoded_name, logo_url)`
+
+  const [
+    { data: seasonHistory },
+    { data: myPlayerCards },
+    { data: boughtRows },
+    { data: soldRows },
+  ] = await Promise.all([
+    supabase
+      .from('ranked_seasons_history')
+      .select(`final_rank_position, final_mmr, final_rank_tier, ranked_wins, ranked_losses, ranked_draws, logged_at, ranked_seasons(name)`)
+      .eq('user_id', uid)
+      .order('logged_at', { ascending: false }),
+    supabase
+      .from('cards')
+      .select(`evolution_bonus, player:players(${PLAYER_SELECT})`)
+      .eq('owner_id', uid)
+      .eq('card_type', 'player'),
+    supabase
+      .from('market_listings')
+      .select(`price, sold_at, card:cards(evolution_bonus, player:players(${PLAYER_SELECT}))`)
+      .eq('buyer_id', uid)
+      .eq('status', 'sold')
+      .order('price', { ascending: false })
+      .limit(1),
+    supabase
+      .from('market_listings')
+      .select(`price, sold_at, card:cards(evolution_bonus, player:players(${PLAYER_SELECT}))`)
+      .eq('seller_id', uid)
+      .eq('status', 'sold')
+      .order('price', { ascending: false })
+      .limit(1),
+  ])
+
+  // ── Meilleure carte (note la plus haute) ──
+  let bestPlayer = null, bestNote = -1
+  ;(myPlayerCards || []).forEach(c => {
+    if (!c.player) return
+    const p = { ...c.player, _evolution_bonus: c.evolution_bonus || 0 }
+    const n = noteForPlayer(p)
+    if (n > bestNote) { bestNote = n; bestPlayer = p }
+  })
+
+  // ── Joueur acheté le plus cher ──
+  const boughtRow = (boughtRows || [])[0]
+  const boughtPlayer = boughtRow?.card?.player
+    ? { ...boughtRow.card.player, _evolution_bonus: boughtRow.card.evolution_bonus || 0 }
+    : null
+
+  // ── Joueur vendu le plus cher ──
+  const soldRow = (soldRows || [])[0]
+  const soldPlayer = soldRow?.card?.player
+    ? { ...soldRow.card.player, _evolution_bonus: soldRow.card.evolution_bonus || 0 }
+    : null
+
+  // ── Classement par saison ──
+  const TIER_EMOJI = { bronze:'🥉', silver:'🥈', gold:'🥇', platinum:'💎', diamond:'🔷', master:'👑' }
+  const seasonRowsHTML = (seasonHistory && seasonHistory.length)
+    ? seasonHistory.map(s => `
+      <div class="bi-season-row">
+        <div class="bi-season-name">${s.ranked_seasons?.name || 'Saison'}</div>
+        <div class="bi-season-pos">#${s.final_rank_position ?? '—'}</div>
+        <div class="bi-season-tier">${TIER_EMOJI[s.final_rank_tier] || ''} ${s.final_rank_tier || ''}</div>
+        <div class="bi-season-record">${s.ranked_wins||0}V ${s.ranked_draws||0}N ${s.ranked_losses||0}D</div>
+      </div>`).join('')
+    : `<div class="bi-card-empty">Aucune saison archivée pour l'instant</div>`
+
+  const bodyHTML = `
+  <style>
+    .bi-section { margin-bottom: 18px; }
+    .bi-section-title { font-size: 13px; font-weight: 700; color: var(--tile-fg-dim, #666); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+    .bi-season-row { display:flex; align-items:center; gap:10px; padding:8px 10px; background: rgba(0,0,0,0.03); border-radius:8px; margin-bottom:6px; font-size:13px; }
+    .bi-season-name { flex:1; font-weight:700; }
+    .bi-season-pos { font-weight:900; color:#1A6B3C; }
+    .bi-season-tier { min-width:80px; }
+    .bi-season-record { color:#888; font-size:11px; }
+    .bi-cards-grid { display:flex; gap:14px; flex-wrap:wrap; justify-content:center; }
+    .bi-card-block { flex:1; min-width:140px; text-align:center; }
+    .bi-card-title { font-size:12px; font-weight:700; margin-bottom:8px; color: var(--tile-fg-dim, #666); }
+    .bi-card-visual { display:flex; justify-content:center; }
+    .bi-card-sub { margin-top:8px; font-size:14px; font-weight:900; color:#D4A017; }
+    .bi-card-empty { font-size:12px; color:#999; padding:20px 0; }
+  </style>
+
+  <div class="bi-section">
+    <div class="bi-section-title">📊 Classement par saison</div>
+    ${seasonRowsHTML}
+  </div>
+
+  <div class="bi-section">
+    <div class="bi-section-title">⭐ Ma meilleure carte</div>
+    <div class="bi-cards-grid">
+      ${biCardBlock('Note la plus haute', bestPlayer, bestPlayer ? `Note ${bestNote}` : null)}
+    </div>
+  </div>
+
+  <div class="bi-section">
+    <div class="bi-section-title">🛒 Records du marché</div>
+    <div class="bi-cards-grid">
+      ${biCardBlock('💰 Achat le plus cher', boughtPlayer, boughtRow ? `${boughtRow.price.toLocaleString('fr')} cr.` : null)}
+      ${biCardBlock('💸 Vente la plus chère', soldPlayer, soldRow ? `${soldRow.price.toLocaleString('fr')} cr.` : null)}
+    </div>
+  </div>
+  `
+
+  openModal('📊 Mon profil', bodyHTML, `<button class="btn btn-ghost" id="bi-close">Fermer</button>`)
+  document.getElementById('bi-close')?.addEventListener('click', closeModal)
+}
+
+export async function renderHome2(container, { state, navigate, toast, openModal, closeModal }) {
   const p = state.profile
   if (!p) return
 
@@ -957,7 +1093,7 @@ export async function renderHome2(container, { state, navigate, toast }) {
     if (dark) dark.style.minHeight = avail + 'px'
   })
 
-  document.getElementById('nav-profile-btn')?.addEventListener('click', () => navigate('settings'))
+  document.getElementById('nav-profile-btn')?.addEventListener('click', () => openProfileBIModal(state, openModal, closeModal))
   document.getElementById('nav-rankings-link')?.addEventListener('click', () => navigate('rankings'))
   document.getElementById('nav-rankings-cta')?.addEventListener('click', () => navigate('rankings'))
   document.getElementById('rank-inline-link-btn')?.addEventListener('click', () => navigate('rankings'))

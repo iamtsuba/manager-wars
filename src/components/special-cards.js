@@ -6,6 +6,8 @@
 // ces fonctions pour rester visuellement cohérente — ne JAMAIS dupliquer
 // ce rendu localement dans un autre fichier.
 //
+import { supabase } from '../lib/supabase.js'
+
 // Zones mesurées précisément par analyse pixel des templates (404×690) :
 const RATIO = 690 / 404 // hauteur/largeur du template
 
@@ -30,6 +32,19 @@ function tplUrl(kind) {
   return `${import.meta.env.BASE_URL}icons/template-${kind}.png`
 }
 
+// Certaines images GC sont uploadées depuis Admin directement vers le bucket
+// Supabase Storage "gc-icons" (et n'existent donc PAS dans public/icons/ sur
+// GitHub), tandis que d'autres restent des fichiers poussés en dur dans le repo.
+// On tente d'abord l'URL "classique" (repo), et en cas d'échec (404), on
+// retente automatiquement depuis le bucket Storage — sans jamais boucler.
+function gcStorageFallbackUrl(imageUrl) {
+  if (!imageUrl) return null
+  const filename = imageUrl.split('/').pop()
+  if (!filename) return null
+  const { data } = supabase.storage.from('gc-icons').getPublicUrl(filename)
+  return data?.publicUrl || null
+}
+
 /**
  * Carte Game Changer — nom (encadré haut) / image (au milieu) / effet (encadré bas)
  */
@@ -39,6 +54,7 @@ export function renderGCCard(name, imageUrl, fallbackIcon, description, opts = {
   const z = ZONES.gc
   const nameFs = Math.max(7, Math.round(width * (name && name.length > 14 ? 0.044 : 0.056)))
   const descFs = Math.max(7, Math.round(width * 0.056))
+  const storageUrl = gcStorageFallbackUrl(imageUrl)
   return `<div class="special-card special-card-gc" style="position:relative;width:${width}px;height:${height}px;flex-shrink:0;${onClick ? 'cursor:pointer' : ''}">
     <img src="${tplUrl('gc')}" style="position:absolute;inset:0;width:100%;height:100%;z-index:0;pointer-events:none" alt="">
     <div style="position:absolute;left:14%;right:14%;top:${z.name.top}%;height:${z.name.height}%;display:flex;align-items:center;justify-content:center;z-index:1;overflow:hidden">
@@ -46,7 +62,7 @@ export function renderGCCard(name, imageUrl, fallbackIcon, description, opts = {
     </div>
     <div style="position:absolute;left:8%;right:8%;top:${z.body.top}%;height:${z.body.height}%;display:flex;align-items:center;justify-content:center;z-index:1">
       ${imageUrl
-        ? `<img src="${imageUrl}" style="max-width:80%;max-height:85%;object-fit:contain;border-radius:6px">`
+        ? `<img src="${imageUrl}" ${storageUrl ? `onerror="this.onerror=null;this.src='${storageUrl}'"` : ''} style="max-width:80%;max-height:85%;object-fit:contain;border-radius:6px">`
         : `<span style="font-size:${Math.round(width*0.32)}px;line-height:1">${fallbackIcon || '⚡'}</span>`}
     </div>
     <div style="position:absolute;left:11%;right:11%;top:${z.desc.top}%;height:${z.desc.height}%;display:flex;align-items:center;justify-content:center;z-index:1;padding:0 2%">

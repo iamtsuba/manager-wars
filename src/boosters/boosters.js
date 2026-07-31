@@ -1379,7 +1379,7 @@ export async function renderStarterOnboarding(container, { state, navigate, toas
       : spec.type === 'game_changer'
       ? { name: 'Booster Game Changer', type: 'game_changer', img: `${import.meta.env.BASE_URL}icons/booster-gamechanger.png` }
       : spec.type === 'stadium'
-      ? { name: 'Booster Stade', type: 'stadium', img: `${import.meta.env.BASE_URL}icons/booster-stadium.png` }
+      ? { name: 'Booster Stade', type: 'stadium', img: `${import.meta.env.BASE_URL}icons/booster-stade.png` }
       : { name: `Booster Joueurs (${index}/${total})`, type: 'player', img: (newPlayerBooster?.img) || `${import.meta.env.BASE_URL}icons/booster-players.png` }
 
     // Lancer l'animation, puis enchaîner au booster suivant

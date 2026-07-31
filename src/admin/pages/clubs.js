@@ -562,13 +562,7 @@ function openFlagBuilderModal(helpers) {
   const CELL = 36
 
   function makeCheckerboard(n) {
-    const arr = []
-    for (let row = 0; row < n; row++) {
-      for (let col = 0; col < n; col++) {
-        arr.push((row + col) % 2 === 0 ? '#00AEEF' : '#ffffff')
-      }
-    }
-    return arr
+    return new Array(n * n).fill('#ffffff')
   }
 
   let colors = makeCheckerboard(GRID)
@@ -677,7 +671,7 @@ function openFlagBuilderModal(helpers) {
 
       <div style="flex:1;min-width:280px">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-          <label style="margin:0">Couleurs des ${GRID*GRID} carrés — clique un carré pour le sélectionner</label>
+          <label style="margin:0">Couleurs des ${GRID*GRID} carrés — clique un carré, puis Ctrl+C / Ctrl+V pour copier-coller sa couleur</label>
         </div>
         <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap">
           <button type="button" id="flag-copy-btn" class="btn btn-ghost btn-sm" disabled>📋 Copier</button>
@@ -732,7 +726,7 @@ function openFlagBuilderModal(helpers) {
     pasteBtn.disabled = selectedSquare === null || clipboardColor === null
   }
 
-  document.getElementById('flag-copy-btn')?.addEventListener('click', () => {
+  function copySelectedColor() {
     if (selectedSquare === null) return
     clipboardColor = colors[selectedSquare]
     const previewEl = document.getElementById('flag-clipboard-preview')
@@ -740,13 +734,30 @@ function openFlagBuilderModal(helpers) {
     if (previewEl) previewEl.style.display = 'inline-flex'
     if (swatchEl) swatchEl.style.background = clipboardColor
     updateCopyPasteButtons()
-  })
-  document.getElementById('flag-paste-btn')?.addEventListener('click', () => {
+  }
+  function pasteToSelectedColor() {
     if (selectedSquare === null || clipboardColor === null) return
     colors[selectedSquare] = clipboardColor
     renderSquaresGrid()
     repaint()
-  })
+  }
+
+  document.getElementById('flag-copy-btn')?.addEventListener('click', copySelectedColor)
+  document.getElementById('flag-paste-btn')?.addEventListener('click', pasteToSelectedColor)
+
+  // Raccourcis clavier Ctrl+C / Ctrl+V (Cmd sur Mac) pour copier-coller la
+  // couleur du carré sélectionné, tant que le popup est ouvert.
+  function flagKeydownHandler(e) {
+    if (!document.getElementById('flag-squares-grid')) {
+      document.removeEventListener('keydown', flagKeydownHandler)
+      return
+    }
+    const isModifier = e.ctrlKey || e.metaKey
+    if (!isModifier || selectedSquare === null) return
+    if (e.key === 'c' || e.key === 'C') { e.preventDefault(); copySelectedColor() }
+    else if (e.key === 'v' || e.key === 'V') { e.preventDefault(); pasteToSelectedColor() }
+  }
+  document.addEventListener('keydown', flagKeydownHandler)
 
   document.querySelectorAll('.flag-grid-size').forEach(btn => {
     btn.addEventListener('click', () => {

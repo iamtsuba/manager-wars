@@ -11,8 +11,8 @@ export function renderAuth(container, { navigate, toast }) {
     <div style="
       min-height:100vh; min-height:100dvh;
       background:linear-gradient(180deg,#0a0a12 0%,#0f1a10 60%,#0a1628 100%);
-      display:flex; flex-direction:column; align-items:center; justify-content:center;
-      padding:24px 16px; position:relative; overflow:hidden;
+      display:flex; flex-direction:column; align-items:center; justify-content:flex-start;
+      padding:24px 16px; position:relative; overflow-y:auto; overflow-x:hidden;
     ">
       <!-- Particules décoratives -->
       <div style="position:absolute;inset:0;pointer-events:none;overflow:hidden">

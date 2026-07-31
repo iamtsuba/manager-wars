@@ -210,6 +210,32 @@ export function showTutorial(profile, steps, onComplete) {
   render()
 }
 
+// ── Revoir le tutoriel manuellement (depuis Paramètres) ──────────────────
+// Même logique de récupération des étapes que checkAndShowTutorial, mais
+// sans le blocage sur tutorial_done (on veut pouvoir le rejouer à volonté).
+export async function replayTutorial(profile, navigate, toast) {
+  let dbSteps = []
+
+  const { data: rpcData, error: rpcErr } = await supabase.rpc('get_tutorial_steps')
+  if (!rpcErr && rpcData?.length > 0) {
+    dbSteps = rpcData
+  } else {
+    const { data: directData, error: directErr } = await supabase
+      .from('tutorial_steps').select('*').eq('is_active', true).order('step_order')
+    if (!directErr && directData?.length > 0) {
+      dbSteps = directData
+    } else {
+      toast && toast(`[Tutorial] DB vide ou inaccessible — tuto local utilisé`, 'warning', 5000)
+    }
+  }
+
+  const steps = dbSteps.length > 0
+    ? dbSteps.map(s => ({ emoji: s.emoji, title: s.title, color: s.color, content: s.content, image_url: s.image_url || null }))
+    : STEPS
+
+  showTutorial(profile, steps, () => navigate('settings'))
+}
+
 export async function checkAndShowTutorial(profile, navigate, toast) {
   if (!profile || profile.tutorial_done) return
 

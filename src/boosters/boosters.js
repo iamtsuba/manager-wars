@@ -854,7 +854,7 @@ export function showBoosterAnimation(cards, booster, navigate, onClose = null) {
     }
 
     // WALKOUT (style FIFA) : drapeau → club → carte + feu d'artifice
-    if (firstSeen && (card.player?.rarity === 'legende' || mainNote >= 18) && card.card_type === 'player' && card.player) {
+    if (firstSeen && card.player?.rarity === 'legende' && card.card_type === 'player' && card.player) {
       playWalkout(card, () => paint(true))
     } else {
       paint(false)
@@ -871,7 +871,7 @@ export function showBoosterAnimation(cards, booster, navigate, onClose = null) {
     const noteVal  = Number(job==='GK'?p.note_g:job==='DEF'?p.note_d:job==='MIL'?p.note_m:p.note_a) || 0
     const evo      = card.evolution_bonus || 0
     const mainNote = noteVal + evo
-    const isLeg    = mainNote >= 18 && mainNote <= 20
+    const isLeg    = p.rarity === 'legende'
     const isHot    = mainNote >= 18
 
     const ov    = document.getElementById('walkout-overlay')

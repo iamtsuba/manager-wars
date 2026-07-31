@@ -509,19 +509,42 @@ const SUPABASE_URL = 'https://fcnwclxlkytdfjotqkta.supabase.co'
 const SUPABASE_ANON_KEY = 'REMPLACE_PAR_TA_CLE_ANON_PUBLIQUE'
 
 async function fetchAdminTutorialSteps() {
+  const headers = { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}`, 'Content-Type': 'application/json' }
+
+  // Essai 1 : RPC get_tutorial_steps (SECURITY DEFINER, contourne les RLS —
+  // c'est celle utilisée par l'app elle-même, donc la plus fiable)
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/get_tutorial_steps`, {
+      method: 'POST', headers, body: '{}',
+    })
+    if (res.ok) {
+      const data = await res.json()
+      if (Array.isArray(data) && data.length > 0) {
+        return data.map(s => ({ emoji: s.emoji, title: s.title, color: s.color, content: s.content, image_url: s.image_url || null }))
+      }
+    }
+  } catch (e) {
+    console.warn('[Tutoriel] RPC get_tutorial_steps échouée :', e)
+  }
+
+  // Essai 2 : lecture directe de la table (si RLS l'autorise pour l'anon)
   try {
     const res = await fetch(
       `${SUPABASE_URL}/rest/v1/tutorial_steps?is_active=eq.true&order=step_order.asc`,
-      { headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` } }
+      { headers }
     )
-    if (!res.ok) return null
-    const data = await res.json()
-    if (!Array.isArray(data) || data.length === 0) return null
-    return data.map(s => ({ emoji: s.emoji, title: s.title, color: s.color, content: s.content, image_url: s.image_url || null }))
+    if (res.ok) {
+      const data = await res.json()
+      if (Array.isArray(data) && data.length > 0) {
+        return data.map(s => ({ emoji: s.emoji, title: s.title, color: s.color, content: s.content, image_url: s.image_url || null }))
+      }
+    }
   } catch (e) {
-    console.warn('[Tutoriel] Récupération admin échouée, tuto par défaut utilisé :', e)
-    return null
+    console.warn('[Tutoriel] Lecture directe échouée :', e)
   }
+
+  console.warn('[Tutoriel] Aucune étape récupérée depuis Supabase — contenu de secours utilisé.')
+  return null
 }
 
 (function () {

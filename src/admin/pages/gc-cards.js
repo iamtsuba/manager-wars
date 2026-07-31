@@ -139,10 +139,15 @@ function openGCModal(c, container, helpers) {
       </div>
       <div>
         <label>IMAGE (public/icons/gamechanger-*)</label>
-        <div style="display:flex;gap:8px;align-items:center">
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
           <input id="gc-image-url" value="${sel.image_url||''}" placeholder="gamechanger-nom.png" style="flex:1">
           <button id="btn-pick-gc-icon" class="btn btn-primary btn-sm" style="white-space:nowrap;flex-shrink:0">🖼️ Choisir</button>
         </div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <input type="file" id="gc-image-upload" accept="image/png,image/jpeg,image/webp" style="flex:1;padding:6px;border:1px solid #ddd;border-radius:6px;background:#f9f9f9">
+          <button id="btn-upload-gc-icon" class="btn btn-primary btn-sm" style="white-space:nowrap;flex-shrink:0">📤 Upload</button>
+        </div>
+        <div id="gc-upload-status" style="font-size:11px;color:#666;margin-top:6px;display:none"></div>
         <div id="gc-icon-picker" style="display:none;margin-top:10px;padding:12px;background:#f5f5f5;border-radius:8px;border:1px solid #ddd"></div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
@@ -237,6 +242,57 @@ function openGCModal(c, container, helpers) {
       })
     } catch(e) {
       picker.innerHTML = `<div style="padding:10px;text-align:center;color:#e74c3c;font-size:12px">Erreur API GitHub : ${e.message}</div>`
+    }
+  })
+
+  // Upload image depuis le PC vers Supabase Storage
+  document.getElementById('btn-upload-gc-icon')?.addEventListener('click', async () => {
+    const fileInput = document.getElementById('gc-image-upload')
+    const file = fileInput?.files?.[0]
+    if (!file) { toast('Choisir une image d\'abord', 'error'); return }
+
+    const statusEl = document.getElementById('gc-upload-status')
+    const uploadBtn = document.getElementById('btn-upload-gc-icon')
+    const originalText = uploadBtn.textContent
+
+    try {
+      statusEl.style.display = 'block'
+      statusEl.textContent = '⏳ Upload en cours...'
+      statusEl.style.color = '#666'
+      uploadBtn.disabled = true
+
+      // Générer un nom unique pour le fichier
+      const ext = file.name.split('.').pop().toLowerCase()
+      const allowedExts = ['png', 'jpg', 'jpeg', 'webp']
+      if (!allowedExts.includes(ext)) { throw new Error('Format invalide (PNG, JPG, WebP)') }
+
+      const timestamp = Date.now()
+      const cleanName = file.name.replace(/\.[^.]+$/, '').replace(/[^a-z0-9-]/gi, '_').toLowerCase()
+      const fileName = `gamechanger-${cleanName}-${timestamp}.${ext}`
+
+      // Upload vers Supabase Storage (bucket: gc-icons)
+      const { data, error } = await supabase.storage
+        .from('gc-icons')
+        .upload(fileName, file, { upsert: false })
+
+      if (error) throw error
+
+      // Mettre à jour le champ image_url
+      document.getElementById('gc-image-url').value = fileName
+      updatePreview()
+
+      statusEl.textContent = '✅ Image uploadée avec succès'
+      statusEl.style.color = '#27ae60'
+      uploadBtn.disabled = false
+      uploadBtn.textContent = originalText
+      fileInput.value = '' // Réinitialiser l'input file
+
+      setTimeout(() => { statusEl.style.display = 'none' }, 3000)
+    } catch (err) {
+      statusEl.textContent = `❌ Erreur : ${err.message}`
+      statusEl.style.color = '#c0392b'
+      uploadBtn.disabled = false
+      uploadBtn.textContent = originalText
     }
   })
 

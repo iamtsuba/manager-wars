@@ -70,7 +70,7 @@ export async function refreshProfile() {
 const THEME_KEY = 'mw_theme'
 
 export function getTheme() {
-  return localStorage.getItem(THEME_KEY) || 'club' // par défaut : thème club (fond aux couleurs du club)
+  return localStorage.getItem(THEME_KEY) || 'dark' // par défaut : thème sombre
 }
 
 export function setTheme(theme) {

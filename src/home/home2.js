@@ -5,7 +5,6 @@ import { stopBGM } from '../lib/sound.js'
 import { getTier, getTierProgress } from '../ranked/glicko2.js'
 import { claimPendingReward, showBoosterAnimation } from '../boosters/boosters.js'
 import { renderPlayerCard } from '../components/player-card.js'
-import { replayTutorial } from '../tutorial/tutorial.js'
 
 const APP_VERSION = (typeof __BUILD_TIME__ !== 'undefined' && __BUILD_TIME__)
   ? __BUILD_TIME__
@@ -837,15 +836,6 @@ export async function renderHome2(container, { state, navigate, toast }) {
 
   <div class="home-dark" id="home-dark">
     <div class="home-inner">
-      <!-- Onglet accès rapide au tutoriel -->
-      <div style="display:flex;justify-content:flex-end;margin-bottom:10px">
-        <button id="home-tutorial-tab" style="display:flex;align-items:center;gap:6px;padding:7px 14px;border-radius:20px;
-          border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.05);color:var(--tile-fg-on-page);
-          font-size:12px;font-weight:700;cursor:pointer">
-          📖 Tutoriel
-        </button>
-      </div>
-
       <!-- Bannières dynamiques -->
       <div id="friend-requests-banner"></div>
       <div id="match-invite-banner"></div>
@@ -1004,10 +994,6 @@ export async function renderHome2(container, { state, navigate, toast }) {
   document.getElementById('promo-cta-btn')?.addEventListener('click', () => navigate('boosters'))
 
   loadFriendRequestsBanner(state, toast)
-
-  document.getElementById('home-tutorial-tab')?.addEventListener('click', () => {
-    replayTutorial(state.profile, navigate, toast)
-  })
 
   document.getElementById('pending-rewards-banner')?.addEventListener('click', () => {
     openPendingRewardsPopup(state, toast, navigate)

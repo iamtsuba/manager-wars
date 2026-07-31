@@ -281,6 +281,22 @@ tr:hover td { background: rgba(255,255,255,0.04); }
 [style*="background: #fff"] p, [style*="background: #fff"] b, [style*="background: #fff"] strong {
   color: #1a1a1a;
 }
+
+/* ── Filet de sécurité ROBUSTE (classe, ne casse pas quand JS modifie
+   .style.display ou toute autre propriété — contrairement au sélecteur
+   [style*="..."] ci-dessus qui dépend du texte brut de l'attribut style
+   et se casse dès qu'un script réécrit cet attribut). À utiliser en priorité
+   sur toute nouvelle boîte blanche codée en dur : class="admin-light-card" ── */
+.admin-light-card h1, .admin-light-card h2, .admin-light-card h3, .admin-light-card h4,
+.admin-light-card span, .admin-light-card div, .admin-light-card p,
+.admin-light-card b, .admin-light-card strong, .admin-light-card label {
+  color: #1a1a1a;
+}
+.admin-light-card label { color: #555; }
+.admin-light-card input, .admin-light-card select, .admin-light-card textarea {
+  background: #fff; color: #1a1a1a; border-color: var(--gray-200);
+}
+.admin-light-card input::placeholder, .admin-light-card textarea::placeholder { color: #999; }
 .modal-header {
   padding: 16px 20px; background: #1A6B3C; border-bottom: none;
   display: flex; justify-content: space-between; align-items: center;

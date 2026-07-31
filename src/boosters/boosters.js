@@ -565,7 +565,7 @@ async function openStadiumBooster(profile, cost) {
     .select('stadium_id').eq('owner_id', profile.id).eq('card_type', 'stadium')
   const ownedStadiums = new Set((ownedS||[]).map(c => c.stadium_id).filter(Boolean))
 
-  const { data: allStadiums } = await supabase.from('stadium_definitions').select('id')
+  const { data: allStadiums } = await supabase.from('stadium_definitions').select('*')
   if (!allStadiums?.length) throw new Error('Aucun stade configuré en base.')
 
   const chosen = allStadiums[Math.floor(Math.random() * allStadiums.length)]
@@ -573,7 +573,7 @@ async function openStadiumBooster(profile, cost) {
   const { data: created, error: insertErr } = await supabase.from('cards')
     .insert({ owner_id: profile.id, card_type: 'stadium', stadium_id: chosen.id }).select()
   if (insertErr) console.error('[Booster Stade] Erreur insert:', insertErr.message, insertErr)
-  return (created || []).map(c => ({ ...c, isDuplicate: isDup }))
+  return (created || []).map(c => ({ ...c, isDuplicate: isDup, _stadiumDef: chosen }))
 }
 
 // ── Animation FIFA ─────────────────────────────────────────

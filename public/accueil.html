@@ -506,7 +506,7 @@ const FALLBACK_STEPS = [
 
 // ── Configuration Supabase (accès public en lecture seule) ────────────────
 const SUPABASE_URL = 'https://fcnwclxlkytdfjotqkta.supabase.co'
-const SUPABASE_ANON_KEY = 'REMPLACE_PAR_TA_CLE_ANON_PUBLIQUE'
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZjbndjbHhsa3l0ZGZqb3Rxa3RhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODExMDYyODQsImV4cCI6MjA5NjY4MjI4NH0.AAcNS3JBlrCznRddwbzVMjxWaTEnTLVGMVZYUOCB0KU'
 
 async function fetchAdminTutorialSteps() {
   const headers = { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}`, 'Content-Type': 'application/json' }

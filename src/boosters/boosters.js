@@ -740,7 +740,7 @@ export function showBoosterAnimation(cards, booster, navigate, onClose = null) {
       <div id="card-tap-hint" style="font-size:12px;color:rgba(255,255,255,0.45)">‹ glisse pour naviguer ›</div>
       <div id="reveal-btns" style="display:none;flex-direction:row;gap:10px;width:100%;max-width:400px;margin-top:4px">
         <button class="btn btn-primary" id="reveal-collection" style="flex:1">Voir ma collection</button>
-        <button class="btn btn-ghost" id="reveal-more" style="flex:1;color:#fff;border-color:rgba(255,255,255,0.3)">Boosters</button>
+        <button class="btn btn-ghost" id="reveal-more" style="flex:1;color:#fff;border-color:rgba(255,255,255,0.3);font-size:13px;line-height:1.25;white-space:normal">📦 Ouvrir un autre booster</button>
       </div>
     </div>
 

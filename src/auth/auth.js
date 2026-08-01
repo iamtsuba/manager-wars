@@ -1,9 +1,11 @@
 import { supabase } from '../lib/supabase.js'
+import { isFeatureEnabled } from '../lib/featureFlags.js'
 
 const BASE = import.meta.env.BASE_URL
 
-export function renderAuth(container, { navigate, toast }) {
+export async function renderAuth(container, { navigate, toast }) {
   let activeTab = 'login'
+  const codeRequired = await isFeatureEnabled('signup_access_code_required')
 
   const render = () => {
     const isLogin = activeTab === 'login'
@@ -120,6 +122,7 @@ export function renderAuth(container, { navigate, toast }) {
               " onfocus="this.style.borderColor='#22c55e'" onblur="this.style.borderColor='rgba(255,255,255,0.12)'"
               >
             </div>
+            ${codeRequired ? `
             <div>
               <label style="font-size:10px;font-weight:700;color:rgba(255,255,255,0.5);display:block;margin-bottom:3px;letter-spacing:.5px">CODE D'ACCÈS</label>
               <input type="password" id="reg-access-code" placeholder="Code fourni par l'administrateur" autocomplete="off" style="
@@ -130,13 +133,14 @@ export function renderAuth(container, { navigate, toast }) {
               >
               <div id="access-code-status" style="font-size:10px;margin-top:3px;min-height:12px"></div>
             </div>
+            ` : ''}
             <div id="reg-error" style="font-size:12px;color:#f87171;min-height:16px;text-align:center"></div>
-            <button id="reg-btn" disabled style="
+            <button id="reg-btn" ${codeRequired ? 'disabled' : ''} style="
               width:100%;padding:10px;border-radius:12px;border:none;
               background:linear-gradient(135deg,#1A6B3C,#22c55e);
-              color:#fff;font-size:15px;font-weight:900;cursor:not-allowed;
+              color:#fff;font-size:15px;font-weight:900;cursor:${codeRequired ? 'not-allowed' : 'pointer'};
               box-shadow:0 4px 16px rgba(34,197,94,0.3);
-              opacity:0.45;transition:opacity .2s;
+              opacity:${codeRequired ? '0.45' : '1'};transition:opacity .2s;
             ">
               🚀 Créer mon compte
             </button>
@@ -194,26 +198,28 @@ export function renderAuth(container, { navigate, toast }) {
       // Vérification du code d'accès en temps réel (débounce) — active/désactive le bouton
       let codeCheckTimer = null
       let codeValid = false
-      document.getElementById('reg-access-code')?.addEventListener('input', (e) => {
-        const val = e.target.value
-        const statusEl = document.getElementById('access-code-status')
-        const btn = document.getElementById('reg-btn')
-        clearTimeout(codeCheckTimer)
-        codeValid = false
-        if (btn) { btn.disabled = true; btn.style.opacity = '0.45'; btn.style.cursor = 'not-allowed' }
-        if (!val) { if (statusEl) statusEl.textContent = ''; return }
-        if (statusEl) { statusEl.textContent = '⏳ Vérification…'; statusEl.style.color = 'rgba(255,255,255,0.4)' }
-        codeCheckTimer = setTimeout(async () => {
-          const { data, error } = await supabase.rpc('check_signup_password', { input_password: val })
-          if (error) { if (statusEl) { statusEl.textContent = 'Erreur de vérification.'; statusEl.style.color = '#f87171' }; return }
-          codeValid = !!data
-          if (statusEl) {
-            statusEl.textContent = codeValid ? '✅ Code valide' : '❌ Code incorrect'
-            statusEl.style.color = codeValid ? '#4ade80' : '#f87171'
-          }
-          if (btn) { btn.disabled = !codeValid; btn.style.opacity = codeValid ? '1' : '0.45'; btn.style.cursor = codeValid ? 'pointer' : 'not-allowed' }
-        }, 400)
-      })
+      if (codeRequired) {
+        document.getElementById('reg-access-code')?.addEventListener('input', (e) => {
+          const val = e.target.value
+          const statusEl = document.getElementById('access-code-status')
+          const btn = document.getElementById('reg-btn')
+          clearTimeout(codeCheckTimer)
+          codeValid = false
+          if (btn) { btn.disabled = true; btn.style.opacity = '0.45'; btn.style.cursor = 'not-allowed' }
+          if (!val) { if (statusEl) statusEl.textContent = ''; return }
+          if (statusEl) { statusEl.textContent = '⏳ Vérification…'; statusEl.style.color = 'rgba(255,255,255,0.4)' }
+          codeCheckTimer = setTimeout(async () => {
+            const { data, error } = await supabase.rpc('check_signup_password', { input_password: val })
+            if (error) { if (statusEl) { statusEl.textContent = 'Erreur de vérification.'; statusEl.style.color = '#f87171' }; return }
+            codeValid = !!data
+            if (statusEl) {
+              statusEl.textContent = codeValid ? '✅ Code valide' : '❌ Code incorrect'
+              statusEl.style.color = codeValid ? '#4ade80' : '#f87171'
+            }
+            if (btn) { btn.disabled = !codeValid; btn.style.opacity = codeValid ? '1' : '0.45'; btn.style.cursor = codeValid ? 'pointer' : 'not-allowed' }
+          }, 400)
+        })
+      }
 
       document.getElementById('reg-btn')?.addEventListener('click', async () => {
         const email    = document.getElementById('reg-email').value.trim()
@@ -227,8 +233,10 @@ export function renderAuth(container, { navigate, toast }) {
         if (password.length < 6) { errEl.textContent = 'Mot de passe trop court (min. 6 caractères).'; return }
         if (password !== confirm) { errEl.textContent = 'Les mots de passe ne correspondent pas.'; return }
         // Double vérification côté serveur (le blocage du bouton peut être contourné côté client)
-        const { data: recheck } = await supabase.rpc('check_signup_password', { input_password: accessCode })
-        if (!recheck) { errEl.textContent = 'Code d\'accès incorrect.'; return }
+        if (codeRequired) {
+          const { data: recheck } = await supabase.rpc('check_signup_password', { input_password: accessCode })
+          if (!recheck) { errEl.textContent = 'Code d\'accès incorrect.'; return }
+        }
         const btn = document.getElementById('reg-btn')
         btn.textContent = '⏳ Création…'; btn.disabled = true
         const { data: signUpData, error } = await supabase.auth.signUp({ email, password })

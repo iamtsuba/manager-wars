@@ -141,7 +141,7 @@ if (!window.__playersMsDocListener) {
   })
 }
 
-async function pagePlayers(container, helpers) {
+export async function pagePlayers(container, helpers) {
   await loadPlayers(container, helpers)
 }
 
@@ -656,4 +656,3 @@ async function savePlayer(player, isEdit, face, container, helpers) {
   }
   loadPlayers(container, helpers, filters)
 }
-// build retry 1785620578

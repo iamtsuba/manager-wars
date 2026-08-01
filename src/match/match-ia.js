@@ -89,8 +89,18 @@ export async function renderMatchIA(container, ctx) {
         }
       }
 
+      // Le Solo doit lui aussi passer par la mise à l'échelle : sans
+      // target_total_note, l'IA se contente de piocher les joueurs dont la
+      // note BRUTE est la plus proche de la cible. Au-delà de la meilleure
+      // note existant en base, tous les niveaux deviennent donc identiques.
+      // target_note_avg est une moyenne par joueur -> x11 titulaires.
+      const soloCfg = soloLevelConfig
+        ? { ...soloLevelConfig,
+            target_total_note: Math.max(11, Math.round((Number(soloLevelConfig.target_note_avg) || 10) * 11)) }
+        : soloLevelConfig
+
       const aiResult = isSolo
-        ? await generateAITeamForLevel(formation, soloLevelConfig)
+        ? await generateAITeamForLevel(formation, soloCfg)
         : isRankedAI
         ? await generateAITeamForLevel(formation, rankedAIConfig)
         : await generateAITeam(formation, difficulty)

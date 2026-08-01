@@ -581,6 +581,7 @@ export function countryFlag(code) {
 export function buildTeamSVG(team, formation, phase, selectedIds, W=310, H=310, extraSelectableIds=[], padOverride=null) {
   const FPOS   = FORMATION_POSITIONS[formation] || {}
   const FLINKS = getActiveLinks(formation) || FORMATION_LINKS[formation] || []
+  const R      = 26
 
   const slots = {}
   const LINES = ['ATT','MIL','DEF','GK']
@@ -593,7 +594,7 @@ export function buildTeamSVG(team, formation, phase, selectedIds, W=310, H=310, 
     const p = FPOS[pos]; return p ? { x:p.x*W, y:p.y*H } : null
   }
 
-  let linesSvg = ''
+  let svg = ''
 
   // 1. Liens (double ligne, sans filter url pour éviter bug SPA Chrome)
   for (const [posA, posB] of FLINKS) {
@@ -603,32 +604,22 @@ export function buildTeamSVG(team, formation, phase, selectedIds, W=310, H=310, 
     const lc = linkColor(pA, pB)
     const hasGlow = lc === '#00ff88' || lc === '#FFD700'
     if (hasGlow) {
-      linesSvg += `<line x1="${a.x.toFixed(1)}" y1="${a.y.toFixed(1)}" x2="${b.x.toFixed(1)}" y2="${b.y.toFixed(1)}"
+      svg += `<line x1="${a.x.toFixed(1)}" y1="${a.y.toFixed(1)}" x2="${b.x.toFixed(1)}" y2="${b.y.toFixed(1)}"
         stroke="${lc}" stroke-width="10" stroke-linecap="round" opacity="0.22"/>`
-      linesSvg += `<line x1="${a.x.toFixed(1)}" y1="${a.y.toFixed(1)}" x2="${b.x.toFixed(1)}" y2="${b.y.toFixed(1)}"
+      svg += `<line x1="${a.x.toFixed(1)}" y1="${a.y.toFixed(1)}" x2="${b.x.toFixed(1)}" y2="${b.y.toFixed(1)}"
         stroke="${lc}" stroke-width="3.5" stroke-linecap="round" opacity="0.95"/>`
     } else {
-      linesSvg += `<line x1="${a.x.toFixed(1)}" y1="${a.y.toFixed(1)}" x2="${b.x.toFixed(1)}" y2="${b.y.toFixed(1)}"
+      svg += `<line x1="${a.x.toFixed(1)}" y1="${a.y.toFixed(1)}" x2="${b.x.toFixed(1)}" y2="${b.y.toFixed(1)}"
         stroke="${lc}" stroke-width="3.5" stroke-linecap="round" opacity="0.7"/>`
     }
   }
 
-  // 2. Cartes joueurs : rendu HTML pur en overlay (PLUS de foreignObject —
-  //    peu fiable sur Safari/iOS : positions/tailles/images divergentes du
-  //    rendu Chrome, cause du bug "cartes désalignées / zones cliquables
-  //    décalées" rapporté par les testeurs iPhone). La carte visible EST
-  //    directement la zone cliquable : plus aucun risque de désalignement,
-  //    sur aucun navigateur.
+  // 2. Cartes joueurs : renderPlayerCard via foreignObject
+  // Cartes grandes : ~18% de la largeur du terrain
   const CW = typeof window !== "undefined" && window.innerWidth >= 900
     ? Math.min(Math.max(81, Math.round(W * 0.225)), 117)
     : Math.max(44, Math.round(W * 0.168))
   const CH = Math.round(CW * 657/507)
-
-  const PAD = padOverride !== null ? padOverride : Math.round(Math.max(CW * 0.7, 80))
-  const totalW = W + PAD * 2
-  const totalH = H + PAD * 2
-
-  let overlay = ''
 
   for (const [pos, p] of Object.entries(slots)) {
     const c = px(pos)
@@ -650,25 +641,11 @@ export function buildTeamSVG(team, formation, phase, selectedIds, W=310, H=310, 
 
     const fx = Math.round(c.x - CW/2)
     const fy = Math.round(c.y - CH/2)
-    // Boîte élargie identique à l'ancien foreignObject (marge pour badges/
-    // effets qui débordent visuellement du cadre nominal CW×CH de la carte).
-    const boxX = fx - 2, boxY = fy - 30, boxW = CW + 8, boxH = CH + 60
-    // Position en % du même repère que le SVG (viewBox incluant PAD) →
-    // alignement garanti à n'importe quelle taille d'écran/rendu.
-    const leftPct = ((boxX + PAD) / totalW * 100).toFixed(3)
-    const topPct  = ((boxY + PAD) / totalH * 100).toFixed(3)
-    const wPct    = (boxW / totalW * 100).toFixed(3)
-    const hPct    = (boxH / totalH * 100).toFixed(3)
 
     if (p.used) {
       const _base = (typeof import.meta !== 'undefined' && import.meta.env?.BASE_URL) || '/'
       const backUrl = `${_base}icons/carte-dos.png`
-      const usedLeftPct = ((fx + PAD) / totalW * 100).toFixed(3)
-      const usedTopPct  = ((fy + PAD) / totalH * 100).toFixed(3)
-      const usedWPct    = (CW / totalW * 100).toFixed(3)
-      const usedHPct    = (CH / totalH * 100).toFixed(3)
-      overlay += `<img src="${backUrl}" class="match-used-hit" data-card-id="${p.cardId}" data-role="${role}"
-        style="position:absolute;left:${usedLeftPct}%;top:${usedTopPct}%;width:${usedWPct}%;height:${usedHPct}%;object-fit:cover;cursor:pointer;border-radius:5px"/>`
+      svg += `<image href="${backUrl}" x="${fx}" y="${fy}" width="${CW}" height="${CH}" preserveAspectRatio="xMidYMid slice" class="match-used-hit" data-card-id="${p.cardId}" data-role="${role}" style="cursor:pointer"/>`
       continue
     }
 
@@ -680,22 +657,25 @@ export function buildTeamSVG(team, formation, phase, selectedIds, W=310, H=310, 
       { ...p, _evolution_bonus: 0, stadiumBonus: false },
       { width: CW, showStad: false, stadDef: null, role, extraNote, _cardOffset: 30, _forceStadColor: hasStadThisPhase }
     )
+    const selStyle = isSelected ? `position:absolute;top:${30}px;left:0;width:${CW}px;height:${CH}px;outline:3px solid #FFD700;outline-offset:2px;border-radius:8px;pointer-events:none;` : ''
+    svg += `<foreignObject x="${fx - 2}" y="${fy - 30}" width="${CW + 8}" height="${CH + 60}" style="overflow:visible">
+      <div xmlns="http://www.w3.org/1999/xhtml" style="position:relative">
+        ${cardHtml}
+        ${isSelected ? `<div style="${selStyle}"></div>` : ''}
+      </div>
+    </foreignObject>`
 
-    overlay += `<div class="${selectable ? 'match-slot-hit' : ''} ${isSelected?'selected':''}" data-card-id="${p.cardId}" data-role="${role}"
-      style="position:absolute;left:${leftPct}%;top:${topPct}%;width:${wPct}%;height:${hPct}%;${selectable ? 'cursor:pointer' : ''}">
-      ${cardHtml}
-      ${isSelected ? `<div style="position:absolute;top:30px;left:2px;width:${CW}px;height:${CH}px;outline:3px solid #FFD700;outline-offset:2px;border-radius:8px;pointer-events:none"></div>` : ''}
-    </div>`
+    if (selectable) {
+      svg += `<rect x="${fx}" y="${fy}" width="${CW}" height="${CH}" rx="5" fill="rgba(0,0,0,0.01)" class="match-slot-hit ${isSelected?'selected':''}" data-card-id="${p.cardId}" data-role="${role}" style="cursor:pointer"/>`
+    }
   }
 
-  return `<div style="position:relative;width:100%;padding-top:${(totalH/totalW*100).toFixed(3)}%">
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="${-PAD} ${-PAD} ${totalW} ${totalH}"
-      style="position:absolute;inset:0;width:100%;height:100%;display:block;pointer-events:none">
-      ${linesSvg}
-    </svg>
-    <div style="position:absolute;inset:0">
-      ${overlay}
-    </div>
+  const PAD = padOverride !== null ? padOverride : Math.round(Math.max(CW * 0.7, 80))
+  return `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="${-PAD} ${-PAD} ${W+PAD*2} ${H+PAD*2}" width="100%" style="display:block;width:100%;margin:0 auto">
+    ${svg}
+  </svg>`
+  return `<div id="match-terrain-wrap" style="position:relative;padding:0 4px">
+    ${buildTeamSVG(team, formation, phase, selectedIds, W, H, extraSelectableIds)}
   </div>`
 }
 

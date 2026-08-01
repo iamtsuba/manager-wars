@@ -380,6 +380,12 @@ async function init() {
     return
   }
 
+  // ── Heartbeat "en ligne" (visible dans Admin > Managers) ──
+  // Un ping toutes les 45s tant que l'app est ouverte ; Admin considère
+  // un manager "en ligne" si last_seen < 2 minutes.
+  supabase.rpc('heartbeat').then(()=>{}).catch(()=>{})
+  setInterval(() => { supabase.rpc('heartbeat').then(()=>{}).catch(()=>{}) }, 45000)
+
   // Onboarding : si des boosters de démarrage sont en attente, les faire ouvrir d'abord
   const pendingBoosters = Array.isArray(state.profile.pending_boosters) ? state.profile.pending_boosters : []
   if (!state.profile.onboarding_done && pendingBoosters.length > 0) {

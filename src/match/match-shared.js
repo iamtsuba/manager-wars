@@ -578,6 +578,78 @@ export function countryFlag(code) {
   } catch { return '🌍' }
 }
 
+// ── Correctif WebKit / iOS (Safari) ───────────────────────
+// Bug WebKit : le contenu HTML d'un <foreignObject> n'est PAS mis à l'échelle
+// par le viewBox du SVG. Les cartes sont donc dessinées à leur taille CSS brute
+// (~1.34x trop grandes sur iPhone), ancrées par leur coin haut-gauche, et
+// débordent de leur emplacement — alors que les zones de clic (<rect> SVG
+// natifs) restent parfaitement positionnées. D'où le symptôme rapporté par les
+// testeurs iOS : "il faut appuyer pile sur les nœuds, les cartes partent en
+// vrille". Sur WebKit UNIQUEMENT, les cartes sont donc rendues dans un calque
+// HTML superposé, mis à l'échelle explicitement en JS. Tous les autres
+// navigateurs (Chrome, Android, PC) conservent le rendu foreignObject existant,
+// strictement inchangé.
+export const IS_WEBKIT = (() => {
+  if (typeof navigator === 'undefined') return false
+  const ua = navigator.userAgent || ''
+  // Sur iOS, TOUS les navigateurs utilisent WebKit (y compris Chrome/CriOS).
+  const isIOS = /iP(hone|ad|od)/.test(ua) ||
+                (/Macintosh/.test(ua) && (navigator.maxTouchPoints || 0) > 1)
+  const isSafari = /^((?!chrome|android|crios|fxios|edg).)*safari/i.test(ua)
+  return isIOS || isSafari
+})()
+
+function _applyTerrainScale(el) {
+  const parent = el.parentElement
+  if (!parent) return
+  const natural = Number(el.dataset.terrainW) || 0
+  const w = parent.clientWidth
+  if (!natural || !w) return
+  el.style.transform = `scale(${(w / natural).toFixed(5)})`
+}
+
+let _terrainRO = null
+function _scanTerrainScale() {
+  if (typeof document === 'undefined') return
+  const nodes = document.querySelectorAll('[data-terrain-scale]')
+  if (!nodes.length) return
+  if (!_terrainRO && typeof ResizeObserver !== 'undefined') {
+    _terrainRO = new ResizeObserver(entries => {
+      entries.forEach(e => {
+        e.target.querySelectorAll('[data-terrain-scale]').forEach(_applyTerrainScale)
+      })
+    })
+  }
+  nodes.forEach(el => {
+    _applyTerrainScale(el)
+    const parent = el.parentElement
+    if (_terrainRO && parent && !parent._terrainObserved) {
+      parent._terrainObserved = true
+      _terrainRO.observe(parent)
+    }
+  })
+}
+
+// Auto-montage : le terrain est injecté via innerHTML depuis plusieurs fichiers
+// (match-ia.js, match-random.js...). On observe donc le DOM plutôt que d'exiger
+// un appel explicite après chaque injection.
+if (IS_WEBKIT && typeof window !== 'undefined' && typeof MutationObserver !== 'undefined') {
+  let _raf = null
+  const schedule = () => {
+    if (_raf) return
+    _raf = requestAnimationFrame(() => { _raf = null; _scanTerrainScale() })
+  }
+  const start = () => {
+    // childList uniquement : écrire el.style.transform ne redéclenche donc rien.
+    new MutationObserver(schedule).observe(document.body, { childList: true, subtree: true })
+    schedule()
+  }
+  if (document.body) start()
+  else document.addEventListener('DOMContentLoaded', start)
+  window.addEventListener('resize', schedule)
+  window.addEventListener('orientationchange', schedule)
+}
+
 export function buildTeamSVG(team, formation, phase, selectedIds, W=310, H=310, extraSelectableIds=[], padOverride=null) {
   const FPOS   = FORMATION_POSITIONS[formation] || {}
   const FLINKS = getActiveLinks(formation) || FORMATION_LINKS[formation] || []
@@ -594,7 +666,7 @@ export function buildTeamSVG(team, formation, phase, selectedIds, W=310, H=310, 
     const p = FPOS[pos]; return p ? { x:p.x*W, y:p.y*H } : null
   }
 
-  let svg = ''
+  let linksSvg = ''
 
   // 1. Liens (double ligne, sans filter url pour éviter bug SPA Chrome)
   for (const [posA, posB] of FLINKS) {
@@ -604,15 +676,17 @@ export function buildTeamSVG(team, formation, phase, selectedIds, W=310, H=310, 
     const lc = linkColor(pA, pB)
     const hasGlow = lc === '#00ff88' || lc === '#FFD700'
     if (hasGlow) {
-      svg += `<line x1="${a.x.toFixed(1)}" y1="${a.y.toFixed(1)}" x2="${b.x.toFixed(1)}" y2="${b.y.toFixed(1)}"
+      linksSvg += `<line x1="${a.x.toFixed(1)}" y1="${a.y.toFixed(1)}" x2="${b.x.toFixed(1)}" y2="${b.y.toFixed(1)}"
         stroke="${lc}" stroke-width="10" stroke-linecap="round" opacity="0.22"/>`
-      svg += `<line x1="${a.x.toFixed(1)}" y1="${a.y.toFixed(1)}" x2="${b.x.toFixed(1)}" y2="${b.y.toFixed(1)}"
+      linksSvg += `<line x1="${a.x.toFixed(1)}" y1="${a.y.toFixed(1)}" x2="${b.x.toFixed(1)}" y2="${b.y.toFixed(1)}"
         stroke="${lc}" stroke-width="3.5" stroke-linecap="round" opacity="0.95"/>`
     } else {
-      svg += `<line x1="${a.x.toFixed(1)}" y1="${a.y.toFixed(1)}" x2="${b.x.toFixed(1)}" y2="${b.y.toFixed(1)}"
+      linksSvg += `<line x1="${a.x.toFixed(1)}" y1="${a.y.toFixed(1)}" x2="${b.x.toFixed(1)}" y2="${b.y.toFixed(1)}"
         stroke="${lc}" stroke-width="3.5" stroke-linecap="round" opacity="0.7"/>`
     }
   }
+
+  let svg = linksSvg
 
   // 2. Cartes joueurs : renderPlayerCard via foreignObject
   // Cartes grandes : ~18% de la largeur du terrain
@@ -620,6 +694,17 @@ export function buildTeamSVG(team, formation, phase, selectedIds, W=310, H=310, 
     ? Math.min(Math.max(81, Math.round(W * 0.225)), 117)
     : Math.max(44, Math.round(W * 0.168))
   const CH = Math.round(CW * 657/507)
+
+  // PAD calculé ici (et non plus après la boucle) : le chemin WebKit en a
+  // besoin pour convertir les coordonnées SVG en pixels du calque superposé.
+  const PAD    = padOverride !== null ? padOverride : Math.round(Math.max(CW * 0.7, 80))
+  const totalW = W + PAD * 2
+  const totalH = H + PAD * 2
+
+  // Accumulateurs du chemin WebKit : le SVG ne garde que les liens, les cartes
+  // retournées et les zones de clic ; les visuels partent dans un calque HTML.
+  let wkSvg     = ''
+  let wkOverlay = ''
 
   for (const [pos, p] of Object.entries(slots)) {
     const c = px(pos)
@@ -645,7 +730,9 @@ export function buildTeamSVG(team, formation, phase, selectedIds, W=310, H=310, 
     if (p.used) {
       const _base = (typeof import.meta !== 'undefined' && import.meta.env?.BASE_URL) || '/'
       const backUrl = `${_base}icons/carte-dos.png`
-      svg += `<image href="${backUrl}" x="${fx}" y="${fy}" width="${CW}" height="${CH}" preserveAspectRatio="xMidYMid slice" class="match-used-hit" data-card-id="${p.cardId}" data-role="${role}" style="cursor:pointer"/>`
+      const usedImg = `<image href="${backUrl}" x="${fx}" y="${fy}" width="${CW}" height="${CH}" preserveAspectRatio="xMidYMid slice" class="match-used-hit" data-card-id="${p.cardId}" data-role="${role}" style="cursor:pointer"/>`
+      svg   += usedImg
+      wkSvg += usedImg
       continue
     }
 
@@ -665,18 +752,42 @@ export function buildTeamSVG(team, formation, phase, selectedIds, W=310, H=310, 
       </div>
     </foreignObject>`
 
+    // Chemin WebKit : même carte, mais dans le calque HTML superposé. La boîte
+    // reprend exactement la géométrie du foreignObject ci-dessus (marges
+    // comprises), convertie en pixels : 1 unité SVG = 1 px dans le calque,
+    // l'échelle globale étant appliquée ensuite par _applyTerrainScale().
+    wkOverlay += `<div style="position:absolute;left:${fx - 2 + PAD}px;top:${fy - 30 + PAD}px;width:${CW + 8}px;height:${CH + 60}px">
+      <div style="position:relative">
+        ${cardHtml}
+        ${isSelected ? `<div style="${selStyle}"></div>` : ''}
+      </div>
+    </div>`
+
     if (selectable) {
-      svg += `<rect x="${fx}" y="${fy}" width="${CW}" height="${CH}" rx="5" fill="rgba(0,0,0,0.01)" class="match-slot-hit ${isSelected?'selected':''}" data-card-id="${p.cardId}" data-role="${role}" style="cursor:pointer"/>`
+      const hitRect = `<rect x="${fx}" y="${fy}" width="${CW}" height="${CH}" rx="5" fill="rgba(0,0,0,0.01)" class="match-slot-hit ${isSelected?'selected':''}" data-card-id="${p.cardId}" data-role="${role}" style="cursor:pointer"/>`
+      svg   += hitRect
+      wkSvg += hitRect
     }
   }
 
-  const PAD = padOverride !== null ? padOverride : Math.round(Math.max(CW * 0.7, 80))
-  return `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="${-PAD} ${-PAD} ${W+PAD*2} ${H+PAD*2}" width="100%" style="display:block;width:100%;margin:0 auto">
+  const viewBox = `${-PAD} ${-PAD} ${totalW} ${totalH}`
+
+  if (IS_WEBKIT) {
+    // Le calque est en pointer-events:none : les taps traversent jusqu'aux
+    // <rect> du SVG, donc la logique de sélection reste strictement identique.
+    return `<div style="position:relative;width:100%">
+      <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="${viewBox}" width="100%" style="display:block;width:100%;margin:0 auto">
+        ${linksSvg}${wkSvg}
+      </svg>
+      <div data-terrain-scale data-terrain-w="${totalW}" style="position:absolute;top:0;left:0;width:${totalW}px;height:${totalH}px;transform-origin:0 0;pointer-events:none">
+        ${wkOverlay}
+      </div>
+    </div>`
+  }
+
+  return `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="${viewBox}" width="100%" style="display:block;width:100%;margin:0 auto">
     ${svg}
   </svg>`
-  return `<div id="match-terrain-wrap" style="position:relative;padding:0 4px">
-    ${buildTeamSVG(team, formation, phase, selectedIds, W, H, extraSelectableIds)}
-  </div>`
 }
 
 

@@ -1,11 +1,17 @@
 import { supabase } from '../../lib/supabase.js'
 import { getTier } from '../../ranked/glicko2.js'
 
+const ONLINE_THRESHOLD_MS = 2 * 60 * 1000 // 2 minutes sans heartbeat = hors ligne
+function isOnline(u) {
+  if (!u.last_seen) return false
+  return (Date.now() - new Date(u.last_seen).getTime()) < ONLINE_THRESHOLD_MS
+}
+
 export async function pageUsers(container, { toast }) {
   const [{ data, error }, { data: soloProgress }, { data: emails }] = await Promise.all([
     supabase
       .from('users')
-      .select('id,pseudo,club_name,credits,level,wins,draws,losses,trophies_top1,trophies_top2,trophies_top3,is_admin,created_at,mmr,mmr_deviation,rank_tier,placement_matches,ranked_wins,ranked_losses,ranked_draws')
+      .select('id,pseudo,club_name,credits,level,wins,draws,losses,trophies_top1,trophies_top2,trophies_top3,is_admin,created_at,mmr,mmr_deviation,rank_tier,placement_matches,ranked_wins,ranked_losses,ranked_draws,last_seen')
       .order('created_at', { ascending: false }),
     supabase.from('user_solo_progress').select('user_id, unlocked_level'),
     supabase.rpc('admin_get_user_emails'),
@@ -22,7 +28,13 @@ export async function pageUsers(container, { toast }) {
 
   container.innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;gap:12px;flex-wrap:wrap">
-      <input id="search-users" placeholder="🔍 Rechercher un manager…" style="width:260px">
+      <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+        <input id="search-users" placeholder="🔍 Rechercher un manager…" style="width:260px">
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;user-select:none">
+          <input type="checkbox" id="filter-online" style="width:16px;height:16px;cursor:pointer">
+          <span>🟢 En ligne uniquement (<span id="online-count">0</span>)</span>
+        </label>
+      </div>
       <span style="font-size:13px;color:var(--gray-600)">${users.length} manager(s)</span>
     </div>
     <div class="card-panel">
@@ -46,11 +58,43 @@ export async function pageUsers(container, { toast }) {
     </div>
   `
 
+  function updateOnlineCount(list) {
+    const el = document.getElementById('online-count')
+    if (el) el.textContent = list.filter(isOnline).length
+  }
+
+  function applyFilters() {
+    const q = document.getElementById('search-users').value.toLowerCase()
+    const onlineOnly = document.getElementById('filter-online').checked
+    renderRows(users.filter(u =>
+      (u.pseudo.toLowerCase().includes(q) || u.club_name?.toLowerCase().includes(q)) &&
+      (!onlineOnly || isOnline(u))
+    ))
+  }
+
   renderRows(users)
-  document.getElementById('search-users').addEventListener('input', e => {
-    const q = e.target.value.toLowerCase()
-    renderRows(users.filter(u => u.pseudo.toLowerCase().includes(q) || u.club_name?.toLowerCase().includes(q)))
+  updateOnlineCount(users)
+  document.getElementById('search-users').addEventListener('input', applyFilters)
+  document.getElementById('filter-online').addEventListener('change', applyFilters)
+
+  // Rafraîchit le statut "en ligne" toutes les 20s (léger : uniquement last_seen)
+  const refreshInterval = setInterval(async () => {
+    const { data: fresh } = await supabase.from('users').select('id,last_seen')
+    if (!fresh) return
+    const freshMap = {}
+    fresh.forEach(f => { freshMap[f.id] = f.last_seen })
+    users.forEach(u => { u.last_seen = freshMap[u.id] ?? u.last_seen })
+    updateOnlineCount(users)
+    document.querySelectorAll('[data-online-dot]').forEach(dot => {
+      const u = users.find(x => x.id === dot.dataset.onlineDot)
+      if (u) dot.style.background = isOnline(u) ? '#22c55e' : 'transparent'
+    })
+  }, 20000)
+  // Nettoyage si on quitte la page admin (évite les intervals qui s'accumulent)
+  const observer = new MutationObserver(() => {
+    if (!document.body.contains(container)) { clearInterval(refreshInterval); observer.disconnect() }
   })
+  observer.observe(document.body, { childList: true, subtree: true })
 
   function renderRows(list) {
     document.getElementById('users-tbody').innerHTML = list.map(u => {
@@ -71,9 +115,13 @@ export async function pageUsers(container, { toast }) {
       return `
         <tr>
           <td>
-            <div style="font-weight:700">${u.pseudo}</div>
-            <div style="font-size:11px;color:var(--gray-600)">${u.club_name || '—'}</div>
-            <div style="font-size:10.5px;color:var(--gray-600)">${emailMap[u.id] || '—'}</div>
+            <div style="display:flex;align-items:center;gap:6px">
+              <span data-online-dot="${u.id}" title="${isOnline(u) ? 'En ligne' : 'Hors ligne'}"
+                style="width:8px;height:8px;border-radius:50%;flex-shrink:0;background:${isOnline(u) ? '#22c55e' : 'transparent'};border:1px solid ${isOnline(u) ? '#22c55e' : 'var(--gray-300,#ccc)'}"></span>
+              <div style="font-weight:700">${u.pseudo}</div>
+            </div>
+            <div style="font-size:11px;color:var(--gray-600);margin-left:14px">${u.club_name || '—'}</div>
+            <div style="font-size:10.5px;color:var(--gray-600);margin-left:14px">${emailMap[u.id] || '—'}</div>
           </td>
           <td style="font-size:12px">
             <div style="display:flex;align-items:center;gap:6px">

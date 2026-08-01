@@ -1116,7 +1116,15 @@ function toggleSelect(el, game, container, ctx) {
   } else {
     if (game.selected.length >= 3) { ctx.toast('Maximum 3 joueurs', 'error'); return }
     const player = (game.homeTeam[role]||[]).find(p => p.cardId === cardId)
-    if (player) game.selected.push({ ...player, _role: role, _line: role })
+    if (player) {
+      game.selected.push({ ...player, _role: role, _line: role })
+    } else {
+      // Diagnostic visible (pas de console sur mobile) : ce cas ne devrait jamais arriver.
+      const availableRoles = Object.keys(game.homeTeam||{}).map(r => `${r}:${(game.homeTeam[r]||[]).length}`).join(' ')
+      ctx.toast(`Sélection impossible (rôle="${role}" introuvable dans homeTeam[${availableRoles}])`, 'error')
+      console.error('[MatchIA] toggleSelect: joueur introuvable', { cardId, role, homeTeam: game.homeTeam })
+      return
+    }
   }
   renderGame(container, game, ctx)
 }

@@ -3,7 +3,7 @@ import { getTier } from '../../ranked/glicko2.js'
 import { renderPlayerCard } from '../../components/player-card.js'
 import { renderGCCard, renderStadiumCard, renderFormationCard } from '../../components/special-cards.js'
 import { FORMATION_POSITIONS } from '../../match/formation-links.js'
-import { buildTeamSVG } from '../../match/match-shared.js'
+import { buildTeamSVG, applyStadiumBonus } from '../../match/match-shared.js'
 
 const ONLINE_THRESHOLD_MS = 2 * 60 * 1000 // 2 minutes sans heartbeat = hors ligne
 function isOnline(u) {
@@ -248,21 +248,7 @@ function deckToTeam(deckCards) {
     if (!m) return
     const role = m[1]
     const idx  = parseInt(m[2], 10) - 1
-    team[role][idx] = {
-      cardId: c.card_id,
-      firstname: c.firstname,
-      surname_real: c.surname_real,
-      country_code: c.country_code,
-      club_id: c.club_id,
-      job: c.job, job2: c.job2,
-      note_g: c.note_g, note_d: c.note_d, note_m: c.note_m, note_a: c.note_a,
-      rarity: c.rarity, face: c.face,
-      clubs: c.club_encoded_name
-        ? { encoded_name: c.club_encoded_name, logo_url: c.club_logo_url }
-        : null,
-      _evolution_bonus: c.evolution_bonus || 0,
-      used: false,
-    }
+    team[role][idx] = deckCardToPlayer(c)
   })
   // NE PAS compacter : buildTeamSVG reconstruit les slots via l'index
   // (`${role}${i+1}`) et forEach saute les trous en conservant les bons
@@ -270,20 +256,36 @@ function deckToTeam(deckCards) {
   return team
 }
 
-function gcImgUrl(def) {
-  if (def?.image_url) return `${import.meta.env.BASE_URL}icons/${def.image_url}`
-  return null
-}
-function stadImgUrl(def) {
-  if (def?.image_url) return `${import.meta.env.BASE_URL}icons/${def.image_url}`
-  if (def?.club?.logo_url) return def.club.logo_url
-  if (def?.country_code) return `https://flagsapi.com/${def.country_code.slice(0,2).toUpperCase()}/flat/64.png`
-  return null
-}
-
-function renderCardsGrid(html) {
-  if (!html) return `<div style="padding:30px;text-align:center;color:#999;font-size:13px">Aucune carte dans cette catégorie.</div>`
-  return `<div style="display:flex;flex-wrap:wrap;gap:12px;justify-content:flex-start">${html}</div>`
+// Reproduit playerFromCard() de match-shared.js : l'évolution doit être
+// intégrée DANS les notes, car buildTeamSVG force ensuite _evolution_bonus:0
+// (il considère que le calcul a déjà été fait en amont). Sans ça, les notes
+// affichées seraient celles d'avant évolution.
+function deckCardToPlayer(c) {
+  const evo    = c.evolution_bonus || 0
+  const j2     = c.job2
+  const j2base = j2 ? (Number(c[`note_${j2.toLowerCase()}`]) || 0) : 0
+  const bump = (role, base) =>
+    (Number(base) || 0) + (c.job === role ? evo : 0) + (j2 === role && j2base > 0 ? evo : 0)
+  return {
+    cardId: c.card_id,
+    firstname: c.firstname,
+    name: c.surname_real,
+    surname_real: c.surname_real,
+    country_code: c.country_code,
+    club_id: c.club_id,
+    job: c.job, job2: c.job2,
+    note_g: bump('GK',  c.note_g),
+    note_d: bump('DEF', c.note_d),
+    note_m: bump('MIL', c.note_m),
+    note_a: bump('ATT', c.note_a),
+    evolution_bonus: evo,
+    rarity: c.rarity,
+    face: c.face || null,
+    clubName: c.club_encoded_name || null,
+    clubLogo: c.club_logo_url || null,
+    boost: 0,
+    used: false,
+  }
 }
 
 async function openManagerCardsModal(userId, pseudo, toast) {
@@ -352,50 +354,59 @@ async function openManagerCardsModal(userId, pseudo, toast) {
     return `<div style="position:relative">${renderGCCard(def?.name || c.gc_type || 'Game Changer', gcImgUrl(def), '⚡', def?.effect || '', { width: 120 })}</div>`
   }).join(''))
 
+  // Rendu d'un deck : terrain + bandeau stade. Le bonus stade (+10) est
+  // appliqué via applyStadiumBonus (même fonction que le jeu), puis
+  // buildTeamSVG l'ajoute aux notes avec phase=null (tous rôles concernés).
+  function renderDeckPitch(dk) {
+    const dkCards  = dk.cards || []
+    const subs     = dkCards.filter(c => !c.is_starter)
+    const team     = deckToTeam(dkCards)
+    const stad     = dk.stadium || null
+    if (stad) applyStadiumBonus(team, stad)
+
+    const nbStart = ['GK','DEF','MIL','ATT'].reduce((n, r) => n + team[r].filter(Boolean).length, 0)
+
+    const stadBanner = stad ? `
+      <div style="display:flex;align-items:center;gap:10px;background:#eaf3fb;border:1px solid #c9def0;border-radius:10px;padding:8px 12px;margin-bottom:10px">
+        ${stad.club?.logo_url ? `<img src="${stad.club.logo_url}" style="width:26px;height:26px;object-fit:contain">` : '<span style="font-size:20px">🏟️</span>'}
+        <div style="font-weight:800;font-size:13px;color:#1a1a1a">${stad.name || 'Stade'}</div>
+        <div style="margin-left:auto;font-size:12px;color:#1A6B3C;font-weight:700">
+          +10 aux joueurs ${stad.club?.encoded_name || stad.country_code || ''}
+        </div>
+      </div>` : ''
+
+    const pitch = (dk.formation && FORMATION_POSITIONS[dk.formation] && nbStart)
+      ? `<div style="max-width:560px;margin:0 auto;pointer-events:none">
+           ${buildTeamSVG(team, dk.formation, null, [], 340, 375)}
+         </div>`
+      : `<div style="font-size:12px;color:#999;padding:20px;text-align:center">
+           ${!dk.formation ? 'Aucune formation définie pour ce deck.'
+             : !FORMATION_POSITIONS[dk.formation] ? `Formation inconnue : ${dk.formation}`
+             : 'Aucun titulaire enregistré.'}
+         </div>`
+
+    const mini = (c) => `<div style="position:relative">${renderPlayerCard(deckCardToPlayer(c), { width: 74 })}</div>`
+
+    return `
+      ${stadBanner}
+      ${pitch}
+      ${subs.length ? `
+        <div style="margin-top:12px">
+          <div style="font-size:11px;color:#888;font-weight:700;margin-bottom:5px">REMPLAÇANTS (${subs.length})</div>
+          <div style="display:flex;flex-wrap:wrap;gap:8px">${subs.map(mini).join('')}</div>
+        </div>` : ''}
+    `
+  }
+
   panes.decks = decks.length
-    ? decks.map(dk => {
-        const dkCards  = dk.cards || []
-        const starters = dkCards.filter(c => c.is_starter)
-        const subs     = dkCards.filter(c => !c.is_starter)
-        const team     = deckToTeam(dkCards)
-        const nbStart  = ['GK','DEF','MIL','ATT'].reduce((n, r) => n + team[r].filter(Boolean).length, 0)
-
-        // Visuel de terrain identique au jeu (formation + liens de chimie).
-        // phase=null et selectedIds=[] : rendu neutre, non interactif.
-        const pitch = (dk.formation && FORMATION_POSITIONS[dk.formation] && nbStart)
-          ? `<div style="max-width:460px;margin:0 auto;pointer-events:none">
-               ${buildTeamSVG(team, dk.formation, null, [], 320, 350)}
-             </div>`
-          : `<div style="font-size:12px;color:#999;padding:16px;text-align:center">
-               ${!dk.formation ? 'Aucune formation définie pour ce deck.'
-                 : !FORMATION_POSITIONS[dk.formation] ? `Formation inconnue : ${dk.formation}`
-                 : 'Aucun titulaire enregistré.'}
-             </div>`
-
-        const mini = (c) => {
-          const p = {
-            firstname: c.firstname, surname_real: c.surname_real,
-            country_code: c.country_code, job: c.job, job2: c.job2,
-            note_g: c.note_g, note_d: c.note_d, note_m: c.note_m, note_a: c.note_a,
-            rarity: c.rarity, face: c.face,
-            clubs: c.club_encoded_name ? { encoded_name: c.club_encoded_name, logo_url: c.club_logo_url } : null,
-            _evolution_bonus: c.evolution_bonus || 0,
-          }
-          return `<div style="position:relative">${renderPlayerCard(p, { width: 74 })}</div>`
-        }
-
-        return `<div style="margin-bottom:22px;padding:14px;border:1px solid var(--gray-200,#e0e0e0);border-radius:12px;background:#fafafa">
-          <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;flex-wrap:wrap">
-            <div style="font-weight:800;font-size:14px;color:#1a1a1a">${dk.name || 'Deck sans nom'}</div>
-            <div style="font-size:11px;color:#666">${dk.formation || '—'} · ${starters.length} titulaire(s)${subs.length ? ` · ${subs.length} remplaçant(s)` : ''}</div>
-          </div>
-          ${pitch}
-          ${subs.length
-            ? `<div style="margin-top:10px"><div style="font-size:11px;color:#888;font-weight:700;margin-bottom:5px">REMPLAÇANTS</div>
-               <div style="display:flex;flex-wrap:wrap;gap:8px">${subs.map(mini).join('')}</div></div>`
-            : ''}
-        </div>`
-      }).join('')
+    ? `<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap">
+         <label style="font-size:12px;font-weight:700;color:#555">Équipe :</label>
+         <select id="mc-deck-select" style="padding:7px 10px;border-radius:8px;border:1px solid var(--gray-200,#ddd);background:#fff;color:#1a1a1a;font-size:13px;font-weight:600;min-width:240px">
+           ${decks.map((dk, i) => `<option value="${i}">${dk.name || 'Deck sans nom'} — ${dk.formation || '?'}</option>`).join('')}
+         </select>
+         <span style="font-size:12px;color:#888">${decks.length} équipe(s)</span>
+       </div>
+       <div id="mc-deck-pitch">${renderDeckPitch(decks[0])}</div>`
     : `<div style="padding:30px;text-align:center;color:#999;font-size:13px">Ce manager n'a créé aucune équipe.</div>`
 
   // ── Onglet Boosters ──
@@ -463,6 +474,15 @@ async function openManagerCardsModal(userId, pseudo, toast) {
       <div class="mc-pane" data-pane="${t.key}" style="display:${i===0 ? 'block' : 'none'}">${panes[t.key]}</div>
     `).join('')}
   `
+
+  // Combobox de sélection d'équipe
+  const deckSel = body.querySelector('#mc-deck-select')
+  if (deckSel) {
+    deckSel.addEventListener('change', () => {
+      const target = body.querySelector('#mc-deck-pitch')
+      if (target) target.innerHTML = renderDeckPitch(decks[Number(deckSel.value)])
+    })
+  }
 
   body.querySelectorAll('.mc-tab').forEach(btn => {
     btn.addEventListener('click', () => {

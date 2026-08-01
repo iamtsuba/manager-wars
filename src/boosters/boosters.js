@@ -289,6 +289,9 @@ async function openBooster(booster, { state, toast, navigate, container }) {
   const { data } = await supabase.from('users').select('*').eq('id', state.profile.id).single()
   if (data) state.profile = data
 
+  // Journaliser l'ouverture (pour Admin > Managers > onglet Boosters)
+  logBoosterOpening(state.profile.id, booster, newCards)
+
   // Lancer l'animation FIFA
   showBoosterAnimation(newCards, booster, navigate)
 }
@@ -579,6 +582,33 @@ async function openStadiumBooster(profile, cost) {
 // ── Animation FIFA ─────────────────────────────────────────
 // Phase 1 : booster qui tremble et s'ouvre
 // Phase 2 : les cartes apparaissent une par une avec flip
+
+// Journalise l'ouverture d'un booster (aucune trace n'existait auparavant :
+// ni le nombre d'ouvertures, ni leur contenu). Best-effort : une erreur ici
+// ne doit jamais empêcher le joueur de voir ses cartes.
+async function logBoosterOpening(userId, booster, cards) {
+  try {
+    const snapshot = (cards || []).map(c => ({
+      card_type: c.card_type,
+      name: c.card_type === 'player'
+        ? [c.player?.firstname, c.player?.surname_real].filter(Boolean).join(' ')
+        : (c._stadiumDef?.name || c._gcDef?.name || c.formation || c.gc_type || null),
+      rarity: c.player?.rarity || null,
+      note: c.current_note ?? null,
+      is_duplicate: !!c.isDuplicate,
+    }))
+    await supabase.from('booster_openings').insert({
+      user_id: userId,
+      booster_name: booster?.name || null,
+      booster_type: booster?.type || null,
+      cards: snapshot,
+      nb_cards: snapshot.length,
+    })
+  } catch (e) {
+    console.warn('[Booster] journalisation ignorée:', e?.message)
+  }
+}
+
 export function showBoosterAnimation(cards, booster, navigate, onClose = null) {
   // Guard : si aucune carte (insert DB échoué), afficher message d'erreur
   if (!cards || cards.length === 0) {
@@ -1381,6 +1411,9 @@ export async function renderStarterOnboarding(container, { state, navigate, toas
       : spec.type === 'stadium'
       ? { name: 'Booster Stade', type: 'stadium', img: `${import.meta.env.BASE_URL}icons/booster-stade.png` }
       : { name: `Booster Joueurs (${index}/${total})`, type: 'player', img: (newPlayerBooster?.img) || `${import.meta.env.BASE_URL}icons/booster-players.png` }
+
+    // Journaliser aussi les boosters de bienvenue (onboarding)
+    logBoosterOpening(state.profile.id, fakeBooster, newCards)
 
     // Lancer l'animation, puis enchaîner au booster suivant
     showBoosterAnimation(newCards, fakeBooster, navigate, () => { openNext() })

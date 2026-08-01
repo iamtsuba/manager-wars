@@ -57,20 +57,106 @@ async function runFixOldFaces(container, helpers) {
   }
 }
 
-export async function pagePlayers(container, helpers) {
+export // Petit composant "multi-select" additionnable (cases à cocher dans un
+// menu déroulant). Utilisé pour Club et Pays : plusieurs valeurs cumulables
+// avec un OR entre elles, puis un AND avec les autres filtres.
+// L'état sélectionné vit dans window.__players<Kind>Filter (un Set), pour
+// survivre aux ré-écritures de innerHTML lors des rechargements de liste.
+function renderMultiSelect(kind, label, options, withSearch = false) {
+  const varName = `__players${kind[0].toUpperCase()}${kind.slice(1)}Filter`
+  if (!window[varName]) window[varName] = new Set()
+  return `<div class="ms-wrap" data-ms-kind="${kind}" style="position:relative;min-width:150px">
+    <button type="button" id="ms-btn-${kind}" class="btn btn-ghost" style="width:100%;text-align:left;display:flex;justify-content:space-between;align-items:center;gap:6px">
+      <span id="ms-label-${kind}">${label}</span>
+      <span style="font-size:10px;opacity:.6">▾</span>
+    </button>
+    <div id="ms-panel-${kind}" style="display:none;position:absolute;z-index:50;top:calc(100% + 4px);left:0;min-width:220px;max-height:280px;overflow-y:auto;background:#fff;border:1px solid var(--gray-200,#ddd);border-radius:10px;box-shadow:0 6px 20px rgba(0,0,0,0.15);padding:8px">
+      ${withSearch ? `<input id="ms-search-${kind}" placeholder="Rechercher…" style="width:100%;margin-bottom:6px;padding:6px 8px;font-size:12.5px">` : ''}
+      <div style="display:flex;gap:6px;margin-bottom:6px">
+        <button type="button" class="btn btn-ghost btn-sm" id="ms-all-${kind}" style="flex:1;font-size:11px;padding:4px">Tout</button>
+        <button type="button" class="btn btn-ghost btn-sm" id="ms-none-${kind}" style="flex:1;font-size:11px;padding:4px">Aucun</button>
+      </div>
+      <div id="ms-options-${kind}">
+        ${options.map(o => `
+          <label style="display:flex;align-items:center;gap:6px;padding:3px 2px;font-size:12.5px;cursor:pointer" data-ms-label="${(o.label||'').toLowerCase()}">
+            <input type="checkbox" class="ms-check-${kind}" value="${o.value}">
+            <span>${o.label}</span>
+          </label>`).join('')}
+      </div>
+    </div>
+  </div>`
+}
+
+function wireMultiSelect(kind, container, onChange) {
+  const varName = `__players${kind[0].toUpperCase()}${kind.slice(1)}Filter`
+  const set = window[varName]
+  const btn   = container.querySelector(`#ms-btn-${kind}`)
+  const panel = container.querySelector(`#ms-panel-${kind}`)
+  const labelEl = container.querySelector(`#ms-label-${kind}`)
+  const baseLabel = labelEl?.textContent || ''
+
+  function refreshLabel() {
+    if (!labelEl) return
+    labelEl.textContent = set.size ? `${baseLabel} (${set.size})` : baseLabel
+  }
+  // Re-cocher les cases selon l'état conservé (survit aux rechargements)
+  container.querySelectorAll(`.ms-check-${kind}`).forEach(cb => {
+    cb.checked = set.has(cb.value)
+    cb.addEventListener('change', () => {
+      if (cb.checked) set.add(cb.value); else set.delete(cb.value)
+      refreshLabel(); onChange()
+    })
+  })
+  refreshLabel()
+
+  btn?.addEventListener('click', (e) => {
+    e.stopPropagation()
+    const isOpen = panel.style.display === 'block'
+    document.querySelectorAll('[id^="ms-panel-"]').forEach(p => p.style.display = 'none')
+    panel.style.display = isOpen ? 'none' : 'block'
+  })
+  panel?.addEventListener('click', (e) => e.stopPropagation())
+
+  container.querySelector(`#ms-all-${kind}`)?.addEventListener('click', () => {
+    container.querySelectorAll(`.ms-check-${kind}`).forEach(cb => { cb.checked = true; set.add(cb.value) })
+    refreshLabel(); onChange()
+  })
+  container.querySelector(`#ms-none-${kind}`)?.addEventListener('click', () => {
+    container.querySelectorAll(`.ms-check-${kind}`).forEach(cb => { cb.checked = false })
+    set.clear(); refreshLabel(); onChange()
+  })
+  container.querySelector(`#ms-search-${kind}`)?.addEventListener('input', (e) => {
+    const q = e.target.value.toLowerCase()
+    container.querySelectorAll(`#ms-options-${kind} label`).forEach(l => {
+      l.style.display = l.dataset.msLabel.includes(q) ? 'flex' : 'none'
+    })
+  })
+}
+
+// Ferme les menus déroulants ouverts au clic ailleurs (une seule fois globalement)
+if (!window.__playersMsDocListener) {
+  window.__playersMsDocListener = true
+  document.addEventListener('click', () => {
+    document.querySelectorAll('[id^="ms-panel-"]').forEach(p => p.style.display = 'none')
+  })
+}
+
+async function pagePlayers(container, helpers) {
   await loadPlayers(container, helpers)
 }
 
 async function loadPlayers(container, helpers, savedFilters = null) {
   const { toast } = helpers
-  // Sauvegarder les filtres courants si non fournis
+  // Sauvegarder les filtres courants si non fournis (avant un rechargement,
+  // ex. après édition/suppression d'un joueur)
   if (!savedFilters) {
     savedFilters = {
-      search: document.getElementById('search-players')?.value || '',
-      job:    document.getElementById('filter-job')?.value || '',
-      rarity: document.getElementById('filter-rarity')?.value || '',
-      club:   document.getElementById('filter-club')?.value || '',
-      country:document.getElementById('filter-country')?.value || '',
+      search:   document.getElementById('search-players')?.value || '',
+      job:      document.getElementById('filter-job')?.value || '',
+      rarity:   document.getElementById('filter-rarity')?.value || '',
+      clubs:    window.__playersClubFilter    ? [...window.__playersClubFilter]    : [],
+      countries:window.__playersCountryFilter ? [...window.__playersCountryFilter] : [],
+      sort:     document.getElementById('sort-players')?.value || 'job',
     }
   }
   const [{ data: players, error }, { data: clubs }] = await Promise.all([
@@ -105,15 +191,14 @@ function renderPage(container, players, clubs, helpers, savedFilters = null) {
         <button class="btn btn-primary" id="add-player-btn" style="white-space:nowrap">+ Joueur</button>
         <button class="btn btn-ghost" id="fix-old-faces-btn" style="white-space:nowrap">🖼️ Réattribuer anciennes photos</button>
       </div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <select id="filter-club" style="flex:1;min-width:140px">
-          <option value="">Tous les clubs</option>
-          ${clubs.map(c => `<option value="${c.id}">${c.encoded_name}</option>`).join('')}
-        </select>
-        <select id="filter-country" style="flex:1;min-width:120px">
-          <option value="">Tous les pays</option>
-          ${[...new Set(players.map(p => p.country_code).filter(Boolean))].sort()
-            .map(cc => `<option value="${cc}">${cc}</option>`).join('')}
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-start">
+        ${renderMultiSelect('club', '🏟️ Club', clubs.map(c => ({ value: c.id, label: c.encoded_name })), true)}
+        ${renderMultiSelect('country', '🌍 Pays', [...new Set(players.map(p => p.country_code).filter(Boolean))].sort().map(cc => ({ value: cc, label: cc })), true)}
+        <select id="sort-players" style="min-width:170px">
+          <option value="job">Trier : Poste (défaut)</option>
+          <option value="note_desc">Trier : Note ↓ (plus haute)</option>
+          <option value="note_asc">Trier : Note ↑ (plus basse)</option>
+          <option value="name">Trier : Nom (A→Z)</option>
         </select>
       </div>
       <div id="filters-restore-hook" style="display:none"></div>
@@ -127,41 +212,46 @@ function renderPage(container, players, clubs, helpers, savedFilters = null) {
       <div id="players-list" style="display:flex;flex-wrap:wrap;gap:12px"></div>
     </div>`
 
-  // Restaurer les filtres sauvegardés
+  // Restaurer les filtres texte/select simples
   if (savedFilters) {
     const sf = savedFilters
     const el = (id) => document.getElementById(id)
-    if (sf.search  && el('search-players')) el('search-players').value = sf.search
-    if (sf.job     && el('filter-job'))     el('filter-job').value     = sf.job
-    if (sf.rarity  && el('filter-rarity'))  el('filter-rarity').value  = sf.rarity
-    if (sf.club    && el('filter-club'))    el('filter-club').value    = sf.club
-    if (sf.country && el('filter-country')) el('filter-country').value = sf.country
+    if (sf.search && el('search-players')) el('search-players').value = sf.search
+    if (sf.job    && el('filter-job'))     el('filter-job').value     = sf.job
+    if (sf.rarity && el('filter-rarity'))  el('filter-rarity').value  = sf.rarity
+    if (sf.sort   && el('sort-players'))   el('sort-players').value   = sf.sort
   }
-
-  // Restaurer les filtres sauvegardés
-  if (savedFilters) {
-    const sf = savedFilters
-    const el = (id) => document.getElementById(id)
-    if (sf.search  && el('search-players')) el('search-players').value = sf.search
-    if (sf.job     && el('filter-job'))     el('filter-job').value     = sf.job
-    if (sf.rarity  && el('filter-rarity'))  el('filter-rarity').value  = sf.rarity
-    if (sf.club    && el('filter-club'))    el('filter-club').value    = sf.club
-    if (sf.country && el('filter-country')) el('filter-country').value = sf.country
-  }
+  // Restaurer l'état des multi-select (Club / Pays) : le Set global a pu
+  // être vidé par un rechargement complet de page (navigation), on le
+  // reconstruit alors depuis les valeurs sauvegardées.
+  if (savedFilters?.clubs)     window.__playersClubFilter    = new Set(savedFilters.clubs)
+  if (savedFilters?.countries) window.__playersCountryFilter = new Set(savedFilters.countries)
 
   function filtered() {
-    const q       = document.getElementById('search-players').value.toLowerCase()
-    const job     = document.getElementById('filter-job').value
-    const rar     = document.getElementById('filter-rarity').value
-    const club    = document.getElementById('filter-club').value
-    const country = document.getElementById('filter-country').value
-    return players.filter(p =>
-      (!q       || `${p.firstname} ${p.surname_real}`.toLowerCase().includes(q)) &&
-      (!job     || p.job === job) &&
-      (!rar     || p.rarity === rar) &&
-      (!club    || p.club_id === club) &&
-      (!country || p.country_code === country)
+    const q         = document.getElementById('search-players').value.toLowerCase()
+    const job       = document.getElementById('filter-job').value
+    const rar       = document.getElementById('filter-rarity').value
+    const clubSet   = window.__playersClubFilter    || new Set()
+    const countrySet= window.__playersCountryFilter || new Set()
+    const sortMode  = document.getElementById('sort-players')?.value || 'job'
+
+    // Chaque filtre est additionnable EN INTERNE (OR entre les valeurs
+    // cochées d'un même filtre : "France OU Espagne"), et les différents
+    // filtres se combinent ENTRE EUX en ET ("France OU Espagne" ET "club X").
+    let list = players.filter(p =>
+      (!q          || `${p.firstname} ${p.surname_real}`.toLowerCase().includes(q)) &&
+      (!job        || p.job === job) &&
+      (!rar        || p.rarity === rar) &&
+      (!clubSet.size    || clubSet.has(p.club_id)) &&
+      (!countrySet.size || countrySet.has(p.country_code))
     )
+
+    if (sortMode === 'note_desc') list = [...list].sort((a,b) => mainNote(b) - mainNote(a))
+    else if (sortMode === 'note_asc') list = [...list].sort((a,b) => mainNote(a) - mainNote(b))
+    else if (sortMode === 'name') list = [...list].sort((a,b) => (a.surname_real||'').localeCompare(b.surname_real||''))
+    // 'job' : déjà trié par poste puis nom lors du chargement initial
+
+    return list
   }
 
   const selected = new Set()
@@ -219,8 +309,9 @@ function renderPage(container, players, clubs, helpers, savedFilters = null) {
   document.getElementById('search-players').addEventListener('input', renderList)
   document.getElementById('filter-job').addEventListener('change', renderList)
   document.getElementById('filter-rarity').addEventListener('change', renderList)
-  document.getElementById('filter-club').addEventListener('change', renderList)
-  document.getElementById('filter-country').addEventListener('change', renderList)
+  document.getElementById('sort-players').addEventListener('change', renderList)
+  wireMultiSelect('club', container, renderList)
+  wireMultiSelect('country', container, renderList)
   document.getElementById('bulk-cancel-btn')?.addEventListener('click', () => { selected.clear(); updateBulkBar(); renderList() })
   document.getElementById('bulk-delete-btn')?.addEventListener('click', async () => {
     if (!selected.size || !confirm(`Supprimer ${selected.size} joueur(s) ?`)) return
@@ -230,11 +321,12 @@ function renderPage(container, players, clubs, helpers, savedFilters = null) {
     toast(`${ids.length} joueur(s) supprimé(s) ✅`, 'success')
     selected.clear()
     const filters = {
-    search: document.getElementById('search-players')?.value || '',
-    job:    document.getElementById('filter-job')?.value || '',
-    rarity: document.getElementById('filter-rarity')?.value || '',
-    club:   document.getElementById('filter-club')?.value || '',
-    country:document.getElementById('filter-country')?.value || '',
+    search:    document.getElementById('search-players')?.value || '',
+    job:       document.getElementById('filter-job')?.value || '',
+    rarity:    document.getElementById('filter-rarity')?.value || '',
+    sort:      document.getElementById('sort-players')?.value || 'job',
+    clubs:     window.__playersClubFilter    ? [...window.__playersClubFilter]    : [],
+    countries: window.__playersCountryFilter ? [...window.__playersCountryFilter] : [],
   }
   loadPlayers(container, helpers, filters)
   })
@@ -555,11 +647,12 @@ async function savePlayer(player, isEdit, face, container, helpers) {
   toast(isEdit ? 'Joueur modifié ✅' : 'Joueur créé ✅', 'success')
   closeModal()
   const filters = {
-    search: document.getElementById('search-players')?.value || '',
-    job:    document.getElementById('filter-job')?.value || '',
-    rarity: document.getElementById('filter-rarity')?.value || '',
-    club:   document.getElementById('filter-club')?.value || '',
-    country:document.getElementById('filter-country')?.value || '',
+    search:    document.getElementById('search-players')?.value || '',
+    job:       document.getElementById('filter-job')?.value || '',
+    rarity:    document.getElementById('filter-rarity')?.value || '',
+    sort:      document.getElementById('sort-players')?.value || 'job',
+    clubs:     window.__playersClubFilter    ? [...window.__playersClubFilter]    : [],
+    countries: window.__playersCountryFilter ? [...window.__playersCountryFilter] : [],
   }
   loadPlayers(container, helpers, filters)
 }

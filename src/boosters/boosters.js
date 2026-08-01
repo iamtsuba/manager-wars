@@ -226,6 +226,27 @@ async function openBooster(booster, { state, toast, navigate, container }) {
     toast('Crédits insuffisants', 'error'); return
   }
 
+  // Vérification du quota AU MOMENT DE L'OUVERTURE (pas seulement à la
+  // construction de la liste boutique). Jusqu'ici, un booster à quota
+  // n'était filtré que dans loadActiveBoosters() ; le bouton "Ouvrir un
+  // autre booster" (écran de fin) rappelle openBooster() directement, sans
+  // repasser par cette liste, ce qui permettait de dépasser le quota
+  // (observé : 6 ouvertures pour une limite de 3).
+  if (booster._boosterId) {
+    const maxPerUser = booster._raw?.max_per_user ?? null
+    if (maxPerUser != null) {
+      const { count } = await supabase
+        .from('booster_claims')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', state.user.id)
+        .eq('booster_id', booster._boosterId)
+      if ((count || 0) >= maxPerUser) {
+        toast(`Quota atteint pour ce booster (${maxPerUser} max.)`, 'error')
+        return
+      }
+    }
+  }
+
   if (booster.isPub) {
     if (!(await isFeatureEnabled('pub_mode'))) { showFeatureDisabledPopup(); return }
     await showAd()
@@ -1113,8 +1134,27 @@ export function showBoosterAnimation(cards, booster, navigate, onClose = null, r
     if (reopenBtn) {
       if (reopenCtx) {
         reopenBtn.textContent = `🎁 Ouvrir un autre booster${cost ? ` (${cost.toLocaleString('fr')} cr.)` : ''}`
-        reopenBtn.disabled = !canAfford
-        if (!canAfford) { reopenBtn.style.opacity = '0.45'; reopenBtn.style.cursor = 'not-allowed' }
+        const disable = (reason) => {
+          reopenBtn.disabled = true
+          reopenBtn.style.opacity = '0.45'; reopenBtn.style.cursor = 'not-allowed'
+          if (reason) reopenBtn.title = reason
+        }
+        if (!canAfford) disable('Crédits insuffisants')
+
+        // Vérifie aussi le quota AVANT d'afficher le bouton comme cliquable
+        // (le clic re-vérifie de toute façon côté serveur dans openBooster,
+        // mais autant éviter d'afficher un bouton actif qui échouera à coup sûr)
+        const maxPerUser = booster._raw?.max_per_user ?? null
+        if (canAfford && maxPerUser != null && reopenCtx?.state?.user?.id) {
+          supabase.from('booster_claims')
+            .select('id', { count: 'exact', head: true })
+            .eq('user_id', reopenCtx.state.user.id)
+            .eq('booster_id', booster._boosterId)
+            .then(({ count }) => {
+              if ((count || 0) >= maxPerUser) disable(`Quota atteint (${maxPerUser} max.)`)
+            })
+        }
+
         reopenBtn.addEventListener('click', () => {
           if (reopenBtn.disabled) return
           stopFireworks(); overlay.remove()

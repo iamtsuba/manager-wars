@@ -3,6 +3,7 @@ import { getTier } from '../../ranked/glicko2.js'
 import { renderPlayerCard } from '../../components/player-card.js'
 import { renderGCCard, renderStadiumCard, renderFormationCard } from '../../components/special-cards.js'
 import { FORMATION_POSITIONS } from '../../match/formation-links.js'
+import { buildTeamSVG } from '../../match/match-shared.js'
 
 const ONLINE_THRESHOLD_MS = 2 * 60 * 1000 // 2 minutes sans heartbeat = hors ligne
 function isOnline(u) {
@@ -233,7 +234,41 @@ const CARD_TABS = [
   { key: 'stadium',      label: '🏟️ Stades' },
   { key: 'game_changer', label: '⚡ Game Changers' },
   { key: 'decks',        label: '👥 Équipes' },
+  { key: 'boosters',     label: '🎁 Boosters' },
 ]
+
+// Reconstruit l'objet team attendu par buildTeamSVG à partir des cartes d'un
+// deck. Les positions sont de la forme GK1 / DEF3 / MIL2 / ATT1 : le chiffre
+// donne l'index du slot sur le terrain, il faut donc le respecter exactement
+// (sinon les joueurs se retrouvent au mauvais poste).
+function deckToTeam(deckCards) {
+  const team = { GK: [], DEF: [], MIL: [], ATT: [] }
+  ;(deckCards || []).filter(c => c.is_starter).forEach(c => {
+    const m = /^(GK|DEF|MIL|ATT)(\d+)$/.exec(c.position || '')
+    if (!m) return
+    const role = m[1]
+    const idx  = parseInt(m[2], 10) - 1
+    team[role][idx] = {
+      cardId: c.card_id,
+      firstname: c.firstname,
+      surname_real: c.surname_real,
+      country_code: c.country_code,
+      club_id: c.club_id,
+      job: c.job, job2: c.job2,
+      note_g: c.note_g, note_d: c.note_d, note_m: c.note_m, note_a: c.note_a,
+      rarity: c.rarity, face: c.face,
+      clubs: c.club_encoded_name
+        ? { encoded_name: c.club_encoded_name, logo_url: c.club_logo_url }
+        : null,
+      _evolution_bonus: c.evolution_bonus || 0,
+      used: false,
+    }
+  })
+  // NE PAS compacter : buildTeamSVG reconstruit les slots via l'index
+  // (`${role}${i+1}`) et forEach saute les trous en conservant les bons
+  // indices. Compacter décalerait les joueurs d'un poste.
+  return team
+}
 
 function gcImgUrl(def) {
   if (def?.image_url) return `${import.meta.env.BASE_URL}icons/${def.image_url}`
@@ -319,9 +354,24 @@ async function openManagerCardsModal(userId, pseudo, toast) {
 
   panes.decks = decks.length
     ? decks.map(dk => {
-        const dkCards = dk.cards || []
+        const dkCards  = dk.cards || []
         const starters = dkCards.filter(c => c.is_starter)
         const subs     = dkCards.filter(c => !c.is_starter)
+        const team     = deckToTeam(dkCards)
+        const nbStart  = ['GK','DEF','MIL','ATT'].reduce((n, r) => n + team[r].filter(Boolean).length, 0)
+
+        // Visuel de terrain identique au jeu (formation + liens de chimie).
+        // phase=null et selectedIds=[] : rendu neutre, non interactif.
+        const pitch = (dk.formation && FORMATION_POSITIONS[dk.formation] && nbStart)
+          ? `<div style="max-width:460px;margin:0 auto;pointer-events:none">
+               ${buildTeamSVG(team, dk.formation, null, [], 320, 350)}
+             </div>`
+          : `<div style="font-size:12px;color:#999;padding:16px;text-align:center">
+               ${!dk.formation ? 'Aucune formation définie pour ce deck.'
+                 : !FORMATION_POSITIONS[dk.formation] ? `Formation inconnue : ${dk.formation}`
+                 : 'Aucun titulaire enregistré.'}
+             </div>`
+
         const mini = (c) => {
           const p = {
             firstname: c.firstname, surname_real: c.surname_real,
@@ -331,19 +381,15 @@ async function openManagerCardsModal(userId, pseudo, toast) {
             clubs: c.club_encoded_name ? { encoded_name: c.club_encoded_name, logo_url: c.club_logo_url } : null,
             _evolution_bonus: c.evolution_bonus || 0,
           }
-          return `<div style="position:relative">
-            <div style="font-size:9px;color:#888;text-align:center;margin-bottom:2px">${c.position || ''}</div>
-            ${renderPlayerCard(p, { width: 78 })}
-          </div>`
+          return `<div style="position:relative">${renderPlayerCard(p, { width: 74 })}</div>`
         }
-        return `<div style="margin-bottom:18px;padding:12px;border:1px solid var(--gray-200,#e0e0e0);border-radius:12px;background:#fafafa">
-          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap">
+
+        return `<div style="margin-bottom:22px;padding:14px;border:1px solid var(--gray-200,#e0e0e0);border-radius:12px;background:#fafafa">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;flex-wrap:wrap">
             <div style="font-weight:800;font-size:14px;color:#1a1a1a">${dk.name || 'Deck sans nom'}</div>
             <div style="font-size:11px;color:#666">${dk.formation || '—'} · ${starters.length} titulaire(s)${subs.length ? ` · ${subs.length} remplaçant(s)` : ''}</div>
           </div>
-          ${starters.length
-            ? `<div style="display:flex;flex-wrap:wrap;gap:8px">${starters.map(mini).join('')}</div>`
-            : `<div style="font-size:12px;color:#999">Aucun titulaire enregistré.</div>`}
+          ${pitch}
           ${subs.length
             ? `<div style="margin-top:10px"><div style="font-size:11px;color:#888;font-weight:700;margin-bottom:5px">REMPLAÇANTS</div>
                <div style="display:flex;flex-wrap:wrap;gap:8px">${subs.map(mini).join('')}</div></div>`
@@ -351,6 +397,55 @@ async function openManagerCardsModal(userId, pseudo, toast) {
         </div>`
       }).join('')
     : `<div style="padding:30px;text-align:center;color:#999;font-size:13px">Ce manager n'a créé aucune équipe.</div>`
+
+  // ── Onglet Boosters ──
+  const openings = data.boosters || []
+  const legacy   = data.legacy_booster_cards || 0
+  const RAR_LBL  = { legende:'Légende', pepite:'Pépite', papyte:'Papyte', normal:'Normal' }
+  const RAR_COL  = { legende:'#7a28b8', pepite:'#D4A017', papyte:'#909090', normal:'#888' }
+
+  const totalCards = openings.reduce((n, o) => n + (o.nb_cards || 0), 0)
+
+  panes.boosters = `
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px">
+      <div style="flex:1;min-width:150px;background:#f4f8f5;border:1px solid #d6e8dc;border-radius:12px;padding:12px 14px">
+        <div style="font-size:11px;color:#666">Boosters ouverts</div>
+        <div style="font-size:22px;font-weight:900;color:#1A6B3C">${openings.length}</div>
+      </div>
+      <div style="flex:1;min-width:150px;background:#fdf8ec;border:1px solid #efe0bb;border-radius:12px;padding:12px 14px">
+        <div style="font-size:11px;color:#666">Cartes obtenues</div>
+        <div style="font-size:22px;font-weight:900;color:#D4A017">${totalCards}</div>
+      </div>
+      <div style="flex:1;min-width:150px;background:#f7f7f7;border:1px solid #e0e0e0;border-radius:12px;padding:12px 14px">
+        <div style="font-size:11px;color:#666">Cartes booster (historique)</div>
+        <div style="font-size:22px;font-weight:900;color:#555">${legacy}</div>
+      </div>
+    </div>
+    ${!openings.length ? `
+      <div style="padding:20px;text-align:center;color:#999;font-size:13px;line-height:1.6">
+        Aucune ouverture enregistrée pour ce manager.<br>
+        <span style="font-size:11.5px">Le journal des ouvertures a été mis en place récemment : seules les ouvertures postérieures y figurent.${legacy ? ` Le compteur « historique » (${legacy}) recense les cartes joueur encore possédées et obtenues en booster avant cela.` : ''}</span>
+      </div>` : `
+      <div style="display:flex;flex-direction:column;gap:8px">
+        ${openings.map(o => {
+          const d = o.opened_at ? new Date(o.opened_at).toLocaleString('fr') : '—'
+          const items = (o.cards || []).map(c => {
+            const col = RAR_COL[c.rarity] || '#888'
+            const lbl = c.rarity ? ` · <span style="color:${col};font-weight:700">${RAR_LBL[c.rarity] || c.rarity}</span>` : ''
+            const dup = c.is_duplicate ? ` <span style="color:#aaa">(doublon)</span>` : ''
+            return `<div style="font-size:12px;color:#333;padding:3px 0;border-bottom:1px dashed #eee">
+              ${c.name || c.card_type || '?'}${lbl}${c.note != null ? ` · note ${c.note}` : ''}${dup}
+            </div>`
+          }).join('')
+          return `<details style="border:1px solid var(--gray-200,#e0e0e0);border-radius:10px;padding:10px 12px;background:#fafafa">
+            <summary style="cursor:pointer;font-size:13px;font-weight:700;color:#1a1a1a">
+              ${o.booster_name || 'Booster'} <span style="font-weight:400;color:#777">· ${o.nb_cards || 0} carte(s) · ${d}</span>
+            </summary>
+            <div style="margin-top:8px">${items || '<div style="font-size:12px;color:#999">Contenu non détaillé.</div>'}</div>
+          </details>`
+        }).join('')}
+      </div>`}
+  `
 
   // ── Onglets ──
   body.innerHTML = `

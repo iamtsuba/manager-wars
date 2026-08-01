@@ -128,24 +128,36 @@ export async function renderCollection(container, ctx) {
   let searchQ      = ''
   let showAll      = false
   let dupesOnly    = false
+  // Pays / Club : filtres ADDITIONNABLES (Set = plusieurs valeurs cumulées
+  // en OU entre elles, puis combinées en ET avec les autres filtres)
+  let countryFilter = new Set()
+  let clubFilter     = new Set()
+  let sortMode        = 'job'   // 'job' | 'note_desc' | 'note_asc'
 
-  // Trier les cartes joueurs : GK → DEF → MIL → ATT
-  function sortedCards() {
-    return [...playerCards].sort((a, b) => {
-      const iA = JOB_ORDER.indexOf(a.player.job)
-      const iB = JOB_ORDER.indexOf(b.player.job)
+  function playerNote(p) {
+    if (p.job === 'GK')  return Number(p.note_g) || 0
+    if (p.job === 'DEF') return Number(p.note_d) || 0
+    if (p.job === 'MIL') return Number(p.note_m) || 0
+    return Number(p.note_a) || 0
+  }
+
+  function applySortMode(list, getPlayer) {
+    if (sortMode === 'note_desc') return [...list].sort((a,b) => playerNote(getPlayer(b)) - playerNote(getPlayer(a)))
+    if (sortMode === 'note_asc')  return [...list].sort((a,b) => playerNote(getPlayer(a)) - playerNote(getPlayer(b)))
+    return [...list].sort((a,b) => {
+      const pa = getPlayer(a), pb = getPlayer(b)
+      const iA = JOB_ORDER.indexOf(pa.job), iB = JOB_ORDER.indexOf(pb.job)
       if (iA !== iB) return iA - iB
-      return (a.player.surname_real||'').localeCompare(b.player.surname_real||'')
+      return (pa.surname_real||'').localeCompare(pb.surname_real||'')
     })
   }
 
-  function sortedAllPlayers() {
-    return [...(allPlayers||[])].sort((a, b) => {
-      const iA = JOB_ORDER.indexOf(a.job)
-      const iB = JOB_ORDER.indexOf(b.job)
-      if (iA !== iB) return iA - iB
-      return (a.surname_real||'').localeCompare(b.surname_real||'')
-    })
+  function sortedCards()      { return applySortMode(playerCards, c => c.player) }
+  function sortedAllPlayers() { return applySortMode(allPlayers||[], p => p) }
+
+  function matchCountryClub(p) {
+    return (!countryFilter.size || countryFilter.has(p.country_code)) &&
+           (!clubFilter.size    || clubFilter.has(p.club_id))
   }
 
   function filteredCards() {
@@ -153,7 +165,7 @@ export async function renderCollection(container, ctx) {
       const p = c.player
       const matchJob    = activeFilter === 'Tous' || p.job === activeFilter
       const matchSearch = !searchQ || `${p.firstname} ${p.surname_real}`.toLowerCase().includes(searchQ)
-      return matchJob && matchSearch
+      return matchJob && matchSearch && matchCountryClub(p)
     })
   }
 
@@ -161,7 +173,7 @@ export async function renderCollection(container, ctx) {
     return sortedAllPlayers().filter(p => {
       const matchJob    = activeFilter === 'Tous' || p.job === activeFilter
       const matchSearch = !searchQ || `${p.firstname} ${p.surname_real}`.toLowerCase().includes(searchQ)
-      return matchJob && matchSearch
+      return matchJob && matchSearch && matchCountryClub(p)
     })
   }
 
@@ -251,6 +263,27 @@ export async function renderCollection(container, ctx) {
                 color:${f===activeFilter?'#fff':'#555'}">
               ${f}
             </button>`).join('')}
+          <button id="sort-note-btn" title="Trier par note"
+            style="flex-shrink:0;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;
+              border:1.5px solid ${sortMode!=='job'?'var(--green)':'var(--tile-border)'};
+              background:${sortMode!=='job'?'var(--green)':'#fff'};
+              color:${sortMode!=='job'?'#fff':'#555'}">
+            ⇅ Note${sortMode==='note_desc'?' ↓':sortMode==='note_asc'?' ↑':''}
+          </button>
+          <button id="country-filter-btn" title="Filtrer par pays"
+            style="flex-shrink:0;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;
+              border:1.5px solid ${countryFilter.size?'var(--green)':'var(--tile-border)'};
+              background:${countryFilter.size?'var(--green)':'#fff'};
+              color:${countryFilter.size?'#fff':'#555'}">
+            🌍${countryFilter.size?` (${countryFilter.size})`:''}
+          </button>
+          <button id="club-filter-btn" title="Filtrer par club"
+            style="flex-shrink:0;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;
+              border:1.5px solid ${clubFilter.size?'var(--green)':'var(--tile-border)'};
+              background:${clubFilter.size?'var(--green)':'#fff'};
+              color:${clubFilter.size?'#fff':'#555'}">
+            🏟️${clubFilter.size?` (${clubFilter.size})`:''}
+          </button>
           <button id="dupes-only-btn" title="Voir les cartes en plusieurs exemplaires"
             style="flex-shrink:0;margin-left:auto;padding:5px 10px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;
               border:1.5px solid ${dupesOnly?'var(--yellow)':'var(--tile-border)'};
@@ -288,6 +321,18 @@ export async function renderCollection(container, ctx) {
         renderFilters()
         renderCards()
       })
+      document.getElementById('sort-note-btn').addEventListener('click', () => {
+        // Cycle : Poste (défaut) -> Note ↓ -> Note ↑ -> Poste...
+        sortMode = sortMode === 'job' ? 'note_desc' : sortMode === 'note_desc' ? 'note_asc' : 'job'
+        renderFilters()
+        renderCards()
+      })
+      document.getElementById('country-filter-btn').addEventListener('click', () => {
+        openMultiFilterModal('country', '🌍 Filtrer par pays', ctx)
+      })
+      document.getElementById('club-filter-btn').addEventListener('click', () => {
+        openMultiFilterModal('club', '🏟️ Filtrer par club', ctx)
+      })
     } else {
       // Formations / Game Changer : juste le toggle "Voir tout"
       bar.innerHTML = `
@@ -306,6 +351,55 @@ export async function renderCollection(container, ctx) {
         renderCards()
       })
     }
+  }
+
+  // Modal de sélection multiple (pays ou club) — additionnable : plusieurs
+  // valeurs peuvent être cochées en même temps (OU entre elles).
+  function openMultiFilterModal(kind, title, ctx) {
+    const isCountry = kind === 'country'
+    const targetSet = isCountry ? countryFilter : clubFilter
+    const pool = showAll ? (allPlayers || []) : playerCards.map(c => c.player)
+
+    let options
+    if (isCountry) {
+      const seen = new Map()
+      pool.forEach(p => { if (p?.country_code && !seen.has(p.country_code)) seen.set(p.country_code, p.country_code) })
+      options = [...seen.keys()].sort().map(cc => ({ value: cc, label: cc }))
+    } else {
+      const seen = new Map()
+      pool.forEach(p => { if (p?.club_id && !seen.has(p.club_id)) seen.set(p.club_id, p.clubs?.encoded_name || p.club_id) })
+      options = [...seen.entries()].sort((a,b) => a[1].localeCompare(b[1])).map(([value,label]) => ({ value, label }))
+    }
+
+    const body = `
+      <div style="display:flex;gap:8px;margin-bottom:10px">
+        <button id="mf-all"  class="btn btn-ghost" style="flex:1">Tout cocher</button>
+        <button id="mf-none" class="btn btn-ghost" style="flex:1">Tout décocher</button>
+      </div>
+      <div style="max-height:340px;overflow-y:auto;display:flex;flex-direction:column;gap:2px">
+        ${options.length ? options.map(o => `
+          <label style="display:flex;align-items:center;gap:8px;padding:6px 4px;font-size:14px;color:#1a1a1a;cursor:pointer">
+            <input type="checkbox" class="mf-check" value="${o.value}" ${targetSet.has(o.value)?'checked':''}>
+            <span>${o.label}</span>
+          </label>`).join('') : `<div style="color:#999;font-size:13px;text-align:center;padding:16px">Aucune option disponible.</div>`}
+      </div>`
+    const footer = `<button class="btn btn-primary" id="mf-apply" style="width:100%">Appliquer</button>`
+
+    ctx.openModal(title, body, footer)
+
+    document.getElementById('mf-all')?.addEventListener('click', () => {
+      document.querySelectorAll('.mf-check').forEach(cb => cb.checked = true)
+    })
+    document.getElementById('mf-none')?.addEventListener('click', () => {
+      document.querySelectorAll('.mf-check').forEach(cb => cb.checked = false)
+    })
+    document.getElementById('mf-apply')?.addEventListener('click', () => {
+      targetSet.clear()
+      document.querySelectorAll('.mf-check:checked').forEach(cb => targetSet.add(cb.value))
+      ctx.closeModal()
+      renderFilters()
+      renderCards()
+    })
   }
 
   // ── Rendu des cartes selon l'onglet actif ───────────────

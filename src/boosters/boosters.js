@@ -292,8 +292,9 @@ async function openBooster(booster, { state, toast, navigate, container }) {
   // Journaliser l'ouverture (pour Admin > Managers > onglet Boosters)
   logBoosterOpening(state.profile.id, booster, newCards)
 
-  // Lancer l'animation FIFA
-  showBoosterAnimation(newCards, booster, navigate)
+  // Lancer l'animation FIFA (reopenCtx permet de rouvrir un booster
+  // identique directement depuis l'écran de fin)
+  showBoosterAnimation(newCards, booster, navigate, null, { state, toast, container })
 }
 
 // ── Probabilités d'obtention (GDD boosters) ──────────────
@@ -609,7 +610,10 @@ async function logBoosterOpening(userId, booster, cards) {
   }
 }
 
-export function showBoosterAnimation(cards, booster, navigate, onClose = null) {
+// reopenCtx = { state, toast, container } : uniquement fourni depuis la
+// boutique, pour permettre de racheter/rouvrir le MÊME booster directement
+// depuis l'écran de fin, sans repasser par la boutique.
+export function showBoosterAnimation(cards, booster, navigate, onClose = null, reopenCtx = null) {
   // Guard : si aucune carte (insert DB échoué), afficher message d'erreur
   if (!cards || cards.length === 0) {
     const ov = document.createElement('div')
@@ -738,9 +742,12 @@ export function showBoosterAnimation(cards, booster, navigate, onClose = null) {
       </div>
       <div id="card-dots" style="display:flex;gap:6px;flex-wrap:wrap;justify-content:center;max-width:260px"></div>
       <div id="card-tap-hint" style="font-size:12px;color:rgba(255,255,255,0.45)">‹ glisse pour naviguer ›</div>
-      <div id="reveal-btns" style="display:none;flex-direction:row;gap:10px;width:100%;max-width:400px;margin-top:4px">
-        <button class="btn btn-primary" id="reveal-collection" style="flex:1">Voir ma collection</button>
-        <button class="btn btn-ghost" id="reveal-more" style="flex:1;color:#fff;border-color:rgba(255,255,255,0.3)">Boosters</button>
+      <div id="reveal-btns" style="display:none;flex-direction:column;gap:10px;width:100%;max-width:400px;margin-top:4px">
+        <button class="btn btn-primary" id="reveal-reopen" style="width:100%"></button>
+        <div style="display:flex;flex-direction:row;gap:10px">
+          <button class="btn btn-ghost" id="reveal-collection" style="flex:1;color:#fff;border-color:rgba(255,255,255,0.3)">Voir ma collection</button>
+          <button class="btn btn-ghost" id="reveal-shop" style="flex:1;color:#fff;border-color:rgba(255,255,255,0.3)">🏪 Boutique</button>
+        </div>
       </div>
     </div>
 
@@ -1091,16 +1098,39 @@ export function showBoosterAnimation(cards, booster, navigate, onClose = null) {
     // Mode onboarding : un seul bouton "Continuer" qui enchaîne le booster suivant
     const btnRow = document.getElementById('reveal-btns')
     if (btnRow) {
+      btnRow.style.flexDirection = 'row'
       btnRow.innerHTML = `<button class="btn btn-primary" id="reveal-next" style="flex:1">Continuer →</button>`
     }
     document.getElementById('reveal-next')?.addEventListener('click', () => {
       stopFireworks(); overlay.remove(); onClose()
     })
   } else {
+    const reopenBtn = document.getElementById('reveal-reopen')
+    const cost = booster.cost || 0
+    const currentCredits = Number(reopenCtx?.state?.profile?.credits) || 0
+    const canAfford = !cost || currentCredits >= cost
+
+    if (reopenBtn) {
+      if (reopenCtx) {
+        reopenBtn.textContent = `🎁 Ouvrir un autre booster${cost ? ` (${cost.toLocaleString('fr')} cr.)` : ''}`
+        reopenBtn.disabled = !canAfford
+        if (!canAfford) { reopenBtn.style.opacity = '0.45'; reopenBtn.style.cursor = 'not-allowed' }
+        reopenBtn.addEventListener('click', () => {
+          if (reopenBtn.disabled) return
+          stopFireworks(); overlay.remove()
+          openBooster(booster, { state: reopenCtx.state, toast: reopenCtx.toast, navigate, container: reopenCtx.container })
+        })
+      } else {
+        // Pas de contexte (ne devrait pas arriver hors onboarding) : repli sur la boutique
+        reopenBtn.textContent = '🎁 Ouvrir un autre booster'
+        reopenBtn.addEventListener('click', () => { stopFireworks(); overlay.remove(); navigate('boosters') })
+      }
+    }
+
     document.getElementById('reveal-collection').addEventListener('click', () => {
       stopFireworks(); overlay.remove(); navigate('collection')
     })
-    document.getElementById('reveal-more').addEventListener('click', () => {
+    document.getElementById('reveal-shop').addEventListener('click', () => {
       stopFireworks(); overlay.remove(); navigate('boosters')
     })
   }

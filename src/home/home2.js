@@ -1132,7 +1132,11 @@ export async function renderHome2(container, { state, navigate, toast, openModal
     openPendingRewardsPopup(state, toast, navigate)
   })
 
-  loadMatchInviteBanner(state, toast, navigate)
+  // La bannière était chargée UNE SEULE FOIS au rendu de Home : une invitation
+  // arrivant pendant que le joueur s'y trouve déjà passait donc totalement
+  // inaperçue, alors qu'elle expire au bout de 2 minutes. On la maintient
+  // désormais à jour en temps réel (+ vérification périodique de secours).
+  watchMatchInvites(state, toast, navigate)
   loadOngoingMatchBanner(state, toast, navigate)
   checkUnclaimedMiniLeaguePrizes(state, toast)
 }
@@ -1276,6 +1280,38 @@ function showAbandonConfirm(onConfirm) {
   ov.querySelector('#ab-cancel').addEventListener('click', () => ov.remove())
   ov.querySelector('#ab-ok').addEventListener('click', () => { ov.remove(); onConfirm() })
   ov.addEventListener('click', e => { if (e.target === ov) ov.remove() })
+}
+
+// ── Surveillance temps réel des invitations de match ────────────────────
+let _inviteWatchTimer = null
+let _inviteWatchChan  = null
+
+function watchMatchInvites(state, toast, navigate) {
+  const myId = state?.user?.id
+  if (!myId) return
+
+  const refresh = () => loadMatchInviteBanner(state, toast, navigate)
+  refresh()
+
+  // Filet de sécurité : le Realtime peut ne pas passer (réseau mobile,
+  // onglet en veille). 5 s de latence max sur une invitation qui dure 2 min.
+  clearInterval(_inviteWatchTimer)
+  _inviteWatchTimer = setInterval(() => {
+    // Inutile de sonder si la bannière n'est plus dans le DOM (on a quitté Home)
+    if (!document.getElementById('match-invite-banner')) {
+      clearInterval(_inviteWatchTimer); _inviteWatchTimer = null
+      if (_inviteWatchChan) { try { supabase.removeChannel(_inviteWatchChan) } catch {} _inviteWatchChan = null }
+      return
+    }
+    refresh()
+  }, 5000)
+
+  if (_inviteWatchChan) { try { supabase.removeChannel(_inviteWatchChan) } catch {} }
+  _inviteWatchChan = supabase
+    .channel('home-match-invites-' + myId)
+    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'friend_match_invites', filter: `invitee_id=eq.${myId}` }, refresh)
+    .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'friend_match_invites', filter: `invitee_id=eq.${myId}` }, refresh)
+    .subscribe()
 }
 
 async function loadMatchInviteBanner(state, toast, navigate) {

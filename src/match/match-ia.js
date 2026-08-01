@@ -65,23 +65,42 @@ export async function renderMatchIA(container, ctx) {
         applyStadiumBonusToSubs(subsRaw, stadiumDef)
       }
 
-      // Fallback IA Ranked : calibrer l'IA sur la force RÉELLE de mon équipe
-      // (note totale ±10% de la mienne, même nombre de liens jaunes/verts)
+      // Fallback IA Ranked : calibrer l'IA sur la force RÉELLE de mon équipe.
+      // L'IA tire au sort un niveau de difficulté : -10%, à égalité, ou +20%.
       let rankedAIConfig = null
       if (isRankedAI) {
-        const myTotalNote = sumTeamNote(homeTeam)
+        // Force réelle = notes des 11 titulaires + bonus stade effectif (+10
+        // par joueur concerné). Sans ce bonus, l'IA était calibrée sous la
+        // vraie puissance de l'équipe adverse.
+        const myTotalNote = sumTeamNote(homeTeam) + countStadiumBoosted(homeTeam) * 10
         const { jaune, vert } = countTeamLinks(homeTeam, formation)
-        const variance = 0.9 + Math.random() * 0.2 // entre -10% et +10%
+        const VARIANCES = [0.9, 1.0, 1.2]
+        const variance  = VARIANCES[Math.floor(Math.random() * VARIANCES.length)]
+        const targetTotal = Math.max(11, Math.round(myTotalNote * variance))
         rankedAIConfig = {
-          target_note_avg:  Math.max(1, Math.round((myTotalNote * variance) / 16)),
-          nb_liens_jaune:   jaune,
-          nb_liens_vert:    vert,
-          nb_joueurs_stade: stadiumDef ? 3 : 0,
+          // /11 (les titulaires) et non /16 : le total d'équipe ne compte que
+          // les 11 sur le terrain, diviser par 16 sous-calibrait l'IA de ~31%.
+          target_note_avg:   Math.max(1, Math.round(targetTotal / 11)),
+          target_total_note: targetTotal,
+          nb_liens_jaune:    jaune,
+          nb_liens_vert:     vert,
+          nb_joueurs_stade:  stadiumDef ? 3 : 0,
+          _variance:         variance,
         }
       }
 
+      // Le Solo doit lui aussi passer par la mise à l'échelle : sans
+      // target_total_note, l'IA se contente de piocher les joueurs dont la
+      // note BRUTE est la plus proche de la cible. Au-delà de la meilleure
+      // note existant en base, tous les niveaux deviennent donc identiques.
+      // target_note_avg est une moyenne par joueur -> x11 titulaires.
+      const soloCfg = soloLevelConfig
+        ? { ...soloLevelConfig,
+            target_total_note: Math.max(11, Math.round((Number(soloLevelConfig.target_note_avg) || 10) * 11)) }
+        : soloLevelConfig
+
       const aiResult = isSolo
-        ? await generateAITeamForLevel(formation, soloLevelConfig)
+        ? await generateAITeamForLevel(formation, soloCfg)
         : isRankedAI
         ? await generateAITeamForLevel(formation, rankedAIConfig)
         : await generateAITeam(formation, difficulty)
@@ -124,6 +143,7 @@ export async function renderMatchIA(container, ctx) {
             aiUsedSubIds: [],
             aiGcCards: aiResult.gcCards || [],
             aiUsedGc: [],
+            aiGcTarget: aiResult.gcTarget || 2,
             aiStadiumDef,
             homeScore:0, aiScore:0,
             gcCards:  selectedGC,
@@ -247,6 +267,14 @@ function sumTeamNote(team) {
   return sum
 }
 
+function countStadiumBoosted(team) {
+  let n = 0
+  for (const role of ['GK','DEF','MIL','ATT']) {
+    (team[role]||[]).forEach(p => { if (p?.stadiumBonus) n++ })
+  }
+  return n
+}
+
 function countTeamLinks(team, formation) {
   const slots = {}
   for (const role of ['GK','DEF','MIL','ATT']) {
@@ -334,7 +362,14 @@ async function generateAITeamForLevel(formation, levelConfig) {
   }
 
   for (const role of ['GK','DEF','MIL','ATT']) {
-    const candidates = selected.filter(p => p.job === role && !used.has(p.id))
+    let candidates = selected.filter(p => p.job === role && !used.has(p.id))
+    // Un joueur de champ placé dans les buts a une note_g catastrophique
+    // (d'où les gardiens à 4 observés). Si aucun vrai GK n'a été retenu,
+    // on va en chercher un dans le pool complet.
+    if (role === 'GK' && !candidates.length) {
+      const realGk = players.filter(p => p.job === 'GK' && !used.has(p.id))
+      if (realGk.length) candidates = pickClosestToAvg(realGk, targetAvg, 1)
+    }
     const others     = selected.filter(p => p.job !== role && !used.has(p.id))
     const sorted     = [...candidates, ...others]
     const linePlayers = []
@@ -355,6 +390,37 @@ async function generateAITeamForLevel(formation, levelConfig) {
   }
   const subs = subPool.slice(0, 5).map((p, i) => makePlayer(p, p.job, 100+i))
 
+  // ── Mise à l'échelle sur la force cible ──────────────────────────
+  // Les joueurs de l'IA proviennent de la table `players` : leurs notes sont
+  // BRUTES, sans évolution ni bonus. Face à une collection très évoluée
+  // (notes 100+), l'IA plafonnait donc structurellement, quel que soit le
+  // target visé. On ajuste ici les notes du poste occupé pour atteindre
+  // exactement la cible.
+  const targetTotal = Number(levelConfig?.target_total_note) || 0
+  if (targetTotal > 0) {
+    const NOTE_KEY = { GK:'note_g', DEF:'note_d', MIL:'note_m', ATT:'note_a' }
+    const onField = []
+    for (const role of ['GK','DEF','MIL','ATT']) {
+      (lines[role]||[]).forEach(p => onField.push({ p, key: NOTE_KEY[role] }))
+    }
+    const current = onField.reduce((s, o) => s + (Number(o.p[o.key]) || 0), 0)
+    if (current > 0 && onField.length) {
+      const factor = targetTotal / current
+      onField.forEach(o => { o.p[o.key] = Math.max(1, Math.round((Number(o.p[o.key]) || 0) * factor)) })
+      let diff = targetTotal - onField.reduce((s, o) => s + o.p[o.key], 0)
+      let guard = 0
+      while (diff !== 0 && guard++ < 500) {
+        const o = onField[Math.floor(Math.random() * onField.length)]
+        if (diff > 0) { o.p[o.key]++; diff-- }
+        else if (o.p[o.key] > 1) { o.p[o.key]--; diff++ }
+      }
+      subs.forEach(s => {
+        const key = NOTE_KEY[s.job] || 'note_m'
+        s[key] = Math.max(1, Math.round((Number(s[key]) || 0) * factor))
+      })
+    }
+  }
+
   // GC réelles (3 parmi les cartes actives configurées en admin)
   const { data: realGcDefs2 } = await supabase.from('gc_definitions').select('*').eq('is_active', true)
   const shuffledGC = [...(realGcDefs2 || [])].sort(() => Math.random() - 0.5)
@@ -371,7 +437,10 @@ async function generateAITeamForLevel(formation, levelConfig) {
     if (club) stadiumDef = { club_id: club.id, country_code: null, name: club.encoded_name + ' Stadium', club: { encoded_name: club.encoded_name, logo_url: club.logo_url } }
   }
 
-  return { lines, subs, gcCards, stadiumDef }
+  // Nombre de GC que l'IA utilisera réellement pendant le match (1 à 3)
+  const gcTarget = 1 + Math.floor(Math.random() * 3)
+
+  return { lines, subs, gcCards, stadiumDef, gcTarget }
 }
 
 function generateFakeAITeam(formation) {
@@ -1218,12 +1287,14 @@ function confirmDefense(container, game, ctx) {
 }
 
 // ── IA : décision remplacement + GC ──────────────────────
-function aiMaySub(game) {
-  if (game.aiSubsUsed >= game.aiMaxSubs) return
+// `done` est appelé une fois l'animation terminée (ou immédiatement si aucun
+// remplacement) : l'IA doit montrer ses changements au joueur, comme lui.
+function aiMaySub(game, done = () => {}) {
+  if (game.aiSubsUsed >= game.aiMaxSubs) return done()
   const usedPlayers = Object.values(game.aiTeam).flat().filter(p => p.used)
-  if (!usedPlayers.length) return
+  if (!usedPlayers.length) return done()
   const availSubs = (game.aiSubs || []).filter(s => !game.aiUsedSubIds.includes(s.cardId))
-  if (!availSubs.length) return
+  if (!availSubs.length) return done()
   // Remplacer un joueur utilisé par un remplaçant de même poste si possible
   const out = usedPlayers[Math.floor(Math.random() * usedPlayers.length)]
   const sameLine = availSubs.find(s => s.job === out.job) || availSubs[0]
@@ -1235,6 +1306,7 @@ function aiMaySub(game) {
   game.aiUsedSubIds.push(sameLine.cardId)
   game.aiSubsUsed++
   game.log.push({ text: `🔄 IA : ${sameLine.firstname} ${sameLine.name} remplace ${out.firstname} ${out.name}`, type:'info' })
+  showSubAnimation(out, inPlayer, done)
 }
 
 // ── Applique automatiquement l'effet d'une carte GC pour l'IA (équivalent
@@ -1291,12 +1363,16 @@ function aiApplyGCEffect(def, game) {
   }
 }
 
-function aiMayPlayGC(game) {
-  if (!game.aiGcCards?.length) return
+function aiMayPlayGC(game, done = () => {}) {
+  if (!game.aiGcCards?.length) return done()
+  const target = game.aiGcTarget || 2
+  if (game.aiUsedGc.length >= target) return done()
   const available = game.aiGcCards.filter(gc => !game.aiUsedGc.includes(gc.id))
-  if (!available.length) return
-  // 50% de chance de jouer un GC par tour (au lieu de 30%, l'IA doit s'en servir plus souvent)
-  if (Math.random() > 0.50) return
+  if (!available.length) return done()
+  // L'IA doit réellement consommer son quota (1 à 3 sur le match) : à partir
+  // du 4e tour, si elle n'a encore rien joué, on force la carte.
+  const mustPlay = (game.round >= 4 && game.aiUsedGc.length === 0)
+  if (!mustPlay && Math.random() > 0.55) return done()
   const gc = available[Math.floor(Math.random() * available.length)]
   game.aiUsedGc.push(gc.id)
   if (gc.effect_type) {
@@ -1304,13 +1380,50 @@ function aiMayPlayGC(game) {
   } else {
     game.log.push({ text: `⚡ IA joue ${gc.icon||'⚡'} ${gc.name}`, type:'gc' })
   }
+  showAiGCAnimation(gc, done)
+}
+
+// Révélation de la carte Game Changer jouée par l'IA (le joueur doit voir
+// ce qui lui arrive, au même titre que les buts ou les remplacements).
+function showAiGCAnimation(gc, onDone = () => {}) {
+  const prev = document.getElementById('ai-gc-anim-overlay')
+  if (prev) prev.remove()
+  const overlay = document.createElement('div')
+  overlay.id = 'ai-gc-anim-overlay'
+  overlay.style.cssText = `
+    position:fixed;inset:0;z-index:3000;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    background:rgba(0,0,0,0.82);animation:aiGcFade .25s ease`
+  overlay.innerHTML = `
+    <style>
+      @keyframes aiGcFade { from{opacity:0} to{opacity:1} }
+      @keyframes aiGcPop  { 0%{transform:scale(.6) rotateY(90deg);opacity:0}
+                            60%{transform:scale(1.06) rotateY(0);opacity:1}
+                            100%{transform:scale(1) rotateY(0);opacity:1} }
+    </style>
+    <div style="font-size:13px;font-weight:900;letter-spacing:2px;color:#ff6b6b;margin-bottom:14px">
+      ⚡ L'ADVERSAIRE JOUE UNE CARTE
+    </div>
+    <div style="animation:aiGcPop .5s cubic-bezier(.2,.8,.3,1) both">
+      ${renderGCCard(gc.name || 'Game Changer', null, gc.icon || '⚡', gc.effect || '', { width: 170 })}
+    </div>`
+  document.body.appendChild(overlay)
+  setTimeout(() => { overlay.remove(); onDone() }, 2100)
 }
 
 function aiTurn(container, game, ctx) {
   updateLastPlayer(game, ctx, null)
-  // IA tente un remplacement ou un GC avant d'attaquer
-  aiMaySub(game)
-  aiMayPlayGC(game)
+  // Enchaîner les animations : remplacement -> Game Changer -> attaque.
+  // Le reste du tour attend leur fin pour rester lisible pour le joueur.
+  aiMaySub(game, () => {
+    aiMayPlayGC(game, () => {
+      renderGame(container, game, ctx)
+      aiTurnCore(container, game, ctx)
+    })
+  })
+}
+
+function aiTurnCore(container, game, ctx) {
   let allAi = [...(game.aiTeam.MIL||[]),...(game.aiTeam.ATT||[])].filter(p=>!p.used)
   let aiForcedNote1 = false
   if (!allAi.length) {
@@ -1334,11 +1447,17 @@ function aiTurn(container, game, ctx) {
   game.log.push({ text:`🤖 IA attaque : ${calc.total} (${selected.map(p=>p.name).join(', ')})`, type:'info' })
   game.modifiers.ai = {}
 
-  // Si le joueur n'a aucun défenseur dispo (GK/DEF/MIL) ET aucun remplacement possible → but auto IA
+  // Si le joueur n'a plus aucun défenseur disponible (GK/DEF/MIL non utilisés)
+  // → but automatique de l'IA.
+  //
+  // La condition testait aussi `!canSubNow` (aucun remplacement possible),
+  // mais c'était contradictoire : le remplacement est interdit pendant la
+  // phase de défense. Avec des joueurs sur le banc, la sécurité ne se
+  // déclenchait donc pas et rendait la main au joueur, qui n'avait ni joueur
+  // à sélectionner ni droit de remplacer → blocage total jusqu'au forfait.
+  // Seule la disponibilité réelle de défenseurs compte ici.
   const homeDefenders = [...(game.homeTeam.GK||[]),...(game.homeTeam.DEF||[]),...(game.homeTeam.MIL||[])].filter(p=>!p.used)
-  const availSubsNow  = (game.homeSubs||[]).filter(s => !(game.usedSubIds||[]).includes(s.cardId))
-  const canSubNow     = availSubsNow.length > 0 && game.subsUsed < game.maxSubs
-  if (homeDefenders.length === 0 && !canSubNow) {
+  if (homeDefenders.length === 0) {
     const attackerIsOnlyGK = selected.length === 1 && (selected[0]._line === 'GK' || selected[0].job === 'GK')
     if (attackerIsOnlyGK && isTeamEmpty(game.homeTeam) && game.homeScore === game.aiScore) {
       // Corner décisif : le gardien adverse monte marquer, je n'ai plus personne du tout.

@@ -288,6 +288,23 @@ function deckCardToPlayer(c) {
   }
 }
 
+function gcImgUrl(def) {
+  if (def?.image_url) return `${import.meta.env.BASE_URL}icons/${def.image_url}`
+  return null
+}
+
+function stadImgUrl(def) {
+  if (def?.image_url) return `${import.meta.env.BASE_URL}icons/${def.image_url}`
+  if (def?.club?.logo_url) return def.club.logo_url
+  if (def?.country_code) return `https://flagsapi.com/${def.country_code.slice(0,2).toUpperCase()}/flat/64.png`
+  return null
+}
+
+function renderCardsGrid(html) {
+  if (!html) return `<div style="padding:30px;text-align:center;color:#999;font-size:13px">Aucune carte dans cette catégorie.</div>`
+  return `<div style="display:flex;flex-wrap:wrap;gap:12px;justify-content:flex-start">${html}</div>`
+}
+
 async function openManagerCardsModal(userId, pseudo, toast) {
   const overlay = document.createElement('div')
   overlay.className = 'modal-overlay'

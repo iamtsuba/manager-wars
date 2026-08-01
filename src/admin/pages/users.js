@@ -1,5 +1,9 @@
 import { supabase } from '../../lib/supabase.js'
 import { getTier } from '../../ranked/glicko2.js'
+import { renderPlayerCard } from '../../components/player-card.js'
+import { renderGCCard, renderStadiumCard, renderFormationCard } from '../../components/special-cards.js'
+import { FORMATION_POSITIONS } from '../../match/formation-links.js'
+import { buildTeamSVG } from '../../match/match-shared.js'
 
 const ONLINE_THRESHOLD_MS = 2 * 60 * 1000 // 2 minutes sans heartbeat = hors ligne
 function isOnline(u) {
@@ -129,7 +133,7 @@ export async function pageUsers(container, { toast }) {
               <button class="btn-edit-credits" data-user="${u.id}" data-current="${u.credits||0}"
                 style="background:none;border:none;cursor:pointer;font-size:12px;padding:0;opacity:.7" title="Modifier les crédits">✏️</button>
             </div>
-            <div style="color:var(--gray-600)">Niv. Solo ${soloLevelMap[u.id] ?? 1}</div>
+            <div style="color:var(--gray-600)">🎮 Solo max : niv. ${soloLevelMap[u.id] ?? 1}</div>
           </td>
           <td style="font-size:12px">${u.wins}V / ${u.draws}N / ${u.losses}D</td>
           <td style="font-size:12px">🥇${u.trophies_top1} 🥈${u.trophies_top2} 🥉${u.trophies_top3}</td>
@@ -156,6 +160,8 @@ export async function pageUsers(container, { toast }) {
             <button class="btn btn-ghost btn-sm" data-toggle-admin="${u.id}" data-is-admin="${u.is_admin}">
               ${u.is_admin ? '🔒 Retirer' : '🔓 Admin'}
             </button>
+            <button class="btn btn-ghost btn-sm" data-view-cards="${u.id}" data-pseudo="${u.pseudo}"
+              title="Voir toutes les cartes et équipes de ce Manager">🃏</button>
             <button class="btn btn-ghost btn-sm" data-delete-manager="${u.id}" data-pseudo="${u.pseudo}"
               style="color:var(--red,#bb2020);" title="Supprimer ce Manager et TOUT ce qui le lie">
               🗑️
@@ -194,6 +200,13 @@ export async function pageUsers(container, { toast }) {
       })
     })
 
+    // Voir toute la collection d'un Manager
+    document.querySelectorAll('[data-view-cards]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        openManagerCardsModal(btn.dataset.viewCards, btn.dataset.pseudo, toast)
+      })
+    })
+
     // Supprimer un Manager (cascade delete)
     document.querySelectorAll('[data-delete-manager]').forEach(btn => {
       btn.addEventListener('click', async () => {
@@ -212,4 +225,256 @@ export async function pageUsers(container, { toast }) {
       })
     })
   }
+}
+
+// ── Modale : toute la collection d'un manager (cartes + équipes) ──────────
+const CARD_TABS = [
+  { key: 'player',       label: '⚽ Joueurs' },
+  { key: 'formation',    label: '📋 Formations' },
+  { key: 'stadium',      label: '🏟️ Stades' },
+  { key: 'game_changer', label: '⚡ Game Changers' },
+  { key: 'decks',        label: '👥 Équipes' },
+  { key: 'boosters',     label: '🎁 Boosters' },
+]
+
+// Reconstruit l'objet team attendu par buildTeamSVG à partir des cartes d'un
+// deck. Les positions sont de la forme GK1 / DEF3 / MIL2 / ATT1 : le chiffre
+// donne l'index du slot sur le terrain, il faut donc le respecter exactement
+// (sinon les joueurs se retrouvent au mauvais poste).
+function deckToTeam(deckCards) {
+  const team = { GK: [], DEF: [], MIL: [], ATT: [] }
+  ;(deckCards || []).filter(c => c.is_starter).forEach(c => {
+    const m = /^(GK|DEF|MIL|ATT)(\d+)$/.exec(c.position || '')
+    if (!m) return
+    const role = m[1]
+    const idx  = parseInt(m[2], 10) - 1
+    team[role][idx] = {
+      cardId: c.card_id,
+      firstname: c.firstname,
+      surname_real: c.surname_real,
+      country_code: c.country_code,
+      club_id: c.club_id,
+      job: c.job, job2: c.job2,
+      note_g: c.note_g, note_d: c.note_d, note_m: c.note_m, note_a: c.note_a,
+      rarity: c.rarity, face: c.face,
+      clubs: c.club_encoded_name
+        ? { encoded_name: c.club_encoded_name, logo_url: c.club_logo_url }
+        : null,
+      _evolution_bonus: c.evolution_bonus || 0,
+      used: false,
+    }
+  })
+  // NE PAS compacter : buildTeamSVG reconstruit les slots via l'index
+  // (`${role}${i+1}`) et forEach saute les trous en conservant les bons
+  // indices. Compacter décalerait les joueurs d'un poste.
+  return team
+}
+
+function gcImgUrl(def) {
+  if (def?.image_url) return `${import.meta.env.BASE_URL}icons/${def.image_url}`
+  return null
+}
+function stadImgUrl(def) {
+  if (def?.image_url) return `${import.meta.env.BASE_URL}icons/${def.image_url}`
+  if (def?.club?.logo_url) return def.club.logo_url
+  if (def?.country_code) return `https://flagsapi.com/${def.country_code.slice(0,2).toUpperCase()}/flat/64.png`
+  return null
+}
+
+function renderCardsGrid(html) {
+  if (!html) return `<div style="padding:30px;text-align:center;color:#999;font-size:13px">Aucune carte dans cette catégorie.</div>`
+  return `<div style="display:flex;flex-wrap:wrap;gap:12px;justify-content:flex-start">${html}</div>`
+}
+
+async function openManagerCardsModal(userId, pseudo, toast) {
+  const overlay = document.createElement('div')
+  overlay.className = 'modal-overlay'
+  overlay.style.zIndex = '3000'
+  overlay.innerHTML = `<div class="modal admin-light-card" style="max-width:1100px;width:96%">
+    <div class="modal-header"><h2>🃏 Collection de ${pseudo}</h2><button class="btn-icon" id="mc-close">✕</button></div>
+    <div class="modal-body" id="mc-body" style="padding:16px">
+      <div style="text-align:center;color:#999;padding:30px">⏳ Chargement de la collection…</div>
+    </div>
+  </div>`
+  document.body.appendChild(overlay)
+  const cleanup = () => overlay.remove()
+  overlay.querySelector('#mc-close').addEventListener('click', cleanup)
+  overlay.addEventListener('click', e => { if (e.target === overlay) cleanup() })
+
+  const { data, error } = await supabase.rpc('admin_get_manager_collection', { p_user_id: userId })
+  const body = overlay.querySelector('#mc-body')
+  if (!body) return
+  if (error || !data?.success) {
+    body.innerHTML = `<div style="padding:20px;color:#bb2020">Erreur : ${error?.message || data?.error || 'chargement impossible'}</div>`
+    return
+  }
+
+  const cards = data.cards || []
+  const decks = data.decks || []
+  const byType = {
+    player:       cards.filter(c => c.card_type === 'player' && c.player),
+    formation:    cards.filter(c => c.card_type === 'formation'),
+    stadium:      cards.filter(c => c.card_type === 'stadium'),
+    game_changer: cards.filter(c => c.card_type === 'game_changer'),
+  }
+
+  const counts = {
+    player: byType.player.length,
+    formation: byType.formation.length,
+    stadium: byType.stadium.length,
+    game_changer: byType.game_changer.length,
+    decks: decks.length,
+  }
+
+  // ── Contenu de chaque onglet ──
+  const panes = {}
+
+  panes.player = renderCardsGrid(byType.player.map(c => {
+    const p = { ...c.player, _evolution_bonus: c.evolution_bonus || 0 }
+    const forSale = c.is_for_sale
+      ? `<div style="position:absolute;top:4px;right:4px;background:#D4A017;color:#111;font-size:9px;font-weight:800;padding:2px 6px;border-radius:8px;z-index:3">EN VENTE</div>`
+      : ''
+    return `<div style="position:relative">${forSale}${renderPlayerCard(p, { width: 110 })}</div>`
+  }).join(''))
+
+  panes.formation = renderCardsGrid(byType.formation.map(c =>
+    `<div style="position:relative">${renderFormationCard(c.formation, FORMATION_POSITIONS[c.formation], { width: 120 })}</div>`
+  ).join(''))
+
+  panes.stadium = renderCardsGrid(byType.stadium.map(c => {
+    const def = c.stadium_def
+    const label = def?.club?.encoded_name || def?.country_code || '—'
+    return `<div style="position:relative">${renderStadiumCard(def?.name || '?', stadImgUrl(def), `${label}<br>+10 ⭐ joueurs alliés`, { width: 120 })}</div>`
+  }).join(''))
+
+  panes.game_changer = renderCardsGrid(byType.game_changer.map(c => {
+    const def = c.gc_def
+    return `<div style="position:relative">${renderGCCard(def?.name || c.gc_type || 'Game Changer', gcImgUrl(def), '⚡', def?.effect || '', { width: 120 })}</div>`
+  }).join(''))
+
+  panes.decks = decks.length
+    ? decks.map(dk => {
+        const dkCards  = dk.cards || []
+        const starters = dkCards.filter(c => c.is_starter)
+        const subs     = dkCards.filter(c => !c.is_starter)
+        const team     = deckToTeam(dkCards)
+        const nbStart  = ['GK','DEF','MIL','ATT'].reduce((n, r) => n + team[r].filter(Boolean).length, 0)
+
+        // Visuel de terrain identique au jeu (formation + liens de chimie).
+        // phase=null et selectedIds=[] : rendu neutre, non interactif.
+        const pitch = (dk.formation && FORMATION_POSITIONS[dk.formation] && nbStart)
+          ? `<div style="max-width:460px;margin:0 auto;pointer-events:none">
+               ${buildTeamSVG(team, dk.formation, null, [], 320, 350)}
+             </div>`
+          : `<div style="font-size:12px;color:#999;padding:16px;text-align:center">
+               ${!dk.formation ? 'Aucune formation définie pour ce deck.'
+                 : !FORMATION_POSITIONS[dk.formation] ? `Formation inconnue : ${dk.formation}`
+                 : 'Aucun titulaire enregistré.'}
+             </div>`
+
+        const mini = (c) => {
+          const p = {
+            firstname: c.firstname, surname_real: c.surname_real,
+            country_code: c.country_code, job: c.job, job2: c.job2,
+            note_g: c.note_g, note_d: c.note_d, note_m: c.note_m, note_a: c.note_a,
+            rarity: c.rarity, face: c.face,
+            clubs: c.club_encoded_name ? { encoded_name: c.club_encoded_name, logo_url: c.club_logo_url } : null,
+            _evolution_bonus: c.evolution_bonus || 0,
+          }
+          return `<div style="position:relative">${renderPlayerCard(p, { width: 74 })}</div>`
+        }
+
+        return `<div style="margin-bottom:22px;padding:14px;border:1px solid var(--gray-200,#e0e0e0);border-radius:12px;background:#fafafa">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;flex-wrap:wrap">
+            <div style="font-weight:800;font-size:14px;color:#1a1a1a">${dk.name || 'Deck sans nom'}</div>
+            <div style="font-size:11px;color:#666">${dk.formation || '—'} · ${starters.length} titulaire(s)${subs.length ? ` · ${subs.length} remplaçant(s)` : ''}</div>
+          </div>
+          ${pitch}
+          ${subs.length
+            ? `<div style="margin-top:10px"><div style="font-size:11px;color:#888;font-weight:700;margin-bottom:5px">REMPLAÇANTS</div>
+               <div style="display:flex;flex-wrap:wrap;gap:8px">${subs.map(mini).join('')}</div></div>`
+            : ''}
+        </div>`
+      }).join('')
+    : `<div style="padding:30px;text-align:center;color:#999;font-size:13px">Ce manager n'a créé aucune équipe.</div>`
+
+  // ── Onglet Boosters ──
+  const openings = data.boosters || []
+  const legacy   = data.legacy_booster_cards || 0
+  const RAR_LBL  = { legende:'Légende', pepite:'Pépite', papyte:'Papyte', normal:'Normal' }
+  const RAR_COL  = { legende:'#7a28b8', pepite:'#D4A017', papyte:'#909090', normal:'#888' }
+
+  const totalCards = openings.reduce((n, o) => n + (o.nb_cards || 0), 0)
+
+  panes.boosters = `
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px">
+      <div style="flex:1;min-width:150px;background:#f4f8f5;border:1px solid #d6e8dc;border-radius:12px;padding:12px 14px">
+        <div style="font-size:11px;color:#666">Boosters ouverts</div>
+        <div style="font-size:22px;font-weight:900;color:#1A6B3C">${openings.length}</div>
+      </div>
+      <div style="flex:1;min-width:150px;background:#fdf8ec;border:1px solid #efe0bb;border-radius:12px;padding:12px 14px">
+        <div style="font-size:11px;color:#666">Cartes obtenues</div>
+        <div style="font-size:22px;font-weight:900;color:#D4A017">${totalCards}</div>
+      </div>
+      <div style="flex:1;min-width:150px;background:#f7f7f7;border:1px solid #e0e0e0;border-radius:12px;padding:12px 14px">
+        <div style="font-size:11px;color:#666">Cartes booster (historique)</div>
+        <div style="font-size:22px;font-weight:900;color:#555">${legacy}</div>
+      </div>
+    </div>
+    ${!openings.length ? `
+      <div style="padding:20px;text-align:center;color:#999;font-size:13px;line-height:1.6">
+        Aucune ouverture enregistrée pour ce manager.<br>
+        <span style="font-size:11.5px">Le journal des ouvertures a été mis en place récemment : seules les ouvertures postérieures y figurent.${legacy ? ` Le compteur « historique » (${legacy}) recense les cartes joueur encore possédées et obtenues en booster avant cela.` : ''}</span>
+      </div>` : `
+      <div style="display:flex;flex-direction:column;gap:8px">
+        ${openings.map(o => {
+          const d = o.opened_at ? new Date(o.opened_at).toLocaleString('fr') : '—'
+          const items = (o.cards || []).map(c => {
+            const col = RAR_COL[c.rarity] || '#888'
+            const lbl = c.rarity ? ` · <span style="color:${col};font-weight:700">${RAR_LBL[c.rarity] || c.rarity}</span>` : ''
+            const dup = c.is_duplicate ? ` <span style="color:#aaa">(doublon)</span>` : ''
+            return `<div style="font-size:12px;color:#333;padding:3px 0;border-bottom:1px dashed #eee">
+              ${c.name || c.card_type || '?'}${lbl}${c.note != null ? ` · note ${c.note}` : ''}${dup}
+            </div>`
+          }).join('')
+          return `<details style="border:1px solid var(--gray-200,#e0e0e0);border-radius:10px;padding:10px 12px;background:#fafafa">
+            <summary style="cursor:pointer;font-size:13px;font-weight:700;color:#1a1a1a">
+              ${o.booster_name || 'Booster'} <span style="font-weight:400;color:#777">· ${o.nb_cards || 0} carte(s) · ${d}</span>
+            </summary>
+            <div style="margin-top:8px">${items || '<div style="font-size:12px;color:#999">Contenu non détaillé.</div>'}</div>
+          </details>`
+        }).join('')}
+      </div>`}
+  `
+
+  // ── Onglets ──
+  body.innerHTML = `
+    <div style="display:flex;gap:6px;flex-wrap:wrap;border-bottom:1px solid var(--gray-200,#e0e0e0);padding-bottom:10px;margin-bottom:14px">
+      ${CARD_TABS.map((t, i) => `
+        <button class="mc-tab" data-tab="${t.key}" style="
+          border:1px solid ${i===0 ? '#1A6B3C' : 'var(--gray-200,#ddd)'};
+          background:${i===0 ? '#1A6B3C' : '#fff'};
+          color:${i===0 ? '#fff' : '#444'};
+          padding:7px 13px;border-radius:999px;font-size:12.5px;font-weight:700;cursor:pointer">
+          ${t.label} (${counts[t.key]})
+        </button>`).join('')}
+    </div>
+    ${CARD_TABS.map((t, i) => `
+      <div class="mc-pane" data-pane="${t.key}" style="display:${i===0 ? 'block' : 'none'}">${panes[t.key]}</div>
+    `).join('')}
+  `
+
+  body.querySelectorAll('.mc-tab').forEach(btn => {
+    btn.addEventListener('click', () => {
+      body.querySelectorAll('.mc-tab').forEach(b => {
+        const active = b === btn
+        b.style.background  = active ? '#1A6B3C' : '#fff'
+        b.style.color       = active ? '#fff' : '#444'
+        b.style.borderColor = active ? '#1A6B3C' : 'var(--gray-200,#ddd)'
+      })
+      body.querySelectorAll('.mc-pane').forEach(p => {
+        p.style.display = p.dataset.pane === btn.dataset.tab ? 'block' : 'none'
+      })
+    })
+  })
 }

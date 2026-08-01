@@ -409,9 +409,24 @@ function popupStyles() {
         width:100%;max-width:420px;
         box-shadow:0 8px 40px rgba(0,0,0,0.25);
         max-height:85vh;overflow-y:auto;
+        color:#1a1a1a;
+      }
+      /* Le fond de la popup est blanc alors que l'app est en thème sombre :
+         sans couleur explicite, tout le texte hérite du blanc et devient
+         illisible (blanc sur blanc). */
+      .popup-box h1, .popup-box h2, .popup-box h3, .popup-box h4,
+      .popup-box p, .popup-box div, .popup-box span, .popup-box label,
+      .popup-box b, .popup-box strong, .popup-box li {
+        color:#1a1a1a;
+      }
+      .popup-box input, .popup-box select, .popup-box textarea {
+        background:#fff;color:#1a1a1a;
+      }
+      .popup-box input::placeholder, .popup-box textarea::placeholder {
+        color:#999;
       }
       .popup-title {
-        font-size:18px;font-weight:900;margin-bottom:14px;
+        font-size:18px;font-weight:900;margin-bottom:14px;color:#1a1a1a;
       }
       .popup-btn-ok {
         flex:1;padding:12px;border-radius:10px;border:none;

@@ -745,12 +745,6 @@ function renderGame(container, game, ctx) {
   const canSubNowRender = availSubsNowRender.length > 0 && game.subsUsed < game.maxSubs
   const isBlocked = isAttack && homeMilAtt.length === 0 && extraSelectableIds.length === 0 && !canSubNowRender
 
-  // Défense sans aucun défenseur dispo mais avec des remplaçants : le joueur
-  // DOIT remplacer pour continuer. Sans indication, il restait devant un
-  // bouton "DÉFENDEZ" désactivé jusqu'au forfait.
-  const homeDefendersRender = [...(game.homeTeam.GK||[]),...(game.homeTeam.DEF||[]),...(game.homeTeam.MIL||[])].filter(p=>!p.used)
-  const mustSubInDefense = isDefense && homeDefendersRender.length === 0 && canSubNowRender
-
   // GC disponibles
   const activeGCs = game.gcCards.filter(gc => !game.usedGc.includes(gc.id))
   const boostAvail = game.boostCard && !game.boostUsed
@@ -884,8 +878,6 @@ function renderGame(container, game, ctx) {
         ? `<button id="btn-pass" style="${btnStyle};background:linear-gradient(135deg,#555,#888);border:none;color:#fff">⏭️ PASSER (plus d'attaquants)</button>`
         : isAttack
         ? `<button id="btn-action" style="${btnStyle};background:linear-gradient(135deg,#c47a00,#FFD700);border:none;color:#fff;box-shadow:0 0 18px rgba(255,215,0,0.4)" ${game.selected.length===0?'disabled':''}> ⚔️ ATTAQUEZ <span id="match-timer" style="font-weight:900"></span></button>`
-        : mustSubInDefense
-        ? `<button id="btn-force-sub" style="${btnStyle};background:linear-gradient(135deg,#0d5c8a,#87CEEB);border:none;color:#fff;box-shadow:0 0 18px rgba(135,206,235,0.5)">🔄 REMPLACEMENT OBLIGATOIRE <span id="match-timer" style="font-weight:900"></span></button>`
         : isDefense
         ? `<button id="btn-action" style="${btnStyle};background:linear-gradient(135deg,#1a4a8a,#3a7bd5);border:none;color:#fff;box-shadow:0 0 18px rgba(135,206,235,0.4)" ${game.selected.length===0?'disabled':''}>🛡️ DÉFENDEZ <span id="match-timer" style="font-weight:900"></span></button>`
         : `<div style="${btnStyle};background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1)"></div>`
@@ -1132,8 +1124,6 @@ function renderGame(container, game, ctx) {
     if (isAttack) confirmAttack(container, game, ctx)
     else if (isDefense) confirmDefense(container, game, ctx)
   })
-
-  document.getElementById('btn-force-sub')?.addEventListener('click', () => openSubstitution(container, game, ctx))
 
   document.getElementById('btn-results')?.addEventListener('click', () => finishMatch(container, game, ctx))
   document.getElementById('btn-pass')?.addEventListener('click', () => {
@@ -1447,11 +1437,17 @@ function aiTurnCore(container, game, ctx) {
   game.log.push({ text:`🤖 IA attaque : ${calc.total} (${selected.map(p=>p.name).join(', ')})`, type:'info' })
   game.modifiers.ai = {}
 
-  // Si le joueur n'a aucun défenseur dispo (GK/DEF/MIL) ET aucun remplacement possible → but auto IA
+  // Si le joueur n'a plus aucun défenseur disponible (GK/DEF/MIL non utilisés)
+  // → but automatique de l'IA.
+  //
+  // La condition testait aussi `!canSubNow` (aucun remplacement possible),
+  // mais c'était contradictoire : le remplacement est interdit pendant la
+  // phase de défense. Avec des joueurs sur le banc, la sécurité ne se
+  // déclenchait donc pas et rendait la main au joueur, qui n'avait ni joueur
+  // à sélectionner ni droit de remplacer → blocage total jusqu'au forfait.
+  // Seule la disponibilité réelle de défenseurs compte ici.
   const homeDefenders = [...(game.homeTeam.GK||[]),...(game.homeTeam.DEF||[]),...(game.homeTeam.MIL||[])].filter(p=>!p.used)
-  const availSubsNow  = (game.homeSubs||[]).filter(s => !(game.usedSubIds||[]).includes(s.cardId))
-  const canSubNow     = availSubsNow.length > 0 && game.subsUsed < game.maxSubs
-  if (homeDefenders.length === 0 && !canSubNow) {
+  if (homeDefenders.length === 0) {
     const attackerIsOnlyGK = selected.length === 1 && (selected[0]._line === 'GK' || selected[0].job === 'GK')
     if (attackerIsOnlyGK && isTeamEmpty(game.homeTeam) && game.homeScore === game.aiScore) {
       // Corner décisif : le gardien adverse monte marquer, je n'ai plus personne du tout.
@@ -1695,19 +1691,7 @@ function renderSubCard(p) {
 }
 
 function openSubstitution(container, game, ctx, preferredSubId = null, preferredOutId = null) {
-  // Le remplacement est normalement réservé à la phase d'attaque. EXCEPTION :
-  // en défense, si plus aucun GK/DEF/MIL n'est disponible, le joueur n'a
-  // strictement rien à sélectionner. Or la sécurité "but automatique" ne se
-  // déclenche que si aucun remplacement n'est possible : avec des remplaçants
-  // sur le banc, elle laissait la main au joueur... qui ne pouvait pas non
-  // plus remplacer. Résultat : blocage total puis défaite par forfait au
-  // temps écoulé. On autorise donc le remplacement dans ce cas précis.
-  const defendersLeft = [...(game.homeTeam?.GK||[]), ...(game.homeTeam?.DEF||[]), ...(game.homeTeam?.MIL||[])]
-    .filter(p => !p.used).length
-  const stuckInDefense = game.phase === 'defense' && defendersLeft === 0
-  if (game.phase !== 'attack' && !stuckInDefense) {
-    showGameToast('⏰ Remplacement uniquement avant une attaque','rgba(180,100,0,0.9)'); return
-  }
+  if (game.phase !== 'attack') { showGameToast('⏰ Remplacement uniquement avant une attaque','rgba(180,100,0,0.9)'); return }
   if (!game.usedSubIds) game.usedSubIds = []
   if (game.subsUsed >= game.maxSubs) { showGameToast(`Maximum ${game.maxSubs} remplacements atteint`,'rgba(180,30,30,0.9)'); return }
   const grayedPlayers = Object.entries(game.homeTeam).flatMap(([r,ps]) => (ps||[]).filter(p => p.used).map(p => ({...p, _line:p._line||r})))

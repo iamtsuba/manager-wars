@@ -81,13 +81,25 @@ export async function renderAuth(container, { navigate, toast }) {
               " onfocus="this.style.borderColor='#22c55e'" onblur="this.style.borderColor='rgba(255,255,255,0.12)'"
               >
             </div>
+            ${codeRequired ? `
+            <div>
+              <label style="font-size:10px;font-weight:700;color:rgba(255,255,255,0.5);display:block;margin-bottom:3px;letter-spacing:.5px">CODE D'ACCÈS</label>
+              <input type="password" id="login-access-code" placeholder="Code fourni par l'administrateur" autocomplete="off" style="
+                width:100%;box-sizing:border-box;padding:8px 12px;
+                background:rgba(255,255,255,0.06);border:1.5px solid rgba(255,255,255,0.12);
+                border-radius:10px;font-size:15px;color:#fff;outline:none;
+              " onfocus="this.style.borderColor='#22c55e'" onblur="this.style.borderColor='rgba(255,255,255,0.12)'"
+              >
+              <div id="login-access-code-status" style="font-size:10px;margin-top:3px;min-height:12px"></div>
+            </div>
+            ` : ''}
             <div id="login-error" style="font-size:12px;color:#f87171;min-height:16px;text-align:center"></div>
-            <button id="login-btn" style="
+            <button id="login-btn" ${codeRequired ? 'disabled' : ''} style="
               width:100%;padding:10px;border-radius:12px;border:none;
               background:linear-gradient(135deg,#1A6B3C,#22c55e);
-              color:#fff;font-size:15px;font-weight:900;cursor:pointer;
+              color:#fff;font-size:15px;font-weight:900;cursor:${codeRequired ? 'not-allowed' : 'pointer'};
               box-shadow:0 4px 16px rgba(34,197,94,0.3);
-              transition:transform .1s,box-shadow .1s;
+              opacity:${codeRequired ? '0.45' : '1'};transition:transform .1s,box-shadow .1s,opacity .2s;
             " onmousedown="this.style.transform='scale(0.98)'" onmouseup="this.style.transform=''" ontouchstart="this.style.transform='scale(0.98)'" ontouchend="this.style.transform=''">
               ⚽ Se connecter
             </button>
@@ -174,12 +186,45 @@ export async function renderAuth(container, { navigate, toast }) {
       document.getElementById('login-password')?.addEventListener('keydown', e => {
         if (e.key === 'Enter') document.getElementById('login-btn')?.click()
       })
+
+      // Vérification du code d'accès en temps réel (débounce) — active/désactive le bouton
+      let loginCodeCheckTimer = null
+      let loginCodeValid = false
+      if (codeRequired) {
+        document.getElementById('login-access-code')?.addEventListener('input', (e) => {
+          const val = e.target.value
+          const statusEl = document.getElementById('login-access-code-status')
+          const btn = document.getElementById('login-btn')
+          clearTimeout(loginCodeCheckTimer)
+          loginCodeValid = false
+          if (btn) { btn.disabled = true; btn.style.opacity = '0.45'; btn.style.cursor = 'not-allowed' }
+          if (!val) { if (statusEl) statusEl.textContent = ''; return }
+          if (statusEl) { statusEl.textContent = '⏳ Vérification…'; statusEl.style.color = 'rgba(255,255,255,0.4)' }
+          loginCodeCheckTimer = setTimeout(async () => {
+            const { data, error } = await supabase.rpc('check_signup_password', { input_password: val })
+            if (error) { if (statusEl) { statusEl.textContent = 'Erreur de vérification.'; statusEl.style.color = '#f87171' }; return }
+            loginCodeValid = !!data
+            if (statusEl) {
+              statusEl.textContent = loginCodeValid ? '✅ Code valide' : '❌ Code incorrect'
+              statusEl.style.color = loginCodeValid ? '#4ade80' : '#f87171'
+            }
+            if (btn) { btn.disabled = !loginCodeValid; btn.style.opacity = loginCodeValid ? '1' : '0.45'; btn.style.cursor = loginCodeValid ? 'pointer' : 'not-allowed' }
+          }, 400)
+        })
+      }
+
       document.getElementById('login-btn')?.addEventListener('click', async () => {
         const email    = document.getElementById('login-email').value.trim()
         const password = document.getElementById('login-password').value
+        const loginAccessCode = document.getElementById('login-access-code')?.value || ''
         const errEl    = document.getElementById('login-error')
         errEl.textContent = ''
         if (!email || !password) { errEl.textContent = 'Remplissez tous les champs.'; return }
+        // Double vérification côté serveur (le blocage du bouton peut être contourné côté client)
+        if (codeRequired) {
+          const { data: recheck } = await supabase.rpc('check_signup_password', { input_password: loginAccessCode })
+          if (!recheck) { errEl.textContent = 'Code d\'accès incorrect.'; return }
+        }
         const btn = document.getElementById('login-btn')
         btn.textContent = '⏳ Connexion…'; btn.disabled = true
         const { error } = await supabase.auth.signInWithPassword({ email, password })

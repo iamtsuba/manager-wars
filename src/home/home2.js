@@ -1322,7 +1322,7 @@ export async function showSoloLevelPicker(navigate, state) {
   const overlay = document.createElement('div')
   overlay.className = 'modal-overlay'
   overlay.style.zIndex = '2000'
-  overlay.innerHTML = `<div class="modal" style="max-width:420px;border-radius:18px;overflow:hidden">
+  overlay.innerHTML = `<div class="modal" style="max-width:420px;border-radius:18px">
     <div class="modal-header"><h2>Solo — Choisir un niveau</h2><button class="btn-icon" id="solo-cancel">✕</button></div>
     <div class="modal-body" style="padding:16px">
       <div id="solo-levels-list" style="display:flex;flex-direction:column;gap:10px">

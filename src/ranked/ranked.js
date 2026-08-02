@@ -155,10 +155,10 @@ export async function renderRanked(container, ctx) {
     const isCurrent  = s.key === currentKey
     const isFirstOfTier = s.division === 'III' || s.division === null
     return `
-    <div style="flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:2px;opacity:${isCurrent ? 1 : 0.4};
-      transform:${isCurrent ? 'scale(1.18)' : 'scale(1)'};transition:all 0.3s;min-width:${isFirstOfTier ? '38px' : '30px'}">
-      <div style="font-size:${isCurrent ? '22px' : isFirstOfTier ? '16px' : '11px'}">${isFirstOfTier ? s.emoji : '●'}</div>
-      <div style="font-size:${isCurrent?'8px':'7px'};color:${s.color};font-weight:${isCurrent ? '900' : '500'};letter-spacing:0.3px;white-space:nowrap">${s.division ? s.division : s.label.toUpperCase()}</div>
+    <div ${isCurrent ? 'data-current-tier="true"' : ''} style="flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:4px;opacity:${isCurrent ? 1 : 0.45};
+      transform:${isCurrent ? 'scale(1.15)' : 'scale(1)'};transition:all 0.3s;min-width:${isFirstOfTier ? '60px' : '46px'}">
+      <div style="font-size:${isCurrent ? '34px' : isFirstOfTier ? '26px' : '17px'}">${isFirstOfTier ? s.emoji : '●'}</div>
+      <div style="font-size:${isCurrent?'13px':'11px'};color:${s.color};font-weight:${isCurrent ? '900' : '600'};letter-spacing:0.4px;white-space:nowrap">${s.division ? s.division : s.label.toUpperCase()}</div>
     </div>`
   }).join('')
 
@@ -191,7 +191,7 @@ export async function renderRanked(container, ctx) {
     </div>` : ''}
 
     <!-- Tiers panorama : 16 échelons, scrollable horizontalement -->
-    <div id="tiers-scroll" style="display:flex;justify-content:flex-start;align-items:flex-end;gap:6px;padding:8px 12px;overflow-x:auto;scrollbar-width:none">
+    <div id="tiers-scroll" style="display:flex;justify-content:flex-start;align-items:flex-end;gap:10px;padding:10px 16px;overflow-x:auto;scrollbar-width:none">
       ${tiersHTML}
     </div>
 

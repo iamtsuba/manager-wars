@@ -1,4 +1,5 @@
 import { supabase } from '../../lib/supabase.js'
+import { getTier, TIERS } from '../../ranked/glicko2.js'
 
 /**
  * renderRankedSeasons — Admin page pour gérer les saisons ranked.
@@ -34,16 +35,28 @@ async function load(container, helpers) {
   const players   = (stats || []).filter(u => (u.placement_matches || 0) >= 1)
   const placed    = players.filter(u => (u.placement_matches || 0) >= 10)
 
-  // Distribution des tiers
-  const TIERS = ['bronze','silver','gold','platinum','diamond','master']
-  const TIER_LABELS = { bronze:'Bronze', silver:'Argent', gold:'Or', platinum:'Platine', diamond:'Diamant', master:'Maître' }
-  const TIER_COLORS = { bronze:'#cd7f32', silver:'#a0a0a0', gold:'#D4A017', platinum:'#00e5ff', diamond:'#5b9bd5', master:'#9b59b6' }
-  const TIER_EMOJI  = { bronze:'🥉', silver:'🥈', gold:'🥇', platinum:'💎', diamond:'🔷', master:'👑' }
+  // Distribution des tiers — calculée depuis le MMR RÉEL de chaque joueur.
+  //
+  // Auparavant elle lisait la colonne `users.rank_tier`, une valeur figée en
+  // base : elle n'était donc pas recalculée après un changement de seuils ou
+  // un décalage global de MMR, et affichait des répartitions fausses
+  // (100% Maître pour un MMR moyen de 2252, par exemple).
+  //
+  // Les libellés/couleurs sont désormais tirés de TIERS (glicko2.js), source
+  // unique déjà utilisée par le reste de l'app — plus de constantes dupliquées
+  // ici qui se désynchronisent à chaque rééquilibrage.
+  const TIER_IDS    = TIERS.map(t => t.id)
+  const TIER_LABELS = Object.fromEntries(TIERS.map(t => [t.id, t.label]))
+  const TIER_COLORS = Object.fromEntries(TIERS.map(t => [t.id, t.color]))
+  const TIER_EMOJI  = Object.fromEntries(TIERS.map(t => [t.id, t.emoji]))
 
   const tierDist = {}
-  TIERS.forEach(t => { tierDist[t] = 0 })
-  placed.forEach(u => { const t = u.rank_tier || 'bronze'; if (tierDist[t] !== undefined) tierDist[t]++ })
-  const avgMmr = placed.length ? Math.round(placed.reduce((s, u) => s + (u.mmr || 1000), 0) / placed.length) : 0
+  TIER_IDS.forEach(t => { tierDist[t] = 0 })
+  placed.forEach(u => {
+    const t = getTier(u.mmr ?? 450).id
+    if (tierDist[t] !== undefined) tierDist[t]++
+  })
+  const avgMmr = placed.length ? Math.round(placed.reduce((s, u) => s + (u.mmr || 450), 0) / placed.length) : 0
 
   function fmt(dateStr) {
     if (!dateStr) return '—'
@@ -86,7 +99,7 @@ async function load(container, helpers) {
         ${placed.length > 0 ? `
         <div style="font-size:12px;font-weight:700;margin-bottom:6px;color:var(--gray-600)">Distribution des tiers</div>
         <div style="display:flex;flex-direction:column;gap:4px">
-          ${TIERS.map(t => {
+          ${TIER_IDS.map(t => {
             const count = tierDist[t]
             const pct   = placed.length > 0 ? Math.round(count / placed.length * 100) : 0
             return `

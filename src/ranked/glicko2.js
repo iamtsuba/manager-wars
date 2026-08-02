@@ -55,6 +55,39 @@ export function getTierProgress(mmr) {
   return Math.round(((mmr - tier.min) / range) * 100)
 }
 
+// Sous-palier (III/II/I) au sein d'un tier : division du range en tiers
+// égaux. Source unique — utilisée par ranked.js ET home2.js (auparavant
+// dupliquée localement dans home2.js).
+export function getSubTier(mmr, tier) {
+  if (!isFinite(tier.max)) return ''
+  const range = tier.max - tier.min + 1
+  const third = Math.floor((mmr - tier.min) / (range / 3))
+  return ['III','II','I'][Math.min(2, Math.max(0, third))]
+}
+
+// Liste complète des échelons affichables (Bronze III -> Maître), dérivée
+// de TIERS + getSubTier. Un seul palier "Maître" (pas de subdivision).
+export const SUB_TIERS = TIERS.flatMap(t => {
+  if (t.id === 'master') return [{ ...t, division: null, key: t.id, subLabel: t.label }]
+  const range = t.max - t.min + 1
+  const step  = range / 3
+  return ['III','II','I'].map((div, i) => ({
+    ...t,
+    division: div,
+    key: `${t.id}_${div}`,
+    subLabel: `${t.label} ${div}`,
+    min: Math.round(t.min + i * step),
+    max: i === 2 ? t.max : Math.round(t.min + (i + 1) * step) - 1,
+  }))
+})
+
+// Trouve l'échelon exact (avec sous-palier) correspondant à un MMR donné
+export function getSubTierEntry(mmr) {
+  const tier = getTier(mmr)
+  const div  = getSubTier(mmr, tier)
+  return SUB_TIERS.find(s => s.id === tier.id && (s.division === (div || null))) || SUB_TIERS[0]
+}
+
 // ── Fonctions internes Glicko-2 ──────────────────────────────
 function g(phi) {
   return 1 / Math.sqrt(1 + (3 * phi * phi) / (Math.PI * Math.PI))

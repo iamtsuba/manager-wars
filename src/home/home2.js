@@ -2,7 +2,7 @@ import { supabase } from '../lib/supabase.js'
 import { isFeatureEnabled, showFeatureDisabledPopup } from '../lib/featureFlags.js'
 import { showPendingPopup } from '../friends/friends.js'
 import { stopBGM } from '../lib/sound.js'
-import { getTier, getTierProgress } from '../ranked/glicko2.js'
+import { getTier, getTierProgress, getSubTier } from '../ranked/glicko2.js'
 import { claimPendingReward, showBoosterAnimation } from '../boosters/boosters.js'
 import { renderPlayerCard } from '../components/player-card.js'
 
@@ -509,12 +509,7 @@ function timeAgo(iso) {
   return new Date(iso).toLocaleDateString('fr-FR', { day:'2-digit', month:'short' })
 }
 
-function getSubTier(mmr, tier) {
-  if (!isFinite(tier.max)) return ''
-  const range = tier.max - tier.min + 1
-  const third = Math.floor((mmr - tier.min) / (range / 3))
-  return ['III','II','I'][Math.min(2, Math.max(0, third))]
-}
+// getSubTier centralisée dans ranked/glicko2.js (source unique)
 
 async function fetchTopRanking(myId) {
   const { data: top } = await supabase

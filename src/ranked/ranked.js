@@ -11,7 +11,7 @@
 
 import { supabase } from '../lib/supabase.js'
 import { hideV2ChromeNow } from '../home/home2.js'
-import { getTier, getTierProgress, TIERS, previewDelta } from './glicko2.js'
+import { getTier, getTierProgress, getSubTier, SUB_TIERS, TIERS, previewDelta } from './glicko2.js'
 
 export async function renderRanked(container, ctx) {
   const { state, navigate, toast } = ctx
@@ -123,10 +123,16 @@ export async function renderRanked(container, ctx) {
   const remaining   = Math.max(0, 10 - placed)
   const tier        = getTier(mmr)
   const progress    = getTierProgress(mmr)
+  const subDiv      = getSubTier(mmr, tier)
+  const tierLabel   = tier.label + (subDiv ? ' ' + subDiv : '')
 
   // Trouver le tier suivant
   const tierIdx  = TIERS.findIndex(t => t.id === tier.id)
   const nextTier = TIERS[tierIdx + 1] || null
+
+  // Échelon exact courant (avec sous-palier), pour surligner le bon badge
+  // dans la frise des 16 échelons ci-dessous.
+  const currentKey = tier.id === 'master' ? 'master' : `${tier.id}_${subDiv}`
 
   // Couleur de fond par tier
   const TIER_GRADIENTS = {
@@ -141,14 +147,20 @@ export async function renderRanked(container, ctx) {
   const totalRanked = (profile.ranked_wins||0) + (profile.ranked_losses||0) + (profile.ranked_draws||0)
   const winrate     = totalRanked > 0 ? Math.round((profile.ranked_wins||0) / totalRanked * 100) : 0
 
-  // Générer les badges des tiers
-  const tiersHTML = TIERS.map(t => `
-    <div style="display:flex;flex-direction:column;align-items:center;gap:2px;opacity:${tier.id === t.id ? 1 : 0.35};
-      transform:${tier.id === t.id ? 'scale(1.15)' : 'scale(1)'};transition:all 0.3s">
-      <div style="font-size:${tier.id === t.id ? '28px' : '20px'}">${t.emoji}</div>
-      <div style="font-size:9px;color:${t.color};font-weight:${tier.id === t.id ? '900' : '400'};letter-spacing:0.5px">${t.label.toUpperCase()}</div>
-    </div>
-  `).join('')
+  // Frise complète des 16 échelons (Bronze III -> Maître), scrollable
+  // horizontalement. Seul le premier échelon de chaque tier principal
+  // affiche l'emoji (les autres n'affichent qu'un point + le nombre
+  // romain), pour rester lisible sur mobile malgré les 16 entrées.
+  const tiersHTML = SUB_TIERS.map(s => {
+    const isCurrent  = s.key === currentKey
+    const isFirstOfTier = s.division === 'III' || s.division === null
+    return `
+    <div style="flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:2px;opacity:${isCurrent ? 1 : 0.4};
+      transform:${isCurrent ? 'scale(1.18)' : 'scale(1)'};transition:all 0.3s;min-width:${isFirstOfTier ? '38px' : '30px'}">
+      <div style="font-size:${isCurrent ? '22px' : isFirstOfTier ? '16px' : '11px'}">${isFirstOfTier ? s.emoji : '●'}</div>
+      <div style="font-size:${isCurrent?'8px':'7px'};color:${s.color};font-weight:${isCurrent ? '900' : '500'};letter-spacing:0.3px;white-space:nowrap">${s.division ? s.division : s.label.toUpperCase()}</div>
+    </div>`
+  }).join('')
 
   container.innerHTML = `
   <div style="min-height:100%;background:${TIER_GRADIENTS[tier.id]};padding:16px;overflow-y:auto;display:flex;flex-direction:column;gap:16px">
@@ -162,7 +174,7 @@ export async function renderRanked(container, ctx) {
     <!-- Bandeau tier -->
     <div style="background:rgba(0,0,0,0.35);border-radius:20px;padding:20px 16px;text-align:center;border:2px solid ${tier.color}40">
       <div style="font-size:52px;margin-bottom:4px">${tier.emoji}</div>
-      <div style="font-size:22px;font-weight:900;color:${tier.color};letter-spacing:3px;text-transform:uppercase">${tier.label}</div>
+      <div style="font-size:22px;font-weight:900;color:${tier.color};letter-spacing:3px;text-transform:uppercase">${tierLabel}</div>
     </div>
 
     <!-- Progression bar -->
@@ -178,8 +190,8 @@ export async function renderRanked(container, ctx) {
       <div style="text-align:center;font-size:11px;color:rgba(255,255,255,0.4);margin-top:4px">${progress}% vers ${nextTier ? nextTier.label : 'Maître'}</div>
     </div>` : ''}
 
-    <!-- Tiers panorama -->
-    <div style="display:flex;justify-content:space-around;align-items:flex-end;padding:8px 4px">
+    <!-- Tiers panorama : 16 échelons, scrollable horizontalement -->
+    <div id="tiers-scroll" style="display:flex;justify-content:flex-start;align-items:flex-end;gap:6px;padding:8px 12px;overflow-x:auto;scrollbar-width:none">
       ${tiersHTML}
     </div>
 
@@ -234,6 +246,16 @@ export async function renderRanked(container, ctx) {
   // Events
   document.getElementById('ranked-back')?.addEventListener('click', () => navigate('home'))
   document.getElementById('ranked-leaderboard-btn')?.addEventListener('click', () => navigate('rankings', { tab: 'ranked' }))
+
+  // Centrer automatiquement l'échelon courant dans la frise scrollable
+  // (sinon un joueur en Diamant atterrit sur "Bronze III" tout à gauche)
+  requestAnimationFrame(() => {
+    const wrap = document.getElementById('tiers-scroll')
+    const cur  = wrap?.querySelector('[data-current-tier]')
+    if (wrap && cur) {
+      wrap.scrollLeft = cur.offsetLeft - wrap.clientWidth / 2 + cur.clientWidth / 2
+    }
+  })
   document.getElementById('ranked-play-btn')?.addEventListener('click', () => {
     // Lance le matchmaking ranked en passant le mode et les données MMR
     hideV2ChromeNow()

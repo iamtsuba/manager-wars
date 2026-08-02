@@ -735,7 +735,7 @@ export async function renderHome2(container, { state, navigate, toast, openModal
 
   const ICON = import.meta.env.BASE_URL + 'icons/'
   ensureV2Chrome(navigate, p, 'home2', ICON, toast)
-  const mmr    = p.mmr ?? 1000
+  const mmr    = p.mmr ?? 450
   const tier   = getTier(mmr)
   const sub    = getSubTier(mmr, tier)
   const prog   = getTierProgress(mmr)

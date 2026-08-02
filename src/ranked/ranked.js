@@ -32,13 +32,13 @@ export async function renderRanked(container, ctx) {
 
   // Si aucune saison active : mode ranked suspendu
   if (!season) {
-    const mmr      = profile.mmr ?? 1000
+    const mmr      = profile.mmr ?? 450
     const tier     = getTier(mmr)
     const progress = getTierProgress(mmr)
 
     // Aperçu du MMR recalculé pour la saison suivante (reset doux : compression
-    // à 50% vers la moyenne 1000, comme les jeux compétitifs classiques)
-    const nextMmr  = Math.round(1000 + (mmr - 1000) * 0.5)
+    // à 50% vers 450, aligné sur admin_start_new_season / admin_launch_season)
+    const nextMmr  = Math.round(450 + (mmr - 450) * 0.5)
     const nextTierPreview = getTier(nextMmr)
 
     const { data: top100 } = await supabase
@@ -75,7 +75,7 @@ export async function renderRanked(container, ctx) {
         <div style="font-size:13px;font-weight:700;color:#fff;margin-bottom:8px">🏆 Classement général — Top 100</div>
         <div style="display:flex;flex-direction:column;gap:6px;max-height:320px;overflow-y:auto">
           ${(top100||[]).map((u, i) => {
-            const t = getTier(u.mmr ?? 1000)
+            const t = getTier(u.mmr ?? 450)
             const isMe = u.id === profile.id
             return `<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:10px;
               background:${isMe?'rgba(212,160,23,0.15)':'rgba(0,0,0,0.25)'};
@@ -86,7 +86,7 @@ export async function renderRanked(container, ctx) {
                 <div style="font-size:13px;font-weight:700;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${u.pseudo}</div>
                 <div style="font-size:10px;color:rgba(255,255,255,0.4)">${u.club_name||'—'}</div>
               </div>
-              <div style="font-size:13px;font-weight:900;color:${t.color}">${u.mmr ?? 1000}</div>
+              <div style="font-size:13px;font-weight:900;color:${t.color}">${u.mmr ?? 450}</div>
             </div>`
           }).join('') || '<div style="text-align:center;color:rgba(255,255,255,0.4);font-size:12px;padding:16px">Aucun classement disponible.</div>'}
         </div>
@@ -115,7 +115,7 @@ export async function renderRanked(container, ctx) {
     return
   }
 
-  const mmr        = profile.mmr ?? 1000
+  const mmr        = profile.mmr ?? 450
   const rd         = profile.mmr_deviation ?? 350
   const sigma      = profile.mmr_volatility ?? 0.06
   const placed     = (profile.placement_matches ?? 0)

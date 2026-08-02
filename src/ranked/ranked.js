@@ -163,7 +163,26 @@ export async function renderRanked(container, ctx) {
   }).join('')
 
   container.innerHTML = `
-  <div style="min-height:100%;background:${TIER_GRADIENTS[tier.id]};padding:16px;overflow-y:auto;display:flex;flex-direction:column;gap:16px">
+  <style>
+    /* Sur PC, la fenêtre du navigateur offre souvent MOINS de hauteur que
+       la hauteur dynamique (100dvh) d'un mobile — le contenu, dimensionné
+       pour mobile, débordait donc et forçait un scroll pour voir le bouton
+       "Jouer en Ranked". On resserre les espacements verticaux au-delà de
+       768px, sans rien changer sur mobile. */
+    @media (min-width: 768px) {
+      .rk-root      { padding:10px 16px !important; gap:10px !important }
+      .rk-tier-band { padding:12px 16px !important }
+      .rk-tier-emoji{ font-size:36px !important; margin-bottom:0 !important }
+      .rk-tier-label{ font-size:18px !important }
+      .rk-progress  { padding:8px 16px !important }
+      .rk-tiers-scroll { padding:6px 16px !important }
+      .rk-stats-block  { padding:10px !important }
+      .rk-play-btn  { padding:13px !important; font-size:16px !important }
+      .rk-leader-btn{ padding:9px !important }
+      .rk-btns-wrap { gap:6px !important; padding-top:2px !important }
+    }
+  </style>
+  <div class="rk-root" style="min-height:100%;background:${TIER_GRADIENTS[tier.id]};padding:16px;overflow-y:auto;display:flex;flex-direction:column;gap:16px">
 
     <!-- Header -->
     <div style="display:flex;align-items:center;gap:10px">
@@ -172,14 +191,14 @@ export async function renderRanked(container, ctx) {
     </div>
 
     <!-- Bandeau tier -->
-    <div style="background:rgba(0,0,0,0.35);border-radius:20px;padding:20px 16px;text-align:center;border:2px solid ${tier.color}40">
-      <div style="font-size:52px;margin-bottom:4px">${tier.emoji}</div>
-      <div style="font-size:22px;font-weight:900;color:${tier.color};letter-spacing:3px;text-transform:uppercase">${tierLabel}</div>
+    <div class="rk-tier-band" style="background:rgba(0,0,0,0.35);border-radius:20px;padding:20px 16px;text-align:center;border:2px solid ${tier.color}40">
+      <div class="rk-tier-emoji" style="font-size:52px;margin-bottom:4px">${tier.emoji}</div>
+      <div class="rk-tier-label" style="font-size:22px;font-weight:900;color:${tier.color};letter-spacing:3px;text-transform:uppercase">${tierLabel}</div>
     </div>
 
     <!-- Progression bar -->
     ${tier.id !== 'master' ? `
-    <div style="background:rgba(0,0,0,0.3);border-radius:12px;padding:12px 16px">
+    <div class="rk-progress" style="background:rgba(0,0,0,0.3);border-radius:12px;padding:12px 16px">
       <div style="display:flex;justify-content:space-between;font-size:11px;color:rgba(255,255,255,0.5);margin-bottom:6px">
         <span>${tier.emoji} ${tier.label}</span>
         ${nextTier ? `<span>${nextTier.emoji} ${nextTier.label}</span>` : ''}
@@ -190,19 +209,19 @@ export async function renderRanked(container, ctx) {
       <div style="text-align:center;font-size:11px;color:rgba(255,255,255,0.4);margin-top:4px">${progress}% vers ${nextTier ? nextTier.label : 'Maître'}</div>
     </div>` : ''}
 
-    <!-- Tiers panorama : 16 échelons, scrollable horizontalement -->
-    <div id="tiers-scroll" style="display:flex;justify-content:flex-start;align-items:flex-end;gap:10px;padding:10px 16px;overflow-x:auto;scrollbar-width:none">
+    <!-- Tiers panorama : 16 échelons, répartis sur toute la largeur (scrollable si ça déborde) -->
+    <div id="tiers-scroll" class="rk-tiers-scroll" style="display:flex;justify-content:space-between;align-items:flex-end;gap:10px;padding:10px 16px;overflow-x:auto;scrollbar-width:none">
       ${tiersHTML}
     </div>
 
     <!-- Placement / Stats -->
     ${isPlacement ? `
-    <div style="background:rgba(255,215,0,0.1);border:1.5px solid #D4A017;border-radius:14px;padding:14px;text-align:center">
+    <div class="rk-stats-block" style="background:rgba(255,215,0,0.1);border:1.5px solid #D4A017;border-radius:14px;padding:14px;text-align:center">
       <div style="font-size:13px;color:#D4A017;font-weight:700">🎯 Matchs de placement</div>
       <div style="font-size:28px;font-weight:900;color:#fff;margin:4px 0">${placed}/10</div>
       <div style="font-size:12px;color:rgba(255,255,255,0.5)">Encore ${remaining} match${remaining > 1 ? 's' : ''} — gains et pertes ×2</div>
     </div>` : `
-    <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px">
+    <div class="rk-stats-block" style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px">
       <div style="background:rgba(0,0,0,0.3);border-radius:12px;padding:10px;text-align:center">
         <div style="font-size:20px;font-weight:900;color:#1A6B3C">${profile.ranked_wins||0}</div>
         <div style="font-size:10px;color:rgba(255,255,255,0.5)">Victoires</div>
@@ -229,14 +248,14 @@ export async function renderRanked(container, ctx) {
     </div>` : ''}
 
     <!-- Bouton jouer -->
-    <div style="display:flex;flex-direction:column;gap:10px;margin-top:auto;padding-top:8px">
-      <button id="ranked-play-btn" style="width:100%;padding:18px;border-radius:16px;border:none;
+    <div class="rk-btns-wrap" style="display:flex;flex-direction:column;gap:10px;margin-top:auto;padding-top:8px">
+      <button id="ranked-play-btn" class="rk-play-btn" style="width:100%;padding:18px;border-radius:16px;border:none;
         background:linear-gradient(135deg,${tier.color},${tier.color}99);
         color:#000;font-size:18px;font-weight:900;cursor:pointer;letter-spacing:1px;
         box-shadow:0 4px 20px ${tier.color}60;text-transform:uppercase">
         ⚽ Jouer en Ranked
       </button>
-      <button id="ranked-leaderboard-btn" style="width:100%;padding:12px;border-radius:12px;border:1.5px solid rgba(255,255,255,0.2);
+      <button id="ranked-leaderboard-btn" class="rk-leader-btn" style="width:100%;padding:12px;border-radius:12px;border:1.5px solid rgba(255,255,255,0.2);
         background:transparent;color:rgba(255,255,255,0.7);font-size:14px;font-weight:600;cursor:pointer">
         🏆 Classement Ranked
       </button>

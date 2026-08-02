@@ -2121,7 +2121,7 @@ async function finishMatch(container, game, ctx) {
     try {
       const { data: myProfile } = await supabase.from('users').select('mmr, mmr_deviation, mmr_volatility, placement_matches').eq('id', state.profile.id).single()
       if (myProfile) {
-        const myMmr = myProfile.mmr ?? 1000
+        const myMmr = myProfile.mmr ?? 450
         const myRd  = myProfile.mmr_deviation ?? 350
         const myV   = myProfile.mmr_volatility ?? 0.06
         const score = isWin ? 1 : isDraw ? 0.5 : 0
@@ -2202,7 +2202,7 @@ async function finishMatch(container, game, ctx) {
       ctx.navigate('match', {
         matchMode : 'ranked',
         rankedData: {
-          mmr: p?.mmr ?? 1000, rd: p?.mmr_deviation ?? 350, sigma: p?.mmr_volatility ?? 0.06,
+          mmr: p?.mmr ?? 450, rd: p?.mmr_deviation ?? 350, sigma: p?.mmr_volatility ?? 0.06,
           isPlacement: (p?.placement_matches ?? 0) < 10,
         },
       })

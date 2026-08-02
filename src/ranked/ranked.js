@@ -11,7 +11,7 @@
 
 import { supabase } from '../lib/supabase.js'
 import { hideV2ChromeNow } from '../home/home2.js'
-import { getTier, getTierProgress, TIERS, previewDelta } from './glicko2.js'
+import { getTier, getTierProgress, getSubTier, SUB_TIERS, TIERS, previewDelta } from './glicko2.js'
 
 export async function renderRanked(container, ctx) {
   const { state, navigate, toast } = ctx
@@ -32,13 +32,13 @@ export async function renderRanked(container, ctx) {
 
   // Si aucune saison active : mode ranked suspendu
   if (!season) {
-    const mmr      = profile.mmr ?? 1000
+    const mmr      = profile.mmr ?? 450
     const tier     = getTier(mmr)
     const progress = getTierProgress(mmr)
 
     // Aperçu du MMR recalculé pour la saison suivante (reset doux : compression
-    // à 50% vers la moyenne 1000, comme les jeux compétitifs classiques)
-    const nextMmr  = Math.round(1000 + (mmr - 1000) * 0.5)
+    // à 50% vers 450, aligné sur admin_start_new_season / admin_launch_season)
+    const nextMmr  = Math.round(450 + (mmr - 450) * 0.5)
     const nextTierPreview = getTier(nextMmr)
 
     const { data: top100 } = await supabase
@@ -75,7 +75,7 @@ export async function renderRanked(container, ctx) {
         <div style="font-size:13px;font-weight:700;color:#fff;margin-bottom:8px">🏆 Classement général — Top 100</div>
         <div style="display:flex;flex-direction:column;gap:6px;max-height:320px;overflow-y:auto">
           ${(top100||[]).map((u, i) => {
-            const t = getTier(u.mmr ?? 1000)
+            const t = getTier(u.mmr ?? 450)
             const isMe = u.id === profile.id
             return `<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:10px;
               background:${isMe?'rgba(212,160,23,0.15)':'rgba(0,0,0,0.25)'};
@@ -86,7 +86,7 @@ export async function renderRanked(container, ctx) {
                 <div style="font-size:13px;font-weight:700;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${u.pseudo}</div>
                 <div style="font-size:10px;color:rgba(255,255,255,0.4)">${u.club_name||'—'}</div>
               </div>
-              <div style="font-size:13px;font-weight:900;color:${t.color}">${u.mmr ?? 1000}</div>
+              <div style="font-size:13px;font-weight:900;color:${t.color}">${u.mmr ?? 450}</div>
             </div>`
           }).join('') || '<div style="text-align:center;color:rgba(255,255,255,0.4);font-size:12px;padding:16px">Aucun classement disponible.</div>'}
         </div>
@@ -115,7 +115,7 @@ export async function renderRanked(container, ctx) {
     return
   }
 
-  const mmr        = profile.mmr ?? 1000
+  const mmr        = profile.mmr ?? 450
   const rd         = profile.mmr_deviation ?? 350
   const sigma      = profile.mmr_volatility ?? 0.06
   const placed     = (profile.placement_matches ?? 0)
@@ -123,10 +123,16 @@ export async function renderRanked(container, ctx) {
   const remaining   = Math.max(0, 10 - placed)
   const tier        = getTier(mmr)
   const progress    = getTierProgress(mmr)
+  const subDiv      = getSubTier(mmr, tier)
+  const tierLabel   = tier.label + (subDiv ? ' ' + subDiv : '')
 
   // Trouver le tier suivant
   const tierIdx  = TIERS.findIndex(t => t.id === tier.id)
   const nextTier = TIERS[tierIdx + 1] || null
+
+  // Échelon exact courant (avec sous-palier), pour surligner le bon badge
+  // dans la frise des 16 échelons ci-dessous.
+  const currentKey = tier.id === 'master' ? 'master' : `${tier.id}_${subDiv}`
 
   // Couleur de fond par tier
   const TIER_GRADIENTS = {
@@ -141,17 +147,42 @@ export async function renderRanked(container, ctx) {
   const totalRanked = (profile.ranked_wins||0) + (profile.ranked_losses||0) + (profile.ranked_draws||0)
   const winrate     = totalRanked > 0 ? Math.round((profile.ranked_wins||0) / totalRanked * 100) : 0
 
-  // Générer les badges des tiers
-  const tiersHTML = TIERS.map(t => `
-    <div style="display:flex;flex-direction:column;align-items:center;gap:2px;opacity:${tier.id === t.id ? 1 : 0.35};
-      transform:${tier.id === t.id ? 'scale(1.15)' : 'scale(1)'};transition:all 0.3s">
-      <div style="font-size:${tier.id === t.id ? '28px' : '20px'}">${t.emoji}</div>
-      <div style="font-size:9px;color:${t.color};font-weight:${tier.id === t.id ? '900' : '400'};letter-spacing:0.5px">${t.label.toUpperCase()}</div>
-    </div>
-  `).join('')
+  // Frise complète des 16 échelons (Bronze III -> Maître), scrollable
+  // horizontalement. Seul le premier échelon de chaque tier principal
+  // affiche l'emoji (les autres n'affichent qu'un point + le nombre
+  // romain), pour rester lisible sur mobile malgré les 16 entrées.
+  const tiersHTML = SUB_TIERS.map(s => {
+    const isCurrent  = s.key === currentKey
+    const isFirstOfTier = s.division === 'III' || s.division === null
+    return `
+    <div ${isCurrent ? 'data-current-tier="true"' : ''} style="flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:4px;opacity:${isCurrent ? 1 : 0.45};
+      transform:${isCurrent ? 'scale(1.15)' : 'scale(1)'};transition:all 0.3s;min-width:${isFirstOfTier ? '60px' : '46px'}">
+      <div style="font-size:${isCurrent ? '34px' : isFirstOfTier ? '26px' : '17px'}">${isFirstOfTier ? s.emoji : '●'}</div>
+      <div style="font-size:${isCurrent?'13px':'11px'};color:${s.color};font-weight:${isCurrent ? '900' : '600'};letter-spacing:0.4px;white-space:nowrap">${s.division ? s.division : s.label.toUpperCase()}</div>
+    </div>`
+  }).join('')
 
   container.innerHTML = `
-  <div style="min-height:100%;background:${TIER_GRADIENTS[tier.id]};padding:16px;overflow-y:auto;display:flex;flex-direction:column;gap:16px">
+  <style>
+    /* Sur PC, la fenêtre du navigateur offre souvent MOINS de hauteur que
+       la hauteur dynamique (100dvh) d'un mobile — le contenu, dimensionné
+       pour mobile, débordait donc et forçait un scroll pour voir le bouton
+       "Jouer en Ranked". On resserre les espacements verticaux au-delà de
+       768px, sans rien changer sur mobile. */
+    @media (min-width: 768px) {
+      .rk-root      { padding:10px 16px !important; gap:10px !important }
+      .rk-tier-band { padding:12px 16px !important }
+      .rk-tier-emoji{ font-size:36px !important; margin-bottom:0 !important }
+      .rk-tier-label{ font-size:18px !important }
+      .rk-progress  { padding:8px 16px !important }
+      .rk-tiers-scroll { padding:6px 16px !important }
+      .rk-stats-block  { padding:10px !important }
+      .rk-play-btn  { padding:13px !important; font-size:16px !important }
+      .rk-leader-btn{ padding:9px !important }
+      .rk-btns-wrap { gap:6px !important; padding-top:2px !important }
+    }
+  </style>
+  <div class="rk-root" style="min-height:100%;background:${TIER_GRADIENTS[tier.id]};padding:16px;overflow-y:auto;display:flex;flex-direction:column;gap:16px">
 
     <!-- Header -->
     <div style="display:flex;align-items:center;gap:10px">
@@ -160,14 +191,14 @@ export async function renderRanked(container, ctx) {
     </div>
 
     <!-- Bandeau tier -->
-    <div style="background:rgba(0,0,0,0.35);border-radius:20px;padding:20px 16px;text-align:center;border:2px solid ${tier.color}40">
-      <div style="font-size:52px;margin-bottom:4px">${tier.emoji}</div>
-      <div style="font-size:22px;font-weight:900;color:${tier.color};letter-spacing:3px;text-transform:uppercase">${tier.label}</div>
+    <div class="rk-tier-band" style="background:rgba(0,0,0,0.35);border-radius:20px;padding:20px 16px;text-align:center;border:2px solid ${tier.color}40">
+      <div class="rk-tier-emoji" style="font-size:52px;margin-bottom:4px">${tier.emoji}</div>
+      <div class="rk-tier-label" style="font-size:22px;font-weight:900;color:${tier.color};letter-spacing:3px;text-transform:uppercase">${tierLabel}</div>
     </div>
 
     <!-- Progression bar -->
     ${tier.id !== 'master' ? `
-    <div style="background:rgba(0,0,0,0.3);border-radius:12px;padding:12px 16px">
+    <div class="rk-progress" style="background:rgba(0,0,0,0.3);border-radius:12px;padding:12px 16px">
       <div style="display:flex;justify-content:space-between;font-size:11px;color:rgba(255,255,255,0.5);margin-bottom:6px">
         <span>${tier.emoji} ${tier.label}</span>
         ${nextTier ? `<span>${nextTier.emoji} ${nextTier.label}</span>` : ''}
@@ -178,19 +209,19 @@ export async function renderRanked(container, ctx) {
       <div style="text-align:center;font-size:11px;color:rgba(255,255,255,0.4);margin-top:4px">${progress}% vers ${nextTier ? nextTier.label : 'Maître'}</div>
     </div>` : ''}
 
-    <!-- Tiers panorama -->
-    <div style="display:flex;justify-content:space-around;align-items:flex-end;padding:8px 4px">
+    <!-- Tiers panorama : 16 échelons, répartis sur toute la largeur (scrollable si ça déborde) -->
+    <div id="tiers-scroll" class="rk-tiers-scroll" style="display:flex;justify-content:space-between;align-items:flex-end;gap:10px;padding:10px 16px;overflow-x:auto;scrollbar-width:none">
       ${tiersHTML}
     </div>
 
     <!-- Placement / Stats -->
     ${isPlacement ? `
-    <div style="background:rgba(255,215,0,0.1);border:1.5px solid #D4A017;border-radius:14px;padding:14px;text-align:center">
+    <div class="rk-stats-block" style="background:rgba(255,215,0,0.1);border:1.5px solid #D4A017;border-radius:14px;padding:14px;text-align:center">
       <div style="font-size:13px;color:#D4A017;font-weight:700">🎯 Matchs de placement</div>
       <div style="font-size:28px;font-weight:900;color:#fff;margin:4px 0">${placed}/10</div>
       <div style="font-size:12px;color:rgba(255,255,255,0.5)">Encore ${remaining} match${remaining > 1 ? 's' : ''} — gains et pertes ×2</div>
     </div>` : `
-    <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px">
+    <div class="rk-stats-block" style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px">
       <div style="background:rgba(0,0,0,0.3);border-radius:12px;padding:10px;text-align:center">
         <div style="font-size:20px;font-weight:900;color:#1A6B3C">${profile.ranked_wins||0}</div>
         <div style="font-size:10px;color:rgba(255,255,255,0.5)">Victoires</div>
@@ -217,14 +248,14 @@ export async function renderRanked(container, ctx) {
     </div>` : ''}
 
     <!-- Bouton jouer -->
-    <div style="display:flex;flex-direction:column;gap:10px;margin-top:auto;padding-top:8px">
-      <button id="ranked-play-btn" style="width:100%;padding:18px;border-radius:16px;border:none;
+    <div class="rk-btns-wrap" style="display:flex;flex-direction:column;gap:10px;margin-top:auto;padding-top:8px">
+      <button id="ranked-play-btn" class="rk-play-btn" style="width:100%;padding:18px;border-radius:16px;border:none;
         background:linear-gradient(135deg,${tier.color},${tier.color}99);
         color:#000;font-size:18px;font-weight:900;cursor:pointer;letter-spacing:1px;
         box-shadow:0 4px 20px ${tier.color}60;text-transform:uppercase">
         ⚽ Jouer en Ranked
       </button>
-      <button id="ranked-leaderboard-btn" style="width:100%;padding:12px;border-radius:12px;border:1.5px solid rgba(255,255,255,0.2);
+      <button id="ranked-leaderboard-btn" class="rk-leader-btn" style="width:100%;padding:12px;border-radius:12px;border:1.5px solid rgba(255,255,255,0.2);
         background:transparent;color:rgba(255,255,255,0.7);font-size:14px;font-weight:600;cursor:pointer">
         🏆 Classement Ranked
       </button>
@@ -234,6 +265,16 @@ export async function renderRanked(container, ctx) {
   // Events
   document.getElementById('ranked-back')?.addEventListener('click', () => navigate('home'))
   document.getElementById('ranked-leaderboard-btn')?.addEventListener('click', () => navigate('rankings', { tab: 'ranked' }))
+
+  // Centrer automatiquement l'échelon courant dans la frise scrollable
+  // (sinon un joueur en Diamant atterrit sur "Bronze III" tout à gauche)
+  requestAnimationFrame(() => {
+    const wrap = document.getElementById('tiers-scroll')
+    const cur  = wrap?.querySelector('[data-current-tier]')
+    if (wrap && cur) {
+      wrap.scrollLeft = cur.offsetLeft - wrap.clientWidth / 2 + cur.clientWidth / 2
+    }
+  })
   document.getElementById('ranked-play-btn')?.addEventListener('click', () => {
     // Lance le matchmaking ranked en passant le mode et les données MMR
     hideV2ChromeNow()

@@ -2,7 +2,7 @@ import { supabase } from '../lib/supabase.js'
 import { isFeatureEnabled, showFeatureDisabledPopup } from '../lib/featureFlags.js'
 import { showPendingPopup } from '../friends/friends.js'
 import { stopBGM } from '../lib/sound.js'
-import { getTier, getTierProgress } from '../ranked/glicko2.js'
+import { getTier, getTierProgress, getSubTier } from '../ranked/glicko2.js'
 import { claimPendingReward, showBoosterAnimation } from '../boosters/boosters.js'
 import { renderPlayerCard } from '../components/player-card.js'
 
@@ -509,12 +509,7 @@ function timeAgo(iso) {
   return new Date(iso).toLocaleDateString('fr-FR', { day:'2-digit', month:'short' })
 }
 
-function getSubTier(mmr, tier) {
-  if (!isFinite(tier.max)) return ''
-  const range = tier.max - tier.min + 1
-  const third = Math.floor((mmr - tier.min) / (range / 3))
-  return ['III','II','I'][Math.min(2, Math.max(0, third))]
-}
+// getSubTier centralisée dans ranked/glicko2.js (source unique)
 
 async function fetchTopRanking(myId) {
   const { data: top } = await supabase
@@ -740,7 +735,7 @@ export async function renderHome2(container, { state, navigate, toast, openModal
 
   const ICON = import.meta.env.BASE_URL + 'icons/'
   ensureV2Chrome(navigate, p, 'home2', ICON, toast)
-  const mmr    = p.mmr ?? 1000
+  const mmr    = p.mmr ?? 450
   const tier   = getTier(mmr)
   const sub    = getSubTier(mmr, tier)
   const prog   = getTierProgress(mmr)
@@ -753,12 +748,19 @@ export async function renderHome2(container, { state, navigate, toast, openModal
     supabase.from('pending_rewards').select('*', { count: 'exact', head: true }).eq('user_id', p.id).eq('claimed', false)
   ])
 
-  const rankRowHTML = (u, i) => `
+  const rankRowHTML = (u, i) => {
+    const uTier = getTier(u.mmr ?? 0)
+    const uSub  = getSubTier(u.mmr ?? 0, uTier)
+    return `
     <div class="rk-row ${u.id === p.id ? 'rk-row-me' : ''}">
       <div class="rk-pos ${i < 3 ? 'rk-pos-top' + (i+1) : ''}">${i < 3 ? ['🥇','🥈','🥉'][i] : i+1}</div>
       <div class="rk-name ${u.id === p.id ? 'rk-name-me' : ''}">${u.pseudo}</div>
-      <div class="rk-rp">${(u.mmr ?? 0).toLocaleString('fr')} RP</div>
+      <div class="rk-rp-block">
+        <div class="rk-rp-tier" style="color:${uTier.color}">${uTier.emoji} ${uTier.label.toUpperCase()}${uSub ? ' ' + uSub : ''}</div>
+        <div class="rk-rp">${(u.mmr ?? 0).toLocaleString('fr')} MMR</div>
+      </div>
     </div>`
+  }
 
   const newsItemHTML = (n) => `
     <div class="news-item">
@@ -870,7 +872,9 @@ export async function renderHome2(container, { state, navigate, toast, openModal
     .rk-pos-top3 { background:#cd7f32; color:#000; }
     .rk-name { flex:1; min-width:0; font-size:15px; font-weight:700; color: var(--tile-fg-on-page); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
     .rk-name-me { color: var(--green-light); }
-    .rk-rp { font-size: 14px; font-weight:900; color: var(--tile-fg-dim); flex-shrink:0; }
+    .rk-rp-block { text-align:right; flex-shrink:0; }
+    .rk-rp-tier { font-size:12px; font-weight:900; letter-spacing:0.3px; white-space:nowrap; }
+    .rk-rp { font-size: 11px; font-weight:600; color: var(--tile-fg-dim); flex-shrink:0; margin-top:1px; }
     .ranking-widget-cta {
       display:flex; align-items:center; justify-content:center; gap:8px;
       width:100%; margin-top:8px; background: rgba(255,255,255,0.05); border:1px solid var(--tile-border);
@@ -999,10 +1003,8 @@ export async function renderHome2(container, { state, navigate, toast, openModal
             <div class="ranking-widget-header"><h4>CLASSEMENT</h4><a id="nav-rankings-link">Voir plus</a></div>
             ${topUsers.map((u,i) => rankRowHTML(u,i)).join('')}
             ${(!iAmInTop && myPosition) ? `
-              <div class="rk-row rk-row-me" style="border-top:1px solid var(--tile-border);margin-top:2px;padding-top:8px">
-                <div class="rk-pos">${myPosition}</div>
-                <div class="rk-name rk-name-me">${p.pseudo}</div>
-                <div class="rk-rp">${mmr.toLocaleString('fr')} RP</div>
+              <div style="border-top:1px solid var(--tile-border);margin-top:2px;padding-top:8px">
+                ${rankRowHTML({ id: p.id, pseudo: p.pseudo, mmr }, myPosition - 1)}
               </div>` : ''}
             <button class="ranking-widget-cta" id="nav-rankings-cta">📊 Voir le classement</button>
           </div>

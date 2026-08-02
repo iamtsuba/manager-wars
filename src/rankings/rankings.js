@@ -1,5 +1,5 @@
 import { supabase } from '../lib/supabase.js'
-import { getTier, TIERS } from '../ranked/glicko2.js'
+import { getTier, getSubTier, TIERS } from '../ranked/glicko2.js'
 
 export async function renderRankings(container, ctx) {
   const { state, navigate } = ctx
@@ -34,7 +34,9 @@ export async function renderRankings(container, ctx) {
     if (activeTab === 'ranked') {
       const list = ranked || []
       listEl.innerHTML = list.length > 0 ? list.map((u, i) => {
-        const tier   = getTier(u.mmr ?? 1000)
+        const tier   = getTier(u.mmr ?? 450)
+        const sub    = getSubTier(u.mmr ?? 450, tier)
+        const tierLabel = tier.label + (sub ? ' ' + sub : '')
         const total  = (u.ranked_wins||0) + (u.ranked_losses||0) + (u.ranked_draws||0)
         const wr     = total > 0 ? Math.round((u.ranked_wins||0) / total * 100) : 0
         const isMe   = u.id === state.profile.id
@@ -47,12 +49,11 @@ export async function renderRankings(container, ctx) {
                 <span>${tier.emoji}</span>
                 <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${u.pseudo}</span>
               </div>
-              <div style="font-size:11px;color:var(--tile-fg-dim)">${u.club_name} · ${tier.label}</div>
+              <div style="font-size:11px;color:var(--tile-fg-dim)">${u.club_name}${!placed ? ` · ${wr}% WR` : ''}</div>
             </div>
             <div style="text-align:right;flex-shrink:0">
-              <div style="font-size:20px">${placed ? '❓' : tier.emoji}</div>
-              <div style="font-size:11px;font-weight:700;color:${tier.color}">${placed ? 'Placement' : tier.label}</div>
-              ${!placed ? `<div style="font-size:10px;color:var(--tile-fg-dim)">${wr}% WR</div>` : ''}
+              <div style="font-size:13px;font-weight:900;letter-spacing:0.3px;color:${tier.color};white-space:nowrap">${placed ? '❓ Placement' : tierLabel.toUpperCase()}</div>
+              ${!placed ? `<div style="font-size:11px;color:var(--tile-fg-dim);margin-top:1px">${(u.mmr??450).toLocaleString('fr')} MMR</div>` : ''}
             </div>
           </div>`
       }).join('') : '<div style="text-align:center;color:var(--tile-fg-dim);padding:40px">Aucun joueur classé.</div>'

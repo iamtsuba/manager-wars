@@ -34,8 +34,8 @@ export async function renderRankings(container, ctx) {
     if (activeTab === 'ranked') {
       const list = ranked || []
       listEl.innerHTML = list.length > 0 ? list.map((u, i) => {
-        const tier   = getTier(u.mmr ?? 1000)
-        const sub    = getSubTier(u.mmr ?? 1000, tier)
+        const tier   = getTier(u.mmr ?? 450)
+        const sub    = getSubTier(u.mmr ?? 450, tier)
         const tierLabel = tier.label + (sub ? ' ' + sub : '')
         const total  = (u.ranked_wins||0) + (u.ranked_losses||0) + (u.ranked_draws||0)
         const wr     = total > 0 ? Math.round((u.ranked_wins||0) / total * 100) : 0
@@ -53,7 +53,7 @@ export async function renderRankings(container, ctx) {
             </div>
             <div style="text-align:right;flex-shrink:0">
               <div style="font-size:13px;font-weight:900;letter-spacing:0.3px;color:${tier.color};white-space:nowrap">${placed ? '❓ Placement' : tierLabel.toUpperCase()}</div>
-              ${!placed ? `<div style="font-size:11px;color:var(--tile-fg-dim);margin-top:1px">${(u.mmr??1000).toLocaleString('fr')} MMR</div>` : ''}
+              ${!placed ? `<div style="font-size:11px;color:var(--tile-fg-dim);margin-top:1px">${(u.mmr??450).toLocaleString('fr')} MMR</div>` : ''}
             </div>
           </div>`
       }).join('') : '<div style="text-align:center;color:var(--tile-fg-dim);padding:40px">Aucun joueur classé.</div>'

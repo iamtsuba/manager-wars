@@ -32,7 +32,7 @@ export async function resumePvpMatch(container, ctx, matchId) {
 
 async function showMatchmakingSearch(container, ctx, deckId, formation, starters, subsRaw, myGC = [], gcDefs = [], stadiumDef = null, isRanked = false, rankedData = null) {
   const { state, navigate, toast } = ctx
-  const myMmr = rankedData?.mmr ?? state.profile?.mmr ?? 1000
+  const myMmr = rankedData?.mmr ?? state.profile?.mmr ?? 450
   const tier   = isRanked ? getTier(myMmr) : null
   const bgGrad = isRanked
     ? `linear-gradient(135deg, #1a0a2e 0%, #2d1060 50%, #1a0a2e 100%)`

@@ -24,13 +24,23 @@ const TAU      = 0.5        // contrainte volatilité
 const EPSILON  = 0.000001   // convergence algorithme Illinois
 
 // ── Ligues ───────────────────────────────────────────────────
+// Seuils recalibrés (août 2026) pour qu'une saison d'environ 1 mois
+// (~10 matchs/jour, ~300 matchs) mène un BON joueur (~65% de victoires
+// réelles) jusqu'au rang Maître pile en fin de saison — validé par
+// simulation Monte-Carlo du moteur Glicko-2 ci-dessus. Un joueur moyen
+// (~55-58%) plafonne vers Or/Platine : Maître doit rester un objectif
+// exigeant, pas un acquis mécanique.
+//
+// Chaque palier est encore subdivisé en III/II/I par getSubTier() dans
+// home2.js (division du range en tiers égaux) — inchangé, aucune
+// modification nécessaire de ce côté-là.
 export const TIERS = [
-  { id: 'bronze',   label: 'Bronze',   emoji: '🥉', min: 0,    max: 1199, color: '#cd7f32' },
-  { id: 'silver',   label: 'Argent',   emoji: '🥈', min: 1200, max: 1499, color: '#a0a0a0' },
-  { id: 'gold',     label: 'Or',       emoji: '🥇', min: 1500, max: 1799, color: '#D4A017' },
+  { id: 'bronze',   label: 'Bronze',   emoji: '🥉', min: 0,    max: 899,  color: '#cd7f32' },
+  { id: 'silver',   label: 'Argent',   emoji: '🥈', min: 900,  max: 1349, color: '#a0a0a0' },
+  { id: 'gold',     label: 'Or',       emoji: '🥇', min: 1350, max: 1799, color: '#D4A017' },
   { id: 'platinum', label: 'Platine',  emoji: '💎', min: 1800, max: 2099, color: '#00e5ff' },
-  { id: 'diamond',  label: 'Diamant',  emoji: '🔷', min: 2100, max: 2399, color: '#5b9bd5' },
-  { id: 'master',   label: 'Maître',   emoji: '👑', min: 2400, max: Infinity, color: '#9b59b6' },
+  { id: 'diamond',  label: 'Diamant',  emoji: '🔷', min: 2100, max: 2549, color: '#5b9bd5' },
+  { id: 'master',   label: 'Maître',   emoji: '👑', min: 2550, max: Infinity, color: '#9b59b6' },
 ]
 
 export function getTier(mmr) {

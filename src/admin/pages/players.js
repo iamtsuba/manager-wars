@@ -1,6 +1,5 @@
 import { supabase } from '../../lib/supabase.js'
 import { renderPlayerCard } from '../../components/player-card.js'
-import { encodeVowels } from '../../components/card.js'
 import { ALL_CONTINENTS, listContinentFiles, getPortrait } from '../../lib/portrait.js'
 
 const BASE = import.meta.env.BASE_URL
@@ -452,8 +451,8 @@ async function openPlayerModal(player, clubs, container, helpers) {
             <input id="pm-real" value="${player?.surname_real || ''}" placeholder="Silva">
           </div>
           <div class="form-group" style="grid-column:1 / -1">
-            <label>Surname (nom encodé affiché sur la carte)</label>
-            <input id="pm-enc" value="${player?.surname_encoded || ''}" placeholder="Laissez vide pour générer automatiquement (Silva → Solve)">
+            <label>Surname</label>
+            <input id="pm-enc" value="${player?.surname_encoded || ''}" placeholder="Silva">
           </div>
         </div>
 
@@ -682,7 +681,8 @@ function getFormData(face) {
     firstname:       (g('pm-fn') || '').trim(),
     surname_real: (g('pm-real') || '').trim() || 'JOUEUR',
     // Nom encodé : généré automatiquement depuis le nom réel si laissé vide
-    surname_encoded: (g('pm-enc') || '').trim() || encodeVowels((g('pm-real') || '').trim() || 'JOUEUR'),
+    // Champ libre : aucune génération automatique
+    surname_encoded: (g('pm-enc') || '').trim() || null,
     country_code:    g('pm-country') || 'FR',
     club_id:         g('pm-club') || null,
     job:             g('pm-job') || 'ATT',

@@ -719,8 +719,8 @@ function openStadiumSelector(builder, container, ctx) {
 // ── Sélecteur de stade ───────────────────────────────────
 
 // ── Sélecteur de joueur (Petit 2 + 3) ────────────────────
-function openPlayerSelector(position, builder, container, ctx) {
-  const { openModal, closeModal } = ctx
+async function openPlayerSelector(position, builder, container, ctx) {
+  const { openModal, closeModal, navigate } = ctx
   const role = position.replace(/\d+/, '')
   const _selStadCardP = builder.stadiumCards?.find(c => c.id === builder.stadiumCardId)
   const _stadDef = _selStadCardP ? (builder.stadDefMap?.[_selStadCardP.stadium_id] || null) : null
@@ -791,6 +791,58 @@ function openPlayerSelector(position, builder, container, ctx) {
     return d !== 0 ? d : _fit.get(b.id).note - _fit.get(a.id).note
   })
 
+  // ── Onglet "Top 10 idéal" : meilleurs joueurs pour ce poste parmi TOUT le
+  // catalogue, possédés ou non. Le catalogue complet n'est chargé qu'à la
+  // première ouverture puis mis en cache sur le builder.
+  if (!builder._allPlayers) {
+    const { data } = await supabase
+      .from('players')
+      .select('id, firstname, surname_real, country_code, club_id, job, job2, note_g, note_d, note_m, note_a, rarity, face, clubs(encoded_name, logo_url)')
+      .eq('is_active', true)
+    builder._allPlayers = data || []
+  }
+  const ownedPlayerIdsAll = new Set(builder.playerCards.map(c => c.player?.id).filter(Boolean))
+
+  const topTen = builder._allPlayers
+    .filter(p => (p.job === role || p.job2 === role) && !usedPlayerIds.has(p.id))
+    .map(p => {
+      const note = (role==='GK'?p.note_g : role==='DEF'?p.note_d : role==='MIL'?p.note_m : p.note_a) || 0
+      let bonus = 0
+      for (const nb of _neighbours) {
+        const lc = linkColor(p, nb)
+        if (lc === '#00ff88') bonus += 10
+        else if (lc === '#FFD700') bonus += 5
+      }
+      if (_stadDef) {
+        const sameClub    = _stadDef.club_id     && String(p.club_id)      === String(_stadDef.club_id)
+        const sameCountry = _stadDef.country_code && String(p.country_code) === String(_stadDef.country_code)
+        if (sameClub || sameCountry) bonus += 10
+      }
+      return { p, total: note + bonus, note, bonus, owned: ownedPlayerIdsAll.has(p.id) }
+    })
+    .sort((a, b) => b.total - a.total || b.note - a.note)
+    .slice(0, 10)
+
+  const topTenHtml = topTen.length ? `<div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center">` + topTen.map(t => {
+    const pc = { ...t.p, _evolution_bonus: 0 }
+    const badge = t.bonus > 0
+      ? `<div style="position:absolute;top:2px;left:2px;z-index:6;background:#1A6B3C;color:#fff;font-size:9px;font-weight:900;padding:1px 5px;border-radius:8px">+${t.bonus}</div>`
+      : ''
+    // Joueur non possédé : carte grisée + accès direct au Mercato filtré
+    const ownedCard = t.owned ? builder.playerCards.find(c => c.player?.id === t.p.id) : null
+    return `<div style="position:relative">
+      ${badge}
+      <div class="${t.owned ? 'player-option' : ''}" ${ownedCard ? `data-card-id="${ownedCard.id}"` : ''}
+        style="cursor:${t.owned?'pointer':'default'};${t.owned?'':'filter:grayscale(1) brightness(.6)'}">
+        ${renderPlayerCard(pc, { width: 100, showStad: true, stadDef: _stadDef, role })}
+      </div>
+      ${!t.owned ? `<button class="goto-market" data-player-name="${(t.p.surname_real||'').replace(/"/g,'&quot;')}"
+        style="position:absolute;left:50%;bottom:4px;transform:translateX(-50%);z-index:7;white-space:nowrap;
+        background:linear-gradient(135deg,#f6d365,#D4A017);color:#1a1a1a;border:none;border-radius:999px;
+        font-size:9px;font-weight:900;padding:3px 8px;cursor:pointer">🛒 Mercato</button>` : ''}
+    </div>`
+  }).join('') + '</div>' : '<div style="text-align:center;color:var(--tile-fg-dim);padding:20px">Aucun joueur pour ce poste.</div>'
+
   // Petit 2 : afficher photo, nom prénom, club, pays, note
   openModal(`Choisir ${role} — ${position}`,
     `<div style="max-height:60vh;overflow-y:auto;display:flex;flex-direction:column;gap:8px">
@@ -798,6 +850,12 @@ function openPlayerSelector(position, builder, container, ctx) {
         <button class="btn btn-danger btn-sm" id="remove-player" style="width:100%;margin-bottom:4px">
           ✕ Retirer le joueur actuel
         </button>` : ''}
+      <div style="display:flex;gap:6px;border-bottom:1px solid var(--tile-border);padding-bottom:8px;margin-bottom:4px">
+        <button type="button" class="sel-tab" data-tab="mine" style="flex:1;padding:7px;border-radius:8px;border:1.5px solid var(--green);background:var(--green);color:#fff;font-size:12.5px;font-weight:700;cursor:pointer">🎴 Mes cartes (${eligible.length})</button>
+        <button type="button" class="sel-tab" data-tab="top" style="flex:1;padding:7px;border-radius:8px;border:1.5px solid var(--tile-border);background:transparent;color:var(--tile-fg-dim);font-size:12.5px;font-weight:700;cursor:pointer">🏆 Top 10 idéal</button>
+      </div>
+      <div class="sel-pane" data-pane="top" style="display:none">${topTenHtml}</div>
+      <div class="sel-pane" data-pane="mine">
       ${eligible.length > 0 ? `<div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center">` + eligible.map(c => {
         const p = { ...c.player, _evolution_bonus: c.evolution_bonus||0 }
         const fit = _fit.get(c.id)
@@ -809,11 +867,36 @@ function openPlayerSelector(position, builder, container, ctx) {
           ${renderPlayerCard(p, { width: 100, showStad: true, stadDef: _stadDef, role })}
         </div>`
       }).join('') + '</div>' : '<div style="text-align:center;color:var(--tile-fg-dim);padding:20px">Aucun joueur pour ce poste.<br><small>Ouvre des boosters !</small></div>'}
+      </div>
     </div>`,
     `<button class="btn btn-ghost" id="close-selector">Fermer</button>`
   )
 
   document.getElementById('close-selector')?.addEventListener('click', closeModal)
+
+  // Bascule entre "Mes cartes" et "Top 10 idéal"
+  document.querySelectorAll('.sel-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.sel-tab').forEach(t => {
+        const on = t === tab
+        t.style.background  = on ? 'var(--green)' : 'transparent'
+        t.style.borderColor = on ? 'var(--green)' : 'var(--tile-border)'
+        t.style.color       = on ? '#fff' : 'var(--tile-fg-dim)'
+      })
+      document.querySelectorAll('.sel-pane').forEach(pane => {
+        pane.style.display = pane.dataset.pane === tab.dataset.tab ? 'block' : 'none'
+      })
+    })
+  })
+
+  // Joueur non possédé : direction le Mercato, pré-filtré sur son nom
+  document.querySelectorAll('.goto-market').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation()
+      closeModal()
+      navigate('market', { search: btn.dataset.playerName })
+    })
+  })
 
   document.getElementById('remove-player')?.addEventListener('click', () => {
     delete builder.slots[position]

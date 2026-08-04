@@ -1291,7 +1291,37 @@ async function openCardDetail(card, allPlayerCards, countByPlayer, ctx, opts = {
       }
     })
     updatePanel()
-    document.getElementById('evolve-btn')?.scrollIntoView({ behavior:'smooth', block:'center' })
+
+    // On enchaîne directement sur le popup de confirmation : la modale de
+    // détail est masquée (mais gardée dans le DOM, le handler d'évolution en
+    // dépend) puis le bouton "Évoluer" est déclenché. Le joueur ne voit donc
+    // que le récapitulatif de fusion.
+    const modalEl = document.getElementById('modal-overlay')
+    if (modalEl) modalEl.style.visibility = 'hidden'
+
+    requestAnimationFrame(() => {
+      const evoBtn = document.getElementById('evolve-btn')
+      if (!evoBtn || evoBtn.disabled) {
+        if (modalEl) modalEl.style.visibility = ''   // repli : on montre la modale
+        return
+      }
+      evoBtn.click()
+
+      // Le popup de confirmation est ajouté à <body> en z-index 9999.
+      // Quand il disparaît : soit l'évolution a été confirmée (la modale se
+      // ferme d'elle-même), soit elle a été annulée — et dans ce cas il faut
+      // refermer la modale masquée, sinon elle resterait invisible et bloquante.
+      const obs = new MutationObserver(() => {
+        const popupStillOpen = [...document.body.children].some(el => el.style?.zIndex === '9999')
+        if (popupStillOpen) return
+        obs.disconnect()
+        if (modalEl) {
+          modalEl.style.visibility = ''
+          if (!modalEl.classList.contains('hidden')) closeModal()
+        }
+      })
+      obs.observe(document.body, { childList: true })
+    })
   }
 
   // Clic sur la row entière → toggle checkbox

@@ -83,13 +83,22 @@ async function importPlayersExcel(file, container, helpers) {
     rows.forEach((r, i) => {
       if (!r.id) { skipped.push(`ligne ${i + 2} : id manquant`); return }
       const row = { id: r.id }
+      // Colonnes requises en base : une cellule vide ne doit pas devenir null
+      // (la contrainte NOT NULL ferait échouer tout le lot d'un coup).
+      const REQUIRED = new Set(['firstname','surname_real','surname_encoded'])
       EDITABLE.forEach(k => {
         if (!(k in r)) return
         let v = r[k]
-        if (v === '' ) v = null
+        if (typeof v === 'string') v = v.trim()
+        if (v === '') v = null
         if (v !== null && NUMERIC.has(k)) {
           const n = Number(v)
           v = Number.isFinite(n) ? n : null
+        }
+        if (v === null && REQUIRED.has(k)) {
+          // Repli : le Surname reprend le nom réel, sinon on ne touche pas au champ
+          if (k === 'surname_encoded') v = (r.surname_real || '').trim() || null
+          if (v === null) return   // laisse la valeur existante en base intacte
         }
         row[k] = v
       })
@@ -682,7 +691,9 @@ function getFormData(face) {
     surname_real: (g('pm-real') || '').trim() || 'JOUEUR',
     // Nom encodé : généré automatiquement depuis le nom réel si laissé vide
     // Champ libre : aucune génération automatique
-    surname_encoded: (g('pm-enc') || '').trim() || null,
+    // Colonne requise en base : si le champ est laissé vide, on retombe sur
+    // le nom réel plutôt que d'envoyer null (rejeté par la contrainte).
+    surname_encoded: (g('pm-enc') || '').trim() || (g('pm-real') || '').trim() || 'JOUEUR',
     country_code:    g('pm-country') || 'FR',
     club_id:         g('pm-club') || null,
     job:             g('pm-job') || 'ATT',

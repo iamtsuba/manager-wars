@@ -155,7 +155,6 @@ async function savePlayer(toast) {
   const payload = {
     firstname:       get('cb-firstname').trim(),
     surname_real:    realName,
-    surname_encoded: encName,
     country_code:    get('cb-country'),
     club_id:         get('cb-club') || null,
     job:             get('cb-job'),

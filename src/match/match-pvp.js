@@ -34,7 +34,6 @@ import {
 import { renderPlayerCard } from '../components/player-card.js'
 import { renderGCCard } from '../components/special-cards.js'
 import { stopBGM, playUrgentSound, stopUrgentSound } from '../lib/sound.js'
-import { playerSurname } from '../lib/playerName.js'
 
 const BASE = import.meta.env.BASE_URL
 // histPlayer importé depuis match-engine.js (aliasé _histPlayer)
@@ -95,7 +94,7 @@ async function _renderPvpMatchCore(container, ctx, matchId, amIHome, myGC = [], 
       const evo = Number(r.evolution_bonus)||0
       return {
         cardId: r.card_id, position: r.position, id: r.id,
-        firstname: r.firstname, name: r.surname_real, surname_encoded: r.surname_encoded,
+        firstname: r.firstname, name: r.surname_real,
         country_code: r.country_code, club_id: r.club_id,
         job: r.job, job2: r.job2,
         // Appliquer evolution_bonus sur les notes des postes principal et secondaire
@@ -416,7 +415,7 @@ async function _renderPvpMatchCore(container, ctx, matchId, amIHome, myGC = [], 
         const usedSet = new Set(gs[usedKey] || [])
         chosen.forEach(p => {
           const t=(team[p._line]||[]).find(x=>x.cardId===p.cardId)
-          if(t){ t.used=true; usedSet.add(p.cardId); gs.log.push({text:`❌ ${playerSurname(t)} exclu !`,type:'info'}) }
+          if(t){ t.used=true; usedSet.add(p.cardId); gs.log.push({text:`❌ ${t.name} exclu !`,type:'info'}) }
         })
         gs[usedKey] = [...usedSet]
         gs[tRole+'Team'] = team; cb(gs)

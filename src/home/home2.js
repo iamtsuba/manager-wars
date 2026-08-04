@@ -5,6 +5,7 @@ import { stopBGM } from '../lib/sound.js'
 import { getTier, getTierProgress, getSubTier } from '../ranked/glicko2.js'
 import { claimPendingReward, showBoosterAnimation } from '../boosters/boosters.js'
 import { renderPlayerCard } from '../components/player-card.js'
+import { playerFullName } from '../lib/playerName.js'
 
 const APP_VERSION = (typeof __BUILD_TIME__ !== 'undefined' && __BUILD_TIME__)
   ? __BUILD_TIME__
@@ -383,7 +384,7 @@ async function openPendingRewardsPopup(state, toast, navigate) {
     const { data: rewards } = await supabase
       .from('pending_rewards')
       .select(`*,
-        player:players(id, firstname, surname_real, country_code, club_id, job, job2,
+        player:players(id, firstname, surname_real, surname_encoded, country_code, club_id, job, job2,
           note_g, note_d, note_m, note_a, rarity, skin, hair, hair_length, face,
           clubs(encoded_name, logo_url)),
         booster:booster_configs(name, image_url)`)
@@ -414,7 +415,7 @@ async function openPendingRewardsPopup(state, toast, navigate) {
 
     const rewardLabel = (r) => {
       if (r.reward_type === 'credits') return `${(r.credits_amount||0).toLocaleString('fr')} crédits`
-      if (r.reward_type === 'card')    return `${r.player?.firstname||''} ${r.player?.surname_real||''}`.trim() || 'Carte joueur'
+      if (r.reward_type === 'card')    return playerFullName(r.player) || 'Carte joueur'
       if (r.reward_type === 'booster') return r.booster?.name || 'Booster'
       return 'Récompense'
     }
@@ -452,7 +453,7 @@ async function openPendingRewardsPopup(state, toast, navigate) {
             syncV2Credits(state.profile.credits)
             toast(`+${result.amount.toLocaleString('fr')} crédits ✅`, 'success')
           } else if (result.type === 'card') {
-            toast(`Carte reçue : ${result.player?.firstname||''} ${result.player?.surname_real||''} ✅`, 'success')
+            toast(`Carte reçue : ${playerFullName(result.player)} ✅`, 'success')
           } else if (result.type === 'booster') {
             overlay.remove()
             showBoosterAnimation(result.cards, result.boosterUI, navigate, () => {
@@ -620,7 +621,7 @@ async function openProfileBIModal(state, openModal, closeModal) {
   openModal('📊 Mon profil', `<div style="padding:30px;text-align:center;color:var(--gray-600)">⏳ Chargement des statistiques...</div>`, `<button class="btn btn-ghost" id="bi-close">Fermer</button>`)
   document.getElementById('bi-close')?.addEventListener('click', closeModal)
 
-  const PLAYER_SELECT = `id, firstname, surname_real, country_code, job, job2, note_g, note_d, note_m, note_a, rarity, face, clubs(encoded_name, logo_url)`
+  const PLAYER_SELECT = `id, firstname, surname_real, surname_encoded, country_code, job, job2, note_g, note_d, note_m, note_a, rarity, face, clubs(encoded_name, logo_url)`
 
   const [
     { data: seasonHistory },

@@ -142,7 +142,8 @@ function attachEvents(container, clubs, toast) {
 async function savePlayer(toast) {
   const get = id => document.getElementById(id)?.value || ''
   const realName = get('cb-surname-real').trim()
-  const encName  = get('cb-surname-enc').trim() || null
+  // Colonne requise : repli sur le nom réel si le Surname est laissé vide
+  const encName  = get('cb-surname-enc').trim() || realName
 
   if (!get('cb-firstname') || !realName || !get('cb-country') || !get('cb-job')) {
     toast('Remplissez les champs obligatoires (prénom, nom, pays, poste)', 'error'); return

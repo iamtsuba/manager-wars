@@ -72,7 +72,7 @@ async function importPlayersExcel(file, container, helpers) {
     // qu'une colonne calculée ou renommée dans Excel ne fasse échouer tout
     // le lot, et protège les champs techniques.
     const EDITABLE = [
-      'firstname','surname_real','surname_encoded','job','job2','rarity',
+      'firstname','surname_real','job','job2','rarity',
       'country_code','club_id','sell_price','note_g','note_d','note_m','note_a',
       'note_min','note_max','face',
     ]
@@ -85,7 +85,7 @@ async function importPlayersExcel(file, container, helpers) {
       const row = { id: r.id }
       // Colonnes requises en base : une cellule vide ne doit pas devenir null
       // (la contrainte NOT NULL ferait échouer tout le lot d'un coup).
-      const REQUIRED = new Set(['firstname','surname_real','surname_encoded'])
+      const REQUIRED = new Set(['firstname','surname_real'])
       EDITABLE.forEach(k => {
         if (!(k in r)) return
         let v = r[k]
@@ -97,7 +97,6 @@ async function importPlayersExcel(file, container, helpers) {
         }
         if (v === null && REQUIRED.has(k)) {
           // Repli : le Surname reprend le nom réel, sinon on ne touche pas au champ
-          if (k === 'surname_encoded') v = (r.surname_real || '').trim() || null
           if (v === null) return   // laisse la valeur existante en base intacte
         }
         row[k] = v
@@ -459,10 +458,6 @@ async function openPlayerModal(player, clubs, container, helpers) {
             <label>Nom</label>
             <input id="pm-real" value="${player?.surname_real || ''}" placeholder="Silva">
           </div>
-          <div class="form-group" style="grid-column:1 / -1">
-            <label>Surname</label>
-            <input id="pm-enc" value="${player?.surname_encoded || ''}" placeholder="Silva">
-          </div>
         </div>
 
         <!-- Poste + Rareté + Pays -->
@@ -689,11 +684,6 @@ function getFormData(face) {
   return {
     firstname:       (g('pm-fn') || '').trim(),
     surname_real: (g('pm-real') || '').trim() || 'JOUEUR',
-    // Nom encodé : généré automatiquement depuis le nom réel si laissé vide
-    // Champ libre : aucune génération automatique
-    // Colonne requise en base : si le champ est laissé vide, on retombe sur
-    // le nom réel plutôt que d'envoyer null (rejeté par la contrainte).
-    surname_encoded: (g('pm-enc') || '').trim() || (g('pm-real') || '').trim() || 'JOUEUR',
     country_code:    g('pm-country') || 'FR',
     club_id:         g('pm-club') || null,
     job:             g('pm-job') || 'ATT',

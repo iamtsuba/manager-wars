@@ -1,5 +1,5 @@
 import { supabase } from '../../lib/supabase.js'
-import { renderCardHTML, encodeVowels, JOB_COLORS, RARITY_BORDERS } from '../../components/card.js'
+import { renderCardHTML, JOB_COLORS, RARITY_BORDERS } from '../../components/card.js'
 import {
   generateAvatarSVG,
   SKIN_COLORS, HAIR_COLORS, HAIR_STYLES, EYE_STYLES,
@@ -35,13 +35,6 @@ export async function pageCardBuilder(container, { toast }) {
   updatePreview()
 }
 
-// ── Encodage voyelles ─────────────────────────────────────
-function encodeVowelsUI() {
-  const raw = document.getElementById('cb-surname-real')?.value || ''
-  const el  = document.getElementById('cb-surname-enc')
-  if (el) el.value = encodeVowels(raw)
-}
-
 // ── Kit du club sélectionné ───────────────────────────────
 function getSelectedKit() {
   const clubId = document.getElementById('cb-club')?.value
@@ -61,7 +54,7 @@ function updatePreview() {
   const get = id => document.getElementById(id)?.value || ''
   const player = {
     firstname:         get('cb-firstname'),
-    surname_real:   get('cb-surname-enc') || encodeVowels(get('cb-surname-real')),
+    surname_real:   get('cb-surname-real'),
     country_code:      get('cb-country'),
     club_encoded_name: document.getElementById('cb-club')?.selectedOptions[0]?.text || '',
     job:               get('cb-job'),
@@ -89,12 +82,6 @@ function updatePreview() {
   const avatarPreview = document.getElementById('avatar-preview-wrap')
   if (avatarPreview) avatarPreview.innerHTML = avatarSvg
 
-  // Résumé encodage
-  const realName = get('cb-surname-real')
-  const sumEl    = document.getElementById('encode-summary')
-  if (sumEl && realName) {
-    sumEl.textContent = `${get('cb-firstname')} ${realName} → ${get('cb-firstname')} ${player.surname_real}`
-  }
 }
 
 // ── Lecture avatar depuis les selects ───────────────────
@@ -126,13 +113,9 @@ function attachEvents(container, clubs, toast) {
     document.getElementById(id)?.addEventListener('change', () => { readAvatarFromForm(); updatePreview() })
   })
 
-  // Encodage auto
-  document.getElementById('cb-surname-real')?.addEventListener('input', () => {
-    encodeVowelsUI(); updatePreview()
-  })
-  document.getElementById('btn-encode')?.addEventListener('click', () => {
-    encodeVowelsUI(); updatePreview()
-  })
+  // Surname : champ libre, aucune génération automatique
+  document.getElementById('cb-surname-real')?.addEventListener('input', updatePreview)
+  document.getElementById('cb-surname-enc')?.addEventListener('input', updatePreview)
 
   // Quand on change de club → mise à jour tenue dans preview
   document.getElementById('cb-club')?.addEventListener('change', updatePreview)
@@ -159,7 +142,7 @@ function attachEvents(container, clubs, toast) {
 async function savePlayer(toast) {
   const get = id => document.getElementById(id)?.value || ''
   const realName = get('cb-surname-real').trim()
-  const encName  = get('cb-surname-enc').trim() || encodeVowels(realName)
+  const encName  = get('cb-surname-enc').trim() || null
 
   if (!get('cb-firstname') || !realName || !get('cb-country') || !get('cb-job')) {
     toast('Remplissez les champs obligatoires (prénom, nom, pays, poste)', 'error'); return
@@ -232,18 +215,14 @@ function buildUI(clubs) {
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
           <div><label>Prénom *</label><input id="cb-firstname" placeholder="Osame"></div>
           <div>
-            <label>Nom réel * <span style="font-weight:400;color:#999">(non affiché en jeu)</span></label>
-            <div style="display:flex;gap:6px">
-              <input id="cb-surname-real" placeholder="Sahraoui" style="flex:1">
-              <button class="btn btn-ghost btn-sm" id="btn-encode" title="Encoder les voyelles">↻</button>
-            </div>
+            <label>Nom *</label>
+            <input id="cb-surname-real" placeholder="Sahraoui" style="width:100%">
           </div>
           <div>
-            <label>Nom encodé * <span style="font-weight:400;color:#999">(GDD §4.5)</span></label>
-            <input id="cb-surname-enc" placeholder="Sehreuao">
+            <label>Surname</label>
+            <input id="cb-surname-enc" placeholder="Sahraoui">
           </div>
-          <div id="encode-summary-wrap" style="display:flex;align-items:flex-end">
-            <div id="encode-summary" style="font-size:11px;color:var(--gray-600);padding-bottom:8px;font-style:italic"></div>
+          <div id="encode-summary-wrap" style="display:none">
           </div>
           <div><label>Pays *</label><select id="cb-country">${ctyOptions}</select></div>
           <div><label>Club</label><select id="cb-club">${clubOptions}</select></div>

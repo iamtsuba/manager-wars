@@ -3,6 +3,7 @@
  * Template 507x657px — positions mesurées au pixel
  */
 import { getPortrait } from '../lib/portrait.js'
+import { playerSurname } from '../lib/playerName.js'
 
 const BASE = import.meta.env.BASE_URL
 
@@ -91,7 +92,7 @@ export function renderPlayerCard(p, opts = {}) {
   const flagUrl     = getFlagUrl(p.country_code)
   const clubLogoUrl = getClubLogoUrl(p)
   const firstname   = (p.firstname || '').toUpperCase()
-  const surname     = (p.surname_real || p.name || '').toUpperCase()
+  const surname     = playerSurname(p).toUpperCase()
   const opacity     = used ? 'opacity:0.35;' : ''
 
   // Taille police nom adaptée à la longueur

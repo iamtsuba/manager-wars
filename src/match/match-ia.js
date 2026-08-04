@@ -16,6 +16,7 @@ import {
 import { FORMATION_LINKS, FORMATION_POSITIONS, linkColor, getActiveLinks } from './formation-links.js'
 import { renderGCCard } from '../components/special-cards.js'
 import { stopBGM, playBGM, playUrgentSound, stopUrgentSound } from '../lib/sound.js'
+import { playerSurname } from '../lib/playerName.js'
 import {
   showMsg, getPortrait, playerFromCard, getColsForLine, buildTeam, rollBoost, applyStadiumBonus, applyStadiumBonusToSubs,
   _hideBottomNav, _showBottomNav, renderDeckSelect, showGCSelection,
@@ -183,7 +184,7 @@ export async function renderMatchIA(container, ctx) {
 async function generateAITeam(formation, difficulty) {
   const { data: players } = await supabase
     .from('players')
-    .select('id,firstname,surname_real,country_code,club_id,job,job2,note_g,note_d,note_m,note_a,rarity,skin,hair,hair_length,face,clubs(encoded_name,logo_url)')
+    .select('id,firstname,surname_real, surname_encoded,country_code,club_id,job,job2,note_g,note_d,note_m,note_a,rarity,skin,hair,hair_length,face,clubs(encoded_name,logo_url)')
     .eq('is_active', true).limit(80)
 
   if (!players || players.length < 11) return { lines: generateFakeAITeam(formation), subs: [], gcCards: [], stadiumDef: null }
@@ -196,7 +197,7 @@ async function generateAITeam(formation, difficulty) {
     used.add(p.id)
     return {
       cardId:'ai-'+p.id+'-'+i, id:p.id,
-      firstname:p.firstname, name:p.surname_real,
+      firstname:p.firstname, name:p.surname_real, surname_encoded:p.surname_encoded,
       country_code:p.country_code, club_id:p.club_id,
       job:p.job, job2:p.job2,
       note_g:Number(p.note_g)||0, note_d:Number(p.note_d)||0,
@@ -311,7 +312,7 @@ async function generateAITeamForLevel(formation, levelConfig) {
 
   const { data: players } = await supabase
     .from('players')
-    .select('id,firstname,surname_real,country_code,club_id,job,job2,note_g,note_d,note_m,note_a,rarity,skin,hair,hair_length,face,clubs(encoded_name,logo_url,country_code)')
+    .select('id,firstname,surname_real, surname_encoded,country_code,club_id,job,job2,note_g,note_d,note_m,note_a,rarity,skin,hair,hair_length,face,clubs(encoded_name,logo_url,country_code)')
     .eq('is_active', true).limit(300)
 
   if (!players || players.length < 16) return { lines: generateFakeAITeam(formation), subs: [], gcCards: [], stadiumDef: null }
@@ -350,7 +351,7 @@ async function generateAITeamForLevel(formation, levelConfig) {
     used.add(p.id)
     return {
       cardId:'ai-'+p.id+'-'+i, id:p.id,
-      firstname:p.firstname, name:p.surname_real,
+      firstname:p.firstname, name:p.surname_real, surname_encoded:p.surname_encoded,
       country_code:p.country_code, club_id:p.club_id,
       job:p.job, job2:p.job2,
       note_g:Number(p.note_g)||0, note_d:Number(p.note_d)||0,
@@ -1305,7 +1306,7 @@ function aiMaySub(game, done = () => {}) {
   if (idx !== -1) line[idx] = inPlayer
   game.aiUsedSubIds.push(sameLine.cardId)
   game.aiSubsUsed++
-  game.log.push({ text: `🔄 IA : ${sameLine.firstname} ${sameLine.name} remplace ${out.firstname} ${out.name}`, type:'info' })
+  game.log.push({ text: `🔄 IA : ${sameLine.firstname} ${playerSurname(sameLine)} remplace ${out.firstname} ${playerSurname(out)}`, type:'info' })
   showSubAnimation(out, inPlayer, done)
 }
 
@@ -1913,7 +1914,7 @@ const GC_ENGINE = {
     openGCPicker(pool, count, `Choisir ${count} joueur(s) à booster (+${value})`, container, game, (chosen) => {
       chosen.forEach(p => {
         const live = (game.homeTeam[p._line]||[]).find(x => x.cardId === p.cardId)
-        if (live) { live.boost = (live.boost||0) + value; game.log.push({ text: `⚡ +${value} sur ${live.name}`, type:'info' }) }
+        if (live) { live.boost = (live.boost||0) + value; game.log.push({ text: `⚡ +${value} sur ${playerSurname(live)}`, type:'info' }) }
       })
       renderGame(container, game, ctx)
     })
@@ -1931,7 +1932,7 @@ const GC_ENGINE = {
       chosen.forEach(p => {
         const teamObj = target === 'home' ? game.homeTeam : game.aiTeam
         const live = (teamObj[p._line]||[]).find(x => x.cardId === p.cardId)
-        if (live) { live.boost = (live.boost||0) - value; game.log.push({ text: `🎯 -${value} sur ${live.name}${target==='ai'?' (IA)':''}`, type:'info' }) }
+        if (live) { live.boost = (live.boost||0) - value; game.log.push({ text: `🎯 -${value} sur ${playerSurname(live)}${target==='ai'?' (IA)':''}`, type:'info' }) }
       })
       renderGame(container, game, ctx)
     })
@@ -1949,7 +1950,7 @@ const GC_ENGINE = {
       chosen.forEach(p => {
         const teamObj = target === 'home' ? game.homeTeam : game.aiTeam
         const live = (teamObj[p._line]||[]).find(x => x.cardId === p.cardId)
-        if (live) { live.used = true; game.log.push({ text: `❌ ${live.name}${target==='ai'?' (IA)':''} exclu !`, type:'info' }) }
+        if (live) { live.used = true; game.log.push({ text: `❌ ${playerSurname(live)}${target==='ai'?' (IA)':''} exclu !`, type:'info' }) }
       })
       renderGame(container, game, ctx)
     })
@@ -1964,7 +1965,7 @@ const GC_ENGINE = {
     openGCPicker(pool, count, `Choisir ${count} joueur(s) à ressusciter`, container, game, (chosen) => {
       chosen.forEach(p => {
         const live = (game.homeTeam[p._line]||[]).find(x => x.cardId === p.cardId)
-        if (live) { live.used = false; game.log.push({ text: `💫 ${live.name} ressuscité !`, type:'info' }) }
+        if (live) { live.used = false; game.log.push({ text: `💫 ${playerSurname(live)} ressuscité !`, type:'info' }) }
       })
       renderGame(container, game, ctx)
     })
@@ -2019,7 +2020,7 @@ function useGameChanger(gcId, gcType, container, game, ctx) {
       case 'Bouclier': game.modifiers.home.shield=true; game.log.push({text:'🛡️ Bouclier activé !',type:'info'}); break
       case 'Ressusciter': {
         const pool=Object.entries(game.homeTeam).flatMap(([r,ps])=>(ps||[]).filter(p=>p.used).map(p=>({...p,_line:r})))
-        if(pool.length){pool[0].used=false;game.log.push({text:`💫 ${pool[0].name} ressuscité !`,type:'info'})}
+        if(pool.length){pool[0].used=false;game.log.push({text:`💫 ${playerSurname(pool[0])} ressuscité !`,type:'info'})}
         else game.log.push({text:'💫 Aucun joueur à ressusciter',type:'info'})
         break
       }
@@ -2052,7 +2053,7 @@ function useBoost(container, game, ctx) {
         <div class="player-boost-opt" data-card-id="${p.cardId}"
           style="display:flex;align-items:center;gap:10px;padding:8px;border:1.5px solid var(--gray-200);border-radius:8px;cursor:pointer">
           <div style="width:32px;height:32px;background:${JOB_COLORS[p.job]||'#888'};border-radius:6px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:900;font-size:13px">${getNoteForRole(p,p._line||p.job)}</div>
-          <div style="flex:1"><b>${p.firstname} ${p.name}</b><div style="font-size:11px;color:#888">${p._line||p.job}</div></div>
+          <div style="flex:1"><b>${p.firstname} ${playerSurname(p)}</b><div style="font-size:11px;color:#888">${p._line||p.job}</div></div>
           <div style="color:#87CEEB;font-weight:700">+${game.boostCard.value}</div>
         </div>`).join('')}
     </div>`,
@@ -2066,7 +2067,7 @@ function useBoost(container, game, ctx) {
         const p = (game.homeTeam[role]||[]).find(pp => pp.cardId === cardId)
         if (p) {
           p.boost = (p.boost||0) + game.boostCard.value
-          game.log.push({ text:`⚡ Boost +${game.boostCard.value} appliqué à ${p.name}`, type:'info' })
+          game.log.push({ text:`⚡ Boost +${game.boostCard.value} appliqué à ${playerSurname(p)}`, type:'info' })
           break
         }
       }

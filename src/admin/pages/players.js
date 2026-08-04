@@ -1,6 +1,7 @@
 import { supabase } from '../../lib/supabase.js'
 import { renderPlayerCard } from '../../components/player-card.js'
-import { ALL_CONTINENTS, listContinentFiles, getPortrait, assignFace } from '../../lib/portrait.js'
+import { encodeVowels } from '../../components/card.js'
+import { ALL_CONTINENTS, listContinentFiles, getPortrait } from '../../lib/portrait.js'
 
 const BASE = import.meta.env.BASE_URL
 const RARITY_LABELS = { normal:'Normal', pepite:'Pépite', papyte:'Papyte', legende:'Légende' }
@@ -22,42 +23,106 @@ function mainNote(p) {
   return p.note_a || 0
 }
 
-async function runFixOldFaces(container, helpers) {
-  const { toast } = helpers
-  if (!confirm('Réattribuer une nouvelle photo à tous les joueurs ayant encore l\'ancien format de chemin (public/faces/...) ?\n\nCette action est irréversible.')) return
-
-  const btn = document.getElementById('fix-old-faces-btn')
-  if (btn) { btn.disabled = true; btn.textContent = '⏳ En cours...' }
-
+// ── Export Excel : toutes les colonnes de la table players ──────────────
+async function exportPlayersExcel(toast) {
+  const btn = document.getElementById('export-players-btn')
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Export...' }
   try {
-    // 1) Joueurs concernés : ancien format de chemin
-    const { data: oldFacePlayers, error: eSel } = await supabase
-      .from('players').select('id, country_code, face')
-      .like('face', 'public/faces/%')
-    if (eSel) { toast(eSel.message, 'error'); return }
-    if (!oldFacePlayers?.length) { toast('Aucun joueur avec l\'ancien format — rien à faire ✅', 'success'); return }
-
-    // 2) Faces déjà correctement utilisées (nouveau format) — à éviter en priorité
-    const { data: usedFacesData } = await supabase.from('players').select('face').not('face', 'is', null)
-    const usedSet = new Set((usedFacesData || []).map(r => r.face).filter(f => f && !f.startsWith('public/faces/')))
-
-    let fixed = 0, failed = 0
-    for (const p of oldFacePlayers) {
-      const newPath = await assignFace(p.country_code, usedSet)
-      if (!newPath) { failed++; continue }
-      const { error: eUpd } = await supabase.from('players').update({ face: newPath }).eq('id', p.id)
-      if (eUpd) { failed++; continue }
-      usedSet.add(newPath)
-      fixed++
+    // select('*') : on exporte la table telle quelle, donc les colonnes
+    // réimportées correspondront exactement — pas de mapping à maintenir.
+    // Pagination : Supabase plafonne les retours (souvent 1000 lignes).
+    let all = [], from = 0
+    const PAGE = 1000
+    for (;;) {
+      const { data, error } = await supabase
+        .from('players').select('*').order('surname_real').range(from, from + PAGE - 1)
+      if (error) { toast(error.message, 'error'); return }
+      all = all.concat(data || [])
+      if (!data || data.length < PAGE) break
+      from += PAGE
     }
+    if (!all.length) { toast('Aucun joueur à exporter', 'error'); return }
 
-    toast(`${fixed} photo(s) réattribuée(s)${failed ? `, ${failed} échec(s)` : ''} ✅`, failed ? 'error' : 'success')
+    const XLSX = await import('xlsx')
+    const ws = XLSX.utils.json_to_sheet(all)
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, 'Joueurs')
+    const stamp = new Date().toISOString().slice(0, 10)
+    XLSX.writeFile(wb, `joueurs_${stamp}.xlsx`)
+    toast(`${all.length} joueur(s) exporté(s) ✅`, 'success')
+  } catch (e) {
+    toast(`Erreur export : ${e.message}`, 'error')
   } finally {
-    if (btn) { btn.disabled = false; btn.textContent = '🖼️ Réattribuer anciennes photos' }
+    if (btn) { btn.disabled = false; btn.textContent = '📤 Export Excel' }
   }
 }
 
-export // Petit composant "multi-select" additionnable (cases à cocher dans un
+// ── Import Excel : modification de masse ────────────────────────────────
+async function importPlayersExcel(file, container, helpers) {
+  const { toast } = helpers
+  const btn = document.getElementById('import-players-btn')
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Import...' }
+  try {
+    const XLSX = await import('xlsx')
+    const buf  = await file.arrayBuffer()
+    const wb   = XLSX.read(buf, { type: 'array' })
+    const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval: null })
+    if (!rows.length) { toast('Fichier vide', 'error'); return }
+
+    // On ne réécrit que des colonnes réellement modifiables : cela évite
+    // qu'une colonne calculée ou renommée dans Excel ne fasse échouer tout
+    // le lot, et protège les champs techniques.
+    const EDITABLE = [
+      'firstname','surname_real','surname_encoded','job','job2','rarity',
+      'country_code','club_id','sell_price','note_g','note_d','note_m','note_a',
+      'note_min','note_max','face',
+    ]
+    const NUMERIC = new Set(['sell_price','note_g','note_d','note_m','note_a','note_min','note_max'])
+
+    const updates = []
+    const skipped = []
+    rows.forEach((r, i) => {
+      if (!r.id) { skipped.push(`ligne ${i + 2} : id manquant`); return }
+      const row = { id: r.id }
+      EDITABLE.forEach(k => {
+        if (!(k in r)) return
+        let v = r[k]
+        if (v === '' ) v = null
+        if (v !== null && NUMERIC.has(k)) {
+          const n = Number(v)
+          v = Number.isFinite(n) ? n : null
+        }
+        row[k] = v
+      })
+      row.updated_at = new Date().toISOString()
+      updates.push(row)
+    })
+
+    if (!updates.length) { toast('Aucune ligne exploitable (colonne "id" requise)', 'error'); return }
+    if (!confirm(`Mettre à jour ${updates.length} joueur(s) depuis le fichier ?\n\nCette action écrase les données actuelles.`)) return
+
+    // Envoi par lots : un upsert géant échoue en bloc et rend l'erreur
+    // illisible ; par lots on identifie précisément ce qui casse.
+    let ok = 0
+    const CHUNK = 100
+    for (let i = 0; i < updates.length; i += CHUNK) {
+      const slice = updates.slice(i, i + CHUNK)
+      const { error } = await supabase.from('players').upsert(slice, { onConflict: 'id' })
+      if (error) { toast(`Erreur lot ${Math.floor(i / CHUNK) + 1} : ${error.message}`, 'error'); break }
+      ok += slice.length
+    }
+
+    toast(`${ok} joueur(s) mis à jour ✅${skipped.length ? ` — ${skipped.length} ligne(s) ignorée(s)` : ''}`, 'success')
+    if (skipped.length) console.warn('[Import joueurs] lignes ignorées :', skipped)
+    if (ok) loadPlayers(container, helpers)
+  } catch (e) {
+    toast(`Erreur import : ${e.message}`, 'error')
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '📥 Import Excel' }
+  }
+}
+
+// Petit composant "multi-select" additionnable (cases à cocher dans un
 // menu déroulant). Utilisé pour Club et Pays : plusieurs valeurs cumulables
 // avec un OR entre elles, puis un AND avec les autres filtres.
 // L'état sélectionné vit dans window.__players<Kind>Filter (un Set), pour
@@ -189,7 +254,9 @@ function renderPage(container, players, clubs, helpers, savedFilters = null) {
           ${Object.entries(RARITY_LABELS).map(([k,v]) => `<option value="${k}">${v}</option>`).join('')}
         </select>
         <button class="btn btn-primary" id="add-player-btn" style="white-space:nowrap">+ Joueur</button>
-        <button class="btn btn-ghost" id="fix-old-faces-btn" style="white-space:nowrap">🖼️ Réattribuer anciennes photos</button>
+        <button class="btn btn-ghost" id="export-players-btn" style="white-space:nowrap">📤 Export Excel</button>
+        <button class="btn btn-ghost" id="import-players-btn" style="white-space:nowrap">📥 Import Excel</button>
+        <input type="file" id="import-players-file" accept=".xlsx,.xls" style="display:none">
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-start">
         ${renderMultiSelect('club', '🏟️ Club', clubs.map(c => ({ value: c.id, label: c.encoded_name })), true)}
@@ -331,7 +398,15 @@ function renderPage(container, players, clubs, helpers, savedFilters = null) {
   loadPlayers(container, helpers, filters)
   })
   document.getElementById('add-player-btn').addEventListener('click', () => openPlayerModal(null, clubs, container, helpers))
-  document.getElementById('fix-old-faces-btn').addEventListener('click', () => runFixOldFaces(container, helpers))
+  document.getElementById('export-players-btn').addEventListener('click', () => exportPlayersExcel(helpers.toast))
+  document.getElementById('import-players-btn').addEventListener('click', () => {
+    document.getElementById('import-players-file').click()
+  })
+  document.getElementById('import-players-file').addEventListener('change', (e) => {
+    const file = e.target.files?.[0]
+    if (file) importPlayersExcel(file, container, helpers)
+    e.target.value = ''  // permet de réimporter le même fichier après correction
+  })
 }
 
 // ── Modal Card Builder ────────────────────────────────────
@@ -375,6 +450,10 @@ async function openPlayerModal(player, clubs, container, helpers) {
           <div class="form-group">
             <label>Nom</label>
             <input id="pm-real" value="${player?.surname_real || ''}" placeholder="Silva">
+          </div>
+          <div class="form-group" style="grid-column:1 / -1">
+            <label>Surname (nom encodé affiché sur la carte)</label>
+            <input id="pm-enc" value="${player?.surname_encoded || ''}" placeholder="Laissez vide pour générer automatiquement (Silva → Solve)">
           </div>
         </div>
 
@@ -602,6 +681,8 @@ function getFormData(face) {
   return {
     firstname:       (g('pm-fn') || '').trim(),
     surname_real: (g('pm-real') || '').trim() || 'JOUEUR',
+    // Nom encodé : généré automatiquement depuis le nom réel si laissé vide
+    surname_encoded: (g('pm-enc') || '').trim() || encodeVowels((g('pm-real') || '').trim() || 'JOUEUR'),
     country_code:    g('pm-country') || 'FR',
     club_id:         g('pm-club') || null,
     job:             g('pm-job') || 'ATT',

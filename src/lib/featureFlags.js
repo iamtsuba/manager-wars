@@ -22,6 +22,26 @@ export function invalidateFeatureFlagsCache() {
   _cache = null
 }
 
+// ── Accès SYNCHRONE ──────────────────────────────────────────────────
+// Les fonctions de rendu des cartes sont synchrones : elles ne peuvent pas
+// attendre une requête. On précharge donc les flags au démarrage de l'app
+// et on les lit ensuite depuis le cache mémoire.
+export async function preloadFeatureFlags() {
+  const { data } = await supabase.from('app_feature_flags').select('key, enabled')
+  _cache = {}
+  ;(data || []).forEach(f => { _cache[f.key] = f.enabled })
+  _cacheAt = Date.now()
+  return _cache
+}
+
+// `fallback` explicite : contrairement à isFeatureEnabled() qui considère
+// qu'un flag absent est activé, un mode d'affichage optionnel doit rester
+// désactivé tant qu'il n'a pas été créé/activé en base.
+export function isFeatureEnabledSync(key, fallback = false) {
+  if (!_cache || _cache[key] === undefined) return fallback
+  return _cache[key] !== false
+}
+
 // Popup générique "Module en cours de développement"
 export function showFeatureDisabledPopup() {
   const overlay = document.createElement('div')

@@ -3,7 +3,6 @@
  * Conforme au design GDD §4.1-4.3
  * Usage: renderCard(container, playerData, options)
  */
-import { playerSurname } from '../lib/playerName.js'
 
 const JOB_COLORS = {
   ATT: '#1A6B3C',  // Vert
@@ -112,7 +111,7 @@ export function renderCardHTML(player, opts = {}) {
     <div class="mw-inner" style="${rarity!=='normal'?`border:3px solid ${border};border-radius:8px`:``}">
       <div class="mw-name">
         <div class="mw-firstname">${player.firstname || ''}</div>
-        <div class="mw-lastname" style="font-size:${w===120?'13px':'16px'}">${playerSurname(player).toUpperCase()}</div>
+        <div class="mw-lastname" style="font-size:${w===120?'13px':'16px'}">${(player.surname_real || '').toUpperCase()}</div>
       </div>
       <div class="mw-stars">
         <div class="mw-band" style="background:${c1}"></div>

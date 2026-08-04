@@ -7,7 +7,6 @@ import { loadActiveBoosters, drawCard, rollDropRate, recordBoosterClaim } from '
 import { playSound } from '../lib/sound.js'
 import { getPortrait } from '../lib/portrait.js'
 import { renderGCCard, renderStadiumCard, renderFormationCard } from '../components/special-cards.js'
-import { playerFullName } from '../lib/playerName.js'
 
 // Toutes les formations disponibles (depuis formation-links.js)
 const ALL_FORMATIONS = () => Object.keys(FORMATION_POSITIONS)
@@ -91,7 +90,7 @@ export async function claimPendingReward(reward, profile, toast, refreshProfile)
   }
 
   if (reward.reward_type === 'card') {
-    const { data: player } = await supabase.from('players').select('firstname, surname_real, surname_encoded, rarity').eq('id', reward.player_id).single()
+    const { data: player } = await supabase.from('players').select('firstname, surname_real, rarity').eq('id', reward.player_id).single()
     const { error } = await supabase.from('cards').insert({ owner_id: profile.id, player_id: reward.player_id, card_type: 'player' })
     if (error) throw error
     return { type: 'card', player }
@@ -398,7 +397,7 @@ async function openMixedBooster(profile, booster) {
       const normRarity = (r) => ({ 'légende':'legende', 'pépite':'pepite', 'pépites':'pepite' }[r] || r)
       const wantedRarity = rate.rarity ? normRarity(rate.rarity) : null
       let q = supabase.from('players')
-        .select('id,job,firstname,surname_real, surname_encoded,country_code,club_id,rarity,note_g,note_d,note_m,note_a,skin,hair,hair_length,face,sell_price,clubs(encoded_name,logo_url)')
+        .select('id,job,firstname,surname_real,country_code,club_id,rarity,note_g,note_d,note_m,note_a,skin,hair,hair_length,face,sell_price,clubs(encoded_name,logo_url)')
         .eq('is_active', true)
       if (wantedRarity) q = q.eq('rarity', wantedRarity)
       const { data: pool } = await q
@@ -490,7 +489,7 @@ async function openPlayersBooster(profile, count, cost) {
 
   const { data: players } = await supabase
     .from('players')
-    .select('id,job,firstname,surname_real, surname_encoded,country_code,club_id,rarity,note_g,note_d,note_m,note_a,note_min,note_max,skin,hair,hair_length,face,sell_price,clubs(encoded_name,logo_url)')
+    .select('id,job,firstname,surname_real,country_code,club_id,rarity,note_g,note_d,note_m,note_a,note_min,note_max,skin,hair,hair_length,face,sell_price,clubs(encoded_name,logo_url)')
     .eq('is_active', true)
 
   if (!players?.length) throw new Error('Pas de joueurs en BDD — ajoutes-en via le panel admin !')
@@ -614,7 +613,7 @@ async function logBoosterOpening(userId, booster, cards) {
     const snapshot = (cards || []).map(c => ({
       card_type: c.card_type,
       name: c.card_type === 'player'
-        ? playerFullName(c.player)
+        ? [c.player?.firstname, c.player?.surname_real].filter(Boolean).join(' ')
         : (c._stadiumDef?.name || c._gcDef?.name || c.formation || c.gc_type || null),
       rarity: c.player?.rarity || null,
       note: c.current_note ?? null,
@@ -1497,7 +1496,7 @@ export async function renderStarterOnboarding(container, { state, navigate, toas
 async function ensureGKInBooster(profile, newCards) {
   try {
     const { data: gks } = await supabase.from('players')
-      .select('id,job,firstname,surname_real, surname_encoded,country_code,club_id,rarity,note_g,note_d,note_m,note_a,skin,hair,hair_length,face,sell_price,clubs(encoded_name,logo_url)')
+      .select('id,job,firstname,surname_real,country_code,club_id,rarity,note_g,note_d,note_m,note_a,skin,hair,hair_length,face,sell_price,clubs(encoded_name,logo_url)')
       .eq('is_active', true).eq('job', 'GK')
     if (!gks?.length) return
     const gk = gks[Math.floor(Math.random()*gks.length)]

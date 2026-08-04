@@ -84,6 +84,21 @@ async function loadMarket(container, ctx) {
     .not('player_id', 'is', null)
   const ownedPlayerIds = new Set((myCards || []).map(c => c.player_id))
 
+  // Joueurs faisant partie d'une de MES équipes : sert à afficher l'icône
+  // Équipe sur le bouton Acheter (repère pour ne pas racheter un joueur
+  // qu'on aligne déjà).
+  const { data: myDecks } = await supabase
+    .from('decks').select('id').eq('owner_id', state.profile.id)
+  const myDeckIds = (myDecks || []).map(d => d.id)
+  let inDeckPlayerIds = new Set()
+  if (myDeckIds.length) {
+    const { data: deckCards } = await supabase
+      .from('deck_cards')
+      .select('card:cards(player_id)')
+      .in('deck_id', myDeckIds)
+    inDeckPlayerIds = new Set((deckCards || []).map(dc => dc.card?.player_id).filter(Boolean))
+  }
+
   const others    = (activeListings || []).filter(l => l.seller_id !== state.profile.id)
   const myListings = myAllListings || []
 
@@ -126,27 +141,31 @@ async function loadMarket(container, ctx) {
       <input id="flt-name"    placeholder="🔍 Nom"         style="flex:1;min-width:110px;padding:6px 10px;border:1.5px solid #ddd;border-radius:8px;font-size:12px">
       <input id="flt-club"    placeholder="🏟️ Club"        style="flex:1;min-width:90px;padding:6px 10px;border:1.5px solid #ddd;border-radius:8px;font-size:12px">
       <input id="flt-country" placeholder="🌍 Pays"        style="flex:1;min-width:80px;padding:6px 10px;border:1.5px solid #ddd;border-radius:8px;font-size:12px">
-      <select id="flt-job" style="padding:6px 8px;border:1.5px solid #ddd;border-radius:8px;font-size:12px">
-        <option value="">Tous postes</option>
-        <option>GK</option><option>DEF</option><option>MIL</option><option>ATT</option>
-      </select>
-      <select id="flt-rarity" style="padding:6px 8px;border:1.5px solid #ddd;border-radius:8px;font-size:12px">
-        <option value="">Toutes raretés</option>
-        <option value="normal">Normal</option>
-        <option value="pepite">Pépite</option>
-        <option value="papyte">Papyte</option>
-        <option value="legende">Légende</option>
-      </select>
-      <select id="flt-sort" style="padding:6px 8px;border:1.5px solid #ddd;border-radius:8px;font-size:12px">
-        <option value="">Tri : plus récent</option>
-        <option value="note_desc">Note ↓ (plus haute)</option>
-        <option value="note_asc">Note ↑ (plus basse)</option>
-        <option value="price_asc">Prix ↑ (moins cher)</option>
-        <option value="price_desc">Prix ↓ (plus cher)</option>
-      </select>
-      <input id="flt-note1"   placeholder="★ Note min"    type="number" min="0" max="100" style="width:90px;padding:6px 10px;border:1.5px solid #ddd;border-radius:8px;font-size:12px">
-      <input id="flt-note2"   placeholder="☆ Note 2 min" type="number" min="0" max="100" style="width:90px;padding:6px 10px;border:1.5px solid #ddd;border-radius:8px;font-size:12px">
-      <div style="display:flex;gap:6px;width:100%">
+      <!-- Ligne 2 : les 3 menus déroulants côte à côte -->
+      <div style="display:flex;gap:8px;width:100%;flex-wrap:wrap">
+        <select id="flt-job" style="flex:1;min-width:120px;padding:6px 8px;border:1.5px solid #ddd;border-radius:8px;font-size:12px">
+          <option value="">Tous postes</option>
+          <option>GK</option><option>DEF</option><option>MIL</option><option>ATT</option>
+        </select>
+        <select id="flt-rarity" style="flex:1;min-width:130px;padding:6px 8px;border:1.5px solid #ddd;border-radius:8px;font-size:12px">
+          <option value="">Toutes raretés</option>
+          <option value="normal">Normal</option>
+          <option value="pepite">Pépite</option>
+          <option value="papyte">Papyte</option>
+          <option value="legende">Légende</option>
+        </select>
+        <select id="flt-sort" style="flex:1;min-width:150px;padding:6px 8px;border:1.5px solid #ddd;border-radius:8px;font-size:12px">
+          <option value="">Tri : plus récent</option>
+          <option value="note_desc">Note ↓ (plus haute)</option>
+          <option value="note_asc">Note ↑ (plus basse)</option>
+          <option value="price_asc">Prix ↑ (moins cher)</option>
+          <option value="price_desc">Prix ↓ (plus cher)</option>
+        </select>
+      </div>
+      <!-- Ligne 3 : notes + filtres de possession sur la même ligne -->
+      <div style="display:flex;gap:8px;width:100%;flex-wrap:wrap;align-items:center">
+        <input id="flt-note1" placeholder="★ Note min"   type="number" min="0" max="100" style="width:100px;padding:6px 10px;border:1.5px solid #ddd;border-radius:8px;font-size:12px">
+        <input id="flt-note2" placeholder="☆ Note 2 min" type="number" min="0" max="100" style="width:110px;padding:6px 10px;border:1.5px solid #ddd;border-radius:8px;font-size:12px">
         <button type="button" class="mkt-own-btn active" data-own="">Tous</button>
         <button type="button" class="mkt-own-btn" data-own="owned">🟡 Déjà possédé</button>
         <button type="button" class="mkt-own-btn" data-own="new">✨ Nouveau joueur</button>
@@ -215,17 +234,23 @@ async function loadMarket(container, ctx) {
     const evo        = l.card?.evolution_bonus || 0
     const canAfford  = (state.profile.credits||0) >= l.price
     const owned      = ownedPlayerIds.has(p.id)
+    const inDeck     = inDeckPlayerIds.has(p.id)
     const cardHtml   = renderPlayerCard({ ...p, _evolution_bonus: evo }, { width: 140 })
     // Bouton doré quand le joueur est DÉJÀ dans la collection : repère visuel
     // immédiat pour éviter d'acheter un doublon sans le vouloir.
     const btnStyle = owned
-      ? 'font-size:12px;padding:8px 10px;background:linear-gradient(135deg,#D4A017,#f0c040);border:none;color:#1a1a1a;font-weight:900'
-      : 'font-size:12px;padding:8px 10px'
+      ? 'font-size:12px;padding:8px 10px;background:linear-gradient(135deg,#D4A017,#f0c040);border:none;color:#1a1a1a;font-weight:900;display:flex;align-items:center;justify-content:center;gap:5px;width:100%'
+      : 'font-size:12px;padding:8px 10px;display:flex;align-items:center;justify-content:center;gap:5px;width:100%'
+    // Icône Équipe : uniquement si le joueur est aligné dans un de mes decks
+    const deckIcon = inDeck
+      ? `<img src="${import.meta.env.BASE_URL}icons/nav-decks.png" alt="Dans une de tes équipes" style="width:16px;height:16px;object-fit:contain;flex-shrink:0">`
+      : ''
+    const title = [owned ? 'Tu possèdes déjà ce joueur' : '', inDeck ? 'Il est aligné dans une de tes équipes' : ''].filter(Boolean).join(' · ')
     return `<div class="mkt-buy-tile">
       ${cardHtml}
       <div class="mkt-price">${l.price.toLocaleString('fr')} cr.</div>
       <div class="mkt-seller">Vendeur : ${l.seller?.pseudo||'—'}</div>
-      <button class="btn btn-primary btn-sm" data-buy="${l.id}" ${!canAfford?'disabled':''} style="${btnStyle}" title="${owned?'Tu possèdes déjà ce joueur':''}">${canAfford ? (owned ? '🟡 Acheter' : 'Acheter') : 'Trop cher'}</button>
+      <button class="btn btn-primary btn-sm" data-buy="${l.id}" ${!canAfford?'disabled':''} style="${btnStyle}" title="${title}"><span>${canAfford ? (owned ? '🟡 Acheter' : 'Acheter') : 'Trop cher'}</span>${deckIcon}</button>
     </div>`
   }
 

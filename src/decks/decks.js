@@ -4,6 +4,7 @@ import { FORMATION_LINKS, FORMATION_POSITIONS, computeLinks, linkColor, getActiv
 import { renderStadiumCard, renderFormationCard } from '../components/special-cards.js'
 import { getPortrait } from '../lib/portrait.js'
 import { ensureV2Chrome } from '../home/home2.js'
+import { buildBestDeck } from './auto-deck.js'
 
 // ── Modales in-app (remplacent prompt()/confirm() natifs du navigateur) ──
 function showPromptModal(title, defaultValue = '') {
@@ -382,6 +383,22 @@ function renderBuilder(container, builder, ctx, isInitialRender = false) {
               </div>`}
             </div>
           </div>
+          <style>
+            @keyframes autoDeckGlow {
+              0%,100% { box-shadow:0 0 6px rgba(212,160,23,.65), 0 0 14px rgba(212,160,23,.4) }
+              50%     { box-shadow:0 0 12px rgba(212,160,23,1), 0 0 26px rgba(212,160,23,.7) }
+            }
+            .auto-deck-btn {
+              width:100%; margin-top:8px; cursor:pointer;
+              background:linear-gradient(135deg,#f6d365,#D4A017 45%,#f0c040);
+              color:#1a1a1a; border:1px solid #ffe9a8; border-radius:10px;
+              font-weight:900; font-size:13px; padding:10px 8px;
+              animation:autoDeckGlow 1.8s ease-in-out infinite;
+            }
+            .auto-deck-btn:hover  { filter:brightness(1.08) }
+            .auto-deck-btn:disabled { opacity:.5; cursor:not-allowed; animation:none }
+          </style>
+          <button class="auto-deck-btn" id="auto-deck-pc">✨ Deck Automatique</button>
           <!-- Enregistrer (PC uniquement — plus haut, évite le scroll derrière le grand terrain) -->
           <button class="btn btn-primary" id="save-deck-pc" style="width:100%;margin-top:8px" ${filled < 11 ? 'disabled' : ''}>
             ${filled < 11 ? `Placez encore ${11-filled}` : '💾 Enregistrer'}
@@ -444,6 +461,7 @@ function renderBuilder(container, builder, ctx, isInitialRender = false) {
 
     <!-- Sauvegarder -->
     <div class="page-body" style="padding:12px 16px calc(80px + env(safe-area-inset-bottom, 0px))">
+      <button class="auto-deck-btn" id="auto-deck-mobile" style="margin-bottom:8px;margin-top:0">✨ Deck Automatique</button>
       <button class="btn btn-primary" id="save-deck" style="width:100%" ${filled < 11 ? 'disabled' : ''}>
         ${filled < 11 ? `Placez encore ${11-filled} joueur(s)` : '💾 Enregistrer le deck'}
       </button>
@@ -501,6 +519,42 @@ function renderBuilder(container, builder, ctx, isInitialRender = false) {
   container.querySelectorAll('#add-stad-btn-pc, #add-stad-btn').forEach(el => el.addEventListener('click', () => openStadiumSelector(builder, container, ctx)))
 
   container.querySelectorAll('#save-deck, #save-deck-pc').forEach(el => el.addEventListener('click', () => saveDeck(builder, ctx)))
+
+  // ── Deck Automatique ──
+  container.querySelectorAll('#auto-deck-pc, #auto-deck-mobile').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      if (builder.playerCards.length < 11) {
+        ctx.toast(`Il faut au moins 11 joueurs (tu en as ${builder.playerCards.length})`, 'error')
+        return
+      }
+      const label = btn.textContent
+      btn.disabled = true; btn.textContent = '⏳ Optimisation…'
+      // Laisse le navigateur peindre l'état "en cours" avant le calcul, qui
+      // est synchrone et peut bloquer brièvement le thread principal.
+      await new Promise(r => setTimeout(r, 30))
+
+      const best = buildBestDeck({
+        playerCards:         builder.playerCards,
+        availableFormations: builder.availableFormations,
+        stadiumCards:        builder.stadiumCards,
+        stadDefMap:          builder.stadDefMap,
+      })
+
+      btn.disabled = false; btn.textContent = label
+
+      if (!best) { ctx.toast('Impossible de composer une équipe complète', 'error'); return }
+
+      builder.formation      = best.formation
+      builder.slots          = best.slots
+      builder.subs           = best.subs
+      builder.stadiumCardId  = best.stadiumCardId
+      // La carte Formation correspondante (si possédée) est recalculée à la
+      // sauvegarde : on ne force pas formationCardId ici.
+
+      renderBuilder(container, builder, ctx)
+      ctx.toast(`✨ Deck optimisé : ${best.formation} · score ${best.score}`, 'success')
+    })
+  })
 
   // Retirer un remplaçant
   container.querySelectorAll('[data-remove-sub]').forEach(btn => {

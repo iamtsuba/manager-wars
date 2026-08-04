@@ -5,6 +5,7 @@ import { FORMATION_LINKS, FORMATION_POSITIONS } from '../match/formation-links.j
 import { renderGCCard, renderStadiumCard, renderFormationCard as renderFormationCardTpl } from '../components/special-cards.js'
 import { getPortrait } from '../lib/portrait.js'
 import { ensureV2Chrome } from '../home/home2.js'
+import { playerSurname, playerFullName } from '../lib/playerName.js'
 
 // ── Constantes ─────────────────────────────────────────────
 const RAR_COLORS  = { normal:'#ccc', pepite:'#D4A017', papyte:'#909090', legende:'#7a28b8' }
@@ -76,7 +77,7 @@ export async function renderCollection(container, ctx) {
   const { data: cards } = await supabase
     .from('cards')
     .select(`id, card_type, current_note, gc_type, formation, is_for_sale, sale_price, stadium_id, evolution_bonus,
-      player:players(id, firstname, surname_real, country_code, club_id, job, job2,
+      player:players(id, firstname, surname_real, surname_encoded, country_code, club_id, job, job2,
         note_g, note_d, note_m, note_a, rarity, note_min, note_max, skin, hair, hair_length, sell_price, face,
         clubs(encoded_name, logo_url)),
       stadium_def:stadium_definitions(id, name, club_id, country_code, image_url,
@@ -86,7 +87,7 @@ export async function renderCollection(container, ctx) {
   // Tous les joueurs actifs (pour le mode "Voir tout")
   const { data: allPlayers } = await supabase
     .from('players')
-    .select(`id, firstname, surname_real, country_code, club_id, job, job2,
+    .select(`id, firstname, surname_real, surname_encoded, country_code, club_id, job, job2,
       note_g, note_d, note_m, note_a, rarity, note_min, note_max, skin, hair, hair_length,
       clubs(encoded_name, logo_url)`)
     .eq('is_active', true)
@@ -148,7 +149,7 @@ export async function renderCollection(container, ctx) {
       const pa = getPlayer(a), pb = getPlayer(b)
       const iA = JOB_ORDER.indexOf(pa.job), iB = JOB_ORDER.indexOf(pb.job)
       if (iA !== iB) return iA - iB
-      return (pa.surname_real||'').localeCompare(pb.surname_real||'')
+      return playerSurname(pa).localeCompare(playerSurname(pb))
     })
   }
 
@@ -164,7 +165,7 @@ export async function renderCollection(container, ctx) {
     return sortedCards().filter(c => {
       const p = c.player
       const matchJob    = activeFilter === 'Tous' || p.job === activeFilter
-      const matchSearch = !searchQ || `${p.firstname} ${p.surname_real}`.toLowerCase().includes(searchQ)
+      const matchSearch = !searchQ || `${p.firstname} ${p.surname_real} ${p.surname_encoded||''}`.toLowerCase().includes(searchQ)
       return matchJob && matchSearch && matchCountryClub(p)
     })
   }
@@ -172,7 +173,7 @@ export async function renderCollection(container, ctx) {
   function filteredAllPlayers() {
     return sortedAllPlayers().filter(p => {
       const matchJob    = activeFilter === 'Tous' || p.job === activeFilter
-      const matchSearch = !searchQ || `${p.firstname} ${p.surname_real}`.toLowerCase().includes(searchQ)
+      const matchSearch = !searchQ || `${p.firstname} ${p.surname_real} ${p.surname_encoded||''}`.toLowerCase().includes(searchQ)
       return matchJob && matchSearch && matchCountryClub(p)
     })
   }
@@ -1110,7 +1111,7 @@ async function openCardDetail(card, allPlayerCards, countByPlayer, ctx) {
       </div>
     </div>` : ''
 
-  openModal(`${p.firstname} ${p.surname_real}`,
+  openModal(playerFullName(p),
     `<div style="display:flex;gap:16px;flex-wrap:wrap;justify-content:center">
 
       <!-- Carte visuelle -->
@@ -1301,7 +1302,7 @@ async function openCardDetail(card, allPlayerCards, countByPlayer, ctx) {
           <div style="font-size:48px;margin-bottom:10px">⬆️</div>
           <div style="font-size:17px;font-weight:900;margin-bottom:6px;color:#1a1a1a">Évolution par fusion</div>
           <div style="font-size:13px;color:#555;margin-bottom:6px">
-            <strong>${p.firstname} ${p.surname_real}</strong>
+            <strong>${playerFullName(p)}</strong>
           </div>
           <div style="background:#f0fdf4;border-radius:10px;padding:12px;margin-bottom:16px;font-size:13px;color:#333">
             🗑️ <strong>${idsToDelete.length}</strong> copie${idsToDelete.length>1?'s':''} sacrifiée${idsToDelete.length>1?'s':''}<br>
@@ -1343,7 +1344,7 @@ async function openCardDetail(card, allPlayerCards, countByPlayer, ctx) {
       .eq('id', card.id)
     if (evoErr) { toast('Erreur évolution : ' + evoErr.message, 'error'); return }
 
-    toast(`⬆️ ${p.firstname} ${p.surname_real} : note ${note1} → ${note1 + newEvo} (+${bonusGained}) !`, 'success', 4000)
+    toast(`⬆️ ${playerFullName(p)} : note ${note1} → ${note1 + newEvo} (+${bonusGained}) !`, 'success', 4000)
     closeModal()
     navigate('collection')
   })

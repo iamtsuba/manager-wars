@@ -169,6 +169,7 @@ async function loadMarket(container, ctx) {
         <button type="button" class="mkt-own-btn active" data-own="">Tous</button>
         <button type="button" class="mkt-own-btn" data-own="owned">🟡 Déjà possédé</button>
         <button type="button" class="mkt-own-btn" data-own="new">✨ Nouveau joueur</button>
+        <button type="button" class="mkt-own-btn" data-own="indeck">👥 Présent dans deck</button>
       </div>
     </div>
 
@@ -177,7 +178,7 @@ async function loadMarket(container, ctx) {
 
   // ── Filtre + rendu ────────────────────────────────────────
   let activeTab = 'buy'
-  let ownFilter = ''   // '' | 'owned' | 'new'
+  let ownFilter = ''   // '' | 'owned' | 'new' | 'indeck'
   const getFilters = () => ({
     name:     (document.getElementById('flt-name')?.value||'').toLowerCase().trim(),
     club:     (document.getElementById('flt-club')?.value||'').toLowerCase().trim(),
@@ -209,8 +210,9 @@ async function loadMarket(container, ctx) {
       if (f.note2   && note2 < f.note2)              return false
       // Filtre possession : déjà dans ma collection, ou joueur inédit
       const owned = ownedPlayerIds.has(p.id)
-      if (ownFilter === 'owned' && !owned) return false
-      if (ownFilter === 'new'   &&  owned) return false
+      if (ownFilter === 'owned'  && !owned) return false
+      if (ownFilter === 'new'    &&  owned) return false
+      if (ownFilter === 'indeck' && !inDeckPlayerIds.has(p.id)) return false
       return true
     })
 

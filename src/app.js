@@ -29,7 +29,6 @@ import { renderRanked }     from './ranked/ranked.js'
 import { renderMatches }    from './matches/matches.js'
 import { renderFriends }    from './friends/friends.js'
 import { setFormationLinksOverrides } from './match/formation-links.js'
-import { preloadFeatureFlags } from './lib/featureFlags.js'
 
 // ── État global ───────────────────────────────────────────
 export const state = {
@@ -384,10 +383,6 @@ async function init() {
   // ── Heartbeat "en ligne" (visible dans Admin > Managers) ──
   // Un ping toutes les 45s tant que l'app est ouverte ; Admin considère
   // un manager "en ligne" si last_seen < 2 minutes.
-  // Précharger les feature flags : le rendu des cartes est synchrone et lit
-  // le mode Real Player depuis ce cache (voir lib/playerName.js).
-  await preloadFeatureFlags().catch(() => {})
-
   supabase.rpc('heartbeat').then(()=>{}).catch(()=>{})
   setInterval(() => { supabase.rpc('heartbeat').then(()=>{}).catch(()=>{}) }, 45000)
 

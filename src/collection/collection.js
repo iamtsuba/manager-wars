@@ -50,15 +50,36 @@ function getNote(p, job) {
 }
 
 // ── Rendu d'une carte joueur ──────────────────────────────
-function renderCard(card, countBadge = '') {
+function renderCard(card, countBadge = '', copies = 1) {
   const p = card.player
   if (!p) return ''
   const evo = card.evolution_bonus || 0
   const player = { ...p, _evolution_bonus: evo }
   const badge = countBadge ? `<div style="position:absolute;top:6px;right:6px;z-index:10;background:#0a3d1e;color:#fff;border-radius:10px;font-size:10px;font-weight:700;padding:2px 7px">${countBadge}</div>` : ''
+  // Bouton "Faire évoluer" : uniquement si des exemplaires en trop existent
+  // (il faut au moins 2 cartes du joueur pour fusionner).
+  const evolveBtn = copies > 1 ? `
+    <style>
+      @keyframes bigEvolveGlow {
+        0%,100% { box-shadow:0 0 6px rgba(212,160,23,0.7), 0 0 14px rgba(212,160,23,0.45) }
+        50%     { box-shadow:0 0 12px rgba(212,160,23,1),  0 0 26px rgba(212,160,23,0.75) }
+      }
+      .big-evolve-btn {
+        position:absolute; left:50%; bottom:2%; transform:translateX(-50%);
+        z-index:12; white-space:nowrap; cursor:pointer;
+        background:linear-gradient(135deg,#f6d365,#D4A017 45%,#f0c040);
+        color:#1a1a1a; border:1px solid #ffe9a8; border-radius:999px;
+        font-weight:900; font-size:9px; letter-spacing:.3px;
+        padding:4px 10px; animation:bigEvolveGlow 1.8s ease-in-out infinite;
+      }
+      .big-evolve-btn:hover { filter:brightness(1.08) }
+    </style>
+    <button type="button" class="big-evolve-btn" data-evolve-card="${card.id}"
+      title="Fusionner les ${copies - 1} exemplaire(s) en trop">⬆️ Faire évoluer</button>` : ''
   return `<div style="position:relative;display:inline-block;cursor:pointer" data-card-id="${card.id}">
     ${badge}
     ${renderPlayerCard(player, { width: 140 })}
+    ${evolveBtn}
   </div>`
 }
 // ── Rendu d'une carte joueur MANQUANTE (grisée, non possédée) ──
@@ -474,6 +495,14 @@ export async function renderCollection(container, ctx) {
       bigZone.innerHTML = '<div id="big-card-inner" style="display:inline-block;transform-origin:center center">' + renderBigFn(items[sel]) + '</div>'
       var bigEl = bigZone.querySelector('[data-card-id],[data-form-id],[data-gc-id]')
       if (bigEl) bigEl.addEventListener('click', function() { onBigClick(items[sel]) })
+      // Bouton "Faire évoluer" : ouvre le détail en pré-sélectionnant les
+      // exemplaires en trop. stopPropagation() sinon le clic déclenche aussi
+      // l'ouverture normale de la carte juste en dessous.
+      var evoBtn = bigZone.querySelector('.big-evolve-btn')
+      if (evoBtn) evoBtn.addEventListener('click', function(e) {
+        e.stopPropagation()
+        onBigClick(items[sel], { autoEvolve: true })
+      })
       // Auto-scale pour que la carte remplisse EXACTEMENT la zone 5 (déjà
       // fixée en px ci-dessus, donc pas de re-mesure hasardeuse nécessaire).
       requestAnimationFrame(function() {
@@ -637,10 +666,10 @@ export async function renderCollection(container, ctx) {
           const badge = count > 1 ? `<div style="position:absolute;top:4px;right:4px;background:#1A6B3C;color:#fff;border-radius:10px;font-size:9px;font-weight:700;padding:1px 6px;z-index:3">×${count}</div>` : ''
           const forSale = playerCards.filter(c => c.player.id === card.player.id && c.is_for_sale).length
           const saleBadge = forSale > 0 ? `<div style="position:absolute;top:4px;left:4px;background:#D4A017;color:#fff;border-radius:10px;font-size:9px;font-weight:700;padding:1px 5px;z-index:3">🏷️</div>` : ''
-          return renderCard(card, badge + saleBadge)
+          return renderCard(card, badge + saleBadge, count)
         },
         (card) => miniPlayerCard(card),
-        (card) => openCardDetail(card, playerCards, countByPlayer, ctx),
+        (card, opts) => openCardDetail(card, playerCards, countByPlayer, ctx, opts),
         '#1A6B3C'
       )
     }
@@ -914,7 +943,7 @@ function openFormationModal(card, allFormationCards, ctx, openModal) {
 }
 
 // ── Détail carte joueur + vente directe ───────────────────
-async function openCardDetail(card, allPlayerCards, countByPlayer, ctx) {
+async function openCardDetail(card, allPlayerCards, countByPlayer, ctx, opts = {}) {
   const { state, toast, openModal, closeModal, navigate, refreshProfile } = ctx
   const p = card.player
 
@@ -1243,6 +1272,57 @@ async function openCardDetail(card, allPlayerCards, countByPlayer, ctx) {
       updatePanel()
     })
   })
+
+  // Ouverture via le bouton doré "Faire évoluer" : on coche d'office tous
+  // les exemplaires EN TROP (jamais l'exemplaire principal, qui est celui
+  // que l'on fait évoluer) et on affiche directement le panneau.
+  if (opts.autoEvolve) {
+    document.querySelectorAll('.expl-check').forEach(cb => {
+      if (cb.dataset.id === card.id) return
+      cb.checked = true
+      selectedCardIds.add(cb.dataset.id)
+      const row = cb.closest('.exemplaire-row')
+      if (row) {
+        const overlay   = row.querySelector('.expl-sel-overlay')
+        const checkmark = row.querySelector('.expl-sel-check')
+        if (overlay)   overlay.style.display   = 'block'
+        if (checkmark) checkmark.style.display = 'flex'
+        row.style.transform = 'scale(1.05)'
+      }
+    })
+    updatePanel()
+
+    // On enchaîne directement sur le popup de confirmation : la modale de
+    // détail est masquée (mais gardée dans le DOM, le handler d'évolution en
+    // dépend) puis le bouton "Évoluer" est déclenché. Le joueur ne voit donc
+    // que le récapitulatif de fusion.
+    const modalEl = document.getElementById('modal-overlay')
+    if (modalEl) modalEl.style.visibility = 'hidden'
+
+    requestAnimationFrame(() => {
+      const evoBtn = document.getElementById('evolve-btn')
+      if (!evoBtn || evoBtn.disabled) {
+        if (modalEl) modalEl.style.visibility = ''   // repli : on montre la modale
+        return
+      }
+      evoBtn.click()
+
+      // Le popup de confirmation est ajouté à <body> en z-index 9999.
+      // Quand il disparaît : soit l'évolution a été confirmée (la modale se
+      // ferme d'elle-même), soit elle a été annulée — et dans ce cas il faut
+      // refermer la modale masquée, sinon elle resterait invisible et bloquante.
+      const obs = new MutationObserver(() => {
+        const popupStillOpen = [...document.body.children].some(el => el.style?.zIndex === '9999')
+        if (popupStillOpen) return
+        obs.disconnect()
+        if (modalEl) {
+          modalEl.style.visibility = ''
+          if (!modalEl.classList.contains('hidden')) closeModal()
+        }
+      })
+      obs.observe(document.body, { childList: true })
+    })
+  }
 
   // Clic sur la row entière → toggle checkbox
   document.querySelectorAll('.exemplaire-row').forEach(row => {

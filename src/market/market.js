@@ -74,6 +74,31 @@ async function loadMarket(container, ctx) {
     .order('listed_at', { ascending: false })
     .limit(100)
 
+  // Joueurs déjà présents dans MA collection : sert au filtre
+  // "Déjà possédé"/"Nouveau" et à la couleur du bouton Acheter.
+  const { data: myCards } = await supabase
+    .from('cards')
+    .select('player_id')
+    .eq('owner_id', state.profile.id)
+    .eq('card_type', 'player')
+    .not('player_id', 'is', null)
+  const ownedPlayerIds = new Set((myCards || []).map(c => c.player_id))
+
+  // Joueurs faisant partie d'une de MES équipes : sert à afficher l'icône
+  // Équipe sur le bouton Acheter (repère pour ne pas racheter un joueur
+  // qu'on aligne déjà).
+  const { data: myDecks } = await supabase
+    .from('decks').select('id').eq('owner_id', state.profile.id)
+  const myDeckIds = (myDecks || []).map(d => d.id)
+  let inDeckPlayerIds = new Set()
+  if (myDeckIds.length) {
+    const { data: deckCards } = await supabase
+      .from('deck_cards')
+      .select('card:cards(player_id)')
+      .in('deck_id', myDeckIds)
+    inDeckPlayerIds = new Set((deckCards || []).map(dc => dc.card?.player_id).filter(Boolean))
+  }
+
   const others    = (activeListings || []).filter(l => l.seller_id !== state.profile.id)
   const myListings = myAllListings || []
 
@@ -100,22 +125,52 @@ async function loadMarket(container, ctx) {
 
     <!-- Filtres (onglet Acheter seulement) -->
     <div id="mkt-filters" style="padding:10px 16px;background:var(--tile-dark-bg);border-bottom:1px solid var(--tile-border);display:flex;flex-wrap:wrap;gap:8px">
+      <style>
+        /* Le fond des champs était laissé au thème (sombre) alors que la
+           bordure suggérait un champ clair : texte et placeholder blancs
+           sur fond blanc, donc illisibles. On force ici un champ clair
+           avec un texte sombre. */
+        #mkt-filters input, #mkt-filters select {
+          background: #fff !important;
+          color: #1a1a1a !important;
+        }
+        #mkt-filters input::placeholder { color: #999 !important; }
+        .mkt-own-btn { padding:6px 12px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;border:1.5px solid #ddd;background:#fff;color:#555 }
+        .mkt-own-btn.active { background:var(--green);border-color:var(--green);color:#fff }
+      </style>
       <input id="flt-name"    placeholder="🔍 Nom"         style="flex:1;min-width:110px;padding:6px 10px;border:1.5px solid #ddd;border-radius:8px;font-size:12px">
       <input id="flt-club"    placeholder="🏟️ Club"        style="flex:1;min-width:90px;padding:6px 10px;border:1.5px solid #ddd;border-radius:8px;font-size:12px">
       <input id="flt-country" placeholder="🌍 Pays"        style="flex:1;min-width:80px;padding:6px 10px;border:1.5px solid #ddd;border-radius:8px;font-size:12px">
-      <select id="flt-job" style="padding:6px 8px;border:1.5px solid #ddd;border-radius:8px;font-size:12px;background:var(--tile-bg)">
-        <option value="">Tous postes</option>
-        <option>GK</option><option>DEF</option><option>MIL</option><option>ATT</option>
-      </select>
-      <select id="flt-rarity" style="padding:6px 8px;border:1.5px solid #ddd;border-radius:8px;font-size:12px;background:var(--tile-bg)">
-        <option value="">Toutes raretés</option>
-        <option value="normal">Normal</option>
-        <option value="pepite">Pépite</option>
-        <option value="papyte">Papyte</option>
-        <option value="legende">Légende</option>
-      </select>
-      <input id="flt-note1"   placeholder="★ Note min"    type="number" min="0" max="20" style="width:90px;padding:6px 10px;border:1.5px solid #ddd;border-radius:8px;font-size:12px">
-      <input id="flt-note2"   placeholder="☆ Note 2 min" type="number" min="0" max="20" style="width:90px;padding:6px 10px;border:1.5px solid #ddd;border-radius:8px;font-size:12px">
+      <!-- Ligne 2 : les 3 menus déroulants côte à côte -->
+      <div style="display:flex;gap:8px;width:100%;flex-wrap:wrap">
+        <select id="flt-job" style="flex:1;min-width:120px;padding:6px 8px;border:1.5px solid #ddd;border-radius:8px;font-size:12px">
+          <option value="">Tous postes</option>
+          <option>GK</option><option>DEF</option><option>MIL</option><option>ATT</option>
+        </select>
+        <select id="flt-rarity" style="flex:1;min-width:130px;padding:6px 8px;border:1.5px solid #ddd;border-radius:8px;font-size:12px">
+          <option value="">Toutes raretés</option>
+          <option value="normal">Normal</option>
+          <option value="pepite">Pépite</option>
+          <option value="papyte">Papyte</option>
+          <option value="legende">Légende</option>
+        </select>
+        <select id="flt-sort" style="flex:1;min-width:150px;padding:6px 8px;border:1.5px solid #ddd;border-radius:8px;font-size:12px">
+          <option value="">Tri : plus récent</option>
+          <option value="note_desc">Note ↓ (plus haute)</option>
+          <option value="note_asc">Note ↑ (plus basse)</option>
+          <option value="price_asc">Prix ↑ (moins cher)</option>
+          <option value="price_desc">Prix ↓ (plus cher)</option>
+        </select>
+      </div>
+      <!-- Ligne 3 : notes + filtres de possession sur la même ligne -->
+      <div style="display:flex;gap:8px;width:100%;flex-wrap:wrap;align-items:center">
+        <input id="flt-note1" placeholder="★ Note min"   type="number" min="0" max="100" style="width:100px;padding:6px 10px;border:1.5px solid #ddd;border-radius:8px;font-size:12px">
+        <input id="flt-note2" placeholder="☆ Note 2 min" type="number" min="0" max="100" style="width:110px;padding:6px 10px;border:1.5px solid #ddd;border-radius:8px;font-size:12px">
+        <button type="button" class="mkt-own-btn active" data-own="">Tous</button>
+        <button type="button" class="mkt-own-btn" data-own="owned">🟡 Déjà possédé</button>
+        <button type="button" class="mkt-own-btn" data-own="new">✨ Nouveau joueur</button>
+        <button type="button" class="mkt-own-btn" data-own="indeck">👥 Présent dans deck</button>
+      </div>
     </div>
 
     <div id="mkt-content" style="padding:10px 16px;display:flex;flex-direction:column;gap:8px"></div>
@@ -123,19 +178,21 @@ async function loadMarket(container, ctx) {
 
   // ── Filtre + rendu ────────────────────────────────────────
   let activeTab = 'buy'
+  let ownFilter = ''   // '' | 'owned' | 'new' | 'indeck'
   const getFilters = () => ({
     name:     (document.getElementById('flt-name')?.value||'').toLowerCase().trim(),
     club:     (document.getElementById('flt-club')?.value||'').toLowerCase().trim(),
     country:  (document.getElementById('flt-country')?.value||'').toLowerCase().trim(),
     job:      document.getElementById('flt-job')?.value||'',
     rarity:   document.getElementById('flt-rarity')?.value||'',
+    sort:     document.getElementById('flt-sort')?.value||'',
     note1:    parseInt(document.getElementById('flt-note1')?.value)||0,
     note2:    parseInt(document.getElementById('flt-note2')?.value)||0,
   })
 
   function applyFilters(list) {
     const f = getFilters()
-    return list.filter(l => {
+    const filtered = list.filter(l => {
       const p = l.card?.player
       if (!p) return false
       const fullName = `${p.firstname} ${p.surname_real}`.toLowerCase()
@@ -151,8 +208,26 @@ async function loadMarket(container, ctx) {
       if (f.rarity  && p.rarity !== f.rarity)        return false
       if (f.note1   && note1 < f.note1)              return false
       if (f.note2   && note2 < f.note2)              return false
+      // Filtre possession : déjà dans ma collection, ou joueur inédit
+      const owned = ownedPlayerIds.has(p.id)
+      if (ownFilter === 'owned'  && !owned) return false
+      if (ownFilter === 'new'    &&  owned) return false
+      if (ownFilter === 'indeck' && !inDeckPlayerIds.has(p.id)) return false
       return true
     })
+
+    // Tri (la meilleure note du joueur sert de référence, évolution incluse)
+    const bestNote = (l) => {
+      const p = l.card?.player
+      if (!p) return 0
+      const evo = l.card?.evolution_bonus || 0
+      return Math.max(getNote(p, p.job, evo), p.job2 ? getNote(p, p.job2, evo) : 0)
+    }
+    if (f.sort === 'note_desc')  return [...filtered].sort((a,b) => bestNote(b) - bestNote(a))
+    if (f.sort === 'note_asc')   return [...filtered].sort((a,b) => bestNote(a) - bestNote(b))
+    if (f.sort === 'price_asc')  return [...filtered].sort((a,b) => a.price - b.price)
+    if (f.sort === 'price_desc') return [...filtered].sort((a,b) => b.price - a.price)
+    return filtered
   }
 
   function renderBuyTile(l) {
@@ -160,12 +235,24 @@ async function loadMarket(container, ctx) {
     if (!p) return ''
     const evo        = l.card?.evolution_bonus || 0
     const canAfford  = (state.profile.credits||0) >= l.price
+    const owned      = ownedPlayerIds.has(p.id)
+    const inDeck     = inDeckPlayerIds.has(p.id)
     const cardHtml   = renderPlayerCard({ ...p, _evolution_bonus: evo }, { width: 140 })
+    // Bouton doré quand le joueur est DÉJÀ dans la collection : repère visuel
+    // immédiat pour éviter d'acheter un doublon sans le vouloir.
+    const btnStyle = owned
+      ? 'font-size:12px;padding:8px 10px;background:linear-gradient(135deg,#D4A017,#f0c040);border:none;color:#1a1a1a;font-weight:900;display:flex;align-items:center;justify-content:center;gap:5px;width:100%'
+      : 'font-size:12px;padding:8px 10px;display:flex;align-items:center;justify-content:center;gap:5px;width:100%'
+    // Icône Équipe : uniquement si le joueur est aligné dans un de mes decks
+    const deckIcon = inDeck
+      ? `<img src="${import.meta.env.BASE_URL}icons/nav-decks.png" alt="Dans une de tes équipes" style="width:16px;height:16px;object-fit:contain;flex-shrink:0">`
+      : ''
+    const title = [owned ? 'Tu possèdes déjà ce joueur' : '', inDeck ? 'Il est aligné dans une de tes équipes' : ''].filter(Boolean).join(' · ')
     return `<div class="mkt-buy-tile">
       ${cardHtml}
       <div class="mkt-price">${l.price.toLocaleString('fr')} cr.</div>
       <div class="mkt-seller">Vendeur : ${l.seller?.pseudo||'—'}</div>
-      <button class="btn btn-primary btn-sm" data-buy="${l.id}" ${!canAfford?'disabled':''} style="font-size:12px;padding:8px 10px">${canAfford?'Acheter':'Trop cher'}</button>
+      <button class="btn btn-primary btn-sm" data-buy="${l.id}" ${!canAfford?'disabled':''} style="${btnStyle}" title="${title}"><span>${canAfford ? (owned ? '🟡 Acheter' : 'Acheter') : 'Trop cher'}</span>${deckIcon}</button>
     </div>`
   }
 
@@ -249,8 +336,19 @@ async function loadMarket(container, ctx) {
   })
 
   // Listeners filtres (debounce léger)
-  let _ft; ['flt-name','flt-club','flt-country','flt-job','flt-rarity','flt-note1','flt-note2'].forEach(id => {
+  let _ft; ['flt-name','flt-club','flt-country','flt-job','flt-rarity','flt-sort','flt-note1','flt-note2'].forEach(id => {
     document.getElementById(id)?.addEventListener('input', () => { clearTimeout(_ft); _ft=setTimeout(renderTab, 250) })
+    // Les <select> n'émettent pas 'input' sur tous les navigateurs
+    document.getElementById(id)?.addEventListener('change', () => { clearTimeout(_ft); _ft=setTimeout(renderTab, 100) })
+  })
+
+  // Filtre possession (Tous / Déjà possédé / Nouveau)
+  container.querySelectorAll('.mkt-own-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      ownFilter = btn.dataset.own || ''
+      container.querySelectorAll('.mkt-own-btn').forEach(b => b.classList.toggle('active', b === btn))
+      renderTab()
+    })
   })
 
   renderTab()

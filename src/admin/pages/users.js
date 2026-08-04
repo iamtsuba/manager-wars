@@ -17,7 +17,10 @@ export async function pageUsers(container, { toast }) {
       .from('users')
       .select('id,pseudo,club_name,credits,level,wins,draws,losses,trophies_top1,trophies_top2,trophies_top3,is_admin,created_at,mmr,mmr_deviation,rank_tier,placement_matches,ranked_wins,ranked_losses,ranked_draws,last_seen')
       .order('created_at', { ascending: false }),
-    supabase.from('user_solo_progress').select('user_id, unlocked_level'),
+    // RPC SECURITY DEFINER obligatoire : les policies RLS bloquent la lecture
+    // des lignes user_solo_progress appartenant à un autre utilisateur, la
+    // requête directe revenait vide et tout le monde affichait "niv. 1".
+    supabase.rpc('admin_get_solo_progress'),
     supabase.rpc('admin_get_user_emails'),
   ])
 

@@ -753,11 +753,42 @@ function openPlayerSelector(position, builder, container, ctx) {
     return true
   })
 
+  // ── Tri CONTEXTUEL : on ne classe plus sur la seule note, mais sur le gain
+  // réel qu'apporterait le joueur À CE POSTE : note + liens avec les joueurs
+  // déjà placés autour + bonus du stade équipé. Un joueur un peu moins bien
+  // noté mais qui crée deux liens verts remonte donc devant.
+  const _links = getActiveLinks(builder.formation) || FORMATION_LINKS[builder.formation] || []
+  // Voisins de ce poste effectivement occupés
+  const _neighbours = _links
+    .filter(([a, b]) => a === position || b === position)
+    .map(([a, b]) => (a === position ? b : a))
+    .map(pos => builder.playerCards.find(c => c.id === builder.slots[pos])?.player)
+    .filter(Boolean)
+
+  function fitScore(c) {
+    const p   = c.player
+    const evo = c.evolution_bonus || 0
+    const note = (role==='GK'?p.note_g : role==='DEF'?p.note_d : role==='MIL'?p.note_m : p.note_a)
+               + ((role === p.job || role === p.job2) ? evo : 0)
+    let bonus = 0
+    for (const nb of _neighbours) {
+      const lc = linkColor(p, nb)
+      if (lc === '#00ff88') bonus += 10
+      else if (lc === '#FFD700') bonus += 5
+    }
+    if (_stadDef) {
+      const sameClub    = _stadDef.club_id     && String(p.club_id)      === String(_stadDef.club_id)
+      const sameCountry = _stadDef.country_code && String(p.country_code) === String(_stadDef.country_code)
+      if (sameClub || sameCountry) bonus += 10
+    }
+    return { total: note + bonus, note, bonus }
+  }
+
+  const _fit = new Map()
+  eligible.forEach(c => _fit.set(c.id, fitScore(c)))
   eligible.sort((a, b) => {
-    const evoA = a.evolution_bonus||0, evoB = b.evolution_bonus||0
-    const nA = (role==='GK'?a.player.note_g : role==='DEF'?a.player.note_d : role==='MIL'?a.player.note_m : a.player.note_a) + (role===a.player.job||role===a.player.job2?evoA:0)
-    const nB = (role==='GK'?b.player.note_g : role==='DEF'?b.player.note_d : role==='MIL'?b.player.note_m : b.player.note_a) + (role===b.player.job||role===b.player.job2?evoB:0)
-    return nB - nA
+    const d = _fit.get(b.id).total - _fit.get(a.id).total
+    return d !== 0 ? d : _fit.get(b.id).note - _fit.get(a.id).note
   })
 
   // Petit 2 : afficher photo, nom prénom, club, pays, note
@@ -769,7 +800,12 @@ function openPlayerSelector(position, builder, container, ctx) {
         </button>` : ''}
       ${eligible.length > 0 ? `<div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center">` + eligible.map(c => {
         const p = { ...c.player, _evolution_bonus: c.evolution_bonus||0 }
-        return `<div class="player-option" data-card-id="${c.id}" style="cursor:pointer">
+        const fit = _fit.get(c.id)
+        const badge = fit && fit.bonus > 0
+          ? `<div style="position:absolute;top:2px;left:2px;z-index:5;background:#1A6B3C;color:#fff;font-size:9px;font-weight:900;padding:1px 5px;border-radius:8px" title="Bonus liens + stade à ce poste">+${fit.bonus}</div>`
+          : ''
+        return `<div class="player-option" data-card-id="${c.id}" style="cursor:pointer;position:relative">
+          ${badge}
           ${renderPlayerCard(p, { width: 100, showStad: true, stadDef: _stadDef, role })}
         </div>`
       }).join('') + '</div>' : '<div style="text-align:center;color:var(--tile-fg-dim);padding:20px">Aucun joueur pour ce poste.<br><small>Ouvre des boosters !</small></div>'}

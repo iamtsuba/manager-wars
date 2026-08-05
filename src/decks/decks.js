@@ -4,6 +4,7 @@ import { FORMATION_LINKS, FORMATION_POSITIONS, computeLinks, linkColor, getActiv
 import { renderStadiumCard, renderFormationCard } from '../components/special-cards.js'
 import { getPortrait } from '../lib/portrait.js'
 import { ensureV2Chrome } from '../home/home2.js'
+import { buildBestDeck } from './auto-deck.js'
 
 // ── Modales in-app (remplacent prompt()/confirm() natifs du navigateur) ──
 function showPromptModal(title, defaultValue = '') {
@@ -382,6 +383,22 @@ function renderBuilder(container, builder, ctx, isInitialRender = false) {
               </div>`}
             </div>
           </div>
+          <style>
+            @keyframes autoDeckGlow {
+              0%,100% { box-shadow:0 0 6px rgba(212,160,23,.65), 0 0 14px rgba(212,160,23,.4) }
+              50%     { box-shadow:0 0 12px rgba(212,160,23,1), 0 0 26px rgba(212,160,23,.7) }
+            }
+            .auto-deck-btn {
+              width:100%; margin-top:8px; cursor:pointer;
+              background:linear-gradient(135deg,#f6d365,#D4A017 45%,#f0c040);
+              color:#1a1a1a; border:1px solid #ffe9a8; border-radius:10px;
+              font-weight:900; font-size:13px; padding:10px 8px;
+              animation:autoDeckGlow 1.8s ease-in-out infinite;
+            }
+            .auto-deck-btn:hover  { filter:brightness(1.08) }
+            .auto-deck-btn:disabled { opacity:.5; cursor:not-allowed; animation:none }
+          </style>
+          <button class="auto-deck-btn" id="auto-deck-pc">✨ Deck Automatique</button>
           <!-- Enregistrer (PC uniquement — plus haut, évite le scroll derrière le grand terrain) -->
           <button class="btn btn-primary" id="save-deck-pc" style="width:100%;margin-top:8px" ${filled < 11 ? 'disabled' : ''}>
             ${filled < 11 ? `Placez encore ${11-filled}` : '💾 Enregistrer'}
@@ -444,6 +461,7 @@ function renderBuilder(container, builder, ctx, isInitialRender = false) {
 
     <!-- Sauvegarder -->
     <div class="page-body" style="padding:12px 16px calc(80px + env(safe-area-inset-bottom, 0px))">
+      <button class="auto-deck-btn" id="auto-deck-mobile" style="margin-bottom:8px;margin-top:0">✨ Deck Automatique</button>
       <button class="btn btn-primary" id="save-deck" style="width:100%" ${filled < 11 ? 'disabled' : ''}>
         ${filled < 11 ? `Placez encore ${11-filled} joueur(s)` : '💾 Enregistrer le deck'}
       </button>
@@ -501,6 +519,42 @@ function renderBuilder(container, builder, ctx, isInitialRender = false) {
   container.querySelectorAll('#add-stad-btn-pc, #add-stad-btn').forEach(el => el.addEventListener('click', () => openStadiumSelector(builder, container, ctx)))
 
   container.querySelectorAll('#save-deck, #save-deck-pc').forEach(el => el.addEventListener('click', () => saveDeck(builder, ctx)))
+
+  // ── Deck Automatique ──
+  container.querySelectorAll('#auto-deck-pc, #auto-deck-mobile').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      if (builder.playerCards.length < 11) {
+        ctx.toast(`Il faut au moins 11 joueurs (tu en as ${builder.playerCards.length})`, 'error')
+        return
+      }
+      const label = btn.textContent
+      btn.disabled = true; btn.textContent = '⏳ Optimisation…'
+      // Laisse le navigateur peindre l'état "en cours" avant le calcul, qui
+      // est synchrone et peut bloquer brièvement le thread principal.
+      await new Promise(r => setTimeout(r, 30))
+
+      const best = buildBestDeck({
+        playerCards:         builder.playerCards,
+        availableFormations: builder.availableFormations,
+        stadiumCards:        builder.stadiumCards,
+        stadDefMap:          builder.stadDefMap,
+      })
+
+      btn.disabled = false; btn.textContent = label
+
+      if (!best) { ctx.toast('Impossible de composer une équipe complète', 'error'); return }
+
+      builder.formation      = best.formation
+      builder.slots          = best.slots
+      builder.subs           = best.subs
+      builder.stadiumCardId  = best.stadiumCardId
+      // La carte Formation correspondante (si possédée) est recalculée à la
+      // sauvegarde : on ne force pas formationCardId ici.
+
+      renderBuilder(container, builder, ctx)
+      ctx.toast(`✨ Deck optimisé : ${best.formation} · score ${best.score}`, 'success')
+    })
+  })
 
   // Retirer un remplaçant
   container.querySelectorAll('[data-remove-sub]').forEach(btn => {
@@ -665,8 +719,8 @@ function openStadiumSelector(builder, container, ctx) {
 // ── Sélecteur de stade ───────────────────────────────────
 
 // ── Sélecteur de joueur (Petit 2 + 3) ────────────────────
-function openPlayerSelector(position, builder, container, ctx) {
-  const { openModal, closeModal } = ctx
+async function openPlayerSelector(position, builder, container, ctx) {
+  const { openModal, closeModal, navigate } = ctx
   const role = position.replace(/\d+/, '')
   const _selStadCardP = builder.stadiumCards?.find(c => c.id === builder.stadiumCardId)
   const _stadDef = _selStadCardP ? (builder.stadDefMap?.[_selStadCardP.stadium_id] || null) : null
@@ -699,12 +753,95 @@ function openPlayerSelector(position, builder, container, ctx) {
     return true
   })
 
+  // ── Tri CONTEXTUEL : on ne classe plus sur la seule note, mais sur le gain
+  // réel qu'apporterait le joueur À CE POSTE : note + liens avec les joueurs
+  // déjà placés autour + bonus du stade équipé. Un joueur un peu moins bien
+  // noté mais qui crée deux liens verts remonte donc devant.
+  const _links = getActiveLinks(builder.formation) || FORMATION_LINKS[builder.formation] || []
+  // Voisins de ce poste effectivement occupés
+  const _neighbours = _links
+    .filter(([a, b]) => a === position || b === position)
+    .map(([a, b]) => (a === position ? b : a))
+    .map(pos => builder.playerCards.find(c => c.id === builder.slots[pos])?.player)
+    .filter(Boolean)
+
+  function fitScore(c) {
+    const p   = c.player
+    const evo = c.evolution_bonus || 0
+    const note = (role==='GK'?p.note_g : role==='DEF'?p.note_d : role==='MIL'?p.note_m : p.note_a)
+               + ((role === p.job || role === p.job2) ? evo : 0)
+    let bonus = 0
+    for (const nb of _neighbours) {
+      const lc = linkColor(p, nb)
+      if (lc === '#00ff88') bonus += 10
+      else if (lc === '#FFD700') bonus += 5
+    }
+    if (_stadDef) {
+      const sameClub    = _stadDef.club_id     && String(p.club_id)      === String(_stadDef.club_id)
+      const sameCountry = _stadDef.country_code && String(p.country_code) === String(_stadDef.country_code)
+      if (sameClub || sameCountry) bonus += 10
+    }
+    return { total: note + bonus, note, bonus }
+  }
+
+  const _fit = new Map()
+  eligible.forEach(c => _fit.set(c.id, fitScore(c)))
   eligible.sort((a, b) => {
-    const evoA = a.evolution_bonus||0, evoB = b.evolution_bonus||0
-    const nA = (role==='GK'?a.player.note_g : role==='DEF'?a.player.note_d : role==='MIL'?a.player.note_m : a.player.note_a) + (role===a.player.job||role===a.player.job2?evoA:0)
-    const nB = (role==='GK'?b.player.note_g : role==='DEF'?b.player.note_d : role==='MIL'?b.player.note_m : b.player.note_a) + (role===b.player.job||role===b.player.job2?evoB:0)
-    return nB - nA
+    const d = _fit.get(b.id).total - _fit.get(a.id).total
+    return d !== 0 ? d : _fit.get(b.id).note - _fit.get(a.id).note
   })
+
+  // ── Onglet "Top 10 idéal" : meilleurs joueurs pour ce poste parmi TOUT le
+  // catalogue, possédés ou non. Le catalogue complet n'est chargé qu'à la
+  // première ouverture puis mis en cache sur le builder.
+  if (!builder._allPlayers) {
+    const { data } = await supabase
+      .from('players')
+      .select('id, firstname, surname_real, country_code, club_id, job, job2, note_g, note_d, note_m, note_a, rarity, face, clubs(encoded_name, logo_url)')
+      .eq('is_active', true)
+    builder._allPlayers = data || []
+  }
+  const ownedPlayerIdsAll = new Set(builder.playerCards.map(c => c.player?.id).filter(Boolean))
+
+  const topTen = builder._allPlayers
+    .filter(p => (p.job === role || p.job2 === role) && !usedPlayerIds.has(p.id))
+    .map(p => {
+      const note = (role==='GK'?p.note_g : role==='DEF'?p.note_d : role==='MIL'?p.note_m : p.note_a) || 0
+      let bonus = 0
+      for (const nb of _neighbours) {
+        const lc = linkColor(p, nb)
+        if (lc === '#00ff88') bonus += 10
+        else if (lc === '#FFD700') bonus += 5
+      }
+      if (_stadDef) {
+        const sameClub    = _stadDef.club_id     && String(p.club_id)      === String(_stadDef.club_id)
+        const sameCountry = _stadDef.country_code && String(p.country_code) === String(_stadDef.country_code)
+        if (sameClub || sameCountry) bonus += 10
+      }
+      return { p, total: note + bonus, note, bonus, owned: ownedPlayerIdsAll.has(p.id) }
+    })
+    .sort((a, b) => b.total - a.total || b.note - a.note)
+    .slice(0, 10)
+
+  const topTenHtml = topTen.length ? `<div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center">` + topTen.map(t => {
+    const pc = { ...t.p, _evolution_bonus: 0 }
+    const badge = t.bonus > 0
+      ? `<div style="position:absolute;top:2px;left:2px;z-index:6;background:#1A6B3C;color:#fff;font-size:9px;font-weight:900;padding:1px 5px;border-radius:8px">+${t.bonus}</div>`
+      : ''
+    // Joueur non possédé : carte grisée + accès direct au Mercato filtré
+    const ownedCard = t.owned ? builder.playerCards.find(c => c.player?.id === t.p.id) : null
+    return `<div style="position:relative">
+      ${badge}
+      <div class="${t.owned ? 'player-option' : ''}" ${ownedCard ? `data-card-id="${ownedCard.id}"` : ''}
+        style="cursor:${t.owned?'pointer':'default'};${t.owned?'':'filter:grayscale(1) brightness(.6)'}">
+        ${renderPlayerCard(pc, { width: 100, showStad: true, stadDef: _stadDef, role })}
+      </div>
+      ${!t.owned ? `<button class="goto-market" data-player-name="${(t.p.surname_real||'').replace(/"/g,'&quot;')}"
+        style="position:absolute;left:50%;bottom:4px;transform:translateX(-50%);z-index:7;white-space:nowrap;
+        background:linear-gradient(135deg,#f6d365,#D4A017);color:#1a1a1a;border:none;border-radius:999px;
+        font-size:9px;font-weight:900;padding:3px 8px;cursor:pointer">🛒 Mercato</button>` : ''}
+    </div>`
+  }).join('') + '</div>' : '<div style="text-align:center;color:var(--tile-fg-dim);padding:20px">Aucun joueur pour ce poste.</div>'
 
   // Petit 2 : afficher photo, nom prénom, club, pays, note
   openModal(`Choisir ${role} — ${position}`,
@@ -713,17 +850,53 @@ function openPlayerSelector(position, builder, container, ctx) {
         <button class="btn btn-danger btn-sm" id="remove-player" style="width:100%;margin-bottom:4px">
           ✕ Retirer le joueur actuel
         </button>` : ''}
+      <div style="display:flex;gap:6px;border-bottom:1px solid var(--tile-border);padding-bottom:8px;margin-bottom:4px">
+        <button type="button" class="sel-tab" data-tab="mine" style="flex:1;padding:7px;border-radius:8px;border:1.5px solid var(--green);background:var(--green);color:#fff;font-size:12.5px;font-weight:700;cursor:pointer">🎴 Mes cartes (${eligible.length})</button>
+        <button type="button" class="sel-tab" data-tab="top" style="flex:1;padding:7px;border-radius:8px;border:1.5px solid var(--tile-border);background:transparent;color:var(--tile-fg-dim);font-size:12.5px;font-weight:700;cursor:pointer">🏆 Top 10 idéal</button>
+      </div>
+      <div class="sel-pane" data-pane="top" style="display:none">${topTenHtml}</div>
+      <div class="sel-pane" data-pane="mine">
       ${eligible.length > 0 ? `<div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center">` + eligible.map(c => {
         const p = { ...c.player, _evolution_bonus: c.evolution_bonus||0 }
-        return `<div class="player-option" data-card-id="${c.id}" style="cursor:pointer">
+        const fit = _fit.get(c.id)
+        const badge = fit && fit.bonus > 0
+          ? `<div style="position:absolute;top:2px;left:2px;z-index:5;background:#1A6B3C;color:#fff;font-size:9px;font-weight:900;padding:1px 5px;border-radius:8px" title="Bonus liens + stade à ce poste">+${fit.bonus}</div>`
+          : ''
+        return `<div class="player-option" data-card-id="${c.id}" style="cursor:pointer;position:relative">
+          ${badge}
           ${renderPlayerCard(p, { width: 100, showStad: true, stadDef: _stadDef, role })}
         </div>`
       }).join('') + '</div>' : '<div style="text-align:center;color:var(--tile-fg-dim);padding:20px">Aucun joueur pour ce poste.<br><small>Ouvre des boosters !</small></div>'}
+      </div>
     </div>`,
     `<button class="btn btn-ghost" id="close-selector">Fermer</button>`
   )
 
   document.getElementById('close-selector')?.addEventListener('click', closeModal)
+
+  // Bascule entre "Mes cartes" et "Top 10 idéal"
+  document.querySelectorAll('.sel-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.sel-tab').forEach(t => {
+        const on = t === tab
+        t.style.background  = on ? 'var(--green)' : 'transparent'
+        t.style.borderColor = on ? 'var(--green)' : 'var(--tile-border)'
+        t.style.color       = on ? '#fff' : 'var(--tile-fg-dim)'
+      })
+      document.querySelectorAll('.sel-pane').forEach(pane => {
+        pane.style.display = pane.dataset.pane === tab.dataset.tab ? 'block' : 'none'
+      })
+    })
+  })
+
+  // Joueur non possédé : direction le Mercato, pré-filtré sur son nom
+  document.querySelectorAll('.goto-market').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation()
+      closeModal()
+      navigate('market', { search: btn.dataset.playerName })
+    })
+  })
 
   document.getElementById('remove-player')?.addEventListener('click', () => {
     delete builder.slots[position]

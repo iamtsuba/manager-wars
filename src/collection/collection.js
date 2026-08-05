@@ -1311,16 +1311,24 @@ async function openCardDetail(card, allPlayerCards, countByPlayer, ctx, opts = {
       // Quand il disparaît : soit l'évolution a été confirmée (la modale se
       // ferme d'elle-même), soit elle a été annulée — et dans ce cas il faut
       // refermer la modale masquée, sinon elle resterait invisible et bloquante.
+      const restore = () => {
+        if (!modalEl) return
+        modalEl.style.visibility = ''
+        if (!modalEl.classList.contains('hidden')) closeModal()
+      }
       const obs = new MutationObserver(() => {
         const popupStillOpen = [...document.body.children].some(el => el.style?.zIndex === '9999')
         if (popupStillOpen) return
         obs.disconnect()
-        if (modalEl) {
-          modalEl.style.visibility = ''
-          if (!modalEl.classList.contains('hidden')) closeModal()
-        }
+        clearTimeout(safety)
+        restore()
       })
       obs.observe(document.body, { childList: true })
+      // Filet de sécurité : si l'observateur ne se déclenche pas (popup fermé
+      // autrement, navigation, erreur), l'overlay PARTAGÉ resterait masqué et
+      // bloquerait toutes les modales de l'app. On restaure d'office au bout
+      // d'un temps large.
+      const safety = setTimeout(() => { obs.disconnect(); restore() }, 60000)
     })
   }
 

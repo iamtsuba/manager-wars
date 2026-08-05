@@ -335,6 +335,15 @@ async function loadMarket(container, ctx) {
     })
   })
 
+  // Pré-remplissage depuis une autre page (ex. "🛒 Mercato" du sélecteur de
+  // deck, qui envoie le nom du joueur recherché via navigate('market', {...}))
+  if (ctx.state?.params?.search) {
+    const nameInput = document.getElementById('flt-name')
+    if (nameInput) nameInput.value = ctx.state.params.search
+    ctx.state.params = {}      // consommé : évite de re-filtrer au prochain passage
+    renderTab()
+  }
+
   // Listeners filtres (debounce léger)
   let _ft; ['flt-name','flt-club','flt-country','flt-job','flt-rarity','flt-sort','flt-note1','flt-note2'].forEach(id => {
     document.getElementById(id)?.addEventListener('input', () => { clearTimeout(_ft); _ft=setTimeout(renderTab, 250) })

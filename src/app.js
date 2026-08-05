@@ -53,10 +53,18 @@ export function openModal(title, bodyHTML, footerHTML = '') {
   document.getElementById('modal-title').textContent = title
   document.getElementById('modal-body').innerHTML   = bodyHTML
   document.getElementById('modal-footer').innerHTML = footerHTML
-  document.getElementById('modal-overlay').classList.remove('hidden')
+  const ov = document.getElementById('modal-overlay')
+  // #modal-overlay est PARTAGÉ par toute l'app. Certains écrans le masquent
+  // temporairement (ex. évolution auto en Collection) ; si la restauration
+  // échoue, plus aucune modale ne s'affiche nulle part. On réinitialise donc
+  // systématiquement à l'ouverture.
+  ov.style.visibility = ''
+  ov.classList.remove('hidden')
 }
 export function closeModal() {
-  document.getElementById('modal-overlay').classList.add('hidden')
+  const ov = document.getElementById('modal-overlay')
+  ov.style.visibility = ''
+  ov.classList.add('hidden')
 }
 
 // ── Refresh profil ────────────────────────────────────────

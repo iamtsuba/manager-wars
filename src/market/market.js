@@ -336,10 +336,16 @@ async function loadMarket(container, ctx) {
   })
 
   // Pré-remplissage depuis une autre page (ex. "🛒 Mercato" du sélecteur de
-  // deck, qui envoie le nom du joueur recherché via navigate('market', {...}))
-  if (ctx.state?.params?.search) {
-    const nameInput = document.getElementById('flt-name')
-    if (nameInput) nameInput.value = ctx.state.params.search
+  // deck, qui envoie nom + club + pays via navigate('market', {...})) :
+  // le nom seul remonterait trop de résultats (plusieurs homonymes), club et
+  // pays permettent d'isoler la bonne carte.
+  if (ctx.state?.params?.search || ctx.state?.params?.club || ctx.state?.params?.country) {
+    const nameInput    = document.getElementById('flt-name')
+    const clubInput    = document.getElementById('flt-club')
+    const countryInput = document.getElementById('flt-country')
+    if (nameInput    && ctx.state.params.search)  nameInput.value    = ctx.state.params.search
+    if (clubInput    && ctx.state.params.club)    clubInput.value    = ctx.state.params.club
+    if (countryInput && ctx.state.params.country) countryInput.value = ctx.state.params.country
     ctx.state.params = {}      // consommé : évite de re-filtrer au prochain passage
     renderTab()
   }

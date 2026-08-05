@@ -269,7 +269,7 @@ async function openDeckBuilder(deckId, container, ctx) {
   const availableFormations = formationCards.map(c => c.formation).filter(Boolean)
 
   const { data: deckSlots } = await supabase
-    .from('deck_cards').select('card_id, position, is_starter, slot_order').eq('deck_id', deckId)
+    .from('deck_cards').select('card_id, position, is_starter, slot_order, wanted_player_id').eq('deck_id', deckId)
 
   // Formation par défaut : utiliser une disponible ou la première dispo
   let defaultFormation = deck.formation || '4-4-2'
@@ -282,15 +282,32 @@ async function openDeckBuilder(deckId, container, ctx) {
     formation: defaultFormation,
     formationCardId: deck.formation_card_id,
     stadiumCardId: deck.stadium_card_id || null,
-    slots: {},    // position → cardId (titulaires)
+    slots: {},    // position → cardId (titulaires possédés)
+    wanted: {},   // position → player_id (titulaires NON possédés, "à acheter")
     subs: [],     // [ cardId, cardId, ... ] max 5
     playerCards, formationCards, stadiumCards, stadDefMap, availableFormations,
+    _playersCache: {},   // player_id → données joueur (pour l'affichage des cartes grisées)
   }
 
   ;(deckSlots||[]).forEach(dc => {
+    if (dc.wanted_player_id) {
+      if (dc.is_starter) builder.wanted[dc.position] = dc.wanted_player_id
+      return
+    }
     if (dc.is_starter) builder.slots[dc.position] = dc.card_id
     else if (!builder.subs.includes(dc.card_id)) builder.subs.push(dc.card_id)
   })
+
+  // Précharger les infos des joueurs "désirés" pour pouvoir afficher leur
+  // carte grisée sur le terrain sans attendre l'ouverture du sélecteur.
+  const wantedIds = [...new Set(Object.values(builder.wanted))]
+  if (wantedIds.length) {
+    const { data: wantedPlayers } = await supabase
+      .from('players')
+      .select('id, firstname, surname_real, country_code, club_id, job, job2, note_g, note_d, note_m, note_a, rarity, face, clubs(encoded_name, logo_url)')
+      .in('id', wantedIds)
+    ;(wantedPlayers||[]).forEach(p => { builder._playersCache[p.id] = p })
+  }
 
   renderBuilder(container, builder, ctx, true)
 }
@@ -300,7 +317,11 @@ function renderBuilder(container, builder, ctx, isInitialRender = false) {
   if (!isInitialRender) scheduleAutosave(builder, ctx)
   const struct    = FORMATIONS[builder.formation]
   const positions = buildPositions(builder.formation)
-  const filled    = positions.filter(p => builder.slots[p]).length
+  // Un slot "désiré" (joueur non possédé, carte grisée) compte comme occupé
+  // pour permettre l'enregistrement du deck — il reste toutefois signalé
+  // comme incomplet tant qu'il n'a pas été résolu par un achat.
+  const filled      = positions.filter(p => builder.slots[p] || builder.wanted[p]).length
+  const wantedCount = positions.filter(p => builder.wanted[p]).length
 
   // Formations disponibles uniquement (Petit 1)
   const formationOptions = builder.availableFormations.length > 0
@@ -326,7 +347,7 @@ function renderBuilder(container, builder, ctx, isInitialRender = false) {
       <button class="btn-icon" id="builder-back" style="font-size:16px">←</button>
       <div style="flex:1">
         <h2 style="font-size:14px;margin:0">${builder.name}</h2>
-        <p style="font-size:11px;margin:0">${filled}/11 · ${subPlayers.length}/5 rempl.</p>
+        <p style="font-size:11px;margin:0">${filled}/11 · ${subPlayers.length}/5 rempl.${wantedCount ? ` · <span style="color:#D4A017;font-weight:700">⚠️ ${wantedCount} à acheter</span>` : ''}</p>
       </div>
     </div>
 
@@ -546,6 +567,7 @@ function renderBuilder(container, builder, ctx, isInitialRender = false) {
 
       builder.formation      = best.formation
       builder.slots          = best.slots
+      builder.wanted         = {}   // Deck Automatique n'utilise que des cartes possédées
       builder.subs           = best.subs
       builder.stadiumCardId  = best.stadiumCardId
       // La carte Formation correspondante (si possédée) est recalculée à la
@@ -582,11 +604,15 @@ function renderDeckField(container, builder, positions, ctx) {
 
   // Slots par position — on attache evolution_bonus au player pour y accéder dans le rendu
   const slots = {}
+  const wantedPos = new Set()   // positions affichées grisées (joueur non possédé)
   for (const pos of positions) {
     const cardId = builder.slots[pos]
     const card   = cardId ? builder.playerCards.find(c => c.id === cardId) : null
     if (card?.player) {
       slots[pos] = { ...card.player, _evolution_bonus: card.evolution_bonus || 0, face: card.player.face || null }
+    } else if (builder.wanted?.[pos] && builder._playersCache?.[builder.wanted[pos]]) {
+      slots[pos] = { ...builder._playersCache[builder.wanted[pos]], _evolution_bonus: 0 }
+      wantedPos.add(pos)
     } else {
       slots[pos] = null
     }
@@ -632,7 +658,8 @@ function renderDeckField(container, builder, positions, ctx) {
 
     if (p) {
       const role = pos.replace(/\d+/, '')
-      const hasStad = stadDef && (
+      const isWanted = wantedPos.has(pos)
+      const hasStad = !isWanted && stadDef && (
         (stadDef.club_id && String(p.club_id) === String(stadDef.club_id)) ||
         (stadDef.country_code && p.country_code === stadDef.country_code)
       )
@@ -643,8 +670,19 @@ function renderDeckField(container, builder, positions, ctx) {
       const stadLogo = hasStad ? (stadDef.club?.logo_url || stadDef.image_url || null) : null
       const badgeSize = Math.round(CARD_W * (isDesktopRDF ? 0.578 : 0.34)) // PC : +70% (demande explicite)
       const stadBadge = ''
+      // Joueur non possédé : carte grisée + bouton "Mercato" qui filtre
+      // directement sur ce joueur (nom + club + pays).
+      const marketBtn = isWanted ? `<button class="wanted-market-btn" data-wanted-pos="${pos}"
+          data-player-name="${(p.surname_real||'').replace(/"/g,'&quot;')}"
+          data-player-club="${(p.clubs?.encoded_name||'').replace(/"/g,'&quot;')}"
+          data-player-country="${p.country_code||''}"
+          style="position:absolute;left:50%;bottom:${Math.round(CARD_H*0.03)}px;transform:translateX(-50%);z-index:3;
+          white-space:nowrap;background:linear-gradient(135deg,#f6d365,#D4A017);color:#1a1a1a;border:none;
+          border-radius:999px;font-size:${Math.max(8,Math.round(CARD_W*0.09))}px;font-weight:900;
+          padding:3px 8px;cursor:pointer">🛒 Mercato</button>` : ''
       cardsHtml += `<div style="position:absolute;left:${left}px;top:${top}px;cursor:pointer;z-index:2;position:absolute" class="deck-slot-hit" data-pos="${pos}">
-        <div style="position:relative">${cardHtml}${stadBadge}</div>
+        <div style="position:relative;${isWanted?'filter:grayscale(1) brightness(.65)':''}">${cardHtml}${stadBadge}</div>
+        ${marketBtn}
       </div>`
     } else {
       const role = pos.replace(/\d+/, '')
@@ -667,6 +705,16 @@ function renderDeckField(container, builder, positions, ctx) {
 
   field.querySelectorAll('.deck-slot-hit').forEach(el => {
     el.addEventListener('click', () => openPlayerSelector(el.dataset.pos, builder, container, ctx))
+  })
+  field.querySelectorAll('.wanted-market-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation()
+      ctx.navigate('market', {
+        search:  btn.dataset.playerName,
+        club:    btn.dataset.playerClub,
+        country: btn.dataset.playerCountry,
+      })
+    })
   })
 }
 
@@ -741,6 +789,10 @@ async function openPlayerSelector(position, builder, container, ctx) {
     const c = builder.playerCards.find(c => c.id === id)
     if (c?.player?.id) usedPlayerIds.add(c.player.id)
   })
+  Object.entries(builder.wanted || {}).forEach(([pos, playerId]) => {
+    if (pos === position || !playerId) return
+    usedPlayerIds.add(playerId)
+  })
 
   // Dédupliquer par player_id (garder une seule carte par joueur dans la liste)
   const seenPlayerIds = new Set()
@@ -800,6 +852,8 @@ async function openPlayerSelector(position, builder, container, ctx) {
       .select('id, firstname, surname_real, country_code, club_id, job, job2, note_g, note_d, note_m, note_a, rarity, face, clubs(encoded_name, logo_url)')
       .eq('is_active', true)
     builder._allPlayers = data || []
+    if (!builder._playersCache) builder._playersCache = {}
+    builder._allPlayers.forEach(p => { builder._playersCache[p.id] = p })
   }
   const ownedPlayerIdsAll = new Set(builder.playerCards.map(c => c.player?.id).filter(Boolean))
 
@@ -828,27 +882,28 @@ async function openPlayerSelector(position, builder, container, ctx) {
     const badge = t.bonus > 0
       ? `<div style="position:absolute;top:2px;left:2px;z-index:6;background:#1A6B3C;color:#fff;font-size:9px;font-weight:900;padding:1px 5px;border-radius:8px">+${t.bonus}</div>`
       : ''
-    // Joueur non possédé : carte grisée + accès direct au Mercato filtré
+    // Possédé -> clic assigne directement la carte. Non possédé -> clic
+    // ajoute le joueur en "désiré" (carte grisée sur le terrain + bouton
+    // Mercato affiché là-bas, cf. renderDeckField).
     const ownedCard = t.owned ? builder.playerCards.find(c => c.player?.id === t.p.id) : null
+    const wantedTag = !t.owned ? `title="Ajouter au deck (non possédé, à acheter)"` : ''
     return `<div style="position:relative">
       ${badge}
-      <div class="${t.owned ? 'player-option' : ''}" ${ownedCard ? `data-card-id="${ownedCard.id}"` : ''}
-        style="cursor:${t.owned?'pointer':'default'};${t.owned?'':'filter:grayscale(1) brightness(.6)'}">
+      <div class="${t.owned ? 'player-option' : 'wanted-option'}"
+        ${ownedCard ? `data-card-id="${ownedCard.id}"` : `data-wanted-player-id="${t.p.id}"`}
+        ${wantedTag}
+        style="cursor:pointer;${t.owned?'':'filter:grayscale(1) brightness(.6)'}">
         ${renderPlayerCard(pc, { width: 100, showStad: true, stadDef: _stadDef, role })}
+        ${!t.owned ? `<div style="position:absolute;left:50%;bottom:4px;transform:translateX(-50%);z-index:7;white-space:nowrap;
+          background:rgba(0,0,0,0.65);color:#fff;border-radius:999px;font-size:8.5px;font-weight:700;padding:2px 7px">+ Ajouter (à acheter)</div>` : ''}
       </div>
-      ${!t.owned ? `<button class="goto-market" data-player-name="${(t.p.surname_real||'').replace(/"/g,'&quot;')}"
-        data-player-club="${(t.p.clubs?.encoded_name||'').replace(/"/g,'&quot;')}"
-        data-player-country="${t.p.country_code||''}"
-        style="position:absolute;left:50%;bottom:4px;transform:translateX(-50%);z-index:7;white-space:nowrap;
-        background:linear-gradient(135deg,#f6d365,#D4A017);color:#1a1a1a;border:none;border-radius:999px;
-        font-size:9px;font-weight:900;padding:3px 8px;cursor:pointer">🛒 Mercato</button>` : ''}
     </div>`
   }).join('') + '</div>' : '<div style="text-align:center;color:var(--tile-fg-dim);padding:20px">Aucun joueur pour ce poste.</div>'
 
   // Petit 2 : afficher photo, nom prénom, club, pays, note
   openModal(`Choisir ${role} — ${position}`,
     `<div style="max-height:60vh;overflow-y:auto;display:flex;flex-direction:column;gap:8px">
-      ${builder.slots[position] ? `
+      ${(builder.slots[position] || builder.wanted[position]) ? `
         <button class="btn btn-danger btn-sm" id="remove-player" style="width:100%;margin-bottom:4px">
           ✕ Retirer le joueur actuel
         </button>` : ''}
@@ -891,23 +946,24 @@ async function openPlayerSelector(position, builder, container, ctx) {
     })
   })
 
-  // Joueur non possédé : direction le Mercato, pré-filtré sur son nom
-  // ET son club/pays — le nom seul ne suffit pas à isoler LA bonne carte
-  // (ex. plusieurs "López" au marché).
-  document.querySelectorAll('.goto-market').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      e.stopPropagation()
+  // Joueur non possédé : l'ajouter au deck en "désiré" (carte grisée sur le
+  // terrain, avec un bouton Mercato affiché là-bas — cf. renderDeckField).
+  document.querySelectorAll('.wanted-option').forEach(el => {
+    el.addEventListener('click', () => {
+      builder.wanted[position] = el.dataset.wantedPlayerId
+      delete builder.slots[position]
+      // Le joueur "désiré" doit être disponible pour l'affichage grisé,
+      // même si le catalogue complet n'a pas encore été mis en cache ailleurs.
+      const p = builder._allPlayers?.find(pl => pl.id === el.dataset.wantedPlayerId)
+      if (p) builder._playersCache[p.id] = p
       closeModal()
-      navigate('market', {
-        search:  btn.dataset.playerName,
-        club:    btn.dataset.playerClub,
-        country: btn.dataset.playerCountry,
-      })
+      renderBuilder(container, builder, ctx)
     })
   })
 
   document.getElementById('remove-player')?.addEventListener('click', () => {
     delete builder.slots[position]
+    delete builder.wanted[position]
     closeModal()
     renderBuilder(container, builder, ctx)
   })
@@ -915,6 +971,7 @@ async function openPlayerSelector(position, builder, container, ctx) {
   document.querySelectorAll('.player-option').forEach(el => {
     el.addEventListener('click', () => {
       builder.slots[position] = el.dataset.cardId
+      delete builder.wanted[position]
       closeModal()
       renderBuilder(container, builder, ctx)
     })
@@ -986,6 +1043,10 @@ async function persistDeck(builder) {
   const inserts = []
   Object.entries(builder.slots).forEach(([pos, cardId], idx) => {
     inserts.push({ deck_id: builder.deckId, card_id: cardId, position: pos, is_starter: true, slot_order: idx })
+  })
+  // Slots "désirés" : joueur non possédé, pas encore de carte -> wanted_player_id
+  Object.entries(builder.wanted || {}).forEach(([pos, playerId], idx) => {
+    inserts.push({ deck_id: builder.deckId, card_id: null, wanted_player_id: playerId, position: pos, is_starter: true, slot_order: 1000+idx })
   })
   builder.subs.forEach((cardId, idx) => {
     inserts.push({ deck_id: builder.deckId, card_id: cardId, position: `SUB${idx+1}`, is_starter: false, slot_order: 100+idx })

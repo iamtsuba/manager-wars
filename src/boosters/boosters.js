@@ -202,11 +202,14 @@ export async function renderBoosters(container, { state, navigate, toast }) {
       const booster = ACTIVE_BOOSTERS.find(b => b.id === el.dataset.booster)
       if (!booster) return
       el.style.opacity = '0.5'; el.style.pointerEvents = 'none'
+      const hideLoader = showBoosterLoader()
       try {
         await openBooster(booster, { state, toast, navigate, container })
       } catch(err) {
         toast(err.message, 'error')
         el.style.opacity = ''; el.style.pointerEvents = ''
+      } finally {
+        hideLoader()
       }
     })
   })
@@ -219,6 +222,25 @@ export async function renderBoosters(container, { state, navigate, toast }) {
       showBoosterOdds(b)
     })
   })
+}
+
+// Popup de chargement affiché pendant la préparation du booster (tirage +
+// insertion des cartes en base). Malgré l'optimisation des requêtes, l'appel
+// réseau reste incompressible sur une connexion lente : ce feedback évite
+// à l'utilisateur de penser que le bouton n'a pas répondu.
+function showBoosterLoader() {
+  const ov = document.createElement('div')
+  ov.id = 'booster-loader-overlay'
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(10,22,40,0.92);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:3500;gap:16px;color:#fff'
+  ov.innerHTML = `
+    <style>
+      @keyframes boosterSpin { to { transform:rotate(360deg) } }
+      .booster-spinner { width:48px;height:48px;border:4px solid rgba(255,255,255,0.2);border-top-color:#D4A017;border-radius:50%;animation:boosterSpin .8s linear infinite }
+    </style>
+    <div class="booster-spinner"></div>
+    <div style="font-size:16px;font-weight:800">🎁 Booster en cours de préparation…</div>`
+  document.body.appendChild(ov)
+  return () => ov.remove()
 }
 
 async function openBooster(booster, { state, toast, navigate, container }) {
@@ -367,13 +389,23 @@ async function openMixedBooster(profile, booster) {
     syncV2Credits(profile.credits)
   }
   const allowDup = booster.allow_duplicates !== false  // true par défaut
-  // Joueurs déjà possédés (pour réduire les doublons quand le pool le permet)
-  // Query robuste : essayer avec stadium_id, fallback sans si colonne absente
+
+  // ── Préchargement UNIQUE de chaque table nécessaire ────────────────────
+  // Avant cette réécriture, chaque carte tirée déclenchait sa propre requête
+  // réseau (players/gc_definitions/stadium_definitions) PUIS son propre
+  // insert individuel dans `cards` — jusqu'à ~20 allers-retours séquentiels
+  // pour un booster de 10 cartes (d'où les 10-15 secondes observées). On
+  // charge maintenant chaque ressource une seule fois, on tire tout en
+  // mémoire, et on insère toutes les cartes en un seul appel groupé.
+  const rates = booster.rates || []
+  const needsPlayers = rates.some(r => r.card_type === 'player')
+  const needsGC      = rates.some(r => r.card_type === 'game_changer')
+  const needsStadium = rates.some(r => r.card_type === 'stadium')
+
   let ownedCards = []
   const { data: oc1, error: ocErr } = await supabase.from('cards')
     .select('player_id, card_type, formation, stadium_id, gc_type').eq('owner_id', profile.id)
   if (ocErr) {
-    // Fallback sans stadium_id (colonne peut-être pas encore créée)
     const { data: oc2 } = await supabase.from('cards')
       .select('player_id, card_type, formation, gc_type').eq('owner_id', profile.id)
     ownedCards = oc2 || []
@@ -384,97 +416,111 @@ async function openMixedBooster(profile, booster) {
   const ownedFormations = new Set(ownedCards.filter(c=>c.card_type==='formation').map(c => c.formation))
   const ownedGCTypes    = new Set(ownedCards.filter(c=>c.card_type==='game_changer').map(c => c.gc_type))
   const ownedStadiumIds = new Set(ownedCards.filter(c=>c.card_type==='stadium').map(c => c.stadium_id).filter(Boolean))
+
+  const [allPlayersRes, gcPoolRes, stadPoolRes] = await Promise.all([
+    needsPlayers
+      ? supabase.from('players')
+          .select('id,job,firstname,surname_real,country_code,club_id,rarity,note_g,note_d,note_m,note_a,skin,hair,hair_length,face,sell_price,clubs(encoded_name,logo_url)')
+          .eq('is_active', true)
+      : Promise.resolve({ data: [] }),
+    needsGC
+      ? supabase.from('gc_definitions').select('id,name,color,effect,image_url,gc_type').eq('is_active',true).eq('gc_type','game_changer')
+      : Promise.resolve({ data: [] }),
+    needsStadium
+      ? supabase.from('stadium_definitions').select('id,name,club_id,country_code,image_url,club:clubs(encoded_name,logo_url)')
+      : Promise.resolve({ data: [] }),
+  ])
+  const allPlayers = allPlayersRes.data || []
+  const gcPoolAll  = (gcPoolRes.data?.length ? gcPoolRes.data
+    : [{name:'Ressusciter'},{name:'Double attaque'},{name:'Bouclier'},{name:'Vol de note'},{name:'Gel'}])
+  const stadPoolAll = stadPoolRes.data || []
+
+  const normRarity = (r) => ({ 'légende':'legende', 'pépite':'pepite', 'pépites':'pepite' }[r] || r)
   const drawnThisBooster = new Set()  // joueurs déjà tirés dans CE booster
-  const results = []
+  const toInsert = []   // toutes les cartes à insérer, en une seule fois à la fin
+  const meta = []        // infos annexes par carte insérée (player/def/isDuplicate), même ordre que toInsert
+
   for (let i = 0; i < (booster.cardCount||5); i++) {
-    const rate = rollDropRate(booster.rates)
+    const rate = rollDropRate(rates)
     if (!rate) continue
+
     if (rate.card_type === 'player') {
-      // Tirer un joueur selon la rareté/note configurée
-      // Normaliser la rareté : les configs booster ont pu être enregistrées
-      // avec accent ('légende','pépite') alors que les joueurs sont stockés
-      // sans accent ('legende','pepite'). On aligne pour que le .eq matche.
-      const normRarity = (r) => ({ 'légende':'legende', 'pépite':'pepite', 'pépites':'pepite' }[r] || r)
       const wantedRarity = rate.rarity ? normRarity(rate.rarity) : null
-      let q = supabase.from('players')
-        .select('id,job,firstname,surname_real,country_code,club_id,rarity,note_g,note_d,note_m,note_a,skin,hair,hair_length,face,sell_price,clubs(encoded_name,logo_url)')
-        .eq('is_active', true)
-      if (wantedRarity) q = q.eq('rarity', wantedRarity)
-      const { data: pool } = await q
-      let filtered = pool || []
+      let pool = wantedRarity ? allPlayers.filter(p => p.rarity === wantedRarity) : allPlayers
       if (rate.note_min || rate.note_max) {
-        filtered = filtered.filter(p => {
+        const withNote = pool.filter(p => {
           const best = Math.max(Number(p.note_g)||0,Number(p.note_d)||0,Number(p.note_m)||0,Number(p.note_a)||0)
           return (!rate.note_min || best >= rate.note_min) && (!rate.note_max || best <= rate.note_max)
         })
+        // Contrainte note trop stricte pour ce pool -> repli sur la rareté seule (jamais toute la DB au hasard)
+        pool = withNote.length ? withNote : pool
       }
-      // Si contrainte note définie mais aucun joueur → fallback sur rareté seulement (pas toute la DB)
-      if (!filtered.length) {
-        if (rate.note_min || rate.note_max) {
-          // Relâcher uniquement la contrainte note, garder la rareté
-          filtered = (pool || [])
-          console.warn('[Booster] Aucun joueur avec note', rate.note_min, '-', rate.note_max, '— fallback rareté uniquement')
-        } else {
-          filtered = pool || []
-        }
-      }
-      if (!filtered.length) continue
-      // Sans doublons : exclure les joueurs déjà possédés
-      let pickPool = filtered.filter(p => !drawnThisBooster.has(p.id))
+      if (!pool.length) continue
+
+      let pickPool = pool.filter(p => !drawnThisBooster.has(p.id))
       if (!allowDup) {
         pickPool = pickPool.filter(p => !ownedPlayerIds.has(p.id))
-        if (!pickPool.length) continue  // tous déjà possédés → skip
-      } else {
-        if (!pickPool.length) pickPool = filtered
+        if (!pickPool.length) continue
+      } else if (!pickPool.length) {
+        pickPool = pool
       }
       const player = pickPool[Math.floor(Math.random()*pickPool.length)]
       drawnThisBooster.add(player.id)
-      const isDup = ownedPlayerIds.has(player.id)
-      const { data: card } = await supabase.from('cards')
-        .insert({ owner_id:profile.id, player_id:player.id, card_type:'player' }).select().single()
-      if (card) {
-        results.push({ ...card, player, isDuplicate: isDup })
-        supabase.rpc('record_transfer', {
-          p_card_id: card.id, p_player_id: player.id,
-          p_club_name: profile.club_name || profile.pseudo,
-          p_manager_name: profile.pseudo,
-          p_source: 'booster', p_price: null
-        }).then(()=>{}).catch(()=>{})
-      }
+      toInsert.push({ owner_id:profile.id, player_id:player.id, card_type:'player' })
+      meta.push({ kind:'player', player, isDuplicate: ownedPlayerIds.has(player.id) })
+
     } else if (rate.card_type === 'game_changer') {
-      const { data: dbGC2 } = await supabase.from('gc_definitions').select('id,name,color,effect,image_url,gc_type').eq('is_active',true).eq('gc_type','game_changer')
-      const gcPool = dbGC2?.length ? dbGC2 : [{name:'Ressusciter'},{name:'Double attaque'},{name:'Bouclier'},{name:'Vol de note'},{name:'Gel'}]
-      // Sans doublons : exclure les GC déjà possédés
-      const gcFiltered = !allowDup ? gcPool.filter(g => !ownedGCTypes.has(g.name)) : gcPool
-      if (!allowDup && !gcFiltered.length) continue  // tous GC possédés → skip
+      const gcFiltered = !allowDup ? gcPoolAll.filter(g => !ownedGCTypes.has(g.name)) : gcPoolAll
+      if (!allowDup && !gcFiltered.length) continue
       const gcPick = gcFiltered[Math.floor(Math.random()*gcFiltered.length)]
-      const gc_type = gcPick.name
-      const { data: card } = await supabase.from('cards')
-        .insert({ owner_id:profile.id, card_type:'game_changer', gc_type, gc_definition_id: gcPick.id || null }).select().single()
-      if (card) results.push({ ...card, _gcDef: gcPick })
+      toInsert.push({ owner_id:profile.id, card_type:'game_changer', gc_type: gcPick.name, gc_definition_id: gcPick.id || null })
+      meta.push({ kind:'gc', gcDef: gcPick })
+
     } else if (rate.card_type === 'formation') {
       const formations = ALL_FORMATIONS()
       const formPool = !allowDup ? formations.filter(f => !ownedFormations.has(f)) : formations
-      if (!allowDup && !formPool.length) continue  // toutes formations possédées → skip
+      if (!allowDup && !formPool.length) continue
       const formation = formPool[Math.floor(Math.random()*formPool.length)]
-      const isDupF = ownedFormations.has(formation)
-      const { data: cards } = await supabase.from('cards')
-        .insert({ owner_id:profile.id, card_type:'formation', formation }).select()
-      if (cards?.[0]) results.push({ ...cards[0], isDuplicate: isDupF })
+      toInsert.push({ owner_id:profile.id, card_type:'formation', formation })
+      meta.push({ kind:'formation', isDuplicate: ownedFormations.has(formation) })
+
     } else if (rate.card_type === 'stadium') {
-      const { data: stads, error: stErr } = await supabase.from('stadium_definitions').select('id,name,club_id,country_code,image_url,club:clubs(encoded_name,logo_url)')
-      if (stErr) { console.error('[Booster] stadium_definitions:', stErr.message); continue }
-      if (!stads?.length) { console.warn('[Booster] Aucun stade en DB'); continue }
-      const stadPool = !allowDup ? stads.filter(s => !ownedStadiumIds.has(s.id)) : stads
-      if (!allowDup && !stadPool.length) continue  // tous stades possédés → skip
+      if (!stadPoolAll.length) { console.warn('[Booster] Aucun stade en DB'); continue }
+      const stadPool = !allowDup ? stadPoolAll.filter(s => !ownedStadiumIds.has(s.id)) : stadPoolAll
+      if (!allowDup && !stadPool.length) continue
       const stadDef = stadPool[Math.floor(Math.random()*stadPool.length)]
-      const { data: card, error: cErr } = await supabase.from('cards')
-        .insert({ owner_id:profile.id, card_type:'stadium', stadium_id:stadDef.id })
-        .select('id,card_type,stadium_id').single()
-      if (cErr) { console.error('[Booster] insert stadium card:', cErr.message); continue }
-      if (card) results.push({ ...card, rarity:'normal', _stadiumDef: stadDef })
+      toInsert.push({ owner_id:profile.id, card_type:'stadium', stadium_id: stadDef.id })
+      meta.push({ kind:'stadium', stadDef })
     }
   }
+
+  if (!toInsert.length) return []
+
+  // Un seul insert groupé pour toutes les cartes du booster (au lieu d'un
+  // insert par carte). L'ordre de retour de Supabase suit l'ordre d'insertion.
+  const { data: created, error: insErr } = await supabase.from('cards').insert(toInsert).select()
+  if (insErr || !created?.length) { console.error('[Booster] insert cartes:', insErr?.message); return [] }
+
+  const results = created.map((card, i) => {
+    const m = meta[i]
+    if (m.kind === 'player')    { return { ...card, player: m.player, isDuplicate: m.isDuplicate } }
+    if (m.kind === 'gc')        { return { ...card, _gcDef: m.gcDef } }
+    if (m.kind === 'formation') { return { ...card, isDuplicate: m.isDuplicate } }
+    if (m.kind === 'stadium')   { return { ...card, rarity:'normal', _stadiumDef: m.stadDef } }
+    return card
+  })
+
+  // Transferts : fire-and-forget (non bloquant), uniquement pour les joueurs
+  results.forEach((r, i) => {
+    if (meta[i].kind !== 'player') return
+    supabase.rpc('record_transfer', {
+      p_card_id: r.id, p_player_id: meta[i].player.id,
+      p_club_name: profile.club_name || profile.pseudo,
+      p_manager_name: profile.pseudo,
+      p_source: 'booster', p_price: null
+    }).then(()=>{}).catch(()=>{})
+  })
+
   return results
 }
 
@@ -1158,7 +1204,9 @@ export function showBoosterAnimation(cards, booster, navigate, onClose = null, r
         reopenBtn.addEventListener('click', () => {
           if (reopenBtn.disabled) return
           stopFireworks(); overlay.remove()
+          const hideLoader = showBoosterLoader()
           openBooster(booster, { state: reopenCtx.state, toast: reopenCtx.toast, navigate, container: reopenCtx.container })
+            .finally(hideLoader)
         })
       } else {
         // Pas de contexte (ne devrait pas arriver hors onboarding) : repli sur la boutique

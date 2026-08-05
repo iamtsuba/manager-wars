@@ -437,16 +437,29 @@ async function openPlayerModal(player, clubs, container, helpers) {
 
   openModal(
     isEdit ? `✏️ ${player.firstname} ${player.surname_real}` : '➕ Nouveau joueur',
-    `<div style="display:flex;gap:20px;align-items:flex-start">
+    `<style>
+      /* Sur mobile, l'aperçu (largeur fixe) + le formulaire (min-width:300px)
+         dépassaient la largeur de l'écran (480px minimum requis), forçant un
+         layout écrasé avec scroll horizontal. En dessous de 700px, on empile
+         verticalement : aperçu centré en haut, formulaire pleine largeur. */
+      @media (max-width: 700px) {
+        .pm-layout { flex-direction: column !important; }
+        .pm-preview-col { position: static !important; width: 100% !important; }
+        .pm-preview-col > div:last-child { display:flex; justify-content:center }
+        .pm-form-col { min-width: 0 !important; width: 100% !important; }
+        .pm-grid4 { grid-template-columns: 1fr 1fr !important; }
+      }
+    </style>
+    <div class="pm-layout" style="display:flex;gap:20px;align-items:flex-start;flex-wrap:wrap">
 
       <!-- Colonne gauche : aperçu carte -->
-      <div style="flex-shrink:0;position:sticky;top:0">
+      <div class="pm-preview-col" style="flex-shrink:0;position:sticky;top:0">
         <div style="font-size:11px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;text-align:center">Aperçu</div>
         <div id="card-preview" style="min-width:160px"></div>
       </div>
 
       <!-- Colonne droite : formulaire -->
-      <div style="flex:1;min-width:300px;display:flex;flex-direction:column;gap:12px">
+      <div class="pm-form-col" style="flex:1;min-width:300px;display:flex;flex-direction:column;gap:12px">
 
         <!-- Identité -->
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
@@ -459,9 +472,13 @@ async function openPlayerModal(player, clubs, container, helpers) {
             <input id="pm-real" value="${player?.surname_real || ''}" placeholder="Silva">
           </div>
         </div>
+        <div class="form-group">
+          <label>Lastname (réel) <span style="font-weight:400;color:#999">— champ libre, indépendant</span></label>
+          <input id="pm-lastname-reel" value="${player?.lastname_reel || ''}" placeholder="Silva">
+        </div>
 
         <!-- Poste + Rareté + Pays -->
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px">
+        <div class="pm-grid4" style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px">
           <div class="form-group">
             <label>Poste 1</label>
             <select id="pm-job">
@@ -505,7 +522,7 @@ async function openPlayerModal(player, clubs, container, helpers) {
         <!-- Notes -->
         <div style="border-top:1px solid var(--gray-200);padding-top:10px">
           <div style="font-weight:700;font-size:13px;margin-bottom:8px">📊 Notes (0–20)</div>
-          <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px">
+          <div class="pm-grid4" style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px">
             ${[['GK','pm-g','note_g'],['DEF','pm-d','note_d'],['MIL','pm-m','note_m'],['ATT','pm-a','note_a']].map(([lbl,id,field]) => `
               <div class="form-group" style="text-align:center">
                 <label style="color:${JOB_COLORS[lbl]};font-weight:700">${lbl}</label>
@@ -684,6 +701,8 @@ function getFormData(face) {
   return {
     firstname:       (g('pm-fn') || '').trim(),
     surname_real: (g('pm-real') || '').trim() || 'JOUEUR',
+    // Champ nullable et indépendant : jamais de valeur de repli forcée.
+    lastname_reel: (g('pm-lastname-reel') || '').trim() || null,
     country_code:    g('pm-country') || 'FR',
     club_id:         g('pm-club') || null,
     job:             g('pm-job') || 'ATT',

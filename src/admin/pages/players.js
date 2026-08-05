@@ -72,7 +72,7 @@ async function importPlayersExcel(file, container, helpers) {
     // qu'une colonne calculée ou renommée dans Excel ne fasse échouer tout
     // le lot, et protège les champs techniques.
     const EDITABLE = [
-      'firstname','surname_real','job','job2','rarity',
+      'firstname','surname_real','lastname_reel','job','job2','rarity',
       'country_code','club_id','sell_price','note_g','note_d','note_m','note_a',
       'note_min','note_max','face',
     ]

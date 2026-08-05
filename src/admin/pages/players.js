@@ -474,7 +474,7 @@ function renderPage(container, players, clubs, helpers, savedFilters = null) {
         value = Number.isFinite(n) ? Math.max(0, Math.min(20, n)) : 0
         el.value = value
       }
-      if (field === 'club_id' && !value) value = null
+      if ((field === 'club_id' || field === 'job2') && !value) value = null
       if ((field === 'firstname' || field === 'surname_real') && !value.trim()) {
         flashCell(el, false); toast('Ce champ ne peut pas être vide', 'error'); return
       }

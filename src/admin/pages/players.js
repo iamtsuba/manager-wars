@@ -276,7 +276,13 @@ function renderPage(container, players, clubs, helpers, savedFilters = null) {
         </select>
       </div>
       <div id="filters-restore-hook" style="display:none"></div>
-      <div id="count-label" style="font-size:12px;color:var(--gray-600)">${players.length} joueur(s)</div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <div id="count-label" style="font-size:12px;color:var(--gray-600);flex:1">${players.length} joueur(s)</div>
+        <div style="display:flex;gap:4px;background:var(--gray-100,#f0f0f0);border-radius:8px;padding:3px">
+          <button type="button" class="view-mode-btn" data-view="card" style="padding:6px 12px;border-radius:6px;border:none;font-size:12px;font-weight:700;cursor:pointer;background:var(--green);color:#fff">🎴 Carte</button>
+          <button type="button" class="view-mode-btn" data-view="list" style="padding:6px 12px;border-radius:6px;border:none;font-size:12px;font-weight:700;cursor:pointer;background:transparent;color:var(--gray-600)">📋 Liste</button>
+        </div>
+      </div>
       <div id="bulk-bar" style="display:none;align-items:center;gap:8px;padding:8px 10px;background:rgba(187,32,32,0.08);border:1px solid #bb2020;border-radius:10px">
         <span id="bulk-count" style="font-size:13px;font-weight:700;color:#bb2020;flex:1"></span>
         <button class="btn btn-danger btn-sm" id="bulk-delete-btn">🗑️ Supprimer la sélection</button>
@@ -284,6 +290,8 @@ function renderPage(container, players, clubs, helpers, savedFilters = null) {
       </div>
       <!-- Grille de cartes -->
       <div id="players-list" style="display:flex;flex-wrap:wrap;gap:12px"></div>
+      <!-- Liste modifiable (tableau) -->
+      <div id="players-table-wrap" style="display:none;overflow-x:auto;border:1px solid var(--gray-200,#e0e0e0);border-radius:10px"></div>
     </div>`
 
   // Restaurer les filtres texte/select simples
@@ -337,9 +345,23 @@ function renderPage(container, players, clubs, helpers, savedFilters = null) {
     if (cnt) cnt.textContent = `${selected.size} joueur(s) sélectionné(s)`
   }
 
+  let viewMode = 'card'   // 'card' | 'list'
+
   function renderList() {
     const list = filtered()
     document.getElementById('count-label').textContent = `${list.length} joueur(s)`
+    if (viewMode === 'list') {
+      document.getElementById('players-list').style.display = 'none'
+      document.getElementById('players-table-wrap').style.display = 'block'
+      renderTableView(list)
+      return
+    }
+    document.getElementById('players-list').style.display = 'flex'
+    document.getElementById('players-table-wrap').style.display = 'none'
+    renderCardView(list)
+  }
+
+  function renderCardView(list) {
     const el = document.getElementById('players-list')
     if (!list.length) { el.innerHTML = '<div style="color:var(--gray-600);padding:20px;text-align:center">Aucun joueur.</div>'; return }
 
@@ -379,6 +401,109 @@ function renderPage(container, players, clubs, helpers, savedFilters = null) {
     })
   }
 
+  // ── Mode Liste : tableau entièrement modifiable, sans bouton Enregistrer.
+  // Chaque champ sauvegarde tout seul (au blur pour le texte/les notes, au
+  // changement pour les select), avec un flash vert/rouge de confirmation.
+  function renderTableView(list) {
+    const wrap = document.getElementById('players-table-wrap')
+    if (!list.length) {
+      wrap.innerHTML = '<div style="color:var(--gray-600);padding:20px;text-align:center">Aucun joueur.</div>'
+      return
+    }
+    const clubOptsFor = (sel) => `<option value="">—</option>` + clubs.map(c => `<option value="${c.id}" ${sel===c.id?'selected':''}>${c.encoded_name}</option>`).join('')
+    const jobOpts = (sel) => ['GK','DEF','MIL','ATT'].map(j => `<option value="${j}" ${sel===j?'selected':''}>${j}</option>`).join('')
+    const job2Opts = (sel) => `<option value="">Aucun</option>` + ['GK','DEF','MIL','ATT'].map(j => `<option value="${j}" ${sel===j?'selected':''}>${j}</option>`).join('')
+    const rarityOpts = (sel) => ['normal','pepite','papyte','legende'].map(r => `<option value="${r}" ${sel===r?'selected':''}>${RARITY_LABELS[r]}</option>`).join('')
+    const countryOpts = (sel) => COUNTRY_CODES.map(c => `<option value="${c}" ${(sel||'FR')===c?'selected':''}>${c}</option>`).join('')
+
+    const th = (label) => `<th style="position:sticky;top:0;background:#f5f5f5;padding:8px 6px;font-size:11px;font-weight:800;color:#666;text-transform:uppercase;letter-spacing:0.3px;border-bottom:2px solid #e0e0e0;white-space:nowrap;text-align:left">${label}</th>`
+    const inputStyle = 'width:100%;min-width:90px;padding:6px 7px;border:1px solid #ddd;border-radius:6px;font-size:12.5px;background:#fff;color:#1a1a1a'
+    const noteStyle  = 'width:48px;padding:6px 4px;border:1px solid #ddd;border-radius:6px;font-size:12.5px;text-align:center;background:#fff;color:#1a1a1a'
+
+    wrap.innerHTML = `
+      <table style="border-collapse:collapse;width:100%;font-size:13px">
+        <thead><tr>
+          ${th('Prénom')}${th('Nom')}${th('Lastname')}${th('Poste 1')}${th('Poste 2')}${th('Rareté')}
+          ${th('Pays')}${th('Club')}${th('GK')}${th('DEF')}${th('MIL')}${th('ATT')}${th('Visage')}${th('')}
+        </tr></thead>
+        <tbody>
+          ${list.map(p => {
+            const faceUrl = p.face ? getPortrait({ face: p.face }) : null
+            return `<tr data-row-id="${p.id}" style="border-bottom:1px solid #eee">
+              <td style="padding:5px"><input class="tv-field" data-field="firstname" data-id="${p.id}" value="${(p.firstname||'').replace(/"/g,'&quot;')}" style="${inputStyle}"></td>
+              <td style="padding:5px"><input class="tv-field" data-field="surname_real" data-id="${p.id}" value="${(p.surname_real||'').replace(/"/g,'&quot;')}" style="${inputStyle}"></td>
+              <td style="padding:5px"><input class="tv-field" data-field="lastname_reel" data-id="${p.id}" value="${(p.lastname_reel||'').replace(/"/g,'&quot;')}" style="${inputStyle}"></td>
+              <td style="padding:5px"><select class="tv-field" data-field="job" data-id="${p.id}" style="${inputStyle}">${jobOpts(p.job)}</select></td>
+              <td style="padding:5px"><select class="tv-field" data-field="job2" data-id="${p.id}" style="${inputStyle}">${job2Opts(p.job2)}</select></td>
+              <td style="padding:5px"><select class="tv-field" data-field="rarity" data-id="${p.id}" style="${inputStyle}">${rarityOpts(p.rarity)}</select></td>
+              <td style="padding:5px">
+                <div style="display:flex;align-items:center;gap:5px">
+                  <img src="https://flagsapi.com/${(p.country_code||'FR').slice(0,2).toUpperCase()}/flat/24.png" style="width:18px;height:13px;object-fit:cover;border-radius:2px;flex-shrink:0" onerror="this.style.display='none'">
+                  <select class="tv-field tv-country" data-field="country_code" data-id="${p.id}" style="${inputStyle}">${countryOpts(p.country_code)}</select>
+                </div>
+              </td>
+              <td style="padding:5px"><select class="tv-field" data-field="club_id" data-id="${p.id}" style="${inputStyle};min-width:130px">${clubOptsFor(p.club_id)}</select></td>
+              <td style="padding:5px"><input class="tv-field" data-field="note_g" data-id="${p.id}" type="number" min="0" max="20" value="${p.note_g??0}" style="${noteStyle}"></td>
+              <td style="padding:5px"><input class="tv-field" data-field="note_d" data-id="${p.id}" type="number" min="0" max="20" value="${p.note_d??0}" style="${noteStyle}"></td>
+              <td style="padding:5px"><input class="tv-field" data-field="note_m" data-id="${p.id}" type="number" min="0" max="20" value="${p.note_m??0}" style="${noteStyle}"></td>
+              <td style="padding:5px"><input class="tv-field" data-field="note_a" data-id="${p.id}" type="number" min="0" max="20" value="${p.note_a??0}" style="${noteStyle}"></td>
+              <td style="padding:5px;text-align:center">
+                ${faceUrl ? `<img src="${faceUrl}" style="width:32px;height:32px;object-fit:cover;border-radius:6px" onerror="this.style.display='none'">` : '<span style="color:#ccc;font-size:11px">—</span>'}
+              </td>
+              <td style="padding:5px">
+                <button class="btn-del-player-tv" data-del="${p.id}" style="width:24px;height:24px;border-radius:50%;background:#c0392b;border:none;color:#fff;font-size:12px;cursor:pointer">✕</button>
+              </td>
+            </tr>`
+          }).join('')}
+        </tbody>
+      </table>`
+
+    // ── Auto-sauvegarde : blur pour texte/notes, change pour les select ──
+    const NUMERIC_FIELDS = new Set(['note_g','note_d','note_m','note_a'])
+    function flashCell(el, ok) {
+      el.style.transition = 'background-color .15s'
+      el.style.backgroundColor = ok ? '#d4f4dd' : '#f9d0d0'
+      setTimeout(() => { el.style.backgroundColor = '#fff' }, 500)
+    }
+    async function saveField(el) {
+      const id    = el.dataset.id
+      const field = el.dataset.field
+      let value = el.value
+      if (NUMERIC_FIELDS.has(field)) {
+        const n = Number(value)
+        value = Number.isFinite(n) ? Math.max(0, Math.min(20, n)) : 0
+        el.value = value
+      }
+      if (field === 'club_id' && !value) value = null
+      if ((field === 'firstname' || field === 'surname_real') && !value.trim()) {
+        flashCell(el, false); toast('Ce champ ne peut pas être vide', 'error'); return
+      }
+      const { error } = await supabase.from('players').update({ [field]: value, updated_at: new Date().toISOString() }).eq('id', id)
+      flashCell(el, !error)
+      if (error) { toast(error.message, 'error'); return }
+      // Mettre à jour l'objet local pour rester cohérent si on rebascule en Carte
+      const p = players.find(x => x.id === id)
+      if (p) p[field] = value
+    }
+
+    wrap.querySelectorAll('input.tv-field').forEach(el => {
+      let t
+      el.addEventListener('blur', () => saveField(el))
+      el.addEventListener('keydown', (e) => { if (e.key === 'Enter') el.blur() })
+    })
+    wrap.querySelectorAll('select.tv-field').forEach(el => {
+      el.addEventListener('change', () => saveField(el))
+    })
+    wrap.querySelectorAll('.btn-del-player-tv').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        if (!confirm('Supprimer ce joueur ?')) return
+        const { error } = await supabase.from('players').delete().eq('id', btn.dataset.del)
+        if (error) toast(error.message, 'error')
+        else { toast('Joueur supprimé ✅', 'success'); loadPlayers(container, helpers) }
+      })
+    })
+  }
+
   renderList()
   document.getElementById('search-players').addEventListener('input', renderList)
   document.getElementById('filter-job').addEventListener('change', renderList)
@@ -386,6 +511,19 @@ function renderPage(container, players, clubs, helpers, savedFilters = null) {
   document.getElementById('sort-players').addEventListener('change', renderList)
   wireMultiSelect('club', container, renderList)
   wireMultiSelect('country', container, renderList)
+
+  // Bascule Carte / Liste
+  container.querySelectorAll('.view-mode-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      viewMode = btn.dataset.view === 'list' ? 'list' : 'card'
+      container.querySelectorAll('.view-mode-btn').forEach(b => {
+        const on = b === btn
+        b.style.background = on ? 'var(--green)' : 'transparent'
+        b.style.color       = on ? '#fff' : 'var(--gray-600)'
+      })
+      renderList()
+    })
+  })
   document.getElementById('bulk-cancel-btn')?.addEventListener('click', () => { selected.clear(); updateBulkBar(); renderList() })
   document.getElementById('bulk-delete-btn')?.addEventListener('click', async () => {
     if (!selected.size || !confirm(`Supprimer ${selected.size} joueur(s) ?`)) return
@@ -417,6 +555,9 @@ function renderPage(container, players, clubs, helpers, savedFilters = null) {
 }
 
 // ── Modal Card Builder ────────────────────────────────────
+// Liste de pays partagée (fiche joueur ET mode Liste)
+const COUNTRY_CODES = ['FR','DE','ES','PT','IT','GB','NL','BE','DK','SE','NO','PL','CH','AT','CZ','HR','RS','AL','TR','AR','BR','UY','CO','MX','CL','PE','EC','MA','DZ','TN','EG','NG','SN','CI','CM','GH','ML','GN','CD','AO','ZA','KE','JP','KR','CN','VN','TH','ID','PH','US','CA','AU','RU','UA','GR','RO','BG','IR','SA','AE','IN','PK','BD']
+
 async function openPlayerModal(player, clubs, container, helpers) {
   const { toast, openModal, closeModal } = helpers
   const isEdit = !!player
@@ -535,8 +676,7 @@ async function openPlayerModal(player, clubs, container, helpers) {
           <div class="form-group">
             <label>Pays</label>
             <select id="pm-country">
-              ${['FR','DE','ES','PT','IT','GB','NL','BE','DK','SE','NO','PL','CH','AT','CZ','HR','RS','AL','TR','AR','BR','UY','CO','MX','CL','PE','EC','MA','DZ','TN','EG','NG','SN','CI','CM','GH','ML','GN','CD','AO','ZA','KE','JP','KR','CN','VN','TH','ID','PH','US','CA','AU','RU','UA','GR','RO','BG','IR','SA','AE','IN','PK','BD']
-                .map(c => `<option value="${c}" ${(player?.country_code||'FR')===c?'selected':''}>${c}</option>`).join('')}
+              ${COUNTRY_CODES.map(c => `<option value="${c}" ${(player?.country_code||'FR')===c?'selected':''}>${c}</option>`).join('')}
             </select>
           </div>
         </div>

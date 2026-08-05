@@ -556,7 +556,9 @@ function renderPage(container, players, clubs, helpers, savedFilters = null) {
 
 // ── Modal Card Builder ────────────────────────────────────
 // Liste de pays partagée (fiche joueur ET mode Liste)
-const COUNTRY_CODES = ['FR','DE','ES','PT','IT','GB','NL','BE','DK','SE','NO','PL','CH','AT','CZ','HR','RS','AL','TR','AR','BR','UY','CO','MX','CL','PE','EC','MA','DZ','TN','EG','NG','SN','CI','CM','GH','ML','GN','CD','AO','ZA','KE','JP','KR','CN','VN','TH','ID','PH','US','CA','AU','RU','UA','GR','RO','BG','IR','SA','AE','IN','PK','BD']
+const COUNTRY_CODES = [
+  'FR','DE','ES','PT','IT','GB','NL','BE','DK','SE','NO','PL','CH','AT','CZ','HR','RS','AL','TR','AR','BR','UY','CO','MX','CL','PE','EC','MA','DZ','TN','EG','NG','SN','CI','CM','GH','ML','GN','CD','AO','ZA','KE','JP','KR','CN','VN','TH','ID','PH','US','CA','AU','RU','UA','GR','RO','BG','IR','SA','AE','IN','PK','BD','GE','AM','AZ','BY','LT','LV','EE','SK','SI','BA','MK','ME','XK','MD','IS','IE','LU','FI','CY','MT','LI','SM','MC','AD','VA','UZ','KZ','TM','TJ','KG','IL','IQ','JO','LB','SY','KW','QA','BH','OM','YE','AF','MN','LK','NP','MM','KH','LA','MY','SG','TW','HK','MO','BT','MV','NZ','FJ','PG','NC','VU','SB','WS','TO','BO','PY','VE','GY','SR','PA','CR','HN','GT','SV','NI','BZ','CU','JM','HT','DO','TT','BS','BB','GD','LC','VC','AG','DM','KN','ET','SD','SS','SO','ER','DJ','UG','RW','BI','TZ','MZ','ZM','ZW','MW','NA','BW','LS','SZ','MG','MU','LY','TD','NE','BF','MR','GM','GW','SL','LR','TG','BJ','GA','CG','CF','GQ','KM','CV','ST','SC'
+]
 
 async function openPlayerModal(player, clubs, container, helpers) {
   const { toast, openModal, closeModal } = helpers

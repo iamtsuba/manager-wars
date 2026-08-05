@@ -542,16 +542,36 @@ function renderBuilder(container, builder, ctx, isInitialRender = false) {
   container.querySelectorAll('#save-deck, #save-deck-pc').forEach(el => el.addEventListener('click', () => saveDeck(builder, ctx)))
 
   // ── Deck Automatique ──
+  // Popup de chargement pendant le calcul du Deck Automatique. Le calcul
+  // lui-même est synchrone (recherche locale sur toutes les formations ×
+  // stades possédés) et peut bloquer un instant le thread principal sur une
+  // grosse collection : le popup est peint AVANT que ça démarre (via le
+  // setTimeout ci-dessous, qui laisse le navigateur rafraîchir l'affichage).
+  function showDeckAutoLoader() {
+    const ov = document.createElement('div')
+    ov.id = 'deck-auto-loader-overlay'
+    ov.style.cssText = 'position:fixed;inset:0;background:rgba(10,30,20,0.92);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:3500;gap:16px;color:#fff'
+    ov.innerHTML = `
+      <style>
+        @keyframes deckAutoSpin { to { transform:rotate(360deg) } }
+        .deck-auto-spinner { width:48px;height:48px;border:4px solid rgba(255,255,255,0.2);border-top-color:#D4A017;border-radius:50%;animation:deckAutoSpin .8s linear infinite }
+      </style>
+      <div class="deck-auto-spinner"></div>
+      <div style="font-size:16px;font-weight:800">✨ Deck en cours de préparation…</div>`
+    document.body.appendChild(ov)
+    return () => ov.remove()
+  }
+
   container.querySelectorAll('#auto-deck-pc, #auto-deck-mobile').forEach(btn => {
     btn.addEventListener('click', async () => {
       if (builder.playerCards.length < 11) {
         ctx.toast(`Il faut au moins 11 joueurs (tu en as ${builder.playerCards.length})`, 'error')
         return
       }
-      const label = btn.textContent
-      btn.disabled = true; btn.textContent = '⏳ Optimisation…'
-      // Laisse le navigateur peindre l'état "en cours" avant le calcul, qui
-      // est synchrone et peut bloquer brièvement le thread principal.
+      btn.disabled = true
+      const hideLoader = showDeckAutoLoader()
+      // Laisse le navigateur peindre le popup avant le calcul, qui est
+      // synchrone et peut bloquer brièvement le thread principal.
       await new Promise(r => setTimeout(r, 30))
 
       const best = buildBestDeck({
@@ -561,7 +581,8 @@ function renderBuilder(container, builder, ctx, isInitialRender = false) {
         stadDefMap:          builder.stadDefMap,
       })
 
-      btn.disabled = false; btn.textContent = label
+      btn.disabled = false
+      hideLoader()
 
       if (!best) { ctx.toast('Impossible de composer une équipe complète', 'error'); return }
 

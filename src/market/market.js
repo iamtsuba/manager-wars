@@ -336,10 +336,16 @@ async function loadMarket(container, ctx) {
   })
 
   // Pré-remplissage depuis une autre page (ex. "🛒 Mercato" du sélecteur de
-  // deck, qui envoie le nom du joueur recherché via navigate('market', {...}))
-  if (ctx.state?.params?.search) {
-    const nameInput = document.getElementById('flt-name')
-    if (nameInput) nameInput.value = ctx.state.params.search
+  // deck, qui envoie nom + club + pays via navigate('market', {...})) :
+  // le nom seul remonterait trop de résultats (plusieurs homonymes), club et
+  // pays permettent d'isoler la bonne carte.
+  if (ctx.state?.params?.search || ctx.state?.params?.club || ctx.state?.params?.country) {
+    const nameInput    = document.getElementById('flt-name')
+    const clubInput    = document.getElementById('flt-club')
+    const countryInput = document.getElementById('flt-country')
+    if (nameInput    && ctx.state.params.search)  nameInput.value    = ctx.state.params.search
+    if (clubInput    && ctx.state.params.club)    clubInput.value    = ctx.state.params.club
+    if (countryInput && ctx.state.params.country) countryInput.value = ctx.state.params.country
     ctx.state.params = {}      // consommé : évite de re-filtrer au prochain passage
     renderTab()
   }
@@ -380,8 +386,45 @@ async function buyCard(listingId, list, container, ctx) {
     const credEl = document.getElementById('nav-credits')
     if (credEl) credEl.textContent = `💰 ${(state.profile.credits||0).toLocaleString('fr')}`
     toast('✅ Carte achetée !', 'success')
+
+    // Résoudre automatiquement les decks qui attendaient ce joueur (slot
+    // grisé "à acheter") : la nouvelle carte y remplace le marqueur wanted.
+    // La RPC d'achat ne renvoyant pas l'id de la carte créée, on la retrouve
+    // via la plus récente carte de ce joueur dans la collection de l'acheteur.
+    await resolveWantedSlots(state.profile.id, listing.card?.player?.id, toast)
+
     await loadMarket(container, ctx)
   })
+}
+
+async function resolveWantedSlots(buyerId, playerId, toast) {
+  if (!playerId) return
+  const { data: pendingRows } = await supabase
+    .from('deck_cards')
+    .select('id, deck_id, decks!inner(owner_id)')
+    .eq('wanted_player_id', playerId)
+    .eq('decks.owner_id', buyerId)
+  if (!pendingRows?.length) return
+
+  const { data: newCard } = await supabase
+    .from('cards')
+    .select('id')
+    .eq('owner_id', buyerId)
+    .eq('player_id', playerId)
+    .eq('card_type', 'player')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  if (!newCard) return
+
+  const { error: updErr } = await supabase
+    .from('deck_cards')
+    .update({ card_id: newCard.id, wanted_player_id: null })
+    .in('id', pendingRows.map(r => r.id))
+
+  if (!updErr && pendingRows.length) {
+    toast?.(`🔄 ${pendingRows.length} deck(s) complété(s) avec ce joueur`, 'success')
+  }
 }
 
 function showBuyConfirm(listing, onConfirm) {

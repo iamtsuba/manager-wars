@@ -443,11 +443,42 @@ async function openPlayerModal(player, clubs, container, helpers) {
          layout écrasé avec scroll horizontal. En dessous de 700px, on empile
          verticalement : aperçu centré en haut, formulaire pleine largeur. */
       @media (max-width: 700px) {
-        .pm-layout { flex-direction: column !important; }
-        .pm-preview-col { position: static !important; width: 100% !important; }
+        .pm-layout { flex-direction: column !important; gap: 14px !important }
+        .pm-preview-col { position: static !important; width: 100% !important }
         .pm-preview-col > div:last-child { display:flex; justify-content:center }
-        .pm-form-col { min-width: 0 !important; width: 100% !important; }
-        .pm-grid4 { grid-template-columns: 1fr 1fr !important; }
+        .pm-form-col { min-width: 0 !important; width: 100% !important; gap: 14px !important }
+        .pm-grid4 { grid-template-columns: 1fr 1fr !important }
+
+        /* Regroupement des champs en "sections" façon app mobile : fond
+           légèrement distinct, coins arrondis, séparation nette entre
+           blocs — au lieu de tout empiler à plat sans repère visuel. */
+        .pm-section {
+          background: #f7f8fa; border-radius: 14px; padding: 14px;
+          border: 1px solid #ececec;
+        }
+        .pm-section-title {
+          font-size: 11px; font-weight: 800; color: #999; text-transform: uppercase;
+          letter-spacing: 0.6px; margin-bottom: 10px;
+        }
+
+        /* Zones tactiles agrandies (16px = évite le zoom auto iOS au focus) */
+        .pm-form-col input, .pm-form-col select {
+          font-size: 16px !important; padding: 12px 12px !important;
+          border-radius: 10px !important; min-height: 46px;
+        }
+        .pm-form-col label { font-size: 12.5px; font-weight: 700; color: #555 }
+
+        /* Barre "Enregistrer" façon barre d'action fixe d'app mobile */
+        #pm-error { padding: 0 2px }
+        .pm-save-bar {
+          margin: 4px -14px -14px !important; padding: 12px 14px !important;
+          box-shadow: 0 -4px 14px rgba(0,0,0,0.08);
+          border-top: 1px solid #eee;
+        }
+        .pm-save-bar button { padding: 15px !important; border-radius: 12px !important; font-size: 16px !important }
+
+        /* Aperçu de carte mis en valeur, comme une vraie prévisualisation d'app */
+        #card-preview { filter: drop-shadow(0 6px 16px rgba(0,0,0,0.18)) }
       }
     </style>
     <div class="pm-layout" style="display:flex;gap:20px;align-items:flex-start;flex-wrap:wrap">
@@ -462,6 +493,7 @@ async function openPlayerModal(player, clubs, container, helpers) {
       <div class="pm-form-col" style="flex:1;min-width:300px;display:flex;flex-direction:column;gap:12px">
 
         <!-- Identité -->
+        <div class="pm-section">
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
           <div class="form-group">
             <label>Prénom *</label>
@@ -472,12 +504,14 @@ async function openPlayerModal(player, clubs, container, helpers) {
             <input id="pm-real" value="${player?.surname_real || ''}" placeholder="Silva">
           </div>
         </div>
-        <div class="form-group">
+        <div class="form-group" style="margin-top:8px">
           <label>Lastname (réel) <span style="font-weight:400;color:#999">— champ libre, indépendant</span></label>
           <input id="pm-lastname-reel" value="${player?.lastname_reel || ''}" placeholder="Silva">
         </div>
+        </div>
 
         <!-- Poste + Rareté + Pays -->
+        <div class="pm-section">
         <div class="pm-grid4" style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px">
           <div class="form-group">
             <label>Poste 1</label>
@@ -508,7 +542,7 @@ async function openPlayerModal(player, clubs, container, helpers) {
         </div>
 
         <!-- Club + Prix -->
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">
           <div class="form-group">
             <label>Club</label>
             <select id="pm-club">${clubOpts}</select>
@@ -518,9 +552,10 @@ async function openPlayerModal(player, clubs, container, helpers) {
             <input id="pm-price" type="number" min="0" value="${player?.sell_price||0}">
           </div>
         </div>
+        </div>
 
         <!-- Notes -->
-        <div style="border-top:1px solid var(--gray-200);padding-top:10px">
+        <div class="pm-section" style="border-top:1px solid var(--gray-200);padding-top:10px">
           <div style="font-weight:700;font-size:13px;margin-bottom:8px">📊 Notes (0–20)</div>
           <div class="pm-grid4" style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px">
             ${[['GK','pm-g','note_g'],['DEF','pm-d','note_d'],['MIL','pm-m','note_m'],['ATT','pm-a','note_a']].map(([lbl,id,field]) => `
@@ -542,7 +577,7 @@ async function openPlayerModal(player, clubs, container, helpers) {
         </div>
 
         <!-- Physique : choix du dossier puis de la face -->
-        <div style="border-top:1px solid var(--gray-200);padding-top:10px">
+        <div class="pm-section" style="border-top:1px solid var(--gray-200);padding-top:10px">
           <div style="font-weight:700;font-size:13px;margin-bottom:8px">🧑 Physique</div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
             <div class="form-group">
@@ -564,7 +599,7 @@ async function openPlayerModal(player, clubs, container, helpers) {
         </div>
 
         <div id="pm-error" style="color:#bb2020;font-size:13px;min-height:16px"></div>
-        <div style="position:sticky;bottom:0;background:#fff;padding:8px 0 4px;margin-top:4px">
+        <div class="pm-save-bar" style="position:sticky;bottom:0;background:#fff;padding:8px 0 4px;margin-top:4px">
         <button class="btn btn-primary" id="pm-save" style="width:100%;padding:14px;font-size:15px">
           ${isEdit ? '💾 Enregistrer' : '✅ Créer le joueur'}
         </button>

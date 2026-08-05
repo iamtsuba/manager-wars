@@ -837,6 +837,8 @@ async function openPlayerSelector(position, builder, container, ctx) {
         ${renderPlayerCard(pc, { width: 100, showStad: true, stadDef: _stadDef, role })}
       </div>
       ${!t.owned ? `<button class="goto-market" data-player-name="${(t.p.surname_real||'').replace(/"/g,'&quot;')}"
+        data-player-club="${(t.p.clubs?.encoded_name||'').replace(/"/g,'&quot;')}"
+        data-player-country="${t.p.country_code||''}"
         style="position:absolute;left:50%;bottom:4px;transform:translateX(-50%);z-index:7;white-space:nowrap;
         background:linear-gradient(135deg,#f6d365,#D4A017);color:#1a1a1a;border:none;border-radius:999px;
         font-size:9px;font-weight:900;padding:3px 8px;cursor:pointer">🛒 Mercato</button>` : ''}
@@ -852,7 +854,7 @@ async function openPlayerSelector(position, builder, container, ctx) {
         </button>` : ''}
       <div style="display:flex;gap:6px;border-bottom:1px solid var(--tile-border);padding-bottom:8px;margin-bottom:4px">
         <button type="button" class="sel-tab" data-tab="mine" style="flex:1;padding:7px;border-radius:8px;border:1.5px solid var(--green);background:var(--green);color:#fff;font-size:12.5px;font-weight:700;cursor:pointer">🎴 Mes cartes (${eligible.length})</button>
-        <button type="button" class="sel-tab" data-tab="top" style="flex:1;padding:7px;border-radius:8px;border:1.5px solid var(--tile-border);background:transparent;color:var(--tile-fg-dim);font-size:12.5px;font-weight:700;cursor:pointer">🏆 Top 10 idéal</button>
+        <button type="button" class="sel-tab" data-tab="top" style="flex:1;padding:7px;border-radius:8px;border:1.5px solid #ccc;background:#e8e8e8;color:#555;font-size:12.5px;font-weight:700;cursor:pointer">🏆 Top 10 idéal</button>
       </div>
       <div class="sel-pane" data-pane="top" style="display:none">${topTenHtml}</div>
       <div class="sel-pane" data-pane="mine">
@@ -879,9 +881,9 @@ async function openPlayerSelector(position, builder, container, ctx) {
     tab.addEventListener('click', () => {
       document.querySelectorAll('.sel-tab').forEach(t => {
         const on = t === tab
-        t.style.background  = on ? 'var(--green)' : 'transparent'
-        t.style.borderColor = on ? 'var(--green)' : 'var(--tile-border)'
-        t.style.color       = on ? '#fff' : 'var(--tile-fg-dim)'
+        t.style.background  = on ? 'var(--green)' : '#e8e8e8'
+        t.style.borderColor = on ? 'var(--green)' : '#ccc'
+        t.style.color       = on ? '#fff' : '#555'
       })
       document.querySelectorAll('.sel-pane').forEach(pane => {
         pane.style.display = pane.dataset.pane === tab.dataset.tab ? 'block' : 'none'
@@ -890,11 +892,17 @@ async function openPlayerSelector(position, builder, container, ctx) {
   })
 
   // Joueur non possédé : direction le Mercato, pré-filtré sur son nom
+  // ET son club/pays — le nom seul ne suffit pas à isoler LA bonne carte
+  // (ex. plusieurs "López" au marché).
   document.querySelectorAll('.goto-market').forEach(btn => {
     btn.addEventListener('click', (e) => {
       e.stopPropagation()
       closeModal()
-      navigate('market', { search: btn.dataset.playerName })
+      navigate('market', {
+        search:  btn.dataset.playerName,
+        club:    btn.dataset.playerClub,
+        country: btn.dataset.playerCountry,
+      })
     })
   })
 

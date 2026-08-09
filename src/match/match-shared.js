@@ -62,7 +62,8 @@ export { getPortrait } from '../lib/portrait.js'
 export function playerFromCard(card, position) {
   const p = card.player
   const evo = card.evolution_bonus || 0
-  const j2base = p.job2 ? (Number(p[`note_${p.job2.toLowerCase()}`])||0) : 0
+  const NOTE_KEY = { GK:'note_g', DEF:'note_d', MIL:'note_m', ATT:'note_a' }
+  const j2base = p.job2 ? (Number(p[NOTE_KEY[p.job2]])||0) : 0
   return {
     cardId: card.id,
     position: position || null,

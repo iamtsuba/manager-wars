@@ -72,7 +72,7 @@ async function importPlayersExcel(file, container, helpers) {
     // qu'une colonne calculée ou renommée dans Excel ne fasse échouer tout
     // le lot, et protège les champs techniques.
     const EDITABLE = [
-      'firstname','surname_real','job','job2','rarity',
+      'firstname','surname_real','lastname_reel','job','job2','rarity',
       'country_code','club_id','sell_price','note_g','note_d','note_m','note_a',
       'note_min','note_max','face',
     ]
@@ -276,7 +276,13 @@ function renderPage(container, players, clubs, helpers, savedFilters = null) {
         </select>
       </div>
       <div id="filters-restore-hook" style="display:none"></div>
-      <div id="count-label" style="font-size:12px;color:var(--gray-600)">${players.length} joueur(s)</div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <div id="count-label" style="font-size:12px;color:var(--gray-600);flex:1">${players.length} joueur(s)</div>
+        <div style="display:flex;gap:4px;background:var(--gray-100,#f0f0f0);border-radius:8px;padding:3px">
+          <button type="button" class="view-mode-btn" data-view="card" style="padding:6px 12px;border-radius:6px;border:none;font-size:12px;font-weight:700;cursor:pointer;background:var(--green);color:#fff">🎴 Carte</button>
+          <button type="button" class="view-mode-btn" data-view="list" style="padding:6px 12px;border-radius:6px;border:none;font-size:12px;font-weight:700;cursor:pointer;background:transparent;color:var(--gray-600)">📋 Liste</button>
+        </div>
+      </div>
       <div id="bulk-bar" style="display:none;align-items:center;gap:8px;padding:8px 10px;background:rgba(187,32,32,0.08);border:1px solid #bb2020;border-radius:10px">
         <span id="bulk-count" style="font-size:13px;font-weight:700;color:#bb2020;flex:1"></span>
         <button class="btn btn-danger btn-sm" id="bulk-delete-btn">🗑️ Supprimer la sélection</button>
@@ -284,6 +290,8 @@ function renderPage(container, players, clubs, helpers, savedFilters = null) {
       </div>
       <!-- Grille de cartes -->
       <div id="players-list" style="display:flex;flex-wrap:wrap;gap:12px"></div>
+      <!-- Liste modifiable (tableau) -->
+      <div id="players-table-wrap" style="display:none;overflow-x:auto;border:1px solid var(--gray-200,#e0e0e0);border-radius:10px"></div>
     </div>`
 
   // Restaurer les filtres texte/select simples
@@ -337,9 +345,23 @@ function renderPage(container, players, clubs, helpers, savedFilters = null) {
     if (cnt) cnt.textContent = `${selected.size} joueur(s) sélectionné(s)`
   }
 
+  let viewMode = 'card'   // 'card' | 'list'
+
   function renderList() {
     const list = filtered()
     document.getElementById('count-label').textContent = `${list.length} joueur(s)`
+    if (viewMode === 'list') {
+      document.getElementById('players-list').style.display = 'none'
+      document.getElementById('players-table-wrap').style.display = 'block'
+      renderTableView(list)
+      return
+    }
+    document.getElementById('players-list').style.display = 'flex'
+    document.getElementById('players-table-wrap').style.display = 'none'
+    renderCardView(list)
+  }
+
+  function renderCardView(list) {
     const el = document.getElementById('players-list')
     if (!list.length) { el.innerHTML = '<div style="color:var(--gray-600);padding:20px;text-align:center">Aucun joueur.</div>'; return }
 
@@ -379,6 +401,109 @@ function renderPage(container, players, clubs, helpers, savedFilters = null) {
     })
   }
 
+  // ── Mode Liste : tableau entièrement modifiable, sans bouton Enregistrer.
+  // Chaque champ sauvegarde tout seul (au blur pour le texte/les notes, au
+  // changement pour les select), avec un flash vert/rouge de confirmation.
+  function renderTableView(list) {
+    const wrap = document.getElementById('players-table-wrap')
+    if (!list.length) {
+      wrap.innerHTML = '<div style="color:var(--gray-600);padding:20px;text-align:center">Aucun joueur.</div>'
+      return
+    }
+    const clubOptsFor = (sel) => `<option value="">—</option>` + clubs.map(c => `<option value="${c.id}" ${sel===c.id?'selected':''}>${c.encoded_name}</option>`).join('')
+    const jobOpts = (sel) => ['GK','DEF','MIL','ATT'].map(j => `<option value="${j}" ${sel===j?'selected':''}>${j}</option>`).join('')
+    const job2Opts = (sel) => `<option value="">Aucun</option>` + ['GK','DEF','MIL','ATT'].map(j => `<option value="${j}" ${sel===j?'selected':''}>${j}</option>`).join('')
+    const rarityOpts = (sel) => ['normal','pepite','papyte','legende'].map(r => `<option value="${r}" ${sel===r?'selected':''}>${RARITY_LABELS[r]}</option>`).join('')
+    const countryOpts = (sel) => COUNTRY_CODES.map(c => `<option value="${c}" ${(sel||'FR')===c?'selected':''}>${COUNTRY_NAMES[c]||c}</option>`).join('')
+
+    const th = (label) => `<th style="position:sticky;top:0;background:#f5f5f5;padding:8px 6px;font-size:11px;font-weight:800;color:#666;text-transform:uppercase;letter-spacing:0.3px;border-bottom:2px solid #e0e0e0;white-space:nowrap;text-align:left">${label}</th>`
+    const inputStyle = 'width:100%;min-width:90px;padding:6px 7px;border:1px solid #ddd;border-radius:6px;font-size:12.5px;background:#fff;color:#1a1a1a'
+    const noteStyle  = 'width:48px;padding:6px 4px;border:1px solid #ddd;border-radius:6px;font-size:12.5px;text-align:center;background:#fff;color:#1a1a1a'
+
+    wrap.innerHTML = `
+      <table style="border-collapse:collapse;width:100%;font-size:13px">
+        <thead><tr>
+          ${th('Prénom')}${th('Nom')}${th('Lastname')}${th('Poste 1')}${th('Poste 2')}${th('Rareté')}
+          ${th('Pays')}${th('Club')}${th('GK')}${th('DEF')}${th('MIL')}${th('ATT')}${th('Visage')}${th('')}
+        </tr></thead>
+        <tbody>
+          ${list.map(p => {
+            const faceUrl = p.face ? getPortrait({ face: p.face }) : null
+            return `<tr data-row-id="${p.id}" style="border-bottom:1px solid #eee">
+              <td style="padding:5px"><input class="tv-field" data-field="firstname" data-id="${p.id}" value="${(p.firstname||'').replace(/"/g,'&quot;')}" style="${inputStyle}"></td>
+              <td style="padding:5px"><input class="tv-field" data-field="surname_real" data-id="${p.id}" value="${(p.surname_real||'').replace(/"/g,'&quot;')}" style="${inputStyle}"></td>
+              <td style="padding:5px"><input class="tv-field" data-field="lastname_reel" data-id="${p.id}" value="${(p.lastname_reel||'').replace(/"/g,'&quot;')}" style="${inputStyle}"></td>
+              <td style="padding:5px"><select class="tv-field" data-field="job" data-id="${p.id}" style="${inputStyle}">${jobOpts(p.job)}</select></td>
+              <td style="padding:5px"><select class="tv-field" data-field="job2" data-id="${p.id}" style="${inputStyle}">${job2Opts(p.job2)}</select></td>
+              <td style="padding:5px"><select class="tv-field" data-field="rarity" data-id="${p.id}" style="${inputStyle}">${rarityOpts(p.rarity)}</select></td>
+              <td style="padding:5px">
+                <div style="display:flex;align-items:center;gap:5px">
+                  <img src="https://flagsapi.com/${(p.country_code||'FR').slice(0,2).toUpperCase()}/flat/24.png" style="width:18px;height:13px;object-fit:cover;border-radius:2px;flex-shrink:0" onerror="this.style.display='none'">
+                  <select class="tv-field tv-country" data-field="country_code" data-id="${p.id}" style="${inputStyle}">${countryOpts(p.country_code)}</select>
+                </div>
+              </td>
+              <td style="padding:5px"><select class="tv-field" data-field="club_id" data-id="${p.id}" style="${inputStyle};min-width:130px">${clubOptsFor(p.club_id)}</select></td>
+              <td style="padding:5px"><input class="tv-field" data-field="note_g" data-id="${p.id}" type="number" min="0" max="20" value="${p.note_g??0}" style="${noteStyle}"></td>
+              <td style="padding:5px"><input class="tv-field" data-field="note_d" data-id="${p.id}" type="number" min="0" max="20" value="${p.note_d??0}" style="${noteStyle}"></td>
+              <td style="padding:5px"><input class="tv-field" data-field="note_m" data-id="${p.id}" type="number" min="0" max="20" value="${p.note_m??0}" style="${noteStyle}"></td>
+              <td style="padding:5px"><input class="tv-field" data-field="note_a" data-id="${p.id}" type="number" min="0" max="20" value="${p.note_a??0}" style="${noteStyle}"></td>
+              <td style="padding:5px;text-align:center">
+                ${faceUrl ? `<img src="${faceUrl}" style="width:32px;height:32px;object-fit:cover;border-radius:6px" onerror="this.style.display='none'">` : '<span style="color:#ccc;font-size:11px">—</span>'}
+              </td>
+              <td style="padding:5px">
+                <button class="btn-del-player-tv" data-del="${p.id}" style="width:24px;height:24px;border-radius:50%;background:#c0392b;border:none;color:#fff;font-size:12px;cursor:pointer">✕</button>
+              </td>
+            </tr>`
+          }).join('')}
+        </tbody>
+      </table>`
+
+    // ── Auto-sauvegarde : blur pour texte/notes, change pour les select ──
+    const NUMERIC_FIELDS = new Set(['note_g','note_d','note_m','note_a'])
+    function flashCell(el, ok) {
+      el.style.transition = 'background-color .15s'
+      el.style.backgroundColor = ok ? '#d4f4dd' : '#f9d0d0'
+      setTimeout(() => { el.style.backgroundColor = '#fff' }, 500)
+    }
+    async function saveField(el) {
+      const id    = el.dataset.id
+      const field = el.dataset.field
+      let value = el.value
+      if (NUMERIC_FIELDS.has(field)) {
+        const n = Number(value)
+        value = Number.isFinite(n) ? Math.max(0, Math.min(20, n)) : 0
+        el.value = value
+      }
+      if ((field === 'club_id' || field === 'job2') && !value) value = null
+      if ((field === 'firstname' || field === 'surname_real') && !value.trim()) {
+        flashCell(el, false); toast('Ce champ ne peut pas être vide', 'error'); return
+      }
+      const { error } = await supabase.from('players').update({ [field]: value, updated_at: new Date().toISOString() }).eq('id', id)
+      flashCell(el, !error)
+      if (error) { toast(error.message, 'error'); return }
+      // Mettre à jour l'objet local pour rester cohérent si on rebascule en Carte
+      const p = players.find(x => x.id === id)
+      if (p) p[field] = value
+    }
+
+    wrap.querySelectorAll('input.tv-field').forEach(el => {
+      let t
+      el.addEventListener('blur', () => saveField(el))
+      el.addEventListener('keydown', (e) => { if (e.key === 'Enter') el.blur() })
+    })
+    wrap.querySelectorAll('select.tv-field').forEach(el => {
+      el.addEventListener('change', () => saveField(el))
+    })
+    wrap.querySelectorAll('.btn-del-player-tv').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        if (!confirm('Supprimer ce joueur ?')) return
+        const { error } = await supabase.from('players').delete().eq('id', btn.dataset.del)
+        if (error) toast(error.message, 'error')
+        else { toast('Joueur supprimé ✅', 'success'); loadPlayers(container, helpers) }
+      })
+    })
+  }
+
   renderList()
   document.getElementById('search-players').addEventListener('input', renderList)
   document.getElementById('filter-job').addEventListener('change', renderList)
@@ -386,6 +511,19 @@ function renderPage(container, players, clubs, helpers, savedFilters = null) {
   document.getElementById('sort-players').addEventListener('change', renderList)
   wireMultiSelect('club', container, renderList)
   wireMultiSelect('country', container, renderList)
+
+  // Bascule Carte / Liste
+  container.querySelectorAll('.view-mode-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      viewMode = btn.dataset.view === 'list' ? 'list' : 'card'
+      container.querySelectorAll('.view-mode-btn').forEach(b => {
+        const on = b === btn
+        b.style.background = on ? 'var(--green)' : 'transparent'
+        b.style.color       = on ? '#fff' : 'var(--gray-600)'
+      })
+      renderList()
+    })
+  })
   document.getElementById('bulk-cancel-btn')?.addEventListener('click', () => { selected.clear(); updateBulkBar(); renderList() })
   document.getElementById('bulk-delete-btn')?.addEventListener('click', async () => {
     if (!selected.size || !confirm(`Supprimer ${selected.size} joueur(s) ?`)) return
@@ -417,6 +555,204 @@ function renderPage(container, players, clubs, helpers, savedFilters = null) {
 }
 
 // ── Modal Card Builder ────────────────────────────────────
+// Liste de pays partagée (fiche joueur ET mode Liste)
+const COUNTRY_CODES = [
+  'FR','DE','ES','PT','IT','GB','NL','BE','DK','SE','NO','PL','CH','AT','CZ','HR','RS','AL','TR','AR','BR','UY','CO','MX','CL','PE','EC','MA','DZ','TN','EG','NG','SN','CI','CM','GH','ML','GN','CD','AO','ZA','KE','JP','KR','CN','VN','TH','ID','PH','US','CA','AU','RU','UA','GR','RO','BG','IR','SA','AE','IN','PK','BD','GE','AM','AZ','BY','LT','LV','EE','SK','SI','BA','MK','ME','XK','MD','IS','IE','LU','FI','CY','MT','LI','SM','MC','AD','VA','UZ','KZ','TM','TJ','KG','IL','IQ','JO','LB','SY','KW','QA','BH','OM','YE','AF','MN','LK','NP','MM','KH','LA','MY','SG','TW','HK','MO','BT','MV','NZ','FJ','PG','NC','VU','SB','WS','TO','BO','PY','VE','GY','SR','PA','CR','HN','GT','SV','NI','BZ','CU','JM','HT','DO','TT','BS','BB','GD','LC','VC','AG','DM','KN','ET','SD','SS','SO','ER','DJ','UG','RW','BI','TZ','MZ','ZM','ZW','MW','NA','BW','LS','SZ','MG','MU','LY','TD','NE','BF','MR','GM','GW','SL','LR','TG','BJ','GA','CG','CF','GQ','KM','CV','ST','SC'
+]
+
+// Nom affiché à côté du code pays (le code reste la valeur stockée en base)
+const COUNTRY_NAMES = {
+  'FR':'France',
+  'DE':'Allemagne',
+  'ES':'Espagne',
+  'PT':'Portugal',
+  'IT':'Italie',
+  'GB':'Angleterre',
+  'NL':'Pays-Bas',
+  'BE':'Belgique',
+  'DK':'Danemark',
+  'SE':'Suède',
+  'NO':'Norvège',
+  'PL':'Pologne',
+  'CH':'Suisse',
+  'AT':'Autriche',
+  'CZ':'Tchéquie',
+  'HR':'Croatie',
+  'RS':'Serbie',
+  'AL':'Albanie',
+  'TR':'Turquie',
+  'AR':'Argentine',
+  'BR':'Brésil',
+  'UY':'Uruguay',
+  'CO':'Colombie',
+  'MX':'Mexique',
+  'CL':'Chili',
+  'PE':'Pérou',
+  'EC':'Équateur',
+  'MA':'Maroc',
+  'DZ':'Algérie',
+  'TN':'Tunisie',
+  'EG':'Égypte',
+  'NG':'Nigeria',
+  'SN':'Sénégal',
+  'CI':"Côte d'Ivoire",
+  'CM':'Cameroun',
+  'GH':'Ghana',
+  'ML':'Mali',
+  'GN':'Guinée',
+  'CD':'RD Congo',
+  'AO':'Angola',
+  'ZA':'Afrique du Sud',
+  'KE':'Kenya',
+  'JP':'Japon',
+  'KR':'Corée du Sud',
+  'CN':'Chine',
+  'VN':'Vietnam',
+  'TH':'Thaïlande',
+  'ID':'Indonésie',
+  'PH':'Philippines',
+  'US':'États-Unis',
+  'CA':'Canada',
+  'AU':'Australie',
+  'RU':'Russie',
+  'UA':'Ukraine',
+  'GR':'Grèce',
+  'RO':'Roumanie',
+  'BG':'Bulgarie',
+  'IR':'Iran',
+  'SA':'Arabie Saoudite',
+  'AE':'Émirats Arabes Unis',
+  'IN':'Inde',
+  'PK':'Pakistan',
+  'BD':'Bangladesh',
+  'GE':'Géorgie',
+  'AM':'Arménie',
+  'AZ':'Azerbaïdjan',
+  'BY':'Biélorussie',
+  'LT':'Lituanie',
+  'LV':'Lettonie',
+  'EE':'Estonie',
+  'SK':'Slovaquie',
+  'SI':'Slovénie',
+  'BA':'Bosnie-Herzégovine',
+  'MK':'Macédoine du Nord',
+  'ME':'Monténégro',
+  'XK':'Kosovo',
+  'MD':'Moldavie',
+  'IS':'Islande',
+  'IE':'Irlande',
+  'LU':'Luxembourg',
+  'FI':'Finlande',
+  'CY':'Chypre',
+  'MT':'Malte',
+  'LI':'Liechtenstein',
+  'SM':'Saint-Marin',
+  'MC':'Monaco',
+  'AD':'Andorre',
+  'VA':'Vatican',
+  'UZ':'Ouzbékistan',
+  'KZ':'Kazakhstan',
+  'TM':'Turkménistan',
+  'TJ':'Tadjikistan',
+  'KG':'Kirghizistan',
+  'IL':'Israël',
+  'IQ':'Irak',
+  'JO':'Jordanie',
+  'LB':'Liban',
+  'SY':'Syrie',
+  'KW':'Koweït',
+  'QA':'Qatar',
+  'BH':'Bahreïn',
+  'OM':'Oman',
+  'YE':'Yémen',
+  'AF':'Afghanistan',
+  'MN':'Mongolie',
+  'LK':'Sri Lanka',
+  'NP':'Népal',
+  'MM':'Myanmar',
+  'KH':'Cambodge',
+  'LA':'Laos',
+  'MY':'Malaisie',
+  'SG':'Singapour',
+  'TW':'Taïwan',
+  'HK':'Hong Kong',
+  'MO':'Macao',
+  'BT':'Bhoutan',
+  'MV':'Maldives',
+  'NZ':'Nouvelle-Zélande',
+  'FJ':'Fidji',
+  'PG':'Papouasie-Nouvelle-Guinée',
+  'NC':'Nouvelle-Calédonie',
+  'VU':'Vanuatu',
+  'SB':'Îles Salomon',
+  'WS':'Samoa',
+  'TO':'Tonga',
+  'BO':'Bolivie',
+  'PY':'Paraguay',
+  'VE':'Venezuela',
+  'GY':'Guyana',
+  'SR':'Suriname',
+  'PA':'Panama',
+  'CR':'Costa Rica',
+  'HN':'Honduras',
+  'GT':'Guatemala',
+  'SV':'Salvador',
+  'NI':'Nicaragua',
+  'BZ':'Belize',
+  'CU':'Cuba',
+  'JM':'Jamaïque',
+  'HT':'Haïti',
+  'DO':'République Dominicaine',
+  'TT':'Trinité-et-Tobago',
+  'BS':'Bahamas',
+  'BB':'Barbade',
+  'GD':'Grenade',
+  'LC':'Sainte-Lucie',
+  'VC':'Saint-Vincent',
+  'AG':'Antigua-et-Barbuda',
+  'DM':'Dominique',
+  'KN':'Saint-Kitts-et-Nevis',
+  'ET':'Éthiopie',
+  'SD':'Soudan',
+  'SS':'Soudan du Sud',
+  'SO':'Somalie',
+  'ER':'Érythrée',
+  'DJ':'Djibouti',
+  'UG':'Ouganda',
+  'RW':'Rwanda',
+  'BI':'Burundi',
+  'TZ':'Tanzanie',
+  'MZ':'Mozambique',
+  'ZM':'Zambie',
+  'ZW':'Zimbabwe',
+  'MW':'Malawi',
+  'NA':'Namibie',
+  'BW':'Botswana',
+  'LS':'Lesotho',
+  'SZ':'Eswatini',
+  'MG':'Madagascar',
+  'MU':'Maurice',
+  'LY':'Libye',
+  'TD':'Tchad',
+  'NE':'Niger',
+  'BF':'Burkina Faso',
+  'MR':'Mauritanie',
+  'GM':'Gambie',
+  'GW':'Guinée-Bissau',
+  'SL':'Sierra Leone',
+  'LR':'Liberia',
+  'TG':'Togo',
+  'BJ':'Bénin',
+  'GA':'Gabon',
+  'CG':'Congo',
+  'CF':'Centrafrique',
+  'GQ':'Guinée Équatoriale',
+  'KM':'Comores',
+  'CV':'Cap-Vert',
+  'ST':'Sao Tomé-et-Principe',
+  'SC':'Seychelles'
+}
+
 async function openPlayerModal(player, clubs, container, helpers) {
   const { toast, openModal, closeModal } = helpers
   const isEdit = !!player
@@ -437,18 +773,63 @@ async function openPlayerModal(player, clubs, container, helpers) {
 
   openModal(
     isEdit ? `✏️ ${player.firstname} ${player.surname_real}` : '➕ Nouveau joueur',
-    `<div style="display:flex;gap:20px;align-items:flex-start">
+    `<style>
+      /* Sur mobile, l'aperçu (largeur fixe) + le formulaire (min-width:300px)
+         dépassaient la largeur de l'écran (480px minimum requis), forçant un
+         layout écrasé avec scroll horizontal. En dessous de 700px, on empile
+         verticalement : aperçu centré en haut, formulaire pleine largeur. */
+      @media (max-width: 700px) {
+        .pm-layout { flex-direction: column !important; gap: 14px !important }
+        .pm-preview-col { position: static !important; width: 100% !important }
+        .pm-preview-col > div:last-child { display:flex; justify-content:center }
+        .pm-form-col { min-width: 0 !important; width: 100% !important; gap: 14px !important }
+        .pm-grid4 { grid-template-columns: 1fr 1fr !important }
+
+        /* Regroupement des champs en "sections" façon app mobile : fond
+           légèrement distinct, coins arrondis, séparation nette entre
+           blocs — au lieu de tout empiler à plat sans repère visuel. */
+        .pm-section {
+          background: #f7f8fa; border-radius: 14px; padding: 14px;
+          border: 1px solid #ececec;
+        }
+        .pm-section-title {
+          font-size: 11px; font-weight: 800; color: #999; text-transform: uppercase;
+          letter-spacing: 0.6px; margin-bottom: 10px;
+        }
+
+        /* Zones tactiles agrandies (16px = évite le zoom auto iOS au focus) */
+        .pm-form-col input, .pm-form-col select {
+          font-size: 16px !important; padding: 12px 12px !important;
+          border-radius: 10px !important; min-height: 46px;
+        }
+        .pm-form-col label { font-size: 12.5px; font-weight: 700; color: #555 }
+
+        /* Barre "Enregistrer" façon barre d'action fixe d'app mobile */
+        #pm-error { padding: 0 2px }
+        .pm-save-bar {
+          margin: 4px -14px -14px !important; padding: 12px 14px !important;
+          box-shadow: 0 -4px 14px rgba(0,0,0,0.08);
+          border-top: 1px solid #eee;
+        }
+        .pm-save-bar button { padding: 15px !important; border-radius: 12px !important; font-size: 16px !important }
+
+        /* Aperçu de carte mis en valeur, comme une vraie prévisualisation d'app */
+        #card-preview { filter: drop-shadow(0 6px 16px rgba(0,0,0,0.18)) }
+      }
+    </style>
+    <div class="pm-layout" style="display:flex;gap:20px;align-items:flex-start;flex-wrap:wrap">
 
       <!-- Colonne gauche : aperçu carte -->
-      <div style="flex-shrink:0;position:sticky;top:0">
+      <div class="pm-preview-col" style="flex-shrink:0;position:sticky;top:0">
         <div style="font-size:11px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;text-align:center">Aperçu</div>
         <div id="card-preview" style="min-width:160px"></div>
       </div>
 
       <!-- Colonne droite : formulaire -->
-      <div style="flex:1;min-width:300px;display:flex;flex-direction:column;gap:12px">
+      <div class="pm-form-col" style="flex:1;min-width:300px;display:flex;flex-direction:column;gap:12px">
 
         <!-- Identité -->
+        <div class="pm-section">
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
           <div class="form-group">
             <label>Prénom *</label>
@@ -459,9 +840,15 @@ async function openPlayerModal(player, clubs, container, helpers) {
             <input id="pm-real" value="${player?.surname_real || ''}" placeholder="Silva">
           </div>
         </div>
+        <div class="form-group" style="margin-top:8px">
+          <label>Lastname (réel) <span style="font-weight:400;color:#999">— champ libre, indépendant</span></label>
+          <input id="pm-lastname-reel" value="${player?.lastname_reel || ''}" placeholder="Silva">
+        </div>
+        </div>
 
         <!-- Poste + Rareté + Pays -->
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px">
+        <div class="pm-section">
+        <div class="pm-grid4" style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px">
           <div class="form-group">
             <label>Poste 1</label>
             <select id="pm-job">
@@ -484,14 +871,13 @@ async function openPlayerModal(player, clubs, container, helpers) {
           <div class="form-group">
             <label>Pays</label>
             <select id="pm-country">
-              ${['FR','DE','ES','PT','IT','GB','NL','BE','DK','SE','NO','PL','CH','AT','CZ','HR','RS','AL','TR','AR','BR','UY','CO','MX','CL','PE','EC','MA','DZ','TN','EG','NG','SN','CI','CM','GH','ML','GN','CD','AO','ZA','KE','JP','KR','CN','VN','TH','ID','PH','US','CA','AU','RU','UA','GR','RO','BG','IR','SA','AE','IN','PK','BD']
-                .map(c => `<option value="${c}" ${(player?.country_code||'FR')===c?'selected':''}>${c}</option>`).join('')}
+              ${COUNTRY_CODES.map(c => `<option value="${c}" ${(player?.country_code||'FR')===c?'selected':''}>${COUNTRY_NAMES[c]||c}</option>`).join('')}
             </select>
           </div>
         </div>
 
         <!-- Club + Prix -->
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">
           <div class="form-group">
             <label>Club</label>
             <select id="pm-club">${clubOpts}</select>
@@ -501,11 +887,12 @@ async function openPlayerModal(player, clubs, container, helpers) {
             <input id="pm-price" type="number" min="0" value="${player?.sell_price||0}">
           </div>
         </div>
+        </div>
 
         <!-- Notes -->
-        <div style="border-top:1px solid var(--gray-200);padding-top:10px">
+        <div class="pm-section" style="border-top:1px solid var(--gray-200);padding-top:10px">
           <div style="font-weight:700;font-size:13px;margin-bottom:8px">📊 Notes (0–20)</div>
-          <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px">
+          <div class="pm-grid4" style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px">
             ${[['GK','pm-g','note_g'],['DEF','pm-d','note_d'],['MIL','pm-m','note_m'],['ATT','pm-a','note_a']].map(([lbl,id,field]) => `
               <div class="form-group" style="text-align:center">
                 <label style="color:${JOB_COLORS[lbl]};font-weight:700">${lbl}</label>
@@ -525,7 +912,7 @@ async function openPlayerModal(player, clubs, container, helpers) {
         </div>
 
         <!-- Physique : choix du dossier puis de la face -->
-        <div style="border-top:1px solid var(--gray-200);padding-top:10px">
+        <div class="pm-section" style="border-top:1px solid var(--gray-200);padding-top:10px">
           <div style="font-weight:700;font-size:13px;margin-bottom:8px">🧑 Physique</div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
             <div class="form-group">
@@ -547,7 +934,7 @@ async function openPlayerModal(player, clubs, container, helpers) {
         </div>
 
         <div id="pm-error" style="color:#bb2020;font-size:13px;min-height:16px"></div>
-        <div style="position:sticky;bottom:0;background:#fff;padding:8px 0 4px;margin-top:4px">
+        <div class="pm-save-bar" style="position:sticky;bottom:0;background:#fff;padding:8px 0 4px;margin-top:4px">
         <button class="btn btn-primary" id="pm-save" style="width:100%;padding:14px;font-size:15px">
           ${isEdit ? '💾 Enregistrer' : '✅ Créer le joueur'}
         </button>
@@ -684,6 +1071,8 @@ function getFormData(face) {
   return {
     firstname:       (g('pm-fn') || '').trim(),
     surname_real: (g('pm-real') || '').trim() || 'JOUEUR',
+    // Champ nullable et indépendant : jamais de valeur de repli forcée.
+    lastname_reel: (g('pm-lastname-reel') || '').trim() || null,
     country_code:    g('pm-country') || 'FR',
     club_id:         g('pm-club') || null,
     job:             g('pm-job') || 'ATT',

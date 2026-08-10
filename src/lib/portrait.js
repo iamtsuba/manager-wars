@@ -11,6 +11,7 @@
 // par le passé, source de bugs et d'incohérences).
 
 import { supabase } from './supabase.js'
+import { getFacePath } from './featureFlags.js'
 
 const BUCKET = 'faces'
 
@@ -46,7 +47,7 @@ export const ALL_CONTINENTS = ['Europe','Afrique','Asie','Amerique du Nord','Ame
 // ── URL publique d'affichage (synchrone — p.face doit déjà être renseigné) ──
 export function getPortrait(p) {
   if (!p?.face) return null
-  const path = p.face.replace(/^\/+/, '')
+  const path = getFacePath(p.face).replace(/^\/+/, '')
   const { data } = supabase.storage.from(BUCKET).getPublicUrl(path)
   return data?.publicUrl || null
 }

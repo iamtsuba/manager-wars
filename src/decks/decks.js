@@ -1,6 +1,6 @@
 import { supabase } from '../lib/supabase.js'
 import { renderPlayerCard } from '../components/player-card.js'
-import { FORMATION_LINKS, FORMATION_POSITIONS, computeLinks, linkColor, getActiveLinks } from '../match/formation-links.js'
+import { FORMATION_LINKS, FORMATION_POSITIONS, computeLinks, linkColor, getActiveLinks, computeSafeCardWidth } from '../match/formation-links.js'
 import { renderStadiumCard, renderFormationCard } from '../components/special-cards.js'
 import { getPortrait } from '../lib/portrait.js'
 import { ensureV2Chrome } from '../home/home2.js'
@@ -646,7 +646,10 @@ function renderDeckField(container, builder, positions, ctx) {
   const availW = isDesktopRDF ? window.innerWidth - 280 : window.innerWidth - 20
   const W      = isDesktopRDF ? Math.min(availW, 860) : availW
   const H      = isDesktopRDF ? Math.round(W * 0.82)  : Math.round(W * 0.85)
-  const CARD_W = isDesktopRDF ? 84 : 49  // 70 * 1.2 = 84 ; mobile 44 -> 49 (+12%, retour testeurs)
+  const CARD_W = isDesktopRDF ? 84 : computeSafeCardWidth(builder.formation, W, H)
+  // 84 en PC ; en mobile : la plus grande taille possible SANS chevauchement
+  // pour la formation active (49-64px selon la densité, contre 49px fixe
+  // auparavant sur toutes les formations).
 
   // SVG des liens uniquement
   let linkSvg = ''

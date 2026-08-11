@@ -74,18 +74,13 @@ async function importPlayersExcel(file, container, helpers) {
     const EDITABLE = [
       'firstname','surname_real','lastname_reel','job','job2','rarity',
       'country_code','club_id','sell_price','note_g','note_d','note_m','note_a',
-      'note_min','note_max','face',
+      'note_min','note_max','face','ethnie','skin',
     ]
     const NUMERIC = new Set(['sell_price','note_g','note_d','note_m','note_a','note_min','note_max'])
+    const REQUIRED = new Set(['firstname','surname_real'])
 
-    const updates = []
-    const skipped = []
-    rows.forEach((r, i) => {
-      if (!r.id) { skipped.push(`ligne ${i + 2} : id manquant`); return }
-      const row = { id: r.id }
-      // Colonnes requises en base : une cellule vide ne doit pas devenir null
-      // (la contrainte NOT NULL ferait échouer tout le lot d'un coup).
-      const REQUIRED = new Set(['firstname','surname_real'])
+    function buildRow(r) {
+      const row = {}
       EDITABLE.forEach(k => {
         if (!(k in r)) return
         let v = r[k]
@@ -95,33 +90,70 @@ async function importPlayersExcel(file, container, helpers) {
           const n = Number(v)
           v = Number.isFinite(n) ? n : null
         }
-        if (v === null && REQUIRED.has(k)) {
-          // Repli : le Surname reprend le nom réel, sinon on ne touche pas au champ
-          if (v === null) return   // laisse la valeur existante en base intacte
-        }
         row[k] = v
       })
-      row.updated_at = new Date().toISOString()
-      updates.push(row)
+      return row
+    }
+
+    const updates = []
+    const inserts = []
+    const skipped = []
+    rows.forEach((r, i) => {
+      // Ligne avec id -> update (comportement d'origine, colonnes vides
+      // ignorées pour ne pas écraser l'existant par erreur)
+      if (r.id) {
+        const row = { id: r.id }
+        EDITABLE.forEach(k => {
+          if (!(k in r)) return
+          let v = r[k]
+          if (typeof v === 'string') v = v.trim()
+          if (v === '') v = null
+          if (v !== null && NUMERIC.has(k)) {
+            const n = Number(v)
+            v = Number.isFinite(n) ? n : null
+          }
+          if (v === null && REQUIRED.has(k)) return  // laisse la valeur existante en base intacte
+          row[k] = v
+        })
+        row.updated_at = new Date().toISOString()
+        updates.push(row)
+        return
+      }
+      // Ligne sans id -> insert (nouveau joueur). Ici, contrairement à
+      // l'update, les champs requis manquants sont bloquants (pas de
+      // valeur existante à préserver puisque la ligne n'existe pas encore).
+      const row = buildRow(r)
+      const missingRequired = [...REQUIRED].filter(k => row[k] == null)
+      if (missingRequired.length) {
+        skipped.push(`ligne ${i + 2} : champ(s) requis manquant(s) pour la création (${missingRequired.join(', ')})`)
+        return
+      }
+      inserts.push(row)
     })
 
-    if (!updates.length) { toast('Aucune ligne exploitable (colonne "id" requise)', 'error'); return }
-    if (!confirm(`Mettre à jour ${updates.length} joueur(s) depuis le fichier ?\n\nCette action écrase les données actuelles.`)) return
+    if (!updates.length && !inserts.length) { toast('Aucune ligne exploitable', 'error'); return }
+    if (!confirm(`${updates.length} joueur(s) à mettre à jour, ${inserts.length} à créer depuis le fichier.\n\nContinuer ?`)) return
 
     // Envoi par lots : un upsert géant échoue en bloc et rend l'erreur
     // illisible ; par lots on identifie précisément ce qui casse.
-    let ok = 0
+    let okUpdated = 0, okInserted = 0
     const CHUNK = 100
     for (let i = 0; i < updates.length; i += CHUNK) {
       const slice = updates.slice(i, i + CHUNK)
       const { error } = await supabase.from('players').upsert(slice, { onConflict: 'id' })
-      if (error) { toast(`Erreur lot ${Math.floor(i / CHUNK) + 1} : ${error.message}`, 'error'); break }
-      ok += slice.length
+      if (error) { toast(`Erreur update lot ${Math.floor(i / CHUNK) + 1} : ${error.message}`, 'error'); break }
+      okUpdated += slice.length
+    }
+    for (let i = 0; i < inserts.length; i += CHUNK) {
+      const slice = inserts.slice(i, i + CHUNK)
+      const { error } = await supabase.from('players').insert(slice)
+      if (error) { toast(`Erreur création lot ${Math.floor(i / CHUNK) + 1} : ${error.message}`, 'error'); break }
+      okInserted += slice.length
     }
 
-    toast(`${ok} joueur(s) mis à jour ✅${skipped.length ? ` — ${skipped.length} ligne(s) ignorée(s)` : ''}`, 'success')
+    toast(`${okUpdated} mis à jour, ${okInserted} créés ✅${skipped.length ? ` — ${skipped.length} ligne(s) ignorée(s)` : ''}`, 'success')
     if (skipped.length) console.warn('[Import joueurs] lignes ignorées :', skipped)
-    if (ok) loadPlayers(container, helpers)
+    if (okUpdated || okInserted) loadPlayers(container, helpers)
   } catch (e) {
     toast(`Erreur import : ${e.message}`, 'error')
   } finally {

@@ -4,7 +4,7 @@ import {
   GC_DEFS, getNoteForRole, calcAttack, calcDefense,
   calcMidfieldDuel, resolveDuel, aiSelectPlayers, getRewards
 } from './game-logic.js'
-import { FORMATION_LINKS, FORMATION_POSITIONS, linkColor, getActiveLinks } from './formation-links.js'
+import { FORMATION_LINKS, FORMATION_POSITIONS, linkColor, getActiveLinks, computeSafeCardWidth } from './formation-links.js'
 import { isAdjacent } from './game-logic.js'
 import { renderGCCard } from '../components/special-cards.js'
 
@@ -690,11 +690,14 @@ export function buildTeamSVG(team, formation, phase, selectedIds, W=310, H=310, 
   let svg = linksSvg
 
   // 2. Cartes joueurs : renderPlayerCard via foreignObject
-  // Cartes grandes : ~18% de la largeur du terrain (desktop), +12% sur
-  // mobile suite aux retours testeurs ("cartes trop petites en match")
+  // Cartes grandes : ~18% de la largeur du terrain (desktop). En mobile :
+  // la plus grande taille possible SANS chevauchement, calculée pour LA
+  // FORMATION ACTIVE (certaines alignent jusqu'à 5 joueurs sur une même
+  // ligne, ex. 4-5-1 — une fraction fixe de W y créerait un chevauchement
+  // ou resterait trop petite sur les formations moins denses).
   const CW = typeof window !== "undefined" && window.innerWidth >= 900
     ? Math.min(Math.max(81, Math.round(W * 0.225)), 117)
-    : Math.max(49, Math.round(W * 0.188))
+    : computeSafeCardWidth(formation, W, H)
   const CH = Math.round(CW * 657/507)
 
   // PAD calculé ici (et non plus après la boucle) : le chemin WebKit en a

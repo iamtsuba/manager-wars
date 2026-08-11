@@ -690,10 +690,11 @@ export function buildTeamSVG(team, formation, phase, selectedIds, W=310, H=310, 
   let svg = linksSvg
 
   // 2. Cartes joueurs : renderPlayerCard via foreignObject
-  // Cartes grandes : ~18% de la largeur du terrain
+  // Cartes grandes : ~18% de la largeur du terrain (desktop), +12% sur
+  // mobile suite aux retours testeurs ("cartes trop petites en match")
   const CW = typeof window !== "undefined" && window.innerWidth >= 900
     ? Math.min(Math.max(81, Math.round(W * 0.225)), 117)
-    : Math.max(44, Math.round(W * 0.168))
+    : Math.max(49, Math.round(W * 0.188))
   const CH = Math.round(CW * 657/507)
 
   // PAD calculé ici (et non plus après la boucle) : le chemin WebKit en a

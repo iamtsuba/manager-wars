@@ -3,6 +3,7 @@
  * Template 507x657px — positions mesurées au pixel
  */
 import { getPortrait } from '../lib/portrait.js'
+import { generateSilhouetteSVG } from './silhouette.js'
 
 const BASE = import.meta.env.BASE_URL
 
@@ -88,6 +89,11 @@ export function renderPlayerCard(p, opts = {}) {
   const job2Note  = job2 ? getNoteForJob(p, job2, evo) + extraNote + stadB : null
 
   const faceUrl     = getPortrait(p)
+  // Rareté "normal" sans portrait dédié : silhouette générique, maillot
+  // coloré dynamiquement selon le club (voir silhouette.js). Repli neutre
+  // si les couleurs du club ne sont pas encore chargées par la requête
+  // appelante (kit_style/kit_color1 etc. absents de p.clubs).
+  const useSilhouette = !faceUrl && p.rarity === 'normal'
   const flagUrl     = getFlagUrl(p.country_code)
   const clubLogoUrl = getClubLogoUrl(p)
   const firstname   = (p.firstname || '').toUpperCase()
@@ -115,6 +121,19 @@ export function renderPlayerCard(p, opts = {}) {
   const photoTop = ax(155)
   const photoW   = ax(260)
   const photoH   = ax(235)   // s'arrête au haut de l'octogone (y≈380)
+
+  // Générée seulement maintenant : photoW est nécessaire comme largeur de
+  // référence pour que la silhouette occupe correctement la zone portrait.
+  const silhouetteSVG = useSilhouette
+    ? generateSilhouetteSVG({
+        style:  p.clubs?.kit_style,
+        color1: p.clubs?.kit_color1,
+        color2: p.clubs?.kit_color2,
+        color3: p.clubs?.kit_color3,
+        shorts: p.clubs?.kit_shorts,
+        socks:  p.clubs?.kit_socks,
+      }, Math.round(photoW), p.id || p.firstname || 'sil')
+    : ''
 
   // Octogone central mesuré: y=380→639, x=100→409, centre x=254, y=509
   // Note : dans le tiers supérieur de l'octogone
@@ -175,6 +194,10 @@ export function renderPlayerCard(p, opts = {}) {
     style="position:absolute;top:${photoTop}px;left:50%;transform:translateX(-50%);
     width:${photoW}px;height:${photoH}px;object-fit:cover;object-position:top center;z-index:2"
     onerror="this.style.display='none'">` : ''}
+  ${useSilhouette ? `<div style="position:absolute;top:${photoTop}px;left:50%;transform:translateX(-50%);
+    width:${photoW}px;height:${photoH}px;overflow:hidden;z-index:2">
+    <div style="position:absolute;top:0;left:50%;transform:translateX(-50%)">${silhouetteSVG}</div>
+  </div>` : ''}
 
   <!-- Note principale : centrée dans l'octogone du template -->
   <div style="position:absolute;left:${noteX}px;top:${noteTop}px;width:${noteW}px;height:${noteH}px;

@@ -2,6 +2,23 @@ import { supabase } from '../../lib/supabase.js'
 import { renderPlayerCard } from '../../components/player-card.js'
 import { ALL_CONTINENTS, listContinentFiles, getPortrait, assignFace } from '../../lib/portrait.js'
 
+// Récupère TOUTES les lignes d'une requête, en paginant par blocs de 1000
+// (contourne la limite serveur par défaut de PostgREST qui tronque
+// silencieusement au-delà, sans erreur ni avertissement).
+async function fetchAllRows(buildQuery) {
+  const PAGE = 1000
+  let all = []
+  let from = 0
+  while (true) {
+    const { data, error } = await buildQuery(supabase.from('players'), from, from + PAGE - 1)
+    if (error) return { data: all, error }
+    all = all.concat(data || [])
+    if (!data || data.length < PAGE) break
+    from += PAGE
+  }
+  return { data: all, error: null }
+}
+
 const BASE = import.meta.env.BASE_URL
 const RARITY_LABELS = { normal:'Normal', pepite:'Pépite', papyte:'Papyte', legende:'Légende' }
 const JOB_COLORS    = { GK:'#aaaaaa', DEF:'#bb2020', MIL:'#D4A017', ATT:'#1A6B3C' }
@@ -250,17 +267,18 @@ async function assignMissingFaces(container, helpers) {
   const btn = document.getElementById('assign-faces-btn')
   if (btn) { btn.disabled = true; btn.textContent = '⏳ Attribution en cours...' }
   try {
-    const { data: missing, error: errMissing } = await supabase
-      .from('players')
-      .select('id,country_code')
-      .or('face.is.null,face.eq.')
+    const { data: missing, error: errMissing } = await fetchAllRows((q, from, to) =>
+      q.select('id,country_code').or('face.is.null,face.eq.').range(from, to)
+    )
     if (errMissing) { toast(errMissing.message, 'error'); return }
     if (!missing || !missing.length) { toast('Aucun joueur sans face', 'info'); return }
 
     if (!confirm(`${missing.length} joueur(s) sans face. Leur attribuer une photo aléatoire maintenant ?`)) return
 
     // Faces déjà utilisées, pour limiter les doublons immédiats
-    const { data: used } = await supabase.from('players').select('face').not('face', 'is', null)
+    const { data: used } = await fetchAllRows((q, from, to) =>
+      q.select('face').not('face', 'is', null).range(from, to)
+    )
     const usedSet = new Set((used || []).map(r => r.face).filter(Boolean))
 
     const updates = []
@@ -271,14 +289,16 @@ async function assignMissingFaces(container, helpers) {
 
     let ok = 0
     const CHUNK = 100
+    const batchErrors = []
     for (let i = 0; i < updates.length; i += CHUNK) {
       const slice = updates.slice(i, i + CHUNK)
       const { error } = await supabase.from('players').upsert(slice, { onConflict: 'id' })
-      if (error) { toast(`Erreur lot ${Math.floor(i / CHUNK) + 1} : ${error.message}`, 'error'); break }
+      if (error) { batchErrors.push(`Lot ${Math.floor(i / CHUNK) + 1}: ${error.message}`); continue }
       ok += slice.length
     }
+    if (batchErrors.length) console.warn('[assignMissingFaces] erreurs de lot :', batchErrors)
 
-    toast(`${ok} face(s) attribuée(s) ✅${updates.length < missing.length ? ` — ${missing.length - updates.length} sans photo disponible pour leur continent` : ''}`, 'success')
+    toast(`${ok} face(s) attribuée(s) ✅${updates.length < missing.length ? ` — ${missing.length - updates.length} sans photo disponible pour leur continent` : ''}${batchErrors.length ? ` — ${batchErrors.length} lot(s) en erreur (voir console)` : ''}`, batchErrors.length ? 'error' : 'success')
     if (ok) loadPlayers(container, helpers)
   } finally {
     if (btn) { btn.disabled = false; btn.textContent = '🖼️ Assigner les faces manquantes' }
@@ -304,7 +324,7 @@ async function loadPlayers(container, helpers, savedFilters = null) {
     }
   }
   const [{ data: players, error }, { data: clubs }] = await Promise.all([
-    supabase.from('players').select('*, clubs(id,encoded_name,logo_url)'),
+    fetchAllRows((q, from, to) => q.select('*, clubs(id,encoded_name,logo_url)').range(from, to)),
     supabase.from('clubs').select('id,encoded_name').order('encoded_name'),
   ])
   if (error) { container.innerHTML = `<p style="color:red">${error.message}</p>`; return }

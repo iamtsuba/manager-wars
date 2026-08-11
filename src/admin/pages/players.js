@@ -1,6 +1,6 @@
 import { supabase } from '../../lib/supabase.js'
 import { renderPlayerCard } from '../../components/player-card.js'
-import { ALL_CONTINENTS, listContinentFiles, getPortrait } from '../../lib/portrait.js'
+import { ALL_CONTINENTS, listContinentFiles, getPortrait, assignFace } from '../../lib/portrait.js'
 
 const BASE = import.meta.env.BASE_URL
 const RARITY_LABELS = { normal:'Normal', pepite:'Pépite', papyte:'Papyte', legende:'Légende' }
@@ -245,6 +245,46 @@ if (!window.__playersMsDocListener) {
   })
 }
 
+async function assignMissingFaces(container, helpers) {
+  const { toast } = helpers
+  const btn = document.getElementById('assign-faces-btn')
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Attribution en cours...' }
+  try {
+    const { data: missing, error: errMissing } = await supabase
+      .from('players')
+      .select('id,country_code')
+      .or('face.is.null,face.eq.')
+    if (errMissing) { toast(errMissing.message, 'error'); return }
+    if (!missing || !missing.length) { toast('Aucun joueur sans face', 'info'); return }
+
+    if (!confirm(`${missing.length} joueur(s) sans face. Leur attribuer une photo aléatoire maintenant ?`)) return
+
+    // Faces déjà utilisées, pour limiter les doublons immédiats
+    const { data: used } = await supabase.from('players').select('face').not('face', 'is', null)
+    const usedSet = new Set((used || []).map(r => r.face).filter(Boolean))
+
+    const updates = []
+    for (const p of missing) {
+      const face = await assignFace(p.country_code, usedSet)
+      if (face) { usedSet.add(face); updates.push({ id: p.id, face }) }
+    }
+
+    let ok = 0
+    const CHUNK = 100
+    for (let i = 0; i < updates.length; i += CHUNK) {
+      const slice = updates.slice(i, i + CHUNK)
+      const { error } = await supabase.from('players').upsert(slice, { onConflict: 'id' })
+      if (error) { toast(`Erreur lot ${Math.floor(i / CHUNK) + 1} : ${error.message}`, 'error'); break }
+      ok += slice.length
+    }
+
+    toast(`${ok} face(s) attribuée(s) ✅${updates.length < missing.length ? ` — ${missing.length - updates.length} sans photo disponible pour leur continent` : ''}`, 'success')
+    if (ok) loadPlayers(container, helpers)
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '🖼️ Assigner les faces manquantes' }
+  }
+}
+
 export async function pagePlayers(container, helpers) {
   await loadPlayers(container, helpers)
 }
@@ -295,6 +335,7 @@ function renderPage(container, players, clubs, helpers, savedFilters = null) {
         <button class="btn btn-primary" id="add-player-btn" style="white-space:nowrap">+ Joueur</button>
         <button class="btn btn-ghost" id="export-players-btn" style="white-space:nowrap">📤 Export Excel</button>
         <button class="btn btn-ghost" id="import-players-btn" style="white-space:nowrap">📥 Import Excel</button>
+        <button class="btn btn-ghost" id="assign-faces-btn" style="white-space:nowrap">🖼️ Assigner les faces manquantes</button>
         <input type="file" id="import-players-file" accept=".xlsx,.xls" style="display:none">
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-start">
@@ -584,6 +625,7 @@ function renderPage(container, players, clubs, helpers, savedFilters = null) {
     if (file) importPlayersExcel(file, container, helpers)
     e.target.value = ''  // permet de réimporter le même fichier après correction
   })
+  document.getElementById('assign-faces-btn').addEventListener('click', () => assignMissingFaces(container, helpers))
 }
 
 // ── Modal Card Builder ────────────────────────────────────

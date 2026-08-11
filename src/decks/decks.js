@@ -646,7 +646,7 @@ function renderDeckField(container, builder, positions, ctx) {
   const availW = isDesktopRDF ? window.innerWidth - 280 : window.innerWidth - 20
   const W      = isDesktopRDF ? Math.min(availW, 860) : availW
   const H      = isDesktopRDF ? Math.round(W * 0.82)  : Math.round(W * 0.85)
-  const CARD_W = isDesktopRDF ? 84 : 44  // 70 * 1.2 = 84
+  const CARD_W = isDesktopRDF ? 84 : 49  // 70 * 1.2 = 84 ; mobile 44 -> 49 (+12%, retour testeurs)
 
   // SVG des liens uniquement
   let linkSvg = ''

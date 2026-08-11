@@ -591,3 +591,36 @@ export const FORMATION_POSITIONS = {
   },
 
 }
+
+// ── Taille de carte maximale sans chevauchement, pour une formation donnée
+// ────────────────────────────────────────────────────────────────────────
+// Certaines formations alignent jusqu'à 5 joueurs sur une même ligne (ex.
+// 4-5-1) : une taille de carte fixe est soit trop petite pour les
+// formations aérées, soit provoque un chevauchement sur les plus denses.
+// Recherche binaire de la plus grande largeur qui n'entraîne aucun
+// chevauchement de rectangle de carte, positions réelles de CETTE formation.
+export function computeSafeCardWidth(formation, W, H, floor = 49, cap = 110, gapPx = 4) {
+  const FPOS = FORMATION_POSITIONS[formation]
+  if (!FPOS) return floor
+  const pts = Object.values(FPOS).map(p => ({ x: p.x * W, y: p.y * H }))
+
+  const fits = (cw) => {
+    const ch = cw * 657 / 507
+    for (let i = 0; i < pts.length; i++) {
+      for (let j = i + 1; j < pts.length; j++) {
+        const dx = Math.abs(pts[i].x - pts[j].x)
+        const dy = Math.abs(pts[i].y - pts[j].y)
+        if (dx < cw + gapPx && dy < ch + gapPx) return false
+      }
+    }
+    return true
+  }
+
+  if (!fits(floor)) return floor   // sécurité : ne jamais descendre sous le plancher
+  let lo = floor, hi = cap
+  while (hi - lo > 1) {
+    const mid = Math.floor((lo + hi) / 2)
+    if (fits(mid)) lo = mid; else hi = mid
+  }
+  return lo
+}

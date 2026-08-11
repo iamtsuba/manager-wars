@@ -189,7 +189,7 @@ function body(x, y, w, h, kt) {
     fill="none" stroke="${kt.color2}" stroke-width="${Math.max(1.5, w*0.018)}"/>`
 }
 
-function kitPatternId(kt, totalW, id) {
+export function kitPatternId(kt, totalW, id) {
   const c1 = kt.color1, c2 = kt.color2, c3 = kt.color3 || '#000000'
   switch (kt.style) {
     case 'rayures_v':

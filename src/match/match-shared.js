@@ -457,7 +457,7 @@ export async function renderDeckSelect(container, ctx, matchMode) {
       const availW = availWraw
       const CW = isPC
         ? Math.min(117, Math.max(52, Math.round(availW * 0.22)))
-        : Math.max(44, Math.round(availW * 0.168))
+        : computeSafeCardWidth(formation, availW, availH)
 
       if (availH < 220 || availW < 220) {
         // Le layout n'est pas encore stable → réessayer au prochain frame

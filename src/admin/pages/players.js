@@ -151,24 +151,36 @@ async function importPlayersExcel(file, container, helpers) {
     if (!updates.length && !inserts.length) { toast('Aucune ligne exploitable', 'error'); return }
     if (!confirm(`${updates.length} joueur(s) à mettre à jour, ${inserts.length} à créer depuis le fichier.\n\nContinuer ?`)) return
 
-    // Envoi par lots : un upsert géant échoue en bloc et rend l'erreur
-    // illisible ; par lots on identifie précisément ce qui casse.
+    // Envoi par lots. Pour les updates : upsert() ne convient pas ici car
+    // certaines lignes omettent volontairement des colonnes (pour préserver
+    // la valeur existante) — Postgres exigerait quand même les colonnes
+    // NOT NULL pour la tentative d'INSERT implicite d'un upsert. On fait
+    // donc de vrais update() ciblés par ligne, en parallèle par petits
+    // groupes pour rester rapide.
     let okUpdated = 0, okInserted = 0
-    const CHUNK = 100
-    for (let i = 0; i < updates.length; i += CHUNK) {
-      const slice = updates.slice(i, i + CHUNK)
-      const { error } = await supabase.from('players').upsert(slice, { onConflict: 'id' })
-      if (error) { toast(`Erreur update lot ${Math.floor(i / CHUNK) + 1} : ${error.message}`, 'error'); break }
-      okUpdated += slice.length
+    const updateErrors = []
+    const CONCURRENCY = 20
+    for (let i = 0; i < updates.length; i += CONCURRENCY) {
+      const slice = updates.slice(i, i + CONCURRENCY)
+      const results = await Promise.all(
+        slice.map(({ id, ...fields }) => supabase.from('players').update(fields).eq('id', id))
+      )
+      results.forEach((r, j) => {
+        if (r.error) updateErrors.push(`${slice[j].id}: ${r.error.message}`)
+        else okUpdated++
+      })
     }
+    if (updateErrors.length) console.warn('[Import joueurs] erreurs update :', updateErrors)
+
+    const CHUNK = 100
     for (let i = 0; i < inserts.length; i += CHUNK) {
       const slice = inserts.slice(i, i + CHUNK)
       const { error } = await supabase.from('players').insert(slice)
-      if (error) { toast(`Erreur création lot ${Math.floor(i / CHUNK) + 1} : ${error.message}`, 'error'); break }
+      if (error) { updateErrors.push(`Lot création ${Math.floor(i / CHUNK) + 1}: ${error.message}`); continue }
       okInserted += slice.length
     }
 
-    toast(`${okUpdated} mis à jour, ${okInserted} créés ✅${skipped.length ? ` — ${skipped.length} ligne(s) ignorée(s)` : ''}`, 'success')
+    toast(`${okUpdated} mis à jour, ${okInserted} créés ✅${skipped.length ? ` — ${skipped.length} ligne(s) ignorée(s)` : ''}${updateErrors.length ? ` — ${updateErrors.length} erreur(s) update (voir console)` : ''}`, updateErrors.length ? 'error' : 'success')
     if (skipped.length) console.warn('[Import joueurs] lignes ignorées :', skipped)
     if (okUpdated || okInserted) loadPlayers(container, helpers)
   } catch (e) {
@@ -287,18 +299,27 @@ async function assignMissingFaces(container, helpers) {
       if (face) { usedSet.add(face); updates.push({ id: p.id, face }) }
     }
 
+    // upsert() ne convient pas ici : PostgreSQL construit d'abord une
+    // tentative d'INSERT (avant ON CONFLICT DO UPDATE), qui doit satisfaire
+    // les colonnes NOT NULL même si on ne veut mettre à jour que `face`.
+    // On fait donc de vrais update() ciblés, envoyés en parallèle par
+    // petits groupes pour rester rapide.
     let ok = 0
-    const CHUNK = 100
+    const CONCURRENCY = 20
     const batchErrors = []
-    for (let i = 0; i < updates.length; i += CHUNK) {
-      const slice = updates.slice(i, i + CHUNK)
-      const { error } = await supabase.from('players').upsert(slice, { onConflict: 'id' })
-      if (error) { batchErrors.push(`Lot ${Math.floor(i / CHUNK) + 1}: ${error.message}`); continue }
-      ok += slice.length
+    for (let i = 0; i < updates.length; i += CONCURRENCY) {
+      const slice = updates.slice(i, i + CONCURRENCY)
+      const results = await Promise.all(
+        slice.map(u => supabase.from('players').update({ face: u.face }).eq('id', u.id))
+      )
+      results.forEach((r, j) => {
+        if (r.error) batchErrors.push(`${slice[j].id}: ${r.error.message}`)
+        else ok++
+      })
     }
-    if (batchErrors.length) console.warn('[assignMissingFaces] erreurs de lot :', batchErrors)
+    if (batchErrors.length) console.warn('[assignMissingFaces] erreurs :', batchErrors)
 
-    toast(`${ok} face(s) attribuée(s) ✅${updates.length < missing.length ? ` — ${missing.length - updates.length} sans photo disponible pour leur continent` : ''}${batchErrors.length ? ` — ${batchErrors.length} lot(s) en erreur (voir console)` : ''}`, batchErrors.length ? 'error' : 'success')
+    toast(`${ok} face(s) attribuée(s) ✅${updates.length < missing.length ? ` — ${missing.length - updates.length} sans photo disponible pour leur continent` : ''}${batchErrors.length ? ` — ${batchErrors.length} erreur(s) (voir console)` : ''}`, batchErrors.length ? 'error' : 'success')
     if (ok) loadPlayers(container, helpers)
   } finally {
     if (btn) { btn.disabled = false; btn.textContent = '🖼️ Assigner les faces manquantes' }

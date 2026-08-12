@@ -109,6 +109,46 @@ export function renderPlayerCard(p, opts = {}) {
   const displayName = (p.surname_real || p.name || '').toUpperCase()
   const opacity     = used ? 'opacity:0.35;' : ''
 
+  // ── Mode carte carrée compacte (mobile : Formation + cartes en match) ──
+  // La photo est abandonnée au profit de la note (info essentielle en jeu),
+  // pour rester lisible même à très petite taille — pas de gabarit PNG ici
+  // (conçu pour un ratio portrait, il serait déformé en carré).
+  if (opts.compactSquare) {
+    const sq = width
+    const nameH = Math.round(sq * 0.22)
+    const rowH  = Math.round(sq * 0.24)
+    const nax = (n) => Math.round(n * sq / 100)
+    // Échelle de police dédiée (sqFpx), basée sur la taille réelle du carré
+    // — fpx() plus haut est calibrée sur le ratio du gabarit portrait 372px
+    // et donnerait des tailles fausses dans ce contexte carré.
+    const sqFpx = (frac, min) => Math.max(min, Math.round(sq * frac)) + 'px'
+    return `<div style="position:relative;width:${sq}px;height:${sq}px;flex-shrink:0;${opacity}user-select:none;${glowStyle}
+      background:${bgFill};border:${Math.max(1,nax(2.2))}px solid ${accent};border-radius:${nax(6)}px;overflow:hidden;box-sizing:border-box">
+      <div style="position:absolute;top:0;left:0;right:0;height:${nameH}px;background:rgba(0,0,0,0.55);
+        display:flex;align-items:center;justify-content:center;padding:0 ${nax(4)}px">
+        <span style="font-size:${sqFpx(0.13,9)};font-weight:900;color:#fff;line-height:1;text-shadow:0 1px 3px #000;
+          font-family:Arial Black,Arial;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${displayName}</span>
+      </div>
+      <div style="position:absolute;top:${nameH}px;left:0;right:0;bottom:${rowH}px;
+        display:flex;align-items:center;justify-content:center">
+        <span style="font-size:${sqFpx(0.32,18)};font-weight:900;color:${noteColor};font-family:Arial Black,Arial;line-height:1;
+          text-shadow:0 2px 6px rgba(0,0,0,0.9)">${mainNote}</span>
+        ${job2Note !== null ? `<span style="font-size:${sqFpx(0.11,9)};font-weight:900;color:${JOB_ACCENT[job2]||'#e03030'};
+          font-family:Arial Black,Arial;line-height:1;margin-left:${nax(4)}px;align-self:flex-end;margin-bottom:${nax(6)}px">${job2Note}</span>` : ''}
+      </div>
+      <div style="position:absolute;bottom:0;left:0;right:0;height:${rowH}px;background:rgba(0,0,0,0.55);
+        display:flex;align-items:stretch">
+        <div style="flex:1;overflow:hidden;display:flex;align-items:center;justify-content:center;border-right:1px solid rgba(255,255,255,0.15)">
+          ${flagUrl ? `<img src="${flagUrl}" style="width:100%;height:100%;object-fit:cover">` : `<span style="font-size:${sqFpx(0.10,10)}">🌍</span>`}
+        </div>
+        <div style="flex:1;overflow:hidden;display:flex;align-items:center;justify-content:center">
+          ${clubLogoUrl ? `<img src="${clubLogoUrl}" style="width:100%;height:100%;object-fit:cover">`
+            : `<span style="font-size:${sqFpx(0.08,8)};font-weight:900;color:#fff">${(p.clubs?.encoded_name||p.clubName||'').slice(0,3).toUpperCase()}</span>`}
+        </div>
+      </div>
+    </div>`
+  }
+
   // Taille police nom adaptée à la longueur (nom seul en pleine largeur)
   const nameFsN = displayName.length > 14 ? 30 : displayName.length > 10 ? 38 : 46
 
@@ -120,9 +160,10 @@ export function renderPlayerCard(p, opts = {}) {
   //     note (centre, entre les 2): x = 31.5% → 68.5%
   //     carré club (droit)        : x = 68.5% → 90%
 
+  // Photo réduite pour laisser la place au rectangle de note en dessous
   const photoTop = ax(609 * 0.145)
   const photoW   = ax(372 * 0.82)
-  const photoH   = ax(609 * (0.78 - 0.145))
+  const photoH   = ax(609 * (0.68 - 0.145))
 
   const silhouetteSVG = useSilhouette
     ? generateSilhouetteSVG({
@@ -135,21 +176,32 @@ export function renderPlayerCard(p, opts = {}) {
       }, Math.round(photoW), p.id || p.firstname || 'sil')
     : ''
 
-  // Bande basse : carrés pays/club + note centrale
-  const squareTop = ax(609 * 0.805)
-  const squareH   = ax(609 * (0.89 - 0.805))
-  const squareLX  = ax(372 * 0.10)
-  const squareLW  = ax(372 * (0.315 - 0.10))
-  const squareRX  = ax(372 * 0.685)
-  const squareRW  = ax(372 * (0.90 - 0.685))
-  const noteX     = ax(372 * 0.315)
-  const noteW     = ax(372 * (0.685 - 0.315))
+  // Rectangle de note : pleine largeur, au-dessus de la rangée de carrés
+  const noteRectTop = ax(609 * 0.685)
+  const noteRectH   = ax(609 * (0.79 - 0.685))
+  const noteRectX   = ax(372 * 0.08)
+  const noteRectW   = ax(372 * (0.92 - 0.08))
+
+  // Carrés pays/club (+ note secondaire) : VRAIS carrés (côté = squareSide),
+  // dimensionnés sur la hauteur mesurée du gabarit (contrainte la plus
+  // stricte), centrés dans chaque zone mesurée plutôt qu'étirés en rectangle.
+  const squareTop  = ax(609 * 0.805)
+  const squareSide = ax(609 * (0.89 - 0.805))
+  const zoneLX     = ax(372 * 0.10)
+  const zoneLW     = ax(372 * (0.315 - 0.10))
+  const zoneRX     = ax(372 * 0.685)
+  const zoneRW     = ax(372 * (0.90 - 0.685))
+  const zoneMX     = ax(372 * 0.315)
+  const zoneMW     = ax(372 * (0.685 - 0.315))
+  const squareLX   = zoneLX + (zoneLW - squareSide) / 2
+  const squareRX   = zoneRX + (zoneRW - squareSide) / 2
+  const squareMX   = zoneMX + (zoneMW - squareSide) / 2
 
   return `<div style="position:relative;width:${width}px;height:${height}px;flex-shrink:0;${opacity}user-select:none;${glowStyle}">
   <div style="position:absolute;top:${opts._cardOffset||0}px;left:0;width:${width}px;height:${height}px">
 
   <!-- Fond de la zone centrale, selon la rareté (le gabarit a un centre transparent) -->
-  <div style="position:absolute;left:0;top:${photoTop}px;width:100%;height:${ax(609*0.78)-photoTop}px;background:${bgFill};z-index:1"></div>
+  <div style="position:absolute;left:0;top:${photoTop}px;width:100%;height:${(noteRectTop+noteRectH)-photoTop}px;background:${bgFill};z-index:1"></div>
 
   <!-- Portrait / silhouette -->
   ${faceUrl ? `<img src="${faceUrl}"
@@ -172,7 +224,7 @@ export function renderPlayerCard(p, opts = {}) {
       overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:center">${displayName}</span>
   </div>
 
-  ${stadB > 0 ? `<div style="position:absolute;left:${noteX + noteW/2 - ax(21)}px;top:${squareTop - ax(6)}px;width:${ax(42)}px;height:${ax(42)}px;z-index:6;display:flex;align-items:center;justify-content:center">
+  ${stadB > 0 ? `<div style="position:absolute;left:${noteRectX + noteRectW/2 - ax(21)}px;top:${noteRectTop - ax(18)}px;width:${ax(42)}px;height:${ax(42)}px;z-index:6;display:flex;align-items:center;justify-content:center">
     <div style="position:relative;width:100%;height:100%;display:flex;align-items:center;justify-content:center">
       <div style="position:absolute;inset:-40%;border-radius:50%;background:radial-gradient(ellipse,rgba(30,144,255,0.65) 0%,transparent 68%);pointer-events:none"></div>
       <svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" style="position:relative;z-index:1;width:90%;height:90%;display:block">
@@ -195,23 +247,30 @@ export function renderPlayerCard(p, opts = {}) {
     </div>
   </div>` : ''}
 
-  <!-- Note principale : bande basse, entre les deux carrés -->
-  <div style="position:absolute;left:${noteX}px;top:${squareTop}px;width:${noteW}px;height:${squareH}px;
-    z-index:5;display:flex;flex-direction:column;align-items:center;justify-content:center">
-    <span style="font-size:${fpx(46,16)};font-weight:900;color:${noteColor};font-family:Arial Black,Arial;line-height:1;text-shadow:0 2px 6px rgba(0,0,0,0.9)">${mainNote}</span>
-    ${job2Note !== null ? `<span style="font-size:${fpx(16,9)};font-weight:900;color:${JOB_ACCENT[job2]||'#e03030'};font-family:Arial Black,Arial;line-height:1;margin-top:${px(2)}">${job2Note}</span>` : ''}
+  <!-- Note principale : rectangle pleine largeur, au-dessus de la rangée de carrés -->
+  <div style="position:absolute;left:${noteRectX}px;top:${noteRectTop}px;width:${noteRectW}px;height:${noteRectH}px;
+    z-index:5;display:flex;align-items:center;justify-content:center;
+    background:rgba(0,0,0,0.55);border:${px(2)} solid ${noteColor}66;border-radius:${px(6)}">
+    <span style="font-size:${fpx(44,17)};font-weight:900;color:${noteColor};font-family:Arial Black,Arial;line-height:1;text-shadow:0 2px 6px rgba(0,0,0,0.9)">${mainNote}</span>
   </div>
 
   <!-- Drapeau : carré (bas gauche) -->
-  <div style="position:absolute;left:${squareLX}px;top:${squareTop}px;width:${squareLW}px;height:${squareH}px;z-index:5;
+  <div style="position:absolute;left:${squareLX}px;top:${squareTop}px;width:${squareSide}px;height:${squareSide}px;z-index:5;
     overflow:hidden;display:flex;align-items:center;justify-content:center">
     ${flagUrl
       ? `<img src="${flagUrl}" style="width:100%;height:100%;object-fit:cover">`
       : `<span style="font-size:${fpx(20,11)}">🌍</span>`}
   </div>
 
+  <!-- Note secondaire : carré central, UNIQUEMENT si job2 existe -->
+  ${job2Note !== null ? `<div style="position:absolute;left:${squareMX}px;top:${squareTop}px;width:${squareSide}px;height:${squareSide}px;z-index:5;
+    overflow:hidden;display:flex;align-items:center;justify-content:center;
+    background:rgba(0,0,0,0.55);border:${px(1.5)} solid ${JOB_ACCENT[job2]||'#e03030'}">
+    <span style="font-size:${fpx(20,11)};font-weight:900;color:${JOB_ACCENT[job2]||'#e03030'};font-family:Arial Black,Arial;line-height:1">${job2Note}</span>
+  </div>` : ''}
+
   <!-- Logo club : carré (bas droit) -->
-  <div style="position:absolute;left:${squareRX}px;top:${squareTop}px;width:${squareRW}px;height:${squareH}px;z-index:5;
+  <div style="position:absolute;left:${squareRX}px;top:${squareTop}px;width:${squareSide}px;height:${squareSide}px;z-index:5;
     overflow:hidden;display:flex;align-items:center;justify-content:center">
     ${clubLogoUrl
       ? `<img src="${clubLogoUrl}" style="width:100%;height:100%;object-fit:cover">`

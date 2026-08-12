@@ -186,12 +186,12 @@ export function renderPlayerCard(p, opts = {}) {
 
   <!-- Prénom : premier tiers du bandeau -->
   <div style="position:absolute;top:${px(48)};left:0;right:0;text-align:center;z-index:4;padding:0 ${px(50)}">
-    <span style="font-size:${fpx(20,10)};font-weight:700;color:${accent};letter-spacing:${px(2)};line-height:1;text-shadow:0 1px 4px #000;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${firstname}</span>
+    <span style="font-size:${fpx(20,9)};font-weight:700;color:${accent};letter-spacing:${px(2)};line-height:1;text-shadow:0 1px 4px #000;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${firstname}</span>
   </div>
 
   <!-- Nom : deuxième tiers du bandeau -->
   <div style="position:absolute;top:${px(80)};left:0;right:0;text-align:center;z-index:4;padding:0 ${px(10)}">
-    <span style="font-size:${fpx(surnameFsN,12)};font-weight:900;color:#fff;line-height:1;text-shadow:0 2px 8px #000;font-family:Arial Black,Arial;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block">${surname}</span>
+    <span style="font-size:${fpx(surnameFsN,11)};font-weight:900;color:#fff;line-height:1;text-shadow:0 2px 8px #000;font-family:Arial Black,Arial;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block">${surname}</span>
   </div>
 
   <!-- Portrait : top aligné sous le bandeau, bas = haut octogone -->
@@ -207,7 +207,7 @@ export function renderPlayerCard(p, opts = {}) {
   <!-- Note principale : centrée dans l'octogone du template -->
   <div style="position:absolute;left:${noteX}px;top:${noteTop}px;width:${noteW}px;height:${noteH}px;
     z-index:4;display:flex;flex-direction:column;align-items:center;justify-content:center">
-    <span style="font-size:${fpx(80,16)};font-weight:900;color:${noteColor};font-family:Arial Black,Arial;line-height:1;text-shadow:0 2px 8px rgba(0,0,0,0.9)">${mainNote}</span>
+    <span style="font-size:${fpx(80,15)};font-weight:900;color:${noteColor};font-family:Arial Black,Arial;line-height:1;text-shadow:0 2px 8px rgba(0,0,0,0.9)">${mainNote}</span>
   </div>
 
   <!-- Note secondaire : carré arrondi rouge sous l'octogone -->
@@ -217,7 +217,7 @@ export function renderPlayerCard(p, opts = {}) {
     border-radius:${px(8)};
     background:#0a0a0a;border:${px(2)} solid ${JOB_ACCENT[job2]||'#e03030'};
     display:flex;align-items:center;justify-content:center">
-    <span style="font-size:${fpx(32,11)};font-weight:900;color:${JOB_ACCENT[job2]||'#e03030'};font-family:Arial Black,Arial;line-height:1">${job2Note}</span>
+    <span style="font-size:${fpx(32,10)};font-weight:900;color:${JOB_ACCENT[job2]||'#e03030'};font-family:Arial Black,Arial;line-height:1">${job2Note}</span>
   </div>` : ''}
 
   <!-- Drapeau : rond -->
@@ -235,7 +235,7 @@ export function renderPlayerCard(p, opts = {}) {
     display:flex;align-items:center;justify-content:center;background:#0a0a0a;border:${px(2)} solid rgba(255,255,255,0.15)">
     ${clubLogoUrl
       ? `<img src="${clubLogoUrl}" style="width:100%;height:100%;object-fit:cover">`
-      : `<span style="font-size:${fpx(14,10)};font-weight:900;color:#fff">${(p.clubs?.encoded_name||p.clubName||'').slice(0,3).toUpperCase()}</span>`}
+      : `<span style="font-size:${fpx(14,9)};font-weight:900;color:#fff">${(p.clubs?.encoded_name||p.clubName||'').slice(0,3).toUpperCase()}</span>`}
   </div>
 
 </div></div>`

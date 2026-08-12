@@ -406,11 +406,12 @@ export function renderMilRow(mils, label, color, side, stadDef) {
             (stadDef.club_id && String(p.club_id) === String(stadDef.club_id)) ||
             (stadDef.country_code && p.country_code === stadDef.country_code)
           ))
+          const isMobileDuel = typeof window !== "undefined" && window.innerWidth < 900
           return `
           <div class="duel-card duel-card-${side}" data-idx="${i}" style="opacity:0;transform:translateY(18px) scale(0.7);transition:opacity .35s ease, transform .35s cubic-bezier(.34,1.56,.64,1);flex-shrink:0">
             ${renderPlayerCard({ ...p, _evolution_bonus: 0 }, {
               width: window.innerWidth >= 900 ? Math.min(130, Math.max(80, Math.round(window.innerWidth * 0.08))) : 58,
-              showStad: true, stadDef, role: 'MIL', extraNote: p.boost||0
+              showStad: true, stadDef, role: 'MIL', extraNote: p.boost||0, compactSquare: isMobileDuel
             })}
           </div>
           ${i < mils.length-1 ? `<div class="duel-link duel-link-${side}" data-idx="${i}" style="position:relative;width:18px;height:5px;border-radius:3px;background:${noLink?'rgba(255,255,255,0.12)':lc};flex-shrink:0;opacity:0;transition:opacity .3s ease;box-shadow:${noLink?'none':`0 0 8px ${lc}`}">

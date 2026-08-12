@@ -646,7 +646,7 @@ function renderDeckField(container, builder, positions, ctx) {
   const availW = isDesktopRDF ? window.innerWidth - 280 : window.innerWidth - 20
   const W      = isDesktopRDF ? Math.min(availW, 860) : availW
   const H      = isDesktopRDF ? Math.round(W * 0.82)  : Math.round(W * 0.85)
-  const CARD_W = isDesktopRDF ? 84 : computeSafeCardWidth(builder.formation, W, H)
+  const CARD_W = isDesktopRDF ? 84 : computeSafeCardWidth(builder.formation, W, H, 49, 78)  // plafond mobile 78 (110 par defaut rendait certaines formations trop grandes sur ecran large)
   // 84 en PC ; en mobile : la plus grande taille possible SANS chevauchement
   // pour la formation active (49-64px selon la densité, contre 49px fixe
   // auparavant sur toutes les formations).

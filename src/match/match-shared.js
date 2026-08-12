@@ -457,7 +457,7 @@ export async function renderDeckSelect(container, ctx, matchMode) {
       const availW = availWraw
       const CW = isPC
         ? Math.min(117, Math.max(52, Math.round(availW * 0.22)))
-        : computeSafeCardWidth(formation, availW, availH, 49, 78)
+        : computeSafeCardWidth(formation, availW, availH)
 
       if (availH < 220 || availW < 220) {
         // Le layout n'est pas encore stable → réessayer au prochain frame
@@ -697,7 +697,7 @@ export function buildTeamSVG(team, formation, phase, selectedIds, W=310, H=310, 
   // ou resterait trop petite sur les formations moins denses).
   const CW = typeof window !== "undefined" && window.innerWidth >= 900
     ? Math.min(Math.max(81, Math.round(W * 0.225)), 117)
-    : computeSafeCardWidth(formation, W, H, 49, 78)
+    : computeSafeCardWidth(formation, W, H)
   const CH = Math.round(CW * 657/507)
 
   // PAD calculé ici (et non plus après la boucle) : le chemin WebKit en a

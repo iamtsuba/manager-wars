@@ -1,6 +1,9 @@
 /**
  * player-card.js — Composant universel carte joueur Manager Wars
- * Template 507x657px — positions mesurées au pixel
+ * Template 372x609px (nouveau design, remplace l'ancien octogone 507x657)
+ * Positions mesurées par analyse programmatique des gabarits (voir zones
+ * ci-dessous), en fractions de largeur/hauteur pour rester exactes quelle
+ * que soit la taille de rendu demandée.
  */
 import { getPortrait } from '../lib/portrait.js'
 import { generateSilhouetteSVG } from './silhouette.js'
@@ -19,6 +22,18 @@ const JOB_ACCENT = {
   DEF: '#e03030',
   MIL: '#D4A017',
   ATT: '#3fbf5f',
+}
+
+// Fond de la zone centrale (derrière la photo/silhouette) selon la rareté —
+// le gabarit a désormais un centre transparent, donc ce fond doit être
+// posé explicitement (avant, le PNG octogonal faisait déjà fond noir).
+const RARITY_BG = {
+  normal: '#0a0a0a',
+  pepite: '#D4A017',
+  pépite: '#D4A017',
+  papyte: '#9aa4b0',
+  legende: '#7a28b8',
+  légende: '#7a28b8',
 }
 
 function getFlagUrl(code) {
@@ -49,86 +64,66 @@ function hasStadBonus(p, stadDef) {
 }
 
 export function renderPlayerCard(p, opts = {}) {
-  const { width = 160, showStad = false, stadDef = null, used = false, extraNote = 0, role: forceRole = null, _forceStadColor = false } = opts
+  const { width = 160, showStad = false, stadDef = null, used = false, extraNote = 0, role: forceRole = null, _forceStadColor = false, portraitOverride = null } = opts
 
-  if (!p) return `<div style="width:${width}px;height:${Math.round(width*657/507)}px;border-radius:8px;background:#111;opacity:0.3"></div>`
+  // Nouveau ratio 372:609 (l'ancien gabarit était 507:657)
+  if (!p) return `<div style="width:${width}px;height:${Math.round(width*609/372)}px;border-radius:8px;background:#111;opacity:0.3"></div>`
 
-  const ratio  = width / 507
-  const height = Math.round(width * 657 / 507)
+  const ratio  = width / 372
+  const height = Math.round(width * 609 / 372)
   const ax     = (n) => Math.round(n * ratio)
   const px     = (n) => ax(n) + 'px'
-  // Les polices en pur ratio deviennent illisibles sur les petites cartes
-  // (ex. 1.9px pour le prénom à 49px de large) : px() reste utilisé pour
-  // positions/paddings (doivent suivre l'échelle exacte de la carte), mais
-  // le TEXTE passe par fpx() avec un plancher minimum de lisibilité.
+  // Le texte passe par fpx() avec un plancher minimum de lisibilité — sans
+  // ça, les polices en pur ratio deviennent illisibles sur les petites
+  // cartes (retour testeurs confirmé aujourd'hui).
   const fpx    = (n, min) => Math.max(min, ax(n)) + 'px'
 
-  // Si forceRole est défini (joueur positionné sur un poste spécifique), utiliser ce poste pour la note
   const job    = forceRole || p._line || p.job || 'MIL'
   const accent = JOB_ACCENT[job] || '#D4A017'
   const tmpl   = CARD_TEMPLATES[job] || CARD_TEMPLATES.MIL
+  const bgFill = RARITY_BG[p.rarity] || RARITY_BG.normal
 
-
-  // Glow selon rareté
-  const RARITY_GLOW_COLOR = { legende:'#7a28b8', pepite:'#D4A017', pépite:'#D4A017', papyte:'#c8d0dc' }
-  const glowColor = RARITY_GLOW_COLOR[p.rarity]
-  const glowStyle = glowColor ? `filter:drop-shadow(0 0 5px ${glowColor}) drop-shadow(0 0 12px ${glowColor});` : ''
-
-  // Glow selon rareté
   const RARITY_GLOW = {
     legende: '0 0 12px 4px #7a28b8, 0 0 24px 8px rgba(122,40,184,0.5)',
+    légende: '0 0 12px 4px #7a28b8, 0 0 24px 8px rgba(122,40,184,0.5)',
     pepite:  '0 0 12px 4px #D4A017, 0 0 24px 8px rgba(212,160,23,0.5)',
     pépite:  '0 0 12px 4px #D4A017, 0 0 24px 8px rgba(212,160,23,0.5)',
     papyte:  '0 0 4px 2px #e8eaf0, 0 0 12px 6px #a8b4c4, 0 0 28px 10px rgba(168,180,196,0.6), 0 0 2px 1px #f0f2f5',
   }
+  const glowColor = { legende:'#7a28b8', légende:'#7a28b8', pepite:'#D4A017', pépite:'#D4A017', papyte:'#c8d0dc' }[p.rarity]
+  const glowStyle = glowColor ? `filter:drop-shadow(0 0 5px ${glowColor}) drop-shadow(0 0 12px ${glowColor});` : ''
+
   const evo    = p._evolution_bonus ?? p.evolution_bonus ?? 0
   const stadB  = showStad && (p.stadiumBonus || hasStadBonus(p, stadDef)) ? 10 : 0
 
   const mainNote  = getNoteForJob(p, job, evo) + extraNote + stadB
-  // Couleur note : bleu si stade, orange si poste secondaire, sinon couleur du poste
   const isSecondaryRole = forceRole && forceRole !== p.job
   const noteColor = (stadB > 0 || _forceStadColor) ? '#4fc3f7' : isSecondaryRole ? '#E87722' : accent
-  // On n'affiche que la note du poste joué (forceRole ou job principal)
-  // job2Note uniquement si pas de forceRole ET job2 existe
   const job2      = (!forceRole && p.job2 && p.job2 !== job) ? p.job2 : null
   const job2Note  = job2 ? getNoteForJob(p, job2, evo) + extraNote + stadB : null
 
-  const faceUrl     = getPortrait(p)
-  // Rareté "normal" sans portrait dédié : silhouette générique, maillot
-  // coloré dynamiquement selon le club (voir silhouette.js). Repli neutre
-  // si les couleurs du club ne sont pas encore chargées par la requête
-  // appelante (kit_style/kit_color1 etc. absents de p.clubs).
+  const faceUrl     = portraitOverride || getPortrait(p)
   const useSilhouette = !faceUrl && p.rarity === 'normal'
   const flagUrl     = getFlagUrl(p.country_code)
   const clubLogoUrl = getClubLogoUrl(p)
-  const firstname   = (p.firstname || '').toUpperCase()
-  const surname     = (p.surname_real || p.name || '').toUpperCase()
+  const displayName = (p.surname_real || p.name || '').toUpperCase()
   const opacity     = used ? 'opacity:0.35;' : ''
 
-  // Taille police nom adaptée à la longueur
-  const surnameFsN = surname.length > 11 ? 34 : surname.length > 8 ? 42 : 50
+  // Taille police nom adaptée à la longueur (nom seul en pleine largeur)
+  const nameFsN = displayName.length > 14 ? 30 : displayName.length > 10 ? 38 : 46
 
-  // ── Positions mesurées sur template 507x657 ──────────────
-  // Bandeau nom : y=1→199, centre y=100
-  //   prénom : y=55 (premier tiers du bandeau)
-  //   nom    : y=110 (deuxième tiers)
-  //
-  // Haut octogone central : y=380 → photo top=165, hauteur=215 (jusqu'à y=380)
-  //
-  // Octogone central note : y=450→629, x=150→359
-  //   note centrée : top=450, h=179
-  //
-  // Rectangles latéraux (remplacent octogones) :
-  //   largeur=110, hauteur=90, y=468
-  //   gauche  : x=55
-  //   droit   : x=342
+  // ── Positions mesurées sur le nouveau gabarit 372x609 (analyse pixel) ──
+  //   Bande du haut (nom)         : y = 0    → 14.5%
+  //   Zone centrale (photo)       : y = 14.5% → 78%     x = 9%  → 91%
+  //   Bande basse (carrés+note)   : y = 80.5% → 89%
+  //     carré pays (gauche)       : x = 10%  → 31.5%
+  //     note (centre, entre les 2): x = 31.5% → 68.5%
+  //     carré club (droit)        : x = 68.5% → 90%
 
-  const photoTop = ax(155)
-  const photoW   = ax(260)
-  const photoH   = ax(235)   // s'arrête au haut de l'octogone (y≈380)
+  const photoTop = ax(609 * 0.145)
+  const photoW   = ax(372 * 0.82)
+  const photoH   = ax(609 * (0.78 - 0.145))
 
-  // Générée seulement maintenant : photoW est nécessaire comme largeur de
-  // référence pour que la silhouette occupe correctement la zone portrait.
   const silhouetteSVG = useSilhouette
     ? generateSilhouetteSVG({
         style:  p.clubs?.kit_style,
@@ -140,28 +135,44 @@ export function renderPlayerCard(p, opts = {}) {
       }, Math.round(photoW), p.id || p.firstname || 'sil')
     : ''
 
-  // Octogone central mesuré: y=380→639, x=100→409, centre x=254, y=509
-  // Note : dans le tiers supérieur de l'octogone
-  const noteTop  = ax(390)
-  const noteH    = ax(180)
-  const noteX    = ax(100)
-  const noteW    = ax(309)
-
-  // Drapeaux/logo : ronds, centrés verticalement sur le centre de la note (390+180/2=480)
-  const rectSize = ax(90)
-  const rectH    = rectSize
-  const rectW    = rectSize
-  const rectY    = ax(480) - rectSize/2   // centré sur le milieu de la note
-  const rectLX   = ax(38)    // moins collé au bord
-  const rectRX   = ax(374)   // moins collé au bord
-  const rectR    = rectSize/2  // cercle parfait
+  // Bande basse : carrés pays/club + note centrale
+  const squareTop = ax(609 * 0.805)
+  const squareH   = ax(609 * (0.89 - 0.805))
+  const squareLX  = ax(372 * 0.10)
+  const squareLW  = ax(372 * (0.315 - 0.10))
+  const squareRX  = ax(372 * 0.685)
+  const squareRW  = ax(372 * (0.90 - 0.685))
+  const noteX     = ax(372 * 0.315)
+  const noteW     = ax(372 * (0.685 - 0.315))
 
   return `<div style="position:relative;width:${width}px;height:${height}px;flex-shrink:0;${opacity}user-select:none;${glowStyle}">
   <div style="position:absolute;top:${opts._cardOffset||0}px;left:0;width:${width}px;height:${height}px">
 
-  <img src="${tmpl}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:fill" draggable="false">
+  <!-- Fond de la zone centrale, selon la rareté (le gabarit a un centre transparent) -->
+  <div style="position:absolute;left:0;top:${photoTop}px;width:100%;height:${ax(609*0.78)-photoTop}px;background:${bgFill};z-index:1"></div>
 
-  ${stadB > 0 ? `<div style="position:absolute;left:${ax(253) - rectH/2}px;top:${ax(572) - ax(42.5)}px;width:${rectH}px;height:${rectH}px;z-index:10;display:flex;align-items:center;justify-content:center">
+  <!-- Portrait / silhouette -->
+  ${faceUrl ? `<img src="${faceUrl}"
+    style="position:absolute;top:${photoTop}px;left:50%;transform:translateX(-50%);
+    width:${photoW}px;height:${photoH}px;object-fit:cover;object-position:top center;z-index:2"
+    onerror="this.style.display='none'">` : ''}
+  ${useSilhouette ? `<div style="position:absolute;top:${photoTop}px;left:50%;transform:translateX(-50%);
+    width:${photoW}px;height:${photoH}px;overflow:hidden;z-index:2">
+    <div style="position:absolute;top:0;left:50%;transform:translateX(-50%)">${silhouetteSVG}</div>
+  </div>` : ''}
+
+  <!-- Gabarit (cadre + bande du haut + carrés), transparent au centre -->
+  <img src="${tmpl}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:fill;z-index:3" draggable="false">
+
+  <!-- Nom : pleine largeur, blanc, dans la bande du haut -->
+  <div style="position:absolute;top:0;left:0;right:0;height:${px(609*0.145)};z-index:4;
+    display:flex;align-items:center;justify-content:center;padding:0 ${px(18)}">
+    <span style="font-size:${fpx(nameFsN,12)};font-weight:900;color:#fff;line-height:1;
+      text-shadow:0 2px 6px #000;font-family:Arial Black,Arial;
+      overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:center">${displayName}</span>
+  </div>
+
+  ${stadB > 0 ? `<div style="position:absolute;left:${noteX + noteW/2 - ax(21)}px;top:${squareTop - ax(6)}px;width:${ax(42)}px;height:${ax(42)}px;z-index:6;display:flex;align-items:center;justify-content:center">
     <div style="position:relative;width:100%;height:100%;display:flex;align-items:center;justify-content:center">
       <div style="position:absolute;inset:-40%;border-radius:50%;background:radial-gradient(ellipse,rgba(30,144,255,0.65) 0%,transparent 68%);pointer-events:none"></div>
       <svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" style="position:relative;z-index:1;width:90%;height:90%;display:block">
@@ -184,58 +195,27 @@ export function renderPlayerCard(p, opts = {}) {
     </div>
   </div>` : ''}
 
-  <!-- Prénom : premier tiers du bandeau -->
-  <div style="position:absolute;top:${px(48)};left:0;right:0;text-align:center;z-index:4;padding:0 ${px(50)}">
-    <span style="font-size:${fpx(20,9)};font-weight:700;color:${accent};letter-spacing:${px(2)};line-height:1;text-shadow:0 1px 4px #000;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${firstname}</span>
+  <!-- Note principale : bande basse, entre les deux carrés -->
+  <div style="position:absolute;left:${noteX}px;top:${squareTop}px;width:${noteW}px;height:${squareH}px;
+    z-index:5;display:flex;flex-direction:column;align-items:center;justify-content:center">
+    <span style="font-size:${fpx(46,16)};font-weight:900;color:${noteColor};font-family:Arial Black,Arial;line-height:1;text-shadow:0 2px 6px rgba(0,0,0,0.9)">${mainNote}</span>
+    ${job2Note !== null ? `<span style="font-size:${fpx(16,9)};font-weight:900;color:${JOB_ACCENT[job2]||'#e03030'};font-family:Arial Black,Arial;line-height:1;margin-top:${px(2)}">${job2Note}</span>` : ''}
   </div>
 
-  <!-- Nom : deuxième tiers du bandeau -->
-  <div style="position:absolute;top:${px(80)};left:0;right:0;text-align:center;z-index:4;padding:0 ${px(10)}">
-    <span style="font-size:${fpx(surnameFsN,11)};font-weight:900;color:#fff;line-height:1;text-shadow:0 2px 8px #000;font-family:Arial Black,Arial;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block">${surname}</span>
-  </div>
-
-  <!-- Portrait : top aligné sous le bandeau, bas = haut octogone -->
-  ${faceUrl ? `<img src="${faceUrl}"
-    style="position:absolute;top:${photoTop}px;left:50%;transform:translateX(-50%);
-    width:${photoW}px;height:${photoH}px;object-fit:cover;object-position:top center;z-index:2"
-    onerror="this.style.display='none'">` : ''}
-  ${useSilhouette ? `<div style="position:absolute;top:${photoTop}px;left:50%;transform:translateX(-50%);
-    width:${photoW}px;height:${photoH}px;overflow:hidden;z-index:2">
-    <div style="position:absolute;top:0;left:50%;transform:translateX(-50%)">${silhouetteSVG}</div>
-  </div>` : ''}
-
-  <!-- Note principale : centrée dans l'octogone du template -->
-  <div style="position:absolute;left:${noteX}px;top:${noteTop}px;width:${noteW}px;height:${noteH}px;
-    z-index:4;display:flex;flex-direction:column;align-items:center;justify-content:center">
-    <span style="font-size:${fpx(80,15)};font-weight:900;color:${noteColor};font-family:Arial Black,Arial;line-height:1;text-shadow:0 2px 8px rgba(0,0,0,0.9)">${mainNote}</span>
-  </div>
-
-  <!-- Note secondaire : carré arrondi rouge sous l'octogone -->
-  ${job2Note !== null ? `
-  <div style="position:absolute;left:50%;transform:translateX(-50%);top:${px(530)};
-    width:${px(90)};height:${px(60)};z-index:5;
-    border-radius:${px(8)};
-    background:#0a0a0a;border:${px(2)} solid ${JOB_ACCENT[job2]||'#e03030'};
-    display:flex;align-items:center;justify-content:center">
-    <span style="font-size:${fpx(32,10)};font-weight:900;color:${JOB_ACCENT[job2]||'#e03030'};font-family:Arial Black,Arial;line-height:1">${job2Note}</span>
-  </div>` : ''}
-
-  <!-- Drapeau : rond -->
-  <div style="position:absolute;left:${rectLX}px;top:${rectY}px;width:${rectW}px;height:${rectH}px;z-index:3;
-    border-radius:${rectR}px;overflow:hidden;
-    display:flex;align-items:center;justify-content:center;background:#0a0a0a;border:${px(2)} solid rgba(255,255,255,0.15)">
+  <!-- Drapeau : carré (bas gauche) -->
+  <div style="position:absolute;left:${squareLX}px;top:${squareTop}px;width:${squareLW}px;height:${squareH}px;z-index:5;
+    overflow:hidden;display:flex;align-items:center;justify-content:center">
     ${flagUrl
       ? `<img src="${flagUrl}" style="width:100%;height:100%;object-fit:cover">`
-      : `<span style="font-size:${fpx(22,11)}">🌍</span>`}
+      : `<span style="font-size:${fpx(20,11)}">🌍</span>`}
   </div>
 
-  <!-- Logo club : rond -->
-  <div style="position:absolute;left:${rectRX}px;top:${rectY}px;width:${rectW}px;height:${rectH}px;z-index:3;
-    border-radius:${rectR}px;overflow:hidden;
-    display:flex;align-items:center;justify-content:center;background:#0a0a0a;border:${px(2)} solid rgba(255,255,255,0.15)">
+  <!-- Logo club : carré (bas droit) -->
+  <div style="position:absolute;left:${squareRX}px;top:${squareTop}px;width:${squareRW}px;height:${squareH}px;z-index:5;
+    overflow:hidden;display:flex;align-items:center;justify-content:center">
     ${clubLogoUrl
       ? `<img src="${clubLogoUrl}" style="width:100%;height:100%;object-fit:cover">`
-      : `<span style="font-size:${fpx(14,9)};font-weight:900;color:#fff">${(p.clubs?.encoded_name||p.clubName||'').slice(0,3).toUpperCase()}</span>`}
+      : `<span style="font-size:${fpx(13,9)};font-weight:900;color:#fff">${(p.clubs?.encoded_name||p.clubName||'').slice(0,3).toUpperCase()}</span>`}
   </div>
 
 </div></div>`

@@ -191,7 +191,7 @@ export function renderPlayerCard(p, opts = {}) {
 
   <!-- Nom : deuxième tiers du bandeau -->
   <div style="position:absolute;top:${px(80)};left:0;right:0;text-align:center;z-index:4;padding:0 ${px(10)}">
-    <span style="font-size:${fpx(surnameFsN,13)};font-weight:900;color:#fff;line-height:1;text-shadow:0 2px 8px #000;font-family:Arial Black,Arial;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block">${surname}</span>
+    <span style="font-size:${fpx(surnameFsN,12)};font-weight:900;color:#fff;line-height:1;text-shadow:0 2px 8px #000;font-family:Arial Black,Arial;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block">${surname}</span>
   </div>
 
   <!-- Portrait : top aligné sous le bandeau, bas = haut octogone -->
@@ -207,7 +207,7 @@ export function renderPlayerCard(p, opts = {}) {
   <!-- Note principale : centrée dans l'octogone du template -->
   <div style="position:absolute;left:${noteX}px;top:${noteTop}px;width:${noteW}px;height:${noteH}px;
     z-index:4;display:flex;flex-direction:column;align-items:center;justify-content:center">
-    <span style="font-size:${fpx(80,17)};font-weight:900;color:${noteColor};font-family:Arial Black,Arial;line-height:1;text-shadow:0 2px 8px rgba(0,0,0,0.9)">${mainNote}</span>
+    <span style="font-size:${fpx(80,16)};font-weight:900;color:${noteColor};font-family:Arial Black,Arial;line-height:1;text-shadow:0 2px 8px rgba(0,0,0,0.9)">${mainNote}</span>
   </div>
 
   <!-- Note secondaire : carré arrondi rouge sous l'octogone -->

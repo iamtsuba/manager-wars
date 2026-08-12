@@ -689,7 +689,7 @@ function renderDeckField(container, builder, positions, ctx) {
       )
       const cardHtml = renderPlayerCard(
         { ...p, _evolution_bonus: p._evolution_bonus||0 },
-        { width: CARD_W, showStad: true, stadDef, role }
+        { width: CARD_W, showStad: true, stadDef, role, compactSquare: !isDesktopRDF }
       )
       const stadLogo = hasStad ? (stadDef.club?.logo_url || stadDef.image_url || null) : null
       const badgeSize = Math.round(CARD_W * (isDesktopRDF ? 0.578 : 0.34)) // PC : +70% (demande explicite)

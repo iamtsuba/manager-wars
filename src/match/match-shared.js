@@ -752,8 +752,14 @@ export function buildTeamSVG(team, formation, phase, selectedIds, W=310, H=310, 
       { ...p, _evolution_bonus: 0, stadiumBonus: false },
       { width: CW, showStad: false, stadDef: null, role, extraNote, _cardOffset: 30, _forceStadColor: hasStadThisPhase, compactSquare: isMobileTeamSVG }
     )
-    const selStyle = isSelected ? `position:absolute;top:${30}px;left:0;width:${CW}px;height:${CH}px;outline:3px solid #FFD700;outline-offset:2px;border-radius:8px;pointer-events:none;` : ''
-    svg += `<foreignObject x="${fx - 2}" y="${fy - 30}" width="${CW + 8}" height="${CH + 60}" style="overflow:visible">
+    // La marge de 30px au-dessus de la carte sert au badge de bonus stade
+    // (non affiché en mode carré compact) : sans cette correction, elle
+    // poussait la carte hors du cadre visible du SVG pour la ligne la plus
+    // haute (attaquants), coupant le nom — bug remonté par testeur.
+    const topMargin = isMobileTeamSVG ? 0 : 30
+    const selTop     = isMobileTeamSVG ? 0 : 30
+    const selStyle = isSelected ? `position:absolute;top:${selTop}px;left:0;width:${CW}px;height:${CH}px;outline:3px solid #FFD700;outline-offset:2px;border-radius:8px;pointer-events:none;` : ''
+    svg += `<foreignObject x="${fx - 2}" y="${fy - topMargin}" width="${CW + 8}" height="${CH + topMargin + 30}" style="overflow:visible">
       <div xmlns="http://www.w3.org/1999/xhtml" style="position:relative">
         ${cardHtml}
         ${isSelected ? `<div style="${selStyle}"></div>` : ''}

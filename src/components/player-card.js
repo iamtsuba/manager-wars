@@ -115,35 +115,41 @@ export function renderPlayerCard(p, opts = {}) {
   // (conçu pour un ratio portrait, il serait déformé en carré).
   if (opts.compactSquare) {
     const sq = width
-    const nameH = Math.round(sq * 0.22)
-    const rowH  = Math.round(sq * 0.24)
+    const nameH = Math.round(sq * 0.20)
+    const noteH = Math.round(sq * 0.32)
+    // La rangée pays/club doit être un VRAI carré : sa hauteur doit donc
+    // égaler la largeur de chaque case (moitié de la largeur totale — ou
+    // tiers si une note secondaire s'ajoute), pas une fraction arbitraire
+    // de la hauteur de carte. D'où une carte légèrement RECTANGULAIRE
+    // (et non plus parfaitement carrée) — retour testeur confirmé.
+    const nbCols = job2Note !== null ? 3 : 2
+    const rowH   = Math.round(sq / nbCols)
+    const cardH  = nameH + noteH + rowH
     const nax = (n) => Math.round(n * sq / 100)
-    // Échelle de police dédiée (sqFpx), basée sur la taille réelle du carré
-    // — fpx() plus haut est calibrée sur le ratio du gabarit portrait 372px
-    // et donnerait des tailles fausses dans ce contexte carré.
     const sqFpx = (frac, min) => Math.max(min, Math.round(sq * frac)) + 'px'
-    return `<div style="position:relative;width:${sq}px;height:${sq}px;flex-shrink:0;${opacity}user-select:none;${glowStyle}
+    return `<div style="position:relative;width:${sq}px;height:${cardH}px;flex-shrink:0;${opacity}user-select:none;${glowStyle}
       background:${bgFill};border:${Math.max(1,nax(2.2))}px solid ${accent};border-radius:${nax(6)}px;overflow:hidden;box-sizing:border-box">
       <div style="position:absolute;top:0;left:0;right:0;height:${nameH}px;background:rgba(0,0,0,0.55);
         display:flex;align-items:center;justify-content:center;padding:0 ${nax(4)}px">
-        <span style="font-size:${sqFpx(0.13,9)};font-weight:900;color:#fff;line-height:1;text-shadow:0 1px 3px #000;
+        <span style="font-size:${sqFpx(0.12,9)};font-weight:900;color:#fff;line-height:1;text-shadow:0 1px 3px #000;
           font-family:Arial Black,Arial;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${displayName}</span>
       </div>
-      <div style="position:absolute;top:${nameH}px;left:0;right:0;bottom:${rowH}px;
+      <div style="position:absolute;top:${nameH}px;left:0;right:0;height:${noteH}px;
         display:flex;align-items:center;justify-content:center">
-        <span style="font-size:${sqFpx(0.32,18)};font-weight:900;color:${noteColor};font-family:Arial Black,Arial;line-height:1;
+        <span style="font-size:${sqFpx(0.28,18)};font-weight:900;color:${noteColor};font-family:Arial Black,Arial;line-height:1;
           text-shadow:0 2px 6px rgba(0,0,0,0.9)">${mainNote}</span>
-        ${job2Note !== null ? `<span style="font-size:${sqFpx(0.11,9)};font-weight:900;color:${JOB_ACCENT[job2]||'#e03030'};
-          font-family:Arial Black,Arial;line-height:1;margin-left:${nax(4)}px;align-self:flex-end;margin-bottom:${nax(6)}px">${job2Note}</span>` : ''}
       </div>
-      <div style="position:absolute;bottom:0;left:0;right:0;height:${rowH}px;background:rgba(0,0,0,0.55);
-        display:flex;align-items:stretch">
+      <div style="position:absolute;bottom:0;left:0;right:0;height:${rowH}px;display:flex;align-items:stretch">
         <div style="flex:1;overflow:hidden;display:flex;align-items:center;justify-content:center;border-right:1px solid rgba(255,255,255,0.15)">
-          ${flagUrl ? `<img src="${flagUrl}" style="width:100%;height:100%;object-fit:cover">` : `<span style="font-size:${sqFpx(0.10,10)}">🌍</span>`}
+          ${flagUrl ? `<img src="${flagUrl}" style="width:100%;height:100%;object-fit:cover">` : `<span style="font-size:${sqFpx(0.16,10)}">🌍</span>`}
         </div>
+        ${job2Note !== null ? `<div style="flex:1;overflow:hidden;display:flex;align-items:center;justify-content:center;
+          border-right:1px solid rgba(255,255,255,0.15);background:rgba(0,0,0,0.4)">
+          <span style="font-size:${sqFpx(0.22,12)};font-weight:900;color:${JOB_ACCENT[job2]||'#e03030'};font-family:Arial Black,Arial;line-height:1">${job2Note}</span>
+        </div>` : ''}
         <div style="flex:1;overflow:hidden;display:flex;align-items:center;justify-content:center">
           ${clubLogoUrl ? `<img src="${clubLogoUrl}" style="width:100%;height:100%;object-fit:cover">`
-            : `<span style="font-size:${sqFpx(0.08,8)};font-weight:900;color:#fff">${(p.clubs?.encoded_name||p.clubName||'').slice(0,3).toUpperCase()}</span>`}
+            : `<span style="font-size:${sqFpx(0.11,8)};font-weight:900;color:#fff">${(p.clubs?.encoded_name||p.clubName||'').slice(0,3).toUpperCase()}</span>`}
         </div>
       </div>
     </div>`

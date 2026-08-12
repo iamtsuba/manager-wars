@@ -745,9 +745,12 @@ export function buildTeamSVG(team, formation, phase, selectedIds, W=310, H=310, 
     // stadiumBonus déjà intégré dans extraNote ci-dessus (conditionné par phase/rôle) →
     // on force stadiumBonus:false + showStad:false pour éviter que renderPlayerCard
     // l'ajoute une 2e fois ; _forceStadColor garde juste la couleur bleue de la note.
+    // Mobile : carte carrée compacte (nom/note/pays/club, sans photo) — retour
+    // testeur, la photo n'apporte pas d'info utile en jeu à cette taille.
+    const isMobileTeamSVG = typeof window !== "undefined" && window.innerWidth < 900
     const cardHtml = renderPlayerCard(
       { ...p, _evolution_bonus: 0, stadiumBonus: false },
-      { width: CW, showStad: false, stadDef: null, role, extraNote, _cardOffset: 30, _forceStadColor: hasStadThisPhase }
+      { width: CW, showStad: false, stadDef: null, role, extraNote, _cardOffset: 30, _forceStadColor: hasStadThisPhase, compactSquare: isMobileTeamSVG }
     )
     const selStyle = isSelected ? `position:absolute;top:${30}px;left:0;width:${CW}px;height:${CH}px;outline:3px solid #FFD700;outline-offset:2px;border-radius:8px;pointer-events:none;` : ''
     svg += `<foreignObject x="${fx - 2}" y="${fy - 30}" width="${CW + 8}" height="${CH + 60}" style="overflow:visible">

@@ -669,7 +669,7 @@ function renderDeckField(container, builder, positions, ctx) {
 
   // Cartes HTML
   let cardsHtml = ''
-  const CARD_H = Math.round(CARD_W * 657/507)
+  const CARD_H = isDesktopRDF ? Math.round(CARD_W * 574/372) : CARD_W  // PC : ratio du gabarit 574/372 ; mobile : carré (compactSquare)
   for (const pos of positions) {
     const fp = FPOS[pos]; if (!fp) continue
     const p = slots[pos]

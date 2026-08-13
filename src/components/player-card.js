@@ -1,9 +1,10 @@
 /**
  * player-card.js — Composant universel carte joueur Manager Wars
- * Template 372x609px (nouveau design, remplace l'ancien octogone 507x657)
- * Positions mesurées par analyse programmatique des gabarits (voir zones
- * ci-dessous), en fractions de largeur/hauteur pour rester exactes quelle
- * que soit la taille de rendu demandée.
+ * Deux gabarits distincts :
+ *   - PC  : 372x574, rectangulaire (photo + note au-dessus de 2 carrés)
+ *   - Mobile (compactSquare) : 372x372, carré (note énorme + photo en bas
+ *     + 3 carrés : pays / note secondaire / club)
+ * Positions mesurées par analyse programmatique des gabarits fournis.
  */
 import { getPortrait } from '../lib/portrait.js'
 import { generateSilhouetteSVG } from './silhouette.js'
@@ -16,6 +17,12 @@ const CARD_TEMPLATES = {
   MIL: BASE + 'cards/card-MIL.png',
   ATT: BASE + 'cards/card-ATT.png',
 }
+const CARD_TEMPLATES_MOBILE = {
+  GK:  BASE + 'cards/card-mobile-GK.png',
+  DEF: BASE + 'cards/card-mobile-DEF.png',
+  MIL: BASE + 'cards/card-mobile-MIL.png',
+  ATT: BASE + 'cards/card-mobile-ATT.png',
+}
 
 const JOB_ACCENT = {
   GK:  '#c0c0c0',
@@ -25,8 +32,8 @@ const JOB_ACCENT = {
 }
 
 // Fond de la zone centrale (derrière la photo/silhouette) selon la rareté —
-// le gabarit a désormais un centre transparent, donc ce fond doit être
-// posé explicitement (avant, le PNG octogonal faisait déjà fond noir).
+// les gabarits ont un centre transparent, ce fond doit donc être posé
+// explicitement par-dessus.
 const RARITY_BG = {
   normal: '#0a0a0a',
   pepite: '#D4A017',
@@ -34,6 +41,12 @@ const RARITY_BG = {
   papyte: '#9aa4b0',
   legende: '#7a28b8',
   légende: '#7a28b8',
+}
+
+const RARITY_GLOW = {
+  legende: '#7a28b8', légende: '#7a28b8',
+  pepite:  '#D4A017', pépite:  '#D4A017',
+  papyte:  '#c8d0dc',
 }
 
 function getFlagUrl(code) {
@@ -65,37 +78,17 @@ function hasStadBonus(p, stadDef) {
 
 export function renderPlayerCard(p, opts = {}) {
   const { width = 160, showStad = false, stadDef = null, used = false, extraNote = 0, role: forceRole = null, _forceStadColor = false, portraitOverride = null } = opts
-
-  // Nouveau ratio 372:609 (l'ancien gabarit était 507:657)
-  if (!p) return `<div style="width:${width}px;height:${Math.round(width*609/372)}px;border-radius:8px;background:#111;opacity:0.3"></div>`
-
-  const ratio  = width / 372
-  const height = Math.round(width * 609 / 372)
-  const ax     = (n) => Math.round(n * ratio)
-  const px     = (n) => ax(n) + 'px'
-  // Le texte passe par fpx() avec un plancher minimum de lisibilité — sans
-  // ça, les polices en pur ratio deviennent illisibles sur les petites
-  // cartes (retour testeurs confirmé aujourd'hui).
-  const fpx    = (n, min) => Math.max(min, ax(n)) + 'px'
+  if (!p) return `<div style="width:${width}px;height:${Math.round(width*1.05)}px;border-radius:8px;background:#111;opacity:0.3"></div>`
 
   const job    = forceRole || p._line || p.job || 'MIL'
   const accent = JOB_ACCENT[job] || '#D4A017'
-  const tmpl   = CARD_TEMPLATES[job] || CARD_TEMPLATES.MIL
   const bgFill = RARITY_BG[p.rarity] || RARITY_BG.normal
-
-  const RARITY_GLOW = {
-    legende: '0 0 12px 4px #7a28b8, 0 0 24px 8px rgba(122,40,184,0.5)',
-    légende: '0 0 12px 4px #7a28b8, 0 0 24px 8px rgba(122,40,184,0.5)',
-    pepite:  '0 0 12px 4px #D4A017, 0 0 24px 8px rgba(212,160,23,0.5)',
-    pépite:  '0 0 12px 4px #D4A017, 0 0 24px 8px rgba(212,160,23,0.5)',
-    papyte:  '0 0 4px 2px #e8eaf0, 0 0 12px 6px #a8b4c4, 0 0 28px 10px rgba(168,180,196,0.6), 0 0 2px 1px #f0f2f5',
-  }
-  const glowColor = { legende:'#7a28b8', légende:'#7a28b8', pepite:'#D4A017', pépite:'#D4A017', papyte:'#c8d0dc' }[p.rarity]
+  const glowColor = RARITY_GLOW[p.rarity]
   const glowStyle = glowColor ? `filter:drop-shadow(0 0 5px ${glowColor}) drop-shadow(0 0 12px ${glowColor});` : ''
+  const opacity   = used ? 'opacity:0.35;' : ''
 
   const evo    = p._evolution_bonus ?? p.evolution_bonus ?? 0
   const stadB  = showStad && (p.stadiumBonus || hasStadBonus(p, stadDef)) ? 10 : 0
-
   const mainNote  = getNoteForJob(p, job, evo) + extraNote + stadB
   const isSecondaryRole = forceRole && forceRole !== p.job
   const noteColor = (stadB > 0 || _forceStadColor) ? '#4fc3f7' : isSecondaryRole ? '#E87722' : accent
@@ -107,130 +100,8 @@ export function renderPlayerCard(p, opts = {}) {
   const flagUrl     = getFlagUrl(p.country_code)
   const clubLogoUrl = getClubLogoUrl(p)
   const displayName = (p.surname_real || p.name || '').toUpperCase()
-  const opacity     = used ? 'opacity:0.35;' : ''
 
-  // ── Mode carte carrée compacte (mobile : Formation + cartes en match) ──
-  // La photo est abandonnée au profit de la note (info essentielle en jeu),
-  // pour rester lisible même à très petite taille — pas de gabarit PNG ici
-  // (conçu pour un ratio portrait, il serait déformé en carré).
-  if (opts.compactSquare) {
-    const sq = width
-    const nameH = Math.round(sq * 0.20)
-    const noteH = Math.round(sq * 0.32)
-    // La rangée pays/club doit être un VRAI carré : sa hauteur doit donc
-    // égaler la largeur de chaque case (moitié de la largeur totale — ou
-    // tiers si une note secondaire s'ajoute), pas une fraction arbitraire
-    // de la hauteur de carte. D'où une carte légèrement RECTANGULAIRE
-    // (et non plus parfaitement carrée) — retour testeur confirmé.
-    const nbCols = job2Note !== null ? 3 : 2
-    const rowH   = Math.round(sq / nbCols)
-    const cardH  = nameH + noteH + rowH
-    const nax = (n) => Math.round(n * sq / 100)
-    const sqFpx = (frac, min) => Math.max(min, Math.round(sq * frac)) + 'px'
-    return `<div style="position:relative;width:${sq}px;height:${cardH}px;flex-shrink:0;${opacity}user-select:none;${glowStyle}
-      background:${bgFill};border:${Math.max(1,nax(2.2))}px solid ${accent};border-radius:${nax(6)}px;overflow:hidden;box-sizing:border-box">
-      <div style="position:absolute;top:0;left:0;right:0;height:${nameH}px;background:rgba(0,0,0,0.55);
-        display:flex;align-items:center;justify-content:center;padding:0 ${nax(4)}px">
-        <span style="font-size:${sqFpx(0.12,9)};font-weight:900;color:#fff;line-height:1;text-shadow:0 1px 3px #000;
-          font-family:Arial Black,Arial;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${displayName}</span>
-      </div>
-      <div style="position:absolute;top:${nameH}px;left:0;right:0;height:${noteH}px;
-        display:flex;align-items:center;justify-content:center">
-        <span style="font-size:${sqFpx(0.28,18)};font-weight:900;color:${noteColor};font-family:Arial Black,Arial;line-height:1;
-          text-shadow:0 2px 6px rgba(0,0,0,0.9)">${mainNote}</span>
-      </div>
-      <div style="position:absolute;bottom:0;left:0;right:0;height:${rowH}px;display:flex;align-items:stretch">
-        <div style="flex:1;overflow:hidden;display:flex;align-items:center;justify-content:center;border-right:1px solid rgba(255,255,255,0.15)">
-          ${flagUrl ? `<img src="${flagUrl}" style="width:100%;height:100%;object-fit:cover">` : `<span style="font-size:${sqFpx(0.16,10)}">🌍</span>`}
-        </div>
-        ${job2Note !== null ? `<div style="flex:1;overflow:hidden;display:flex;align-items:center;justify-content:center;
-          border-right:1px solid rgba(255,255,255,0.15);background:rgba(0,0,0,0.4)">
-          <span style="font-size:${sqFpx(0.22,12)};font-weight:900;color:${JOB_ACCENT[job2]||'#e03030'};font-family:Arial Black,Arial;line-height:1">${job2Note}</span>
-        </div>` : ''}
-        <div style="flex:1;overflow:hidden;display:flex;align-items:center;justify-content:center">
-          ${clubLogoUrl ? `<img src="${clubLogoUrl}" style="width:100%;height:100%;object-fit:cover">`
-            : `<span style="font-size:${sqFpx(0.11,8)};font-weight:900;color:#fff">${(p.clubs?.encoded_name||p.clubName||'').slice(0,3).toUpperCase()}</span>`}
-        </div>
-      </div>
-    </div>`
-  }
-
-  // Taille police nom adaptée à la longueur (nom seul en pleine largeur)
-  const nameFsN = displayName.length > 14 ? 30 : displayName.length > 10 ? 38 : 46
-
-  // ── Positions mesurées sur le nouveau gabarit 372x609 (analyse pixel) ──
-  //   Bande du haut (nom)         : y = 0    → 14.5%
-  //   Zone centrale (photo)       : y = 14.5% → 78%     x = 9%  → 91%
-  //   Bande basse (carrés+note)   : y = 80.5% → 89%
-  //     carré pays (gauche)       : x = 10%  → 31.5%
-  //     note (centre, entre les 2): x = 31.5% → 68.5%
-  //     carré club (droit)        : x = 68.5% → 90%
-
-  // Photo réduite pour laisser la place au rectangle de note en dessous
-  const photoTop = ax(609 * 0.145)
-  const photoW   = ax(372 * 0.82)
-  const photoH   = ax(609 * (0.68 - 0.145))
-
-  const silhouetteSVG = useSilhouette
-    ? generateSilhouetteSVG({
-        style:  p.clubs?.kit_style,
-        color1: p.clubs?.kit_color1,
-        color2: p.clubs?.kit_color2,
-        color3: p.clubs?.kit_color3,
-        shorts: p.clubs?.kit_shorts,
-        socks:  p.clubs?.kit_socks,
-      }, Math.round(photoW), p.id || p.firstname || 'sil')
-    : ''
-
-  // Rectangle de note : pleine largeur, au-dessus de la rangée de carrés
-  const noteRectTop = ax(609 * 0.685)
-  const noteRectH   = ax(609 * (0.79 - 0.685))
-  const noteRectX   = ax(372 * 0.08)
-  const noteRectW   = ax(372 * (0.92 - 0.08))
-
-  // Carrés pays/club (+ note secondaire) : VRAIS carrés (côté = squareSide),
-  // dimensionnés sur la hauteur mesurée du gabarit (contrainte la plus
-  // stricte), centrés dans chaque zone mesurée plutôt qu'étirés en rectangle.
-  const squareTop  = ax(609 * 0.805)
-  const squareSide = ax(609 * (0.89 - 0.805))
-  const zoneLX     = ax(372 * 0.10)
-  const zoneLW     = ax(372 * (0.315 - 0.10))
-  const zoneRX     = ax(372 * 0.685)
-  const zoneRW     = ax(372 * (0.90 - 0.685))
-  const zoneMX     = ax(372 * 0.315)
-  const zoneMW     = ax(372 * (0.685 - 0.315))
-  const squareLX   = zoneLX + (zoneLW - squareSide) / 2
-  const squareRX   = zoneRX + (zoneRW - squareSide) / 2
-  const squareMX   = zoneMX + (zoneMW - squareSide) / 2
-
-  return `<div style="position:relative;width:${width}px;height:${height}px;flex-shrink:0;${opacity}user-select:none;${glowStyle}">
-  <div style="position:absolute;top:${opts._cardOffset||0}px;left:0;width:${width}px;height:${height}px">
-
-  <!-- Fond de la zone centrale, selon la rareté (le gabarit a un centre transparent) -->
-  <div style="position:absolute;left:0;top:${photoTop}px;width:100%;height:${(noteRectTop+noteRectH)-photoTop}px;background:${bgFill};z-index:1"></div>
-
-  <!-- Portrait / silhouette -->
-  ${faceUrl ? `<img src="${faceUrl}"
-    style="position:absolute;top:${photoTop}px;left:50%;transform:translateX(-50%);
-    width:${photoW}px;height:${photoH}px;object-fit:cover;object-position:top center;z-index:2"
-    onerror="this.style.display='none'">` : ''}
-  ${useSilhouette ? `<div style="position:absolute;top:${photoTop}px;left:50%;transform:translateX(-50%);
-    width:${photoW}px;height:${photoH}px;overflow:hidden;z-index:2">
-    <div style="position:absolute;top:0;left:50%;transform:translateX(-50%)">${silhouetteSVG}</div>
-  </div>` : ''}
-
-  <!-- Gabarit (cadre + bande du haut + carrés), transparent au centre -->
-  <img src="${tmpl}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:fill;z-index:3" draggable="false">
-
-  <!-- Nom : pleine largeur, blanc, dans la bande du haut -->
-  <div style="position:absolute;top:0;left:0;right:0;height:${px(609*0.145)};z-index:4;
-    display:flex;align-items:center;justify-content:center;padding:0 ${px(18)}">
-    <span style="font-size:${fpx(nameFsN,12)};font-weight:900;color:#fff;line-height:1;
-      text-shadow:0 2px 6px #000;font-family:Arial Black,Arial;
-      overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:center">${displayName}</span>
-  </div>
-
-  ${stadB > 0 ? `<div style="position:absolute;left:${noteRectX + noteRectW/2 - ax(21)}px;top:${noteRectTop - ax(18)}px;width:${ax(42)}px;height:${ax(42)}px;z-index:6;display:flex;align-items:center;justify-content:center">
+  const stadiumBadgeSVG = `
     <div style="position:relative;width:100%;height:100%;display:flex;align-items:center;justify-content:center">
       <div style="position:absolute;inset:-40%;border-radius:50%;background:radial-gradient(ellipse,rgba(30,144,255,0.65) 0%,transparent 68%);pointer-events:none"></div>
       <svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" style="position:relative;z-index:1;width:90%;height:90%;display:block">
@@ -250,36 +121,178 @@ export function renderPlayerCard(p, opts = {}) {
         <ellipse cx="16" cy="14" rx="13" ry="5.5" fill="none" stroke="#1a1a1a" stroke-width="1.5"/>
         <ellipse cx="16" cy="19" rx="13" ry="9" fill="none" stroke="#1a1a1a" stroke-width="1.5"/>
       </svg>
+    </div>`
+
+  // ══════════════════════════════════════════════════════════════════════
+  // MODE MOBILE (compactSquare) : gabarit 372x372, note énorme + photo en
+  // bas + 3 carrés (pays / note secondaire / club)
+  // ══════════════════════════════════════════════════════════════════════
+  if (opts.compactSquare) {
+    const ratio  = width / 372
+    const height = width  // carré parfait
+    const ax  = (n) => Math.round(n * ratio)
+    const fpx = (n, min) => Math.max(min, ax(n)) + 'px'
+    const tmpl = CARD_TEMPLATES_MOBILE[job] || CARD_TEMPLATES_MOBILE.MIL
+
+    // Zones mesurées sur le gabarit mobile (372x372) :
+    //   nom          : y = 0     → 15.5%
+    //   note énorme  : y = 15.5% → 42%
+    //   photo (bas)  : y = 42%   → 70%      x = 9%   → 91%
+    //   carrés       : y = 70%   → 84%
+    //     pays       : x = 9.5%  → 35.2%
+    //     note sec.  : x = 40.0% → 60.0%
+    //     club       : x = 65.6% → 90.5%
+    const photoTop = ax(372 * 0.42)
+    const photoW   = ax(372 * 0.82)
+    const photoH   = ax(372 * (0.70 - 0.42))
+    const noteTop  = ax(372 * 0.155)
+    const noteH    = ax(372 * (0.42 - 0.155))
+    const squareTop  = ax(372 * 0.70)
+    const zoneTopH   = ax(372 * (0.84 - 0.70))
+    const zoneLX0 = ax(372*0.095), zoneLW0 = ax(372*(0.352-0.095))
+    const zoneMX0 = ax(372*0.400), zoneMW0 = ax(372*(0.600-0.400))
+    const zoneRX0 = ax(372*0.656), zoneRW0 = ax(372*(0.905-0.656))
+    // Vrai carré (voir commentaire équivalent en mode PC plus bas)
+    const squareH = Math.min(zoneTopH, zoneLW0, zoneMW0, zoneRW0)
+    const zoneLX  = zoneLX0 + (zoneLW0 - squareH) / 2
+    const zoneMX  = zoneMX0 + (zoneMW0 - squareH) / 2
+    const zoneRX  = zoneRX0 + (zoneRW0 - squareH) / 2
+    const zoneLW  = squareH, zoneMW = squareH, zoneRW = squareH
+
+    const silhouetteSVG = useSilhouette
+      ? generateSilhouetteSVG({
+          style: p.clubs?.kit_style, color1: p.clubs?.kit_color1, color2: p.clubs?.kit_color2,
+          color3: p.clubs?.kit_color3, shorts: p.clubs?.kit_shorts, socks: p.clubs?.kit_socks,
+        }, Math.round(photoW), p.id || p.firstname || 'sil')
+      : ''
+
+    return `<div style="position:relative;width:${width}px;height:${height}px;flex-shrink:0;${opacity}user-select:none;${glowStyle}">
+
+    <!-- Fond rareté derrière photo/note -->
+    <div style="position:absolute;left:0;top:${ax(372*0.155)}px;width:100%;height:${ax(372*0.70)-ax(372*0.155)}px;background:${bgFill};z-index:1"></div>
+
+    <!-- Photo/silhouette : ancrée en BAS de sa zone (peut être rognée en haut) -->
+    ${faceUrl ? `<img src="${faceUrl}" style="position:absolute;top:${photoTop}px;left:50%;transform:translateX(-50%);
+      width:${photoW}px;height:${photoH}px;object-fit:cover;object-position:bottom center;z-index:2" onerror="this.style.display='none'">` : ''}
+    ${useSilhouette ? `<div style="position:absolute;top:${photoTop}px;left:50%;transform:translateX(-50%);width:${photoW}px;height:${photoH}px;overflow:hidden;z-index:2">
+      <div style="position:absolute;bottom:0;left:50%;transform:translateX(-50%)">${silhouetteSVG}</div>
+    </div>` : ''}
+
+    <!-- Gabarit -->
+    <img src="${tmpl}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:fill;z-index:3" draggable="false">
+
+    <!-- Nom -->
+    <div style="position:absolute;top:0;left:0;right:0;height:${ax(372*0.155)}px;z-index:4;display:flex;align-items:center;justify-content:center;padding:0 ${ax(10)}px">
+      <span style="font-size:${fpx(20,11)};font-weight:900;color:#fff;line-height:1;text-shadow:0 2px 5px #000;font-family:Arial Black,Arial;
+        overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${displayName}</span>
     </div>
+
+    <!-- Note principale : énorme, dominante -->
+    <div style="position:absolute;left:0;top:${noteTop}px;width:100%;height:${noteH}px;z-index:4;display:flex;align-items:center;justify-content:center">
+      <span style="font-size:${fpx(66,26)};font-weight:900;color:${noteColor};font-family:Arial Black,Arial;line-height:1;text-shadow:0 2px 8px rgba(0,0,0,0.95)">${mainNote}</span>
+    </div>
+
+    ${stadB > 0 ? `<div style="position:absolute;left:${zoneMX + zoneMW/2 - ax(16)}px;top:${squareTop - ax(14)}px;width:${ax(32)}px;height:${ax(32)}px;z-index:6">${stadiumBadgeSVG}</div>` : ''}
+
+    <!-- Pays -->
+    <div style="position:absolute;left:${zoneLX}px;top:${squareTop}px;width:${zoneLW}px;height:${squareH}px;z-index:5;overflow:hidden;display:flex;align-items:center;justify-content:center">
+      ${flagUrl ? `<img src="${flagUrl}" style="width:100%;height:100%;object-fit:cover">` : `<span style="font-size:${fpx(16,10)}">🌍</span>`}
+    </div>
+    <!-- Note secondaire (si job2) -->
+    ${job2Note !== null ? `<div style="position:absolute;left:${zoneMX}px;top:${squareTop}px;width:${zoneMW}px;height:${squareH}px;z-index:5;display:flex;align-items:center;justify-content:center">
+      <span style="font-size:${fpx(20,12)};font-weight:900;color:${JOB_ACCENT[job2]||'#e03030'};font-family:Arial Black,Arial;line-height:1">${job2Note}</span>
+    </div>` : ''}
+    <!-- Club -->
+    <div style="position:absolute;left:${zoneRX}px;top:${squareTop}px;width:${zoneRW}px;height:${squareH}px;z-index:5;overflow:hidden;display:flex;align-items:center;justify-content:center">
+      ${clubLogoUrl ? `<img src="${clubLogoUrl}" style="width:100%;height:100%;object-fit:cover">`
+        : `<span style="font-size:${fpx(12,9)};font-weight:900;color:#fff">${(p.clubs?.encoded_name||p.clubName||'').slice(0,3).toUpperCase()}</span>`}
+    </div>
+  </div>`
+  }
+
+  // ══════════════════════════════════════════════════════════════════════
+  // MODE PC : gabarit 372x574, photo + note au-dessus de 2 carrés
+  // ══════════════════════════════════════════════════════════════════════
+  const ratio  = width / 372
+  const height = Math.round(width * 574 / 372)
+  const ax     = (n) => Math.round(n * ratio)
+  const px     = (n) => ax(n) + 'px'
+  const fpx    = (n, min) => Math.max(min, ax(n)) + 'px'
+  const tmpl   = CARD_TEMPLATES[job] || CARD_TEMPLATES.MIL
+  const nameFsN = displayName.length > 14 ? 30 : displayName.length > 10 ? 38 : 46
+
+  // Zones mesurées sur le gabarit PC (372x574) :
+  //   nom          : y = 0     → 15.5%
+  //   photo        : y = 15.5% → 62%      x = 9%   → 91%
+  //   note (bande) : y = 63%   → 77.5%
+  //   carrés       : y = 78%   → 89.5%
+  //     pays       : x = 9.5%  → 32.3%
+  //     club       : x = 66.9% → 90.5%
+  const photoTop = ax(574 * 0.155)
+  const photoW   = ax(372 * 0.82)
+  const photoH   = ax(574 * (0.62 - 0.155))
+
+  const silhouetteSVG = useSilhouette
+    ? generateSilhouetteSVG({
+        style: p.clubs?.kit_style, color1: p.clubs?.kit_color1, color2: p.clubs?.kit_color2,
+        color3: p.clubs?.kit_color3, shorts: p.clubs?.kit_shorts, socks: p.clubs?.kit_socks,
+      }, Math.round(photoW), p.id || p.firstname || 'sil')
+    : ''
+
+  const noteRectTop = ax(574 * 0.63)
+  const noteRectH   = ax(574 * (0.775 - 0.63))
+
+  const squareTop = ax(574 * 0.78)
+  const zoneTopH  = ax(574 * (0.895 - 0.78))
+  const zoneLX0 = ax(372*0.095), zoneLW0 = ax(372*(0.3226-0.095))
+  const zoneRX0 = ax(372*0.6694), zoneRW0 = ax(372*(0.905-0.6694))
+  // Vrai carré : la zone mesurée n'est pas exactement carrée (largeur >
+  // hauteur), on prend donc la plus petite dimension et on centre dedans —
+  // sinon le drapeau/logo s'étire en rectangle (retour testeur confirmé
+  // sur le premier gabarit, même correctif nécessaire ici).
+  const squareH = Math.min(zoneTopH, zoneLW0)
+  const zoneLX  = zoneLX0 + (zoneLW0 - squareH) / 2
+  const zoneRX  = zoneRX0 + (zoneRW0 - squareH) / 2
+  const zoneLW  = squareH
+  const zoneRW  = squareH
+
+  return `<div style="position:relative;width:${width}px;height:${height}px;flex-shrink:0;${opacity}user-select:none;${glowStyle}">
+  <div style="position:absolute;top:${opts._cardOffset||0}px;left:0;width:${width}px;height:${height}px">
+
+  <!-- Fond de la zone centrale, selon la rareté -->
+  <div style="position:absolute;left:0;top:${photoTop}px;width:100%;height:${(noteRectTop+noteRectH)-photoTop}px;background:${bgFill};z-index:1"></div>
+
+  <!-- Portrait / silhouette -->
+  ${faceUrl ? `<img src="${faceUrl}" style="position:absolute;top:${photoTop}px;left:50%;transform:translateX(-50%);
+    width:${photoW}px;height:${photoH}px;object-fit:cover;object-position:top center;z-index:2" onerror="this.style.display='none'">` : ''}
+  ${useSilhouette ? `<div style="position:absolute;top:${photoTop}px;left:50%;transform:translateX(-50%);width:${photoW}px;height:${photoH}px;overflow:hidden;z-index:2">
+    <div style="position:absolute;top:0;left:50%;transform:translateX(-50%)">${silhouetteSVG}</div>
   </div>` : ''}
 
-  <!-- Note principale : rectangle pleine largeur, au-dessus de la rangée de carrés -->
-  <div style="position:absolute;left:${noteRectX}px;top:${noteRectTop}px;width:${noteRectW}px;height:${noteRectH}px;
-    z-index:5;display:flex;align-items:center;justify-content:center;
-    background:rgba(0,0,0,0.55);border:${px(2)} solid ${noteColor}66;border-radius:${px(6)}">
-    <span style="font-size:${fpx(44,17)};font-weight:900;color:${noteColor};font-family:Arial Black,Arial;line-height:1;text-shadow:0 2px 6px rgba(0,0,0,0.9)">${mainNote}</span>
+  <!-- Gabarit -->
+  <img src="${tmpl}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:fill;z-index:3" draggable="false">
+
+  <!-- Nom -->
+  <div style="position:absolute;top:0;left:0;right:0;height:${px(574*0.155)};z-index:4;display:flex;align-items:center;justify-content:center;padding:0 ${px(18)}">
+    <span style="font-size:${fpx(nameFsN,12)};font-weight:900;color:#fff;line-height:1;text-shadow:0 2px 6px #000;font-family:Arial Black,Arial;
+      overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:center">${displayName}</span>
   </div>
 
-  <!-- Drapeau : carré (bas gauche) -->
-  <div style="position:absolute;left:${squareLX}px;top:${squareTop}px;width:${squareSide}px;height:${squareSide}px;z-index:5;
-    overflow:hidden;display:flex;align-items:center;justify-content:center">
-    ${flagUrl
-      ? `<img src="${flagUrl}" style="width:100%;height:100%;object-fit:cover">`
-      : `<span style="font-size:${fpx(20,11)}">🌍</span>`}
+  ${stadB > 0 ? `<div style="position:absolute;left:${width/2 - ax(21)}px;top:${noteRectTop - ax(18)}px;width:${ax(42)}px;height:${ax(42)}px;z-index:6">${stadiumBadgeSVG}</div>` : ''}
+
+  <!-- Note principale : bande centrée, au-dessus des carrés -->
+  <div style="position:absolute;left:0;top:${noteRectTop}px;width:100%;height:${noteRectH}px;z-index:5;display:flex;flex-direction:column;align-items:center;justify-content:center">
+    <span style="font-size:${fpx(46,17)};font-weight:900;color:${noteColor};font-family:Arial Black,Arial;line-height:1;text-shadow:0 2px 6px rgba(0,0,0,0.9)">${mainNote}</span>
+    ${job2Note !== null ? `<span style="font-size:${fpx(16,9)};font-weight:900;color:${JOB_ACCENT[job2]||'#e03030'};font-family:Arial Black,Arial;line-height:1;margin-top:${px(2)}">${job2Note}</span>` : ''}
   </div>
 
-  <!-- Note secondaire : carré central, UNIQUEMENT si job2 existe -->
-  ${job2Note !== null ? `<div style="position:absolute;left:${squareMX}px;top:${squareTop}px;width:${squareSide}px;height:${squareSide}px;z-index:5;
-    overflow:hidden;display:flex;align-items:center;justify-content:center;
-    background:rgba(0,0,0,0.55);border:${px(1.5)} solid ${JOB_ACCENT[job2]||'#e03030'}">
-    <span style="font-size:${fpx(20,11)};font-weight:900;color:${JOB_ACCENT[job2]||'#e03030'};font-family:Arial Black,Arial;line-height:1">${job2Note}</span>
-  </div>` : ''}
-
-  <!-- Logo club : carré (bas droit) -->
-  <div style="position:absolute;left:${squareRX}px;top:${squareTop}px;width:${squareSide}px;height:${squareSide}px;z-index:5;
-    overflow:hidden;display:flex;align-items:center;justify-content:center">
-    ${clubLogoUrl
-      ? `<img src="${clubLogoUrl}" style="width:100%;height:100%;object-fit:cover">`
+  <!-- Pays -->
+  <div style="position:absolute;left:${zoneLX}px;top:${squareTop}px;width:${zoneLW}px;height:${squareH}px;z-index:5;overflow:hidden;display:flex;align-items:center;justify-content:center">
+    ${flagUrl ? `<img src="${flagUrl}" style="width:100%;height:100%;object-fit:cover">` : `<span style="font-size:${fpx(20,11)}">🌍</span>`}
+  </div>
+  <!-- Club -->
+  <div style="position:absolute;left:${zoneRX}px;top:${squareTop}px;width:${zoneRW}px;height:${squareH}px;z-index:5;overflow:hidden;display:flex;align-items:center;justify-content:center">
+    ${clubLogoUrl ? `<img src="${clubLogoUrl}" style="width:100%;height:100%;object-fit:cover">`
       : `<span style="font-size:${fpx(13,9)};font-weight:900;color:#fff">${(p.clubs?.encoded_name||p.clubName||'').slice(0,3).toUpperCase()}</span>`}
   </div>
 

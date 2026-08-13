@@ -698,7 +698,8 @@ export function buildTeamSVG(team, formation, phase, selectedIds, W=310, H=310, 
   const CW = typeof window !== "undefined" && window.innerWidth >= 900
     ? Math.min(Math.max(81, Math.round(W * 0.225)), 117)
     : computeSafeCardWidth(formation, W, H)
-  const CH = Math.round(CW * 657/507)
+  const isDesktopBTSVG = typeof window !== "undefined" && window.innerWidth >= 900
+  const CH = isDesktopBTSVG ? Math.round(CW * 574/372) : CW  // PC : ratio du gabarit ; mobile : carré (compactSquare)
 
   // PAD calculé ici (et non plus après la boucle) : le chemin WebKit en a
   // besoin pour convertir les coordonnées SVG en pixels du calque superposé.

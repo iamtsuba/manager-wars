@@ -243,10 +243,19 @@ export async function openCardDesignEditor(helpers) {
       return { w: baseW * c.scale, h: baseH * c.scale }
     }
     if (key === 'note') {
-      const baseH = mode === 'mobile' ? ax(372 * (0.70 - 0.155)) : ax(574 * (0.775 - 0.60))
-      return { w: wrapW * c.scale, h: baseH * c.scale }
+      // Boîte resserrée autour du CHIFFRE réellement affiché (et non plus
+      // toute la largeur de la carte) : la poignée de zoom se retrouve
+      // juste à côté du chiffre, beaucoup plus simple à manier (retour
+      // testeur : "je veux pouvoir mieux gérer la taille de la note").
+      const fs = ax(mode === 'mobile' ? 48 : 58) * c.scale
+      const digits = String(78).length
+      return { w: Math.round(digits * fs * 0.62), h: Math.round(fs * 1.15) }
     }
-    if (key === 'note2') return { w: ax(80) * c.scale, h: ax(28) * c.scale }
+    if (key === 'note2') {
+      const fs = ax(16) * c.scale
+      const digits = String(62).length
+      return { w: Math.round(digits * fs * 0.62), h: Math.round(fs * 1.15) }
+    }
     if (key === 'flag' || key === 'club') {
       const base = mode === 'mobile'
         ? Math.max(ax(372 * (0.84 - 0.70)), ax(372 * (0.352 - 0.095)))

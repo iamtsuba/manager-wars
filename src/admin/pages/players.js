@@ -487,7 +487,7 @@ function renderPage(container, players, clubs, helpers, savedFilters = null) {
         clubs: p.clubs,
         face: p.face || null,
       }
-      const card = renderPlayerCard(playerObj, { width: 120 })
+      const card = renderPlayerCard(playerObj, { width: 120, context: 'admin' })
       return `<div style="position:relative;cursor:pointer" data-edit="${p.id}">
         ${card}
         <div style="position:absolute;top:4px;left:4px;z-index:10;display:flex;gap:3px">
@@ -1099,7 +1099,7 @@ async function openPlayerModal(player, clubs, container, helpers) {
         face: currentFace || null,
         clubs: selClub ? { encoded_name: selClub.encoded_name, logo_url: selClub.logo_url } : null,
       }
-      wrap.innerHTML = renderPlayerCard(p, { width: 160 })
+      wrap.innerHTML = renderPlayerCard(p, { width: 160, context: 'admin' })
 
       // Afficher/masquer note min/max
       const mm = document.getElementById('pm-minmax')

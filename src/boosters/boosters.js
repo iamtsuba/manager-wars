@@ -8,7 +8,7 @@ import { playSound } from '../lib/sound.js'
 import { getPortrait } from '../lib/portrait.js'
 import { renderGCCard, renderStadiumCard, renderFormationCard } from '../components/special-cards.js'
 import { showTutorial, STEPS as TUTORIAL_FALLBACK_STEPS } from '../tutorial/tutorial.js'
-import { startInteractiveTutorial } from '../tutorial/interactive-tutorial.js'
+import { startTutorialV2 } from '../tutorial/tutorial-v2.js'
 
 // Toutes les formations disponibles (depuis formation-links.js)
 const ALL_FORMATIONS = () => Object.keys(FORMATION_POSITIONS)
@@ -1532,7 +1532,7 @@ export async function renderStarterOnboarding(container, { state, navigate, toas
 
     document.getElementById('btn-do-tutorial')?.addEventListener('click', async () => {
       const steps = await fetchTutorialSteps()
-      startInteractiveTutorial(state.profile, navigate, async () => {
+      startTutorialV2(async () => {
         await supabase.from('users').update({ tutorial_done: true }).eq('id', state.user.id)
         if (refreshProfile) await refreshProfile()
         const { data: p } = await supabase.from('users').select('*').eq('id', state.user.id).single()

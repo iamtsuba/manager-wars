@@ -33,9 +33,16 @@ const CARD_TEMPLATES_MOBILE = {
 
 const JOB_ACCENT = { GK: '#c0c0c0', DEF: '#e03030', MIL: '#D4A017', ATT: '#3fbf5f' }
 
+// Dégradés métallisés (plus sombres, avec reflets) au lieu d'aplats plats —
+// retour testeur : "trop simple, je veux un effet plus métalisé et plus
+// foncé". Diagonal 135deg pour un effet de reflet de tôle brossée.
 const RARITY_BG = {
-  normal: '#0a0a0a', pepite: '#D4A017', pépite: '#D4A017',
-  papyte: '#9aa4b0', legende: '#7a28b8', légende: '#7a28b8',
+  normal:  '#0a0a0a',
+  pepite:  'linear-gradient(135deg, #2b2005 0%, #8a6710 22%, #D4A017 45%, #f6d878 52%, #D4A017 60%, #8a6710 80%, #2b2005 100%)',
+  pépite:  'linear-gradient(135deg, #2b2005 0%, #8a6710 22%, #D4A017 45%, #f6d878 52%, #D4A017 60%, #8a6710 80%, #2b2005 100%)',
+  papyte:  'linear-gradient(135deg, #14171c 0%, #4a525e 22%, #9aa4b0 45%, #e4e9f0 52%, #9aa4b0 60%, #4a525e 80%, #14171c 100%)',
+  legende: 'linear-gradient(135deg, #180a26 0%, #4a1878 22%, #7a28b8 45%, #c090ec 52%, #7a28b8 60%, #4a1878 80%, #180a26 100%)',
+  légende: 'linear-gradient(135deg, #180a26 0%, #4a1878 22%, #7a28b8 45%, #c090ec 52%, #7a28b8 60%, #4a1878 80%, #180a26 100%)',
 }
 const RARITY_GLOW = { legende: '#7a28b8', légende: '#7a28b8', pepite: '#D4A017', pépite: '#D4A017', papyte: '#c8d0dc' }
 

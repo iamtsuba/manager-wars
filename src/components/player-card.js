@@ -205,8 +205,12 @@ export function renderPlayerCard(p, opts = {}) {
   // ── Fond de la zone centrale (derrière photo/note), selon la rareté —
   // du bas de la zone nom jusqu'au bas de la zone carrés, pour couvrir
   // aussi l'espace entre les 2 carrés. ──
-  const bgTop = nameBox.top + nameBox.h
-  const bgBottom = Math.max(flagBox.top + flagBox.h, clubBox.top + clubBox.h, noteBox.top + noteBox.h)
+  // Le fond doit couvrir la vraie zone transparente DU GABARIT (fixe),
+  // PAS la position actuelle des composants (déplaçables par l'éditeur) —
+  // sinon déplacer le nom ou la note laisse un trou de transparence entre
+  // les deux (retour testeur confirmé).
+  const bgTop = mode === 'mobile' ? ax(372 * 0.155) : ax(574 * 0.155)
+  const bgBottom = mode === 'mobile' ? ax(372 * 0.84) : ax(574 * 0.895)
 
   return `<div style="position:relative;width:${width}px;height:${height}px;flex-shrink:0;${opacity}user-select:none;${glowStyle}">
   <div style="position:absolute;top:${opts._cardOffset||0}px;left:0;width:${width}px;height:${height}px">

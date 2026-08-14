@@ -1,6 +1,7 @@
 import { supabase } from '../../lib/supabase.js'
 import { renderPlayerCard } from '../../components/player-card.js'
 import { ALL_CONTINENTS, listContinentFiles, getPortrait, assignFace } from '../../lib/portrait.js'
+import { openCardDesignEditor } from './card-design-editor.js'
 
 // Récupère TOUTES les lignes d'une requête, en paginant par blocs de 1000
 // (contourne la limite serveur par défaut de PostgREST qui tronque
@@ -396,6 +397,7 @@ function renderPage(container, players, clubs, helpers, savedFilters = null) {
           <button type="button" class="view-mode-btn" data-view="card" style="padding:6px 12px;border-radius:6px;border:none;font-size:12px;font-weight:700;cursor:pointer;background:var(--green);color:#fff">🎴 Carte</button>
           <button type="button" class="view-mode-btn" data-view="list" style="padding:6px 12px;border-radius:6px;border:none;font-size:12px;font-weight:700;cursor:pointer;background:transparent;color:var(--gray-600)">📋 Liste</button>
         </div>
+        <button type="button" id="btn-design-card" style="padding:7px 14px;border-radius:8px;border:1.5px solid #D4A017;background:linear-gradient(135deg,#f6d365,#D4A017);color:#1a1a1a;font-weight:900;font-size:12px;cursor:pointer">🎨 Design Card</button>
       </div>
       <div id="bulk-bar" style="display:none;align-items:center;gap:8px;padding:8px 10px;background:rgba(187,32,32,0.08);border:1px solid #bb2020;border-radius:10px">
         <span id="bulk-count" style="font-size:13px;font-weight:700;color:#bb2020;flex:1"></span>
@@ -638,6 +640,8 @@ function renderPage(container, players, clubs, helpers, savedFilters = null) {
       renderList()
     })
   })
+  document.getElementById('btn-design-card')?.addEventListener('click', () => openCardDesignEditor(helpers))
+
   document.getElementById('bulk-cancel-btn')?.addEventListener('click', () => { selected.clear(); updateBulkBar(); renderList() })
   document.getElementById('bulk-delete-btn')?.addEventListener('click', async () => {
     if (!selected.size || !confirm(`Supprimer ${selected.size} joueur(s) ?`)) return

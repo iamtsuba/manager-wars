@@ -276,42 +276,19 @@ export async function openCardDesignEditor(helpers) {
 
   // Miniature représentant le VRAI contenu du composant (taille réelle
   // incluse), affichée DANS la boîte de glisser-déposer.
-  function componentPreviewHTML(key, boxW, boxH) {
-    const p = testPlayer
-    const ratio = PREVIEW_W / 372
-    const ax = (n) => Math.round(n * ratio)
-
-    if (key === 'name') {
-      const namePadding = ax(mode === 'mobile' ? 10 : 18)
-      const availW = boxW - namePadding * 2
-      const maxSize = ax(mode === 'mobile' ? 20 : 46) * components[mode].name.scale
-      const fs = autoFitNameSizeEditor(p.surname_real, availW, maxSize, ax(9))
-      return `<span style="font-size:${fs}px;font-weight:900;color:#fff;white-space:nowrap;text-shadow:0 1px 3px #000">${p.surname_real}</span>`
-    }
-    if (key === 'note') {
-      const fs = ax(mode === 'mobile' ? 48 : 58) * components[mode].note.scale
-      return `<span style="font-size:${fs}px;font-weight:900;color:#D4A017;text-shadow:0 1px 3px #000">78</span>`
-    }
-    if (key === 'note2') {
-      const fs = ax(16) * components[mode].note2.scale
-      return `<span style="font-size:${fs}px;font-weight:900;color:#e03030;text-shadow:0 1px 3px #000">62</span>`
-    }
-    if (key === 'flag') {
-      const url = flagUrlForEditor(p.country_code)
-      return url ? `<img src="${url}" style="width:100%;height:100%;object-fit:cover;border-radius:3px">` : '🌍'
-    }
-    if (key === 'club') return `<div style="width:100%;height:100%;background:#1A6B3C;border-radius:3px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:10px;font-weight:900">PSG</div>`
-    if (key === 'photo') {
-      const url = getPortrait(p)
-      return url
-        ? `<img src="${url}" style="width:100%;height:100%;object-fit:cover;border-radius:3px">`
-        : `<div style="width:100%;height:100%;background:#333;border-radius:3px;display:flex;align-items:center;justify-content:center;font-size:20px">👤</div>`
-    }
-    // Vrai badge (identique au rendu réel) : garantit que le zoom via la
-    // poignée agrandit VRAIMENT l'icône, pas seulement une lueur autour
-    // (retour testeur : "je ne grossis que son contour bleu").
-    if (key === 'stadium_badge') return stadiumBadgeSVG
-    return ''
+  // Les boîtes ne doivent RIEN afficher qui ressemble au vrai contenu — le
+  // vrai rendu (juste en dessous, mis à jour en direct) s'en charge déjà,
+  // à la MÊME position. Afficher aussi un aperçu dans la boîte créait un
+  // doublon visuel exact (ex. "PSG" affiché deux fois, note secondaire
+  // superposée à la vraie) — retour testeur confirmé. La boîte n'est donc
+  // plus qu'une POIGNÉE : contour + étiquette courte, rien de plus.
+  const COMPONENT_TAG = {
+    name: 'NOM', photo: 'PHOTO', note: 'NOTE', note2: 'NOTE 2',
+    flag: 'PAYS', club: 'CLUB', stadium_badge: 'STADE',
+  }
+  function componentPreviewHTML(key) {
+    return `<span style="font-size:9px;font-weight:900;color:#00e5ff;background:rgba(0,0,0,0.55);
+      padding:2px 5px;border-radius:4px;white-space:nowrap;pointer-events:none">${COMPONENT_TAG[key]||key}</span>`
   }
 
   function attachDragBoxes() {

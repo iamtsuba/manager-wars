@@ -7,9 +7,9 @@
  * nom, logo...) et se redimensionne via une poignée en coin.
  */
 import { supabase } from '../../lib/supabase.js'
-import { renderPlayerCard } from '../../components/player-card.js'
+import { renderPlayerCard, stadiumBadgeSVG } from '../../components/player-card.js'
 import { invalidateCardDesignCache, CONTEXTS } from '../../lib/cardDesign.js'
-import { getPortrait } from '../../lib/portrait.js'
+import { getPortrait, assignFace } from '../../lib/portrait.js'
 
 function flagUrlForEditor(code) {
   if (!code || code.length < 2) return null
@@ -62,6 +62,16 @@ export async function openCardDesignEditor(helpers) {
   }
   let previewContext = 'collection'
   let previewStadBonus = false
+
+  // Visage aléatoire pour le test (au lieu d'une image vierge) — chargé une
+  // fois à l'ouverture, mis à jour dans l'aperçu dès qu'il arrive.
+  assignFace(testPlayer.country_code).then(face => {
+    if (face) { testPlayer.face = face; refreshPreviewIfReady() }
+  })
+  function refreshPreviewIfReady() {
+    const el = overlay?.querySelector('#cde-card-render')
+    if (el) el.innerHTML = renderPreviewCard()
+  }
 
   let PREVIEW_W = 380   // recalculé à l'ouverture selon la largeur d'écran
 
@@ -216,13 +226,67 @@ export async function openCardDesignEditor(helpers) {
     attachDragBoxes()
   }
 
-  // Miniature représentant le VRAI contenu du composant, affichée DANS la
-  // boîte de glisser-déposer (au lieu d'un cadre vide abstrait).
-  function componentPreviewHTML(key) {
+  // Reproduit EXACTEMENT les formules de taille de player-card.js, à la
+  // MÊME largeur d'aperçu (PREVIEW_W) que le rendu réel juste en dessous —
+  // ce qui garantit que la petite boîte de glisser-déposer prédit fidèle-
+  // ment le résultat final (fini le décalage "modeste dans la boîte,
+  // énorme sur la vraie carte").
+  function boxSizeFor(key, c, wrapW, wrapH) {
+    const ratio = wrapW / 372
+    const ax = (n) => Math.round(n * ratio)
+    if (key === 'name') {
+      return { w: wrapW, h: ax(mode === 'mobile' ? 372 * 0.155 : 574 * 0.155) }
+    }
+    if (key === 'photo') {
+      const baseW = ax(372 * 0.82)
+      const baseH = mode === 'mobile' ? ax(372 * (0.70 - 0.155)) : ax(574 * (0.62 - 0.155))
+      return { w: baseW * c.scale, h: baseH * c.scale }
+    }
+    if (key === 'note') {
+      const baseH = mode === 'mobile' ? ax(372 * (0.70 - 0.155)) : ax(574 * (0.775 - 0.60))
+      return { w: wrapW * c.scale, h: baseH * c.scale }
+    }
+    if (key === 'note2') return { w: ax(80) * c.scale, h: ax(28) * c.scale }
+    if (key === 'flag' || key === 'club') {
+      const base = mode === 'mobile'
+        ? Math.max(ax(372 * (0.84 - 0.70)), ax(372 * (0.352 - 0.095)))
+        : Math.max(ax(574 * (0.895 - 0.78)), ax(372 * (0.3226 - 0.095)))
+      return { w: base * c.scale, h: base * c.scale }
+    }
+    if (key === 'stadium_badge') return { w: ax(38) * c.scale, h: ax(38) * c.scale }
+    return { w: 40 * c.scale, h: 40 * c.scale }
+  }
+
+  // Même formule d'auto-adaptation que player-card.js — pour que le texte
+  // affiché dans la petite boîte ait EXACTEMENT la taille réelle.
+  function autoFitNameSizeEditor(name, availWidthPx, maxSize, minSize) {
+    if (!name) return maxSize
+    const estimated = availWidthPx / (name.length * 0.60)
+    return Math.max(minSize, Math.min(maxSize, Math.round(estimated)))
+  }
+
+  // Miniature représentant le VRAI contenu du composant (taille réelle
+  // incluse), affichée DANS la boîte de glisser-déposer.
+  function componentPreviewHTML(key, boxW, boxH) {
     const p = testPlayer
-    if (key === 'name') return `<span style="font-size:13px;font-weight:900;color:#fff;white-space:nowrap;text-shadow:0 1px 3px #000">${p.surname_real}</span>`
-    if (key === 'note') return `<span style="font-size:20px;font-weight:900;color:#D4A017;text-shadow:0 1px 3px #000">78</span>`
-    if (key === 'note2') return `<span style="font-size:13px;font-weight:900;color:#e03030;text-shadow:0 1px 3px #000">62</span>`
+    const ratio = PREVIEW_W / 372
+    const ax = (n) => Math.round(n * ratio)
+
+    if (key === 'name') {
+      const namePadding = ax(mode === 'mobile' ? 10 : 18)
+      const availW = boxW - namePadding * 2
+      const maxSize = ax(mode === 'mobile' ? 20 : 46) * components[mode].name.scale
+      const fs = autoFitNameSizeEditor(p.surname_real, availW, maxSize, ax(9))
+      return `<span style="font-size:${fs}px;font-weight:900;color:#fff;white-space:nowrap;text-shadow:0 1px 3px #000">${p.surname_real}</span>`
+    }
+    if (key === 'note') {
+      const fs = ax(mode === 'mobile' ? 48 : 58) * components[mode].note.scale
+      return `<span style="font-size:${fs}px;font-weight:900;color:#D4A017;text-shadow:0 1px 3px #000">78</span>`
+    }
+    if (key === 'note2') {
+      const fs = ax(16) * components[mode].note2.scale
+      return `<span style="font-size:${fs}px;font-weight:900;color:#e03030;text-shadow:0 1px 3px #000">62</span>`
+    }
     if (key === 'flag') {
       const url = flagUrlForEditor(p.country_code)
       return url ? `<img src="${url}" style="width:100%;height:100%;object-fit:cover;border-radius:3px">` : '🌍'
@@ -234,7 +298,10 @@ export async function openCardDesignEditor(helpers) {
         ? `<img src="${url}" style="width:100%;height:100%;object-fit:cover;border-radius:3px">`
         : `<div style="width:100%;height:100%;background:#333;border-radius:3px;display:flex;align-items:center;justify-content:center;font-size:20px">👤</div>`
     }
-    if (key === 'stadium_badge') return `<div style="width:100%;height:100%;background:radial-gradient(circle,#3a7bbf,#1a4a80);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px">🏟️</div>`
+    // Vrai badge (identique au rendu réel) : garantit que le zoom via la
+    // poignée agrandit VRAIMENT l'icône, pas seulement une lueur autour
+    // (retour testeur : "je ne grossis que son contour bleu").
+    if (key === 'stadium_badge') return stadiumBadgeSVG
     return ''
   }
 
@@ -248,38 +315,45 @@ export async function openCardDesignEditor(helpers) {
     COMPONENTS.forEach(({ key }) => {
       const c = components[mode][key]
       const isActive = key === selectedComponent
-      // Taille de base indicative de la boîte (avant scale) : plus grande
-      // pour la photo/nom, plus petite pour les badges — juste pour que la
-      // poignée de zoom parte d'une taille visuellement cohérente.
-      const baseSize = { name: 90, photo: 70, note: 50, note2: 34, flag: 40, club: 40, stadium_badge: 34 }[key] || 40
-      const size = baseSize * c.scale
+      const { w: boxW, h: boxH } = boxSizeFor(key, c, wrapW, wrapH)
 
       const box = document.createElement('div')
       box.className = 'cde-drag-box' + (isActive ? ' active' : '')
-      box.style.left = (c.x * wrapW - size / 2) + 'px'
-      box.style.top  = (c.y * wrapH - size / 2) + 'px'
-      box.style.width = size + 'px'
-      box.style.height = size + 'px'
+      box.style.left = (c.x * wrapW - boxW / 2) + 'px'
+      box.style.top  = (c.y * wrapH - boxH / 2) + 'px'
+      box.style.width = boxW + 'px'
+      box.style.height = boxH + 'px'
       box.style.borderRadius = (key === 'flag' || key === 'club' || key === 'photo' || key === 'stadium_badge') ? '4px' : '6px'
-      box.innerHTML = componentPreviewHTML(key)
+      // TOUS les composants sont glissables directement (plus besoin de
+      // cliquer dans la liste d'abord) — retour testeur : "quand je déplace
+      // TOUS les composants, je veux voir le résultat en direct".
+      box.style.pointerEvents = 'auto'
+      box.style.opacity = isActive ? '1' : '0.75'
+      box.innerHTML = componentPreviewHTML(key, boxW, boxH)
       layer.appendChild(box)
-      if (!isActive) return
 
-      // Poignée de redimensionnement (coin bas-droit)
-      const handle = document.createElement('div')
-      handle.className = 'cde-resize-handle'
-      box.appendChild(handle)
+      let handle = null
+      if (isActive) {
+        handle = document.createElement('div')
+        handle.className = 'cde-resize-handle'
+        box.appendChild(handle)
+      }
 
       let dragging = false, startX = 0, startY = 0, origX = c.x, origY = c.y
       let resizing = false, resizeStartDist = 0, origScale = c.scale
-
       const centerPx = () => ({ cx: c.x * wrapW, cy: c.y * wrapH })
+
+      const selectThis = () => {
+        if (selectedComponent !== key) { selectedComponent = key; render() }
+      }
 
       box.addEventListener('mousedown', e => {
         if (e.target === handle) return
-        e.preventDefault(); dragging = true; startX = e.clientX; startY = e.clientY; origX = c.x; origY = c.y
+        e.preventDefault()
+        selectThis()
+        dragging = true; startX = e.clientX; startY = e.clientY; origX = c.x; origY = c.y
       })
-      handle.addEventListener('mousedown', e => {
+      handle?.addEventListener('mousedown', e => {
         e.preventDefault(); e.stopPropagation()
         resizing = true; origScale = c.scale
         const { cx, cy } = centerPx()
@@ -290,33 +364,38 @@ export async function openCardDesignEditor(helpers) {
           const dx = (e.clientX - startX) / wrapW, dy = (e.clientY - startY) / wrapH
           c.x = Math.max(0, Math.min(1, origX + dx))
           c.y = Math.max(0, Math.min(1, origY + dy))
-          const s = baseSize * c.scale
-          box.style.left = (c.x * wrapW - s / 2) + 'px'
-          box.style.top  = (c.y * wrapH - s / 2) + 'px'
+          const { w, h } = boxSizeFor(key, c, wrapW, wrapH)
+          box.style.left = (c.x * wrapW - w / 2) + 'px'
+          box.style.top  = (c.y * wrapH - h / 2) + 'px'
           overlay.querySelector('#cde-card-render').innerHTML = renderPreviewCard()
         } else if (resizing) {
           const { cx, cy } = centerPx()
           const rect = wrap.getBoundingClientRect()
           const dist = Math.hypot(e.clientX - (rect.left + cx), e.clientY - (rect.top + cy))
-          c.scale = Math.max(0.3, Math.min(3, Math.round((origScale * (dist / Math.max(20, resizeStartDist))) * 100) / 100))
-          const s = baseSize * c.scale
-          box.style.width = s + 'px'; box.style.height = s + 'px'
-          box.style.left = (c.x * wrapW - s / 2) + 'px'
-          box.style.top  = (c.y * wrapH - s / 2) + 'px'
+          // Plafond ramené à 2x (3x provoquait un effet "ultra zoomé"
+          // incontrôlable, notamment sur le nom — retour testeur).
+          c.scale = Math.max(0.3, Math.min(2, Math.round((origScale * (dist / Math.max(20, resizeStartDist))) * 100) / 100))
+          const { w, h } = boxSizeFor(key, c, wrapW, wrapH)
+          box.style.width = w + 'px'; box.style.height = h + 'px'
+          box.style.left = (c.x * wrapW - w / 2) + 'px'
+          box.style.top  = (c.y * wrapH - h / 2) + 'px'
+          box.innerHTML = componentPreviewHTML(key, w, h)
+          if (handle) box.appendChild(handle)
           overlay.querySelector('#cde-card-render').innerHTML = renderPreviewCard()
         }
       })
       window.addEventListener('mouseup', () => { dragging = false; resizing = false })
 
-      // Tactile (déplacement uniquement — le zoom tactile se fait via
-      // pincement moins fiable en HTML pur ; la poignée reste utilisable
-      // au doigt en drag simple aussi)
       box.addEventListener('touchstart', e => {
+        selectThis()
         const t = e.touches[0]
-        if (e.target === handle) { resizing = true; origScale = c.scale
+        if (e.target === handle) {
+          resizing = true; origScale = c.scale
           const { cx, cy } = centerPx(); const rect = wrap.getBoundingClientRect()
           resizeStartDist = Math.hypot(t.clientX-(rect.left+cx), t.clientY-(rect.top+cy))
-        } else { dragging = true; startX = t.clientX; startY = t.clientY; origX = c.x; origY = c.y }
+        } else {
+          dragging = true; startX = t.clientX; startY = t.clientY; origX = c.x; origY = c.y
+        }
       }, { passive: true })
       box.addEventListener('touchmove', e => {
         const t = e.touches[0]
@@ -326,11 +405,11 @@ export async function openCardDesignEditor(helpers) {
         } else if (resizing) {
           const { cx, cy } = centerPx(); const rect = wrap.getBoundingClientRect()
           const dist = Math.hypot(t.clientX-(rect.left+cx), t.clientY-(rect.top+cy))
-          c.scale = Math.max(0.3, Math.min(3, Math.round((origScale*(dist/Math.max(20,resizeStartDist)))*100)/100))
+          c.scale = Math.max(0.3, Math.min(2, Math.round((origScale*(dist/Math.max(20,resizeStartDist)))*100)/100))
         }
-        const s = baseSize * c.scale
-        box.style.width = s+'px'; box.style.height = s+'px'
-        box.style.left = (c.x*wrapW - s/2)+'px'; box.style.top = (c.y*wrapH - s/2)+'px'
+        const { w, h } = boxSizeFor(key, c, wrapW, wrapH)
+        box.style.width = w+'px'; box.style.height = h+'px'
+        box.style.left = (c.x*wrapW - w/2)+'px'; box.style.top = (c.y*wrapH - h/2)+'px'
         overlay.querySelector('#cde-card-render').innerHTML = renderPreviewCard()
       }, { passive: true })
       box.addEventListener('touchend', () => { dragging = false; resizing = false })

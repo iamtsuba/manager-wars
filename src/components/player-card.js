@@ -251,7 +251,7 @@ export function renderPlayerCard(p, opts = {}) {
   </div>` : ''}
 
   ${showFlag ? `<div style="position:absolute;left:${flagBox.left}px;top:${flagBox.top}px;width:${flagBox.w}px;height:${flagBox.h}px;z-index:5;overflow:hidden;display:flex;align-items:center;justify-content:center">
-    ${flagUrl ? `<img src="${flagUrl}" style="width:100%;height:100%;object-fit:cover">` : `<span style="font-size:${fpx(20,11)}">🌍</span>`}
+    ${flagUrl ? `<img src="${flagUrl}" style="width:100%;height:100%;object-fit:fill">` : `<span style="font-size:${fpx(20,11)}">🌍</span>`}
   </div>` : ''}
   ${showClub ? `<div style="position:absolute;left:${clubBox.left}px;top:${clubBox.top}px;width:${clubBox.w}px;height:${clubBox.h}px;z-index:5;overflow:hidden;display:flex;align-items:center;justify-content:center">
     ${clubLogoUrl ? `<img src="${clubLogoUrl}" style="width:100%;height:100%;object-fit:cover">`

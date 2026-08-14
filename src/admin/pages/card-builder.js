@@ -79,7 +79,7 @@ function updatePreview() {
   // portraitOverride : l'avatar personnalisé construit ici prime sur la
   // logique habituelle (Storage / silhouette), pour prévisualiser fidèlement
   // avec le MÊME rendu de carte que partout ailleurs dans l'app.
-  const html = renderPlayerCard(player, { width: 260, showStad: true, portraitOverride: portraitDataUrl })
+  const html = renderPlayerCard(player, { width: 260, showStad: true, portraitOverride: portraitDataUrl, context: 'admin' })
   const preview = document.getElementById('card-preview')
   if (preview) preview.innerHTML = html
 

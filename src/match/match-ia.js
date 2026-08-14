@@ -1867,7 +1867,7 @@ function openGCPicker(pool, count, label, container, game, onConfirm) {
         const sel  = chosen.find(x => x.cardId === p.cardId)
         const cardHtml = renderPlayerCard(
           { ...p, _evolution_bonus: 0 },
-          { width: 90, showStad: true, role, extraNote: p.boost || 0 }
+          { width: 90, showStad: true, role, extraNote: p.boost || 0, context: 'match' }
         )
         return `<div class="gc-pick-item" data-cid="${p.cardId}"
           style="position:relative;border-radius:8px;${sel?'outline:3px solid #FFD700;outline-offset:2px;':''}cursor:pointer;flex-shrink:0;${p.used?'opacity:0.3;pointer-events:none':''}">

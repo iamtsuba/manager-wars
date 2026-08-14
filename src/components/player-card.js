@@ -74,7 +74,7 @@ function autoFitNameSize(name, availWidthPx, maxSize, minSize) {
   return Math.max(minSize, Math.min(maxSize, Math.round(estimated)))
 }
 
-const stadiumBadgeSVG = `
+export const stadiumBadgeSVG = `
   <div style="position:relative;width:100%;height:100%;display:flex;align-items:center;justify-content:center">
     <div style="position:absolute;inset:-40%;border-radius:50%;background:radial-gradient(ellipse,rgba(30,144,255,0.65) 0%,transparent 68%);pointer-events:none"></div>
     <svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" style="position:relative;z-index:1;width:90%;height:90%;display:block">

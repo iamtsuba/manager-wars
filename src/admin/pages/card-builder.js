@@ -1,5 +1,6 @@
 import { supabase } from '../../lib/supabase.js'
-import { renderCardHTML, JOB_COLORS, RARITY_BORDERS } from '../../components/card.js'
+import { renderPlayerCard } from '../../components/player-card.js'
+import { RARITY_BORDERS } from '../../components/card.js'
 import {
   generateAvatarSVG,
   SKIN_COLORS, HAIR_COLORS, HAIR_STYLES, EYE_STYLES,
@@ -56,7 +57,7 @@ function updatePreview() {
     firstname:         get('cb-firstname'),
     surname_real:   get('cb-surname-real'),
     country_code:      get('cb-country'),
-    club_encoded_name: document.getElementById('cb-club')?.selectedOptions[0]?.text || '',
+    clubName: document.getElementById('cb-club')?.selectedOptions[0]?.text || '',
     job:               get('cb-job'),
     job2:              get('cb-job2') || null,
     note_g:            parseInt(get('cb-note-g')) || 0,
@@ -69,12 +70,16 @@ function updatePreview() {
   const kit      = getSelectedKit()
   const clubSel  = document.getElementById('cb-club')
   const logoUrl  = clubSel?.selectedOptions[0]?.dataset?.logo || null
+  player.clubLogo = logoUrl
 
   // Génère le SVG avatar complet (tête + corps + tenue)
   const avatarSvg = generateAvatarSVG(_avatarConfig, kit, 120)
   const portraitDataUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(avatarSvg)}`
 
-  const html = renderCardHTML(player, { portraitUrl: portraitDataUrl, clubLogoUrl: logoUrl, showNotes: true })
+  // portraitOverride : l'avatar personnalisé construit ici prime sur la
+  // logique habituelle (Storage / silhouette), pour prévisualiser fidèlement
+  // avec le MÊME rendu de carte que partout ailleurs dans l'app.
+  const html = renderPlayerCard(player, { width: 260, showStad: true, portraitOverride: portraitDataUrl, context: 'admin' })
   const preview = document.getElementById('card-preview')
   if (preview) preview.innerHTML = html
 

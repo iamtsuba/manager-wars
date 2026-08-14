@@ -1,6 +1,24 @@
 import { supabase } from '../../lib/supabase.js'
 import { renderPlayerCard } from '../../components/player-card.js'
-import { ALL_CONTINENTS, listContinentFiles, getPortrait } from '../../lib/portrait.js'
+import { ALL_CONTINENTS, listContinentFiles, getPortrait, assignFace } from '../../lib/portrait.js'
+import { openCardDesignEditor } from './card-design-editor.js'
+
+// Récupère TOUTES les lignes d'une requête, en paginant par blocs de 1000
+// (contourne la limite serveur par défaut de PostgREST qui tronque
+// silencieusement au-delà, sans erreur ni avertissement).
+async function fetchAllRows(buildQuery) {
+  const PAGE = 1000
+  let all = []
+  let from = 0
+  while (true) {
+    const { data, error } = await buildQuery(supabase.from('players'), from, from + PAGE - 1)
+    if (error) return { data: all, error }
+    all = all.concat(data || [])
+    if (!data || data.length < PAGE) break
+    from += PAGE
+  }
+  return { data: all, error: null }
+}
 
 const BASE = import.meta.env.BASE_URL
 const RARITY_LABELS = { normal:'Normal', pepite:'Pépite', papyte:'Papyte', legende:'Légende' }
@@ -74,18 +92,13 @@ async function importPlayersExcel(file, container, helpers) {
     const EDITABLE = [
       'firstname','surname_real','lastname_reel','job','job2','rarity',
       'country_code','club_id','sell_price','note_g','note_d','note_m','note_a',
-      'note_min','note_max','face',
+      'note_min','note_max','face','ethnie','skin',
     ]
     const NUMERIC = new Set(['sell_price','note_g','note_d','note_m','note_a','note_min','note_max'])
+    const REQUIRED = new Set(['firstname','surname_real'])
 
-    const updates = []
-    const skipped = []
-    rows.forEach((r, i) => {
-      if (!r.id) { skipped.push(`ligne ${i + 2} : id manquant`); return }
-      const row = { id: r.id }
-      // Colonnes requises en base : une cellule vide ne doit pas devenir null
-      // (la contrainte NOT NULL ferait échouer tout le lot d'un coup).
-      const REQUIRED = new Set(['firstname','surname_real'])
+    function buildRow(r) {
+      const row = {}
       EDITABLE.forEach(k => {
         if (!(k in r)) return
         let v = r[k]
@@ -95,33 +108,82 @@ async function importPlayersExcel(file, container, helpers) {
           const n = Number(v)
           v = Number.isFinite(n) ? n : null
         }
-        if (v === null && REQUIRED.has(k)) {
-          // Repli : le Surname reprend le nom réel, sinon on ne touche pas au champ
-          if (v === null) return   // laisse la valeur existante en base intacte
-        }
         row[k] = v
       })
-      row.updated_at = new Date().toISOString()
-      updates.push(row)
-    })
-
-    if (!updates.length) { toast('Aucune ligne exploitable (colonne "id" requise)', 'error'); return }
-    if (!confirm(`Mettre à jour ${updates.length} joueur(s) depuis le fichier ?\n\nCette action écrase les données actuelles.`)) return
-
-    // Envoi par lots : un upsert géant échoue en bloc et rend l'erreur
-    // illisible ; par lots on identifie précisément ce qui casse.
-    let ok = 0
-    const CHUNK = 100
-    for (let i = 0; i < updates.length; i += CHUNK) {
-      const slice = updates.slice(i, i + CHUNK)
-      const { error } = await supabase.from('players').upsert(slice, { onConflict: 'id' })
-      if (error) { toast(`Erreur lot ${Math.floor(i / CHUNK) + 1} : ${error.message}`, 'error'); break }
-      ok += slice.length
+      return row
     }
 
-    toast(`${ok} joueur(s) mis à jour ✅${skipped.length ? ` — ${skipped.length} ligne(s) ignorée(s)` : ''}`, 'success')
+    const updates = []
+    const inserts = []
+    const skipped = []
+    rows.forEach((r, i) => {
+      // Ligne avec id -> update (comportement d'origine, colonnes vides
+      // ignorées pour ne pas écraser l'existant par erreur)
+      if (r.id) {
+        const row = { id: r.id }
+        EDITABLE.forEach(k => {
+          if (!(k in r)) return
+          let v = r[k]
+          if (typeof v === 'string') v = v.trim()
+          if (v === '') v = null
+          if (v !== null && NUMERIC.has(k)) {
+            const n = Number(v)
+            v = Number.isFinite(n) ? n : null
+          }
+          if (v === null && REQUIRED.has(k)) return  // laisse la valeur existante en base intacte
+          row[k] = v
+        })
+        row.updated_at = new Date().toISOString()
+        updates.push(row)
+        return
+      }
+      // Ligne sans id -> insert (nouveau joueur). Ici, contrairement à
+      // l'update, les champs requis manquants sont bloquants (pas de
+      // valeur existante à préserver puisque la ligne n'existe pas encore).
+      const row = buildRow(r)
+      const missingRequired = [...REQUIRED].filter(k => row[k] == null)
+      if (missingRequired.length) {
+        skipped.push(`ligne ${i + 2} : champ(s) requis manquant(s) pour la création (${missingRequired.join(', ')})`)
+        return
+      }
+      inserts.push(row)
+    })
+
+    if (!updates.length && !inserts.length) { toast('Aucune ligne exploitable', 'error'); return }
+    if (!confirm(`${updates.length} joueur(s) à mettre à jour, ${inserts.length} à créer depuis le fichier.\n\nContinuer ?`)) return
+
+    // Envoi par lots. Pour les updates : upsert() ne convient pas ici car
+    // certaines lignes omettent volontairement des colonnes (pour préserver
+    // la valeur existante) — Postgres exigerait quand même les colonnes
+    // NOT NULL pour la tentative d'INSERT implicite d'un upsert. On fait
+    // donc de vrais update() ciblés par ligne, en parallèle par petits
+    // groupes pour rester rapide.
+    let okUpdated = 0, okInserted = 0
+    const updateErrors = []
+    const CONCURRENCY = 20
+    for (let i = 0; i < updates.length; i += CONCURRENCY) {
+      const slice = updates.slice(i, i + CONCURRENCY)
+      const results = await Promise.all(
+        slice.map(({ id, ...fields }) => supabase.from('players').update(fields).eq('id', id))
+      )
+      results.forEach((r, j) => {
+        if (r.error) updateErrors.push(`${slice[j].id}: ${r.error.message}`)
+        else okUpdated++
+      })
+    }
+    if (updateErrors.length) console.warn('[Import joueurs] erreurs update :', updateErrors)
+
+    const CHUNK = 100
+    for (let i = 0; i < inserts.length; i += CHUNK) {
+      const slice = inserts.slice(i, i + CHUNK)
+      const { error } = await supabase.from('players').insert(slice)
+      if (error) { updateErrors.push(`Lot création ${Math.floor(i / CHUNK) + 1}: ${error.message}`); continue }
+      okInserted += slice.length
+    }
+
+    toast(`${okUpdated} mis à jour, ${okInserted} créés ✅${skipped.length ? ` — ${skipped.length} ligne(s) ignorée(s)` : ''}${updateErrors.length ? ` — ${updateErrors.length} erreur(s) update (voir console)` : ''}`, updateErrors.length ? 'error' : 'success')
     if (skipped.length) console.warn('[Import joueurs] lignes ignorées :', skipped)
-    if (ok) loadPlayers(container, helpers)
+    if (okUpdated || okInserted) loadPlayers(container, helpers)
   } catch (e) {
     toast(`Erreur import : ${e.message}`, 'error')
   } finally {
@@ -213,6 +275,58 @@ if (!window.__playersMsDocListener) {
   })
 }
 
+async function assignMissingFaces(container, helpers) {
+  const { toast } = helpers
+  const btn = document.getElementById('assign-faces-btn')
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Attribution en cours...' }
+  try {
+    const { data: missing, error: errMissing } = await fetchAllRows((q, from, to) =>
+      q.select('id,country_code').or('face.is.null,face.eq.').range(from, to)
+    )
+    if (errMissing) { toast(errMissing.message, 'error'); return }
+    if (!missing || !missing.length) { toast('Aucun joueur sans face', 'info'); return }
+
+    if (!confirm(`${missing.length} joueur(s) sans face. Leur attribuer une photo aléatoire maintenant ?`)) return
+
+    // Faces déjà utilisées, pour limiter les doublons immédiats
+    const { data: used } = await fetchAllRows((q, from, to) =>
+      q.select('face').not('face', 'is', null).range(from, to)
+    )
+    const usedSet = new Set((used || []).map(r => r.face).filter(Boolean))
+
+    const updates = []
+    for (const p of missing) {
+      const face = await assignFace(p.country_code, usedSet)
+      if (face) { usedSet.add(face); updates.push({ id: p.id, face }) }
+    }
+
+    // upsert() ne convient pas ici : PostgreSQL construit d'abord une
+    // tentative d'INSERT (avant ON CONFLICT DO UPDATE), qui doit satisfaire
+    // les colonnes NOT NULL même si on ne veut mettre à jour que `face`.
+    // On fait donc de vrais update() ciblés, envoyés en parallèle par
+    // petits groupes pour rester rapide.
+    let ok = 0
+    const CONCURRENCY = 20
+    const batchErrors = []
+    for (let i = 0; i < updates.length; i += CONCURRENCY) {
+      const slice = updates.slice(i, i + CONCURRENCY)
+      const results = await Promise.all(
+        slice.map(u => supabase.from('players').update({ face: u.face }).eq('id', u.id))
+      )
+      results.forEach((r, j) => {
+        if (r.error) batchErrors.push(`${slice[j].id}: ${r.error.message}`)
+        else ok++
+      })
+    }
+    if (batchErrors.length) console.warn('[assignMissingFaces] erreurs :', batchErrors)
+
+    toast(`${ok} face(s) attribuée(s) ✅${updates.length < missing.length ? ` — ${missing.length - updates.length} sans photo disponible pour leur continent` : ''}${batchErrors.length ? ` — ${batchErrors.length} erreur(s) (voir console)` : ''}`, batchErrors.length ? 'error' : 'success')
+    if (ok) loadPlayers(container, helpers)
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '🖼️ Assigner les faces manquantes' }
+  }
+}
+
 export async function pagePlayers(container, helpers) {
   await loadPlayers(container, helpers)
 }
@@ -232,7 +346,7 @@ async function loadPlayers(container, helpers, savedFilters = null) {
     }
   }
   const [{ data: players, error }, { data: clubs }] = await Promise.all([
-    supabase.from('players').select('*, clubs(id,encoded_name,logo_url)'),
+    fetchAllRows((q, from, to) => q.select('*, clubs(id,encoded_name,logo_url)').range(from, to)),
     supabase.from('clubs').select('id,encoded_name').order('encoded_name'),
   ])
   if (error) { container.innerHTML = `<p style="color:red">${error.message}</p>`; return }
@@ -263,6 +377,7 @@ function renderPage(container, players, clubs, helpers, savedFilters = null) {
         <button class="btn btn-primary" id="add-player-btn" style="white-space:nowrap">+ Joueur</button>
         <button class="btn btn-ghost" id="export-players-btn" style="white-space:nowrap">📤 Export Excel</button>
         <button class="btn btn-ghost" id="import-players-btn" style="white-space:nowrap">📥 Import Excel</button>
+        <button class="btn btn-ghost" id="assign-faces-btn" style="white-space:nowrap">🖼️ Assigner les faces manquantes</button>
         <input type="file" id="import-players-file" accept=".xlsx,.xls" style="display:none">
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-start">
@@ -282,6 +397,7 @@ function renderPage(container, players, clubs, helpers, savedFilters = null) {
           <button type="button" class="view-mode-btn" data-view="card" style="padding:6px 12px;border-radius:6px;border:none;font-size:12px;font-weight:700;cursor:pointer;background:var(--green);color:#fff">🎴 Carte</button>
           <button type="button" class="view-mode-btn" data-view="list" style="padding:6px 12px;border-radius:6px;border:none;font-size:12px;font-weight:700;cursor:pointer;background:transparent;color:var(--gray-600)">📋 Liste</button>
         </div>
+        <button type="button" id="btn-design-card" style="padding:7px 14px;border-radius:8px;border:1.5px solid #D4A017;background:linear-gradient(135deg,#f6d365,#D4A017);color:#1a1a1a;font-weight:900;font-size:12px;cursor:pointer">🎨 Design Card</button>
       </div>
       <div id="bulk-bar" style="display:none;align-items:center;gap:8px;padding:8px 10px;background:rgba(187,32,32,0.08);border:1px solid #bb2020;border-radius:10px">
         <span id="bulk-count" style="font-size:13px;font-weight:700;color:#bb2020;flex:1"></span>
@@ -371,7 +487,7 @@ function renderPage(container, players, clubs, helpers, savedFilters = null) {
         clubs: p.clubs,
         face: p.face || null,
       }
-      const card = renderPlayerCard(playerObj, { width: 120 })
+      const card = renderPlayerCard(playerObj, { width: 120, context: 'admin' })
       return `<div style="position:relative;cursor:pointer" data-edit="${p.id}">
         ${card}
         <div style="position:absolute;top:4px;left:4px;z-index:10;display:flex;gap:3px">
@@ -524,6 +640,8 @@ function renderPage(container, players, clubs, helpers, savedFilters = null) {
       renderList()
     })
   })
+  document.getElementById('btn-design-card')?.addEventListener('click', () => openCardDesignEditor(helpers))
+
   document.getElementById('bulk-cancel-btn')?.addEventListener('click', () => { selected.clear(); updateBulkBar(); renderList() })
   document.getElementById('bulk-delete-btn')?.addEventListener('click', async () => {
     if (!selected.size || !confirm(`Supprimer ${selected.size} joueur(s) ?`)) return
@@ -552,6 +670,7 @@ function renderPage(container, players, clubs, helpers, savedFilters = null) {
     if (file) importPlayersExcel(file, container, helpers)
     e.target.value = ''  // permet de réimporter le même fichier après correction
   })
+  document.getElementById('assign-faces-btn').addEventListener('click', () => assignMissingFaces(container, helpers))
 }
 
 // ── Modal Card Builder ────────────────────────────────────
@@ -980,7 +1099,7 @@ async function openPlayerModal(player, clubs, container, helpers) {
         face: currentFace || null,
         clubs: selClub ? { encoded_name: selClub.encoded_name, logo_url: selClub.logo_url } : null,
       }
-      wrap.innerHTML = renderPlayerCard(p, { width: 160 })
+      wrap.innerHTML = renderPlayerCard(p, { width: 160, context: 'admin' })
 
       // Afficher/masquer note min/max
       const mm = document.getElementById('pm-minmax')

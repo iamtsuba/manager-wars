@@ -4,7 +4,7 @@ import {
   GC_DEFS, getNoteForRole, calcAttack, calcDefense,
   calcMidfieldDuel, resolveDuel, aiSelectPlayers, getRewards
 } from './game-logic.js'
-import { FORMATION_LINKS, FORMATION_POSITIONS, linkColor, getActiveLinks } from './formation-links.js'
+import { FORMATION_LINKS, FORMATION_POSITIONS, linkColor, getActiveLinks, computeSafeCardWidth } from './formation-links.js'
 import { isAdjacent } from './game-logic.js'
 import { renderGCCard } from '../components/special-cards.js'
 
@@ -457,7 +457,7 @@ export async function renderDeckSelect(container, ctx, matchMode) {
       const availW = availWraw
       const CW = isPC
         ? Math.min(117, Math.max(52, Math.round(availW * 0.22)))
-        : Math.max(44, Math.round(availW * 0.168))
+        : computeSafeCardWidth(formation, availW, availH)
 
       if (availH < 220 || availW < 220) {
         // Le layout n'est pas encore stable → réessayer au prochain frame
@@ -528,7 +528,7 @@ export function getClubLogo(p) {
 
 export function renderMiniCardHTML(p, w=44, h=58, stadDef=null) {
   // Délègue au nouveau composant universel
-  return renderPlayerCard(p, { width: w, showStad: !!stadDef, stadDef, used: p?.used })
+  return renderPlayerCard(p, { width: w, showStad: !!stadDef, stadDef, used: p?.used, context: 'match' })
 }
 
 
@@ -546,7 +546,7 @@ export function renderCardRow(players, accentColor, total, phase, formation) {
       else if (phase === 'defense' && (role === 'GK' || role === 'DEF' || role === 'MIL')) extraNote += 10
       else if (!phase) extraNote += 10
     }
-    html += renderPlayerCard({ ...p, _evolution_bonus: 0, evolution_bonus: 0 }, { width: 40, role, extraNote })
+    html += renderPlayerCard({ ...p, _evolution_bonus: 0, evolution_bonus: 0 }, { width: 40, role, extraNote, context: 'match' })
     if (i < shown.length - 1) {
       const next = shown[i+1]
       // N'affiche un lien coloré que si les 2 joueurs sont VRAIMENT adjacents
@@ -690,11 +690,16 @@ export function buildTeamSVG(team, formation, phase, selectedIds, W=310, H=310, 
   let svg = linksSvg
 
   // 2. Cartes joueurs : renderPlayerCard via foreignObject
-  // Cartes grandes : ~18% de la largeur du terrain
+  // Cartes grandes : ~18% de la largeur du terrain (desktop). En mobile :
+  // la plus grande taille possible SANS chevauchement, calculée pour LA
+  // FORMATION ACTIVE (certaines alignent jusqu'à 5 joueurs sur une même
+  // ligne, ex. 4-5-1 — une fraction fixe de W y créerait un chevauchement
+  // ou resterait trop petite sur les formations moins denses).
   const CW = typeof window !== "undefined" && window.innerWidth >= 900
     ? Math.min(Math.max(81, Math.round(W * 0.225)), 117)
-    : Math.max(44, Math.round(W * 0.168))
-  const CH = Math.round(CW * 657/507)
+    : computeSafeCardWidth(formation, W, H)
+  const isDesktopBTSVG = typeof window !== "undefined" && window.innerWidth >= 900
+  const CH = isDesktopBTSVG ? Math.round(CW * 574/372) : CW  // PC : ratio du gabarit ; mobile : carré (compactSquare)
 
   // PAD calculé ici (et non plus après la boucle) : le chemin WebKit en a
   // besoin pour convertir les coordonnées SVG en pixels du calque superposé.
@@ -741,12 +746,21 @@ export function buildTeamSVG(team, formation, phase, selectedIds, W=310, H=310, 
     // stadiumBonus déjà intégré dans extraNote ci-dessus (conditionné par phase/rôle) →
     // on force stadiumBonus:false + showStad:false pour éviter que renderPlayerCard
     // l'ajoute une 2e fois ; _forceStadColor garde juste la couleur bleue de la note.
+    // Mobile : carte carrée compacte (nom/note/pays/club, sans photo) — retour
+    // testeur, la photo n'apporte pas d'info utile en jeu à cette taille.
+    const isMobileTeamSVG = typeof window !== "undefined" && window.innerWidth < 900
     const cardHtml = renderPlayerCard(
       { ...p, _evolution_bonus: 0, stadiumBonus: false },
-      { width: CW, showStad: false, stadDef: null, role, extraNote, _cardOffset: 30, _forceStadColor: hasStadThisPhase }
+      { width: CW, showStad: false, stadDef: null, role, extraNote, _cardOffset: 30, _forceStadColor: hasStadThisPhase, compactSquare: isMobileTeamSVG, context: 'match' }
     )
-    const selStyle = isSelected ? `position:absolute;top:${30}px;left:0;width:${CW}px;height:${CH}px;outline:3px solid #FFD700;outline-offset:2px;border-radius:8px;pointer-events:none;` : ''
-    svg += `<foreignObject x="${fx - 2}" y="${fy - 30}" width="${CW + 8}" height="${CH + 60}" style="overflow:visible">
+    // La marge de 30px au-dessus de la carte sert au badge de bonus stade
+    // (non affiché en mode carré compact) : sans cette correction, elle
+    // poussait la carte hors du cadre visible du SVG pour la ligne la plus
+    // haute (attaquants), coupant le nom — bug remonté par testeur.
+    const topMargin = isMobileTeamSVG ? 0 : 30
+    const selTop     = isMobileTeamSVG ? 0 : 30
+    const selStyle = isSelected ? `position:absolute;top:${selTop}px;left:0;width:${CW}px;height:${CH}px;outline:3px solid #FFD700;outline-offset:2px;border-radius:8px;pointer-events:none;` : ''
+    svg += `<foreignObject x="${fx - 2}" y="${fy - topMargin}" width="${CW + 8}" height="${CH + topMargin + 30}" style="overflow:visible">
       <div xmlns="http://www.w3.org/1999/xhtml" style="position:relative">
         ${cardHtml}
         ${isSelected ? `<div style="${selStyle}"></div>` : ''}

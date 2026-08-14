@@ -403,7 +403,7 @@ async function openPendingRewardsPopup(state, toast, navigate) {
         return `<div style="width:56px;height:56px;border-radius:12px;background:rgba(212,160,23,0.15);display:flex;align-items:center;justify-content:center;font-size:28px;flex-shrink:0">💰</div>`
       }
       if (r.reward_type === 'card' && r.player) {
-        return `<div style="flex-shrink:0">${renderPlayerCard(r.player, { width: 56 })}</div>`
+        return `<div style="flex-shrink:0">${renderPlayerCard(r.player, { width: 56, context: 'accueil' })}</div>`
       }
       if (r.reward_type === 'booster') {
         const imgName = r.booster?.image_url || 'booster-players.png'
@@ -609,7 +609,7 @@ function biCardBlock(title, player, subLabel) {
   }
   return `<div class="bi-card-block">
     <div class="bi-card-title">${title}</div>
-    <div class="bi-card-visual">${renderPlayerCard(player, { width: 130 })}</div>
+    <div class="bi-card-visual">${renderPlayerCard(player, { width: 130, context: 'accueil' })}</div>
     ${subLabel ? `<div class="bi-card-sub">${subLabel}</div>` : ''}
   </div>`
 }

@@ -78,14 +78,14 @@ function renderCard(card, countBadge = '', copies = 1) {
       title="Fusionner les ${copies - 1} exemplaire(s) en trop">⬆️ Faire évoluer</button>` : ''
   return `<div style="position:relative;display:inline-block;cursor:pointer" data-card-id="${card.id}">
     ${badge}
-    ${renderPlayerCard(player, { width: 140 })}
+    ${renderPlayerCard(player, { width: 140, context: 'collection' })}
     ${evolveBtn}
   </div>`
 }
 // ── Rendu d'une carte joueur MANQUANTE (grisée, non possédée) ──
 function renderMissingCard(p) {
   return `<div style="display:inline-block;filter:grayscale(1);opacity:0.4">
-    ${renderPlayerCard(p, { width: 140 })}
+    ${renderPlayerCard(p, { width: 140, context: 'collection' })}
   </div>`
 }
 // ── Page principale ────────────────────────────────────────
@@ -1067,7 +1067,7 @@ async function openCardDetail(card, allPlayerCards, countByPlayer, ctx, opts = {
           // Carte joueur avec evolution_bonus propre à cet exemplaire
           const CARD_W    = 80
           const CARD_H    = Math.round(CARD_W * 657 / 507)
-          const cardHtml  = renderPlayerCard({ ...p, _evolution_bonus: cEvo }, { width: CARD_W })
+          const cardHtml  = renderPlayerCard({ ...p, _evolution_bonus: cEvo }, { width: CARD_W, context: 'collection' })
           return `
             <div class="exemplaire-row" data-card-id="${c.id}" data-card-idx="${i}"
               style="position:relative;cursor:${isForSale?'not-allowed':'pointer'};opacity:${isForSale?0.55:1};transition:transform .1s">
@@ -1143,7 +1143,7 @@ async function openCardDetail(card, allPlayerCards, countByPlayer, ctx, opts = {
     `<div style="display:flex;gap:16px;flex-wrap:wrap;justify-content:center">
 
       <!-- Carte visuelle -->
-      ${renderPlayerCard({ ...p, _evolution_bonus: evoCard }, { width: 160 })}
+      ${renderPlayerCard({ ...p, _evolution_bonus: evoCard }, { width: 160, context: 'collection' })}
 
 
       <!-- Infos -->

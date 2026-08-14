@@ -356,7 +356,7 @@ async function openManagerCardsModal(userId, pseudo, toast) {
     const forSale = c.is_for_sale
       ? `<div style="position:absolute;top:4px;right:4px;background:#D4A017;color:#111;font-size:9px;font-weight:800;padding:2px 6px;border-radius:8px;z-index:3">EN VENTE</div>`
       : ''
-    return `<div style="position:relative">${forSale}${renderPlayerCard(p, { width: 110 })}</div>`
+    return `<div style="position:relative">${forSale}${renderPlayerCard(p, { width: 110, context: 'admin' })}</div>`
   }).join(''))
 
   panes.formation = renderCardsGrid(byType.formation.map(c =>
@@ -405,7 +405,7 @@ async function openManagerCardsModal(userId, pseudo, toast) {
              : 'Aucun titulaire enregistré.'}
          </div>`
 
-    const mini = (c) => `<div style="position:relative">${renderPlayerCard(deckCardToPlayer(c), { width: 74 })}</div>`
+    const mini = (c) => `<div style="position:relative">${renderPlayerCard(deckCardToPlayer(c), { width: 74, context: 'admin' })}</div>`
 
     return `
       ${stadBanner}

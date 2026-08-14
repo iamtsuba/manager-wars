@@ -237,7 +237,7 @@ async function loadMarket(container, ctx) {
     const canAfford  = (state.profile.credits||0) >= l.price
     const owned      = ownedPlayerIds.has(p.id)
     const inDeck     = inDeckPlayerIds.has(p.id)
-    const cardHtml   = renderPlayerCard({ ...p, _evolution_bonus: evo }, { width: 140 })
+    const cardHtml   = renderPlayerCard({ ...p, _evolution_bonus: evo }, { width: 140, context: 'mercato' })
     // Bouton doré quand le joueur est DÉJÀ dans la collection : repère visuel
     // immédiat pour éviter d'acheter un doublon sans le vouloir.
     const btnStyle = owned

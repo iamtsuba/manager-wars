@@ -45,7 +45,7 @@ function renderCollectionCard(card) {
   const p = card.player
   if (!p) return ''
   const evo = card.evolution_bonus || 0
-  return renderPlayerCard({ ...p, _evolution_bonus: evo }, { width: 140 })
+  return renderPlayerCard({ ...p, _evolution_bonus: evo }, { width: 140, context: 'boosters' })
 }
 
 // ── Convertir un booster DB en format UI ─────────────────

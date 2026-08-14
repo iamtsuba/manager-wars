@@ -1045,7 +1045,7 @@ async function loadClubPlayers(clubId) {
   if (countEl) countEl.textContent = (players||[]).length
   if (!grid) return
   if (!players?.length) { grid.innerHTML = '<div style="color:var(--tile-fg-dim);padding:20px;font-size:13px">Aucun joueur dans ce club.</div>'; return }
-  grid.innerHTML = players.map(p => renderPlayerCard(p, { width: 100 })).join('')
+  grid.innerHTML = players.map(p => renderPlayerCard(p, { width: 100, context: 'admin' })).join('')
 }
 
 function openGenSquadPopup(club, helpers, container) {

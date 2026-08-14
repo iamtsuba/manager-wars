@@ -248,12 +248,12 @@ export async function openCardDesignEditor(helpers) {
       // juste à côté du chiffre, beaucoup plus simple à manier (retour
       // testeur : "je veux pouvoir mieux gérer la taille de la note").
       const fs = ax(mode === 'mobile' ? 48 : 58) * c.scale
-      const digits = String(78).length
+      const digits = String(130).length
       return { w: Math.round(digits * fs * 0.62), h: Math.round(fs * 1.15) }
     }
     if (key === 'note2') {
       const fs = ax(16) * c.scale
-      const digits = String(62).length
+      const digits = String(110).length
       return { w: Math.round(digits * fs * 0.62), h: Math.round(fs * 1.15) }
     }
     if (key === 'flag' || key === 'club') {
@@ -282,13 +282,45 @@ export async function openCardDesignEditor(helpers) {
   // doublon visuel exact (ex. "PSG" affiché deux fois, note secondaire
   // superposée à la vraie) — retour testeur confirmé. La boîte n'est donc
   // plus qu'une POIGNÉE : contour + étiquette courte, rien de plus.
-  const COMPONENT_TAG = {
-    name: 'NOM', photo: 'PHOTO', note: 'NOTE', note2: 'NOTE 2',
-    flag: 'PAYS', club: 'CLUB', stadium_badge: 'STADE',
-  }
+  // Chaque poignée affiche un VRAI aperçu, mais avec des valeurs
+  // d'EXEMPLE FIXES (130 / 110 / France / Marseille) — volontairement
+  // différentes des champs "Tester avec" juste à côté, pour qu'on ne
+  // confonde plus la poignée avec le vrai rendu identique en dessous
+  // (retour testeur : "j'ai eu un doublon visuel exact" la dernière fois).
+  const SAMPLE_NOTE = '130', SAMPLE_NOTE2 = '110'
+  const SAMPLE_FLAG_URL = flagUrlForEditor('FR')
+
   function componentPreviewHTML(key) {
-    return `<span style="font-size:9px;font-weight:900;color:#00e5ff;background:rgba(0,0,0,0.55);
-      padding:2px 5px;border-radius:4px;white-space:nowrap;pointer-events:none">${COMPONENT_TAG[key]||key}</span>`
+    const ratio = PREVIEW_W / 372
+    const ax = (n) => Math.round(n * ratio)
+
+    if (key === 'name') {
+      const namePadding = ax(mode === 'mobile' ? 10 : 18)
+      const availW = PREVIEW_W - namePadding * 2
+      const maxSize = ax(mode === 'mobile' ? 20 : 46) * components[mode].name.scale
+      const fs = autoFitNameSizeEditor('MANGALA', availW, maxSize, ax(9))
+      return `<span style="font-size:${fs}px;font-weight:900;color:#fff;white-space:nowrap;text-shadow:0 1px 3px #000">MANGALA</span>`
+    }
+    if (key === 'note') {
+      const fs = ax(mode === 'mobile' ? 48 : 58) * components[mode].note.scale
+      return `<span style="font-size:${fs}px;font-weight:900;color:#D4A017;text-shadow:0 1px 3px #000">${SAMPLE_NOTE}</span>`
+    }
+    if (key === 'note2') {
+      const fs = ax(16) * components[mode].note2.scale
+      return `<span style="font-size:${fs}px;font-weight:900;color:#e03030;text-shadow:0 1px 3px #000">${SAMPLE_NOTE2}</span>`
+    }
+    if (key === 'flag') {
+      return SAMPLE_FLAG_URL ? `<img src="${SAMPLE_FLAG_URL}" style="width:100%;height:100%;object-fit:fill;border-radius:3px">` : '🌍'
+    }
+    if (key === 'club') return `<div style="width:100%;height:100%;background:#2a9df4;border-radius:3px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:10px;font-weight:900;text-align:center;line-height:1.1">OM<br>MARSEILLE</div>`
+    if (key === 'photo') {
+      const url = getPortrait(testPlayer)
+      return url
+        ? `<img src="${url}" style="width:100%;height:100%;object-fit:cover;border-radius:3px">`
+        : `<div style="width:100%;height:100%;background:#333;border-radius:3px;display:flex;align-items:center;justify-content:center;font-size:20px">👤</div>`
+    }
+    if (key === 'stadium_badge') return stadiumBadgeSVG
+    return ''
   }
 
   function attachDragBoxes() {
@@ -360,7 +392,7 @@ export async function openCardDesignEditor(helpers) {
           const dist = Math.hypot(e.clientX - (rect.left + cx), e.clientY - (rect.top + cy))
           // Plafond ramené à 2x (3x provoquait un effet "ultra zoomé"
           // incontrôlable, notamment sur le nom — retour testeur).
-          c.scale = Math.max(0.3, Math.min(2, Math.round((origScale * (dist / Math.max(20, resizeStartDist))) * 100) / 100))
+          c.scale = Math.max(0.3, Math.min(4, Math.round((origScale * (dist / Math.max(20, resizeStartDist))) * 100) / 100))
           const { w, h } = boxSizeFor(key, c, wrapW, wrapH)
           box.style.width = w + 'px'; box.style.height = h + 'px'
           box.style.left = (c.x * wrapW - w / 2) + 'px'
@@ -391,7 +423,7 @@ export async function openCardDesignEditor(helpers) {
         } else if (resizing) {
           const { cx, cy } = centerPx(); const rect = wrap.getBoundingClientRect()
           const dist = Math.hypot(t.clientX-(rect.left+cx), t.clientY-(rect.top+cy))
-          c.scale = Math.max(0.3, Math.min(2, Math.round((origScale*(dist/Math.max(20,resizeStartDist)))*100)/100))
+          c.scale = Math.max(0.3, Math.min(4, Math.round((origScale*(dist/Math.max(20,resizeStartDist)))*100)/100))
         }
         const { w, h } = boxSizeFor(key, c, wrapW, wrapH)
         box.style.width = w+'px'; box.style.height = h+'px'

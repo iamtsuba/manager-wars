@@ -528,7 +528,7 @@ export function getClubLogo(p) {
 
 export function renderMiniCardHTML(p, w=44, h=58, stadDef=null) {
   // Délègue au nouveau composant universel
-  return renderPlayerCard(p, { width: w, showStad: !!stadDef, stadDef, used: p?.used })
+  return renderPlayerCard(p, { width: w, showStad: !!stadDef, stadDef, used: p?.used, context: 'match' })
 }
 
 
@@ -546,7 +546,7 @@ export function renderCardRow(players, accentColor, total, phase, formation) {
       else if (phase === 'defense' && (role === 'GK' || role === 'DEF' || role === 'MIL')) extraNote += 10
       else if (!phase) extraNote += 10
     }
-    html += renderPlayerCard({ ...p, _evolution_bonus: 0, evolution_bonus: 0 }, { width: 40, role, extraNote })
+    html += renderPlayerCard({ ...p, _evolution_bonus: 0, evolution_bonus: 0 }, { width: 40, role, extraNote, context: 'match' })
     if (i < shown.length - 1) {
       const next = shown[i+1]
       // N'affiche un lien coloré que si les 2 joueurs sont VRAIMENT adjacents
@@ -751,7 +751,7 @@ export function buildTeamSVG(team, formation, phase, selectedIds, W=310, H=310, 
     const isMobileTeamSVG = typeof window !== "undefined" && window.innerWidth < 900
     const cardHtml = renderPlayerCard(
       { ...p, _evolution_bonus: 0, stadiumBonus: false },
-      { width: CW, showStad: false, stadDef: null, role, extraNote, _cardOffset: 30, _forceStadColor: hasStadThisPhase, compactSquare: isMobileTeamSVG }
+      { width: CW, showStad: false, stadDef: null, role, extraNote, _cardOffset: 30, _forceStadColor: hasStadThisPhase, compactSquare: isMobileTeamSVG, context: 'match' }
     )
     // La marge de 30px au-dessus de la carte sert au badge de bonus stade
     // (non affiché en mode carré compact) : sans cette correction, elle

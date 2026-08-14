@@ -60,16 +60,15 @@ const TUTORIAL_SCRIPT = [
     bubble: { side: 'bottom', title: '👥 Tes équipes', text: 'Ici tu construis tes équipes. Chaque deck contient 11 joueurs en formation sur le terrain + 5 remplaçants.' },
   },
   {
-    type: 'spotlight',
-    selector: '#deck-field-wrap, .deck-field-wrap, [id*="field"], .formation-field',
-    fallbackSelector: '#page-content',
-    bubble: { side: 'right', title: '⚽ Le terrain', text: 'Ton terrain affiche ta formation. Chaque point sur le terrain est un joueur. Les lignes jaunes et vertes représentent les liens entre joueurs — plus de liens = plus de bonus !' },
+    // Si le joueur a déjà un deck → cliquer dessus pour ouvrir le terrain.
+    // Sinon → afficher un terrain pré-scripté avec des joueurs fictifs.
+    type: 'open_deck_or_demo',
+    bubble: { side: 'right', title: '⚽ Le terrain', text: 'Voici un aperçu d\'une formation. Chaque point est un joueur positionné sur le terrain. Les lignes entre les joueurs représentent les liens — plus de liens = plus de bonus de jeu !' },
   },
   {
     type: 'spotlight',
-    selector: '.formation-slot[style*="opacity"], [data-pos]',
-    fallbackSelector: '#page-content',
-    bubble: { side: 'top', title: '➕ Ajouter un joueur', text: 'Clique sur un emplacement vide (en grisé) pour choisir un joueur de ta collection à placer à ce poste.' },
+    selector: '#deck-field-wrap, .pitch-wrap, [id*="deck-field"], #page-content',
+    bubble: { side: 'top', title: '➕ Ajouter un joueur', text: 'Clique sur un emplacement vide (en grisé) pour choisir un joueur de ta collection à placer à ce poste. Ta formation commence à prendre vie !' },
   },
   {
     type: 'navigate',
@@ -245,15 +244,13 @@ async function runStep(idx) {
 
   // ── Spotlight ──
   if (step.type === 'spotlight') {
-    const bubble  = overlay.querySelector('#ittuto-bubble')
-    const modal   = overlay.querySelector('#ittuto-modal')
+    const modal = overlay.querySelector('#ittuto-modal')
     modal.style.display = 'none'
 
     const el = document.querySelector(step.selector)
       || (step.fallbackSelector && document.querySelector(step.fallbackSelector))
 
     if (!el) {
-      // Élément absent (page pas encore rendue, feature désactivée) → skip
       console.warn('[ITuto] sélecteur introuvable, skip :', step.selector)
       currentStep = idx + 1; runStep(currentStep); return
     }
@@ -261,24 +258,32 @@ async function runStep(idx) {
     el.scrollIntoView({ block: 'center', behavior: 'smooth' })
     await wait(200)
     const sp = spotlightElement(el)
-    const vw = window.innerWidth, vh = window.innerHeight
-
-    bubble.style.display = 'block'
-    overlay.querySelector('#ittuto-bubble-title').textContent = step.bubble?.title || ''
-    overlay.querySelector('#ittuto-bubble-text').textContent  = step.bubble?.text  || ''
-    overlay.querySelector('#ittuto-step-counter').textContent = stepCounter(idx)
-    positionBubble(sp, step.bubble?.side || 'bottom', vw, vh)
-
-    const nextBtn = overlay.querySelector('#ittuto-next-btn')
-    nextBtn.onclick = null
-    nextBtn.addEventListener('click', () => {
-      bubble.style.display = 'none'
-      currentStep = idx + 1; runStep(currentStep)
-    }, { once: true })
+    showBubble(step.bubble, sp, idx)
     return
   }
 
-  // ── wait_click : attend un clic réel sur l'élément ──
+  // ── open_deck_or_demo : ouvre le 1er deck existant, ou affiche un terrain démo ──
+  if (step.type === 'open_deck_or_demo') {
+    const firstDeck = document.querySelector('[data-open-deck]')
+    if (firstDeck) {
+      // Deck existant → cliquer pour ouvrir le terrain réel
+      overlay.style.pointerEvents = 'none'
+      firstDeck.click()
+      overlay.style.pointerEvents = 'all'
+      await wait(800)
+      const el = document.querySelector('#deck-field-wrap, .pitch-wrap, [id*="deck-field"], #page-content')
+      if (el) {
+        const sp = spotlightElement(el)
+        showBubble(step.bubble, sp, idx)
+      } else { currentStep = idx + 1; runStep(currentStep) }
+    } else {
+      // Aucun deck → afficher un terrain de démonstration en overlay
+      showDemoTerrain(step.bubble, idx)
+    }
+    return
+  }
+
+
   if (step.type === 'wait_click') {
     const el = document.querySelector(step.selector)
     if (!el) { currentStep = idx + 1; runStep(currentStep); return }
@@ -310,6 +315,121 @@ async function runStep(idx) {
     return
   }
 }
+
+function showBubble(bubbleCfg, sp, idx) {
+  const bubble = overlay.querySelector('#ittuto-bubble')
+  const modal  = overlay.querySelector('#ittuto-modal')
+  modal.style.display = 'none'
+  bubble.style.display = 'block'
+  overlay.querySelector('#ittuto-bubble-title').textContent = bubbleCfg?.title || ''
+  overlay.querySelector('#ittuto-bubble-text').textContent  = bubbleCfg?.text  || ''
+  overlay.querySelector('#ittuto-step-counter').textContent = stepCounter(idx)
+  const vw = window.innerWidth, vh = window.innerHeight
+  positionBubble(sp, bubbleCfg?.side || 'bottom', vw, vh)
+  const nextBtn = overlay.querySelector('#ittuto-next-btn')
+  nextBtn.style.display = ''
+  nextBtn.onclick = null
+  nextBtn.addEventListener('click', () => {
+    bubble.style.display = 'none'
+    currentStep = idx + 1; runStep(currentStep)
+  }, { once: true })
+}
+
+// Terrain de démonstration : affiché si le joueur n'a encore aucun deck.
+// Formation 4-3-3 pré-scriptée avec 11 joueurs fictifs plausibles, sur fond
+// vert, avec des points positionnés selon la formation réelle du jeu.
+function showDemoTerrain(bubbleCfg, idx) {
+  clearSpotlight()
+  const modal  = overlay.querySelector('#ittuto-modal')
+  const bubble = overlay.querySelector('#ittuto-bubble')
+  modal.style.display = 'none'
+  bubble.style.display = 'none'
+
+  const DEMO_PLAYERS = [
+    { pos: [50, 90],  name: 'BARTHEZ',    note: 74, job: 'GK',  flag: 'FR' },
+    { pos: [15, 72],  name: 'THURAM',     note: 82, job: 'DEF', flag: 'FR' },
+    { pos: [38, 72],  name: 'DESAILLY',   note: 78, job: 'DEF', flag: 'FR' },
+    { pos: [62, 72],  name: 'BLANC',      note: 80, job: 'DEF', flag: 'FR' },
+    { pos: [85, 72],  name: 'LIZARAZU',   note: 79, job: 'DEF', flag: 'FR' },
+    { pos: [22, 48],  name: 'VIEIRA',     note: 85, job: 'MIL', flag: 'FR' },
+    { pos: [50, 44],  name: 'DESCHAMPS',  note: 77, job: 'MIL', flag: 'FR' },
+    { pos: [78, 48],  name: 'PETIT',      note: 76, job: 'MIL', flag: 'FR' },
+    { pos: [20, 22],  name: 'WILTORD',    note: 80, job: 'ATT', flag: 'FR' },
+    { pos: [50, 18],  name: 'ZIDANE',     note: 96, job: 'ATT', flag: 'FR' },
+    { pos: [80, 22],  name: 'HENRY',      note: 93, job: 'ATT', flag: 'FR' },
+  ]
+  const JOB_COLOR = { GK: '#888', DEF: '#bb2020', MIL: '#D4A017', ATT: '#1A6B3C' }
+  const LINKS = [[0,1],[0,2],[0,3],[0,4],[1,5],[2,5],[2,6],[3,6],[3,7],[4,7],[5,8],[6,9],[7,10],[5,6],[6,7]]
+
+  const vw = window.innerWidth, vh = window.innerHeight
+  const W = Math.min(vw - 32, 360), H = Math.round(W * 1.05)
+  const left = (vw - W) / 2, top = (vh - H) / 2 - 20
+
+  const demo = document.createElement('div')
+  demo.id = 'ittuto-demo-terrain'
+  demo.style.cssText = `position:fixed;left:${left}px;top:${top}px;width:${W}px;height:${H}px;z-index:9805;border-radius:12px;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,0.6)`
+  demo.innerHTML = `
+    <svg width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg">
+      <!-- Fond terrain vert -->
+      <defs>
+        <linearGradient id="tg" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#1a5c28"/>
+          <stop offset="100%" stop-color="#0f3a18"/>
+        </linearGradient>
+      </defs>
+      <rect width="${W}" height="${H}" fill="url(#tg)"/>
+      <!-- Lignes du terrain -->
+      <rect x="${W*.08}" y="${H*.04}" width="${W*.84}" height="${H*.92}" rx="4" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="1.5"/>
+      <line x1="${W*.08}" y1="${H*.5}" x2="${W*.92}" y2="${H*.5}" stroke="rgba(255,255,255,0.15)" stroke-width="1"/>
+      <circle cx="${W*.5}" cy="${H*.5}" r="${W*.12}" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="1"/>
+      <!-- Liens entre joueurs -->
+      ${LINKS.map(([a,b]) => {
+        const pa = DEMO_PLAYERS[a], pb = DEMO_PLAYERS[b]
+        const x1 = W*pa.pos[0]/100, y1 = H*pa.pos[1]/100
+        const x2 = W*pb.pos[0]/100, y2 = H*pb.pos[1]/100
+        return `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="rgba(255,215,0,0.55)" stroke-width="1.5" stroke-dasharray="4,3"/>`
+      }).join('')}
+      <!-- Joueurs -->
+      ${DEMO_PLAYERS.map(p => {
+        const x = W*p.pos[0]/100, y = H*p.pos[1]/100, r = W*0.072
+        const c = JOB_COLOR[p.job]
+        const flag = `https://flagsapi.com/${p.flag}/flat/32.png`
+        const nameW = Math.min(p.name.length * 5.5, W*0.28)
+        const fs = Math.max(6, Math.min(9, Math.round(nameW*0.9/Math.max(p.name.length,1))))
+        return `
+          <circle cx="${x}" cy="${y}" r="${r}" fill="${c}" stroke="#fff" stroke-width="1.5"/>
+          <text x="${x}" y="${y+3.5}" text-anchor="middle" font-size="${r*0.62}" font-family="Arial Black,Arial" font-weight="900" fill="#fff">${p.note}</text>
+          <rect x="${x-r*0.85}" y="${y+r+2}" width="${r*1.7}" height="${r*0.75}" rx="3" fill="rgba(0,0,0,0.7)"/>
+          <text x="${x}" y="${y+r+2+r*0.55}" text-anchor="middle" font-size="${Math.max(5, r*0.42)}" font-family="Arial,sans-serif" font-weight="700" fill="#fff">${p.name}</text>
+        `
+      }).join('')}
+    </svg>`
+  overlay.appendChild(demo)
+
+  // Spotlight sur le terrain démo
+  const rect = demo.getBoundingClientRect()
+  const hole = overlay.querySelector('#ittuto-hole-rect')
+  hole.setAttribute('x', rect.left - 4); hole.setAttribute('y', rect.top - 4)
+  hole.setAttribute('width', rect.width + 8); hole.setAttribute('height', rect.height + 8)
+
+  bubble.style.display = 'block'
+  overlay.querySelector('#ittuto-bubble-title').textContent = bubbleCfg?.title || ''
+  overlay.querySelector('#ittuto-bubble-text').textContent  = bubbleCfg?.text  || ''
+  overlay.querySelector('#ittuto-step-counter').textContent = stepCounter(idx)
+  positionBubble({ x: rect.left-4, y: rect.top-4, w: rect.width+8, h: rect.height+8 },
+    'right', window.innerWidth, window.innerHeight)
+
+  const nextBtn = overlay.querySelector('#ittuto-next-btn')
+  nextBtn.style.display = ''
+  nextBtn.onclick = null
+  nextBtn.addEventListener('click', () => {
+    demo.remove()
+    bubble.style.display = 'none'
+    clearSpotlight()
+    currentStep = idx + 1; runStep(currentStep)
+  }, { once: true })
+}
+
 
 async function finishTutorial() {
   if (overlay) { overlay.remove(); overlay = null }

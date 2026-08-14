@@ -1423,6 +1423,9 @@ export async function renderStarterOnboarding(container, { state, navigate, toas
   if (prof) state.profile = prof
 
   let queue = Array.isArray(state.profile?.pending_boosters) ? [...state.profile.pending_boosters] : []
+  // Numérote les boosters Joueurs (1er/2e/3e/4e) une seule fois, à l'ouverture
+  // de la file — reste correct même une fois certains déjà ouverts/retirés.
+  { let n = 0; queue.forEach(q => { if (q.type === 'player') q._ordinal = ++n }) }
 
   // Rien à ouvrir → aller à l'accueil
   if (!queue.length) {
@@ -1448,12 +1451,28 @@ export async function renderStarterOnboarding(container, { state, navigate, toas
   // UNE ligne (retour Thomas : "un bouton par booster à ouvrir" — les 4
   // identiques n'ont pas besoin de 4 boutons séparés), les 3 autres types
   // restent chacun leur propre ligne.
-  const REWARD_GROUPS = [
-    { type: 'player',       label: '4 Boosters Joueurs',  icon: `${import.meta.env.BASE_URL}icons/booster-players.png` },
+  const ORDINALS = { 1: '1er', 2: '2e', 3: '3e', 4: '4e' }
+  const OTHER_TYPES = [
     { type: 'stadium',      label: 'Booster Stade',        icon: `${import.meta.env.BASE_URL}icons/booster-stade.png` },
     { type: 'formation',    label: 'Booster Formation',    icon: `${import.meta.env.BASE_URL}icons/booster-formation.png` },
     { type: 'game_changer', label: 'Booster Game Changer', icon: `${import.meta.env.BASE_URL}icons/booster-gamechanger.png` },
   ]
+  // Construit la liste des lignes à afficher À PARTIR de la file restante :
+  // un bouton par booster Joueurs (numéroté selon son ordre d'origine, même
+  // si des précédents ont déjà été ouverts et retirés), puis un par autre
+  // type encore en attente.
+  function buildRewardRows() {
+    const rows = []
+    queue.filter(q => q.type === 'player').forEach(q => {
+      rows.push({
+        type: 'player', queueItem: q,
+        label: `Ouvrir mon ${ORDINALS[q._ordinal] || q._ordinal+'e'} booster`,
+        icon: `${import.meta.env.BASE_URL}icons/booster-players.png`,
+      })
+    })
+    OTHER_TYPES.forEach(g => { if (queue.some(q => q.type === g.type)) rows.push({ type: g.type, label: g.label, icon: g.icon }) })
+    return rows
+  }
 
   async function fetchTutorialSteps() {
     const { data: rpcData, error: rpcErr } = await supabase.rpc('get_tutorial_steps')
@@ -1465,15 +1484,15 @@ export async function renderStarterOnboarding(container, { state, navigate, toas
 
   function renderRewardsList() {
     const tutoDone = !!state.profile.tutorial_done
-    const remaining = REWARD_GROUPS.filter(g => queue.some(q => q.type === g.type))
-    const doneCount = REWARD_GROUPS.length - remaining.length
+    const remaining = buildRewardRows()
+    const doneCount = total - remaining.length
 
     container.innerHTML = `
     <div class="page" style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(160deg,#0a3d1e,#063015);padding:24px">
       <div style="max-width:440px;width:100%;background:rgba(0,0,0,0.35);border:1px solid rgba(255,215,0,0.35);border-radius:16px;padding:20px;color:#fff">
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:2px">
           <span style="font-size:26px">🎁</span>
-          <h2 style="font-size:19px;font-weight:900;margin:0">Tes récompenses</h2>
+          <h2 style="font-size:19px;font-weight:900;margin:0">Premiers pas</h2>
         </div>
         <p style="font-size:12.5px;color:rgba(255,255,255,0.55);margin:0 0 16px">
           ${remaining.length} récompense${remaining.length>1?'s':''} à récupérer${!tutoDone ? ' — termine le tutoriel pour les débloquer' : ''}
@@ -1496,13 +1515,13 @@ export async function renderStarterOnboarding(container, { state, navigate, toas
           background:rgba(255,255,255,0.06);margin-bottom:10px;opacity:${tutoDone?'1':'0.45'}">
           <img src="${g.icon}" style="width:44px;height:44px;object-fit:contain;flex-shrink:0" onerror="this.style.display='none'">
           <div style="flex:1">
-            <div style="font-weight:800;font-size:14px">${g.label}</div>
+            <div style="font-weight:800;font-size:14px">${g.type === 'player' ? 'Booster Joueurs' : g.label}</div>
             <div style="font-size:11px;color:rgba(255,255,255,0.5)">${tutoDone ? 'Prêt à ouvrir' : 'Verrouillé'}</div>
           </div>
-          <button class="btn btn-sm reward-open-btn" data-type="${g.type}" ${tutoDone?'':'disabled'}
+          <button class="btn btn-sm reward-open-btn" data-type="${g.type}" data-ordinal="${g.queueItem?._ordinal||''}" ${tutoDone?'':'disabled'}
             style="background:${tutoDone?'#1A6B3C':'rgba(255,255,255,0.1)'};color:#fff;border:none;font-weight:700;
             cursor:${tutoDone?'pointer':'not-allowed'};white-space:nowrap">
-            ${tutoDone ? 'Ouvrir 🎉' : '🔒'}
+            ${tutoDone ? (g.type==='player' ? g.label : 'Ouvrir 🎉') : '🔒'}
           </button>
         </div>`).join('')}
 
@@ -1525,8 +1544,17 @@ export async function renderStarterOnboarding(container, { state, navigate, toas
       btn.addEventListener('click', () => {
         if (btn.disabled) return
         const type = btn.dataset.type
-        batchRemaining = queue.filter(q => q.type === type).length
-        openNext()
+        const ordinal = btn.dataset.ordinal ? Number(btn.dataset.ordinal) : null
+        // Un seul exemplaire par clic — identifié précisément (ordinal pour
+        // les boosters Joueurs, sinon le seul de son type), pas "tous ceux
+        // de ce type" : fonctionne quel que soit l'ordre de clic (1er, puis
+        // 3e, puis 2e...), pas seulement dans l'ordre 1→2→3→4.
+        const target = ordinal != null
+          ? queue.find(q => q.type === 'player' && q._ordinal === ordinal)
+          : queue.find(q => q.type === type)
+        if (!target) return
+        batchRemaining = 1
+        openNext(target)
       })
     })
   }
@@ -1537,7 +1565,7 @@ export async function renderStarterOnboarding(container, { state, navigate, toas
     await supabase.from('users').update({ pending_boosters: queue }).eq('id', state.user.id)
   }
 
-  async function openNext() {
+  async function openNext(target = null) {
     if (!queue.length) {
       // Terminé : plus rien à ouvrir
       await supabase.from('users')
@@ -1549,7 +1577,7 @@ export async function renderStarterOnboarding(container, { state, navigate, toas
       return
     }
 
-    const spec = queue[0]
+    const spec = target || queue[0]
     // Recharger le profil (first_booster_opened à jour pour la garantie GK)
     const { data: p } = await supabase.from('users').select('*').eq('id', state.user.id).single()
     if (p) state.profile = p
@@ -1583,8 +1611,10 @@ export async function renderStarterOnboarding(container, { state, navigate, toas
       return
     }
 
-    // Retirer ce booster de la file et persister
-    queue.shift()
+    // Retirer PRÉCISÉMENT ce booster de la file (où qu'il soit) — pas
+    // toujours le premier, puisqu'on peut cibler un exemplaire précis.
+    const removeIdx = queue.indexOf(spec)
+    if (removeIdx !== -1) queue.splice(removeIdx, 1)
     index++
     await persistQueue()
 
@@ -1595,17 +1625,16 @@ export async function renderStarterOnboarding(container, { state, navigate, toas
       ? { name: 'Booster Game Changer', type: 'game_changer', img: `${import.meta.env.BASE_URL}icons/booster-gamechanger.png` }
       : spec.type === 'stadium'
       ? { name: 'Booster Stade', type: 'stadium', img: `${import.meta.env.BASE_URL}icons/booster-stade.png` }
-      : { name: `Booster Joueurs (${index}/${total})`, type: 'player', img: (newPlayerBooster?.img) || `${import.meta.env.BASE_URL}icons/booster-players.png` }
+      : { name: `Booster Joueurs (${spec._ordinal||index}/4)`, type: 'player', img: (newPlayerBooster?.img) || `${import.meta.env.BASE_URL}icons/booster-players.png` }
 
     // Journaliser aussi les boosters de bienvenue (onboarding)
     logBoosterOpening(state.profile.id, fakeBooster, newCards)
 
     batchRemaining--
 
-    // Enchaîne automatiquement seulement DANS la limite du lot demandé
-    // (ex. les 4 boosters Joueurs cliqués ensemble) ; une fois le lot
-    // terminé, retour à la liste plutôt que d'ouvrir aussi les autres
-    // catégories sans y avoir été invité.
+    // Chaque clic n'ouvre qu'UN SEUL booster (batchRemaining=1) : retour à
+    // la liste juste après, plutôt que d'enchaîner sur les autres sans y
+    // avoir été invité.
     showBoosterAnimation(newCards, fakeBooster, navigate, () => {
       if (batchRemaining > 0 && queue.length) openNext()
       else if (queue.length) renderRewardsList()

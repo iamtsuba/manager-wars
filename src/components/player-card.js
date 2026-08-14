@@ -136,60 +136,46 @@ export function renderPlayerCard(p, opts = {}) {
 
     // Zones mesurées sur le gabarit mobile (372x372) :
     //   nom          : y = 0     → 15.5%
-    //   note énorme  : y = 15.5% → 42%
-    //   photo (bas)  : y = 42%   → 70%      x = 9%   → 91%
+    //   note (seule, plus de photo sur mobile) : y = 15.5% → 70%
     //   carrés       : y = 70%   → 84%
     //     pays       : x = 9.5%  → 35.2%
     //     note sec.  : x = 40.0% → 60.0%
     //     club       : x = 65.6% → 90.5%
-    const photoTop = ax(372 * 0.42)
-    const photoW   = ax(372 * 0.82)
-    const photoH   = ax(372 * (0.70 - 0.42))
     const noteTop  = ax(372 * 0.155)
-    const noteH    = ax(372 * (0.42 - 0.155))
+    const noteH    = ax(372 * (0.70 - 0.155))
     const squareTop  = ax(372 * 0.70)
     const zoneTopH   = ax(372 * (0.84 - 0.70))
     const zoneLX0 = ax(372*0.095), zoneLW0 = ax(372*(0.352-0.095))
     const zoneMX0 = ax(372*0.400), zoneMW0 = ax(372*(0.600-0.400))
     const zoneRX0 = ax(372*0.656), zoneRW0 = ax(372*(0.905-0.656))
-    // Vrai carré (voir commentaire équivalent en mode PC plus bas)
-    const squareH = Math.min(zoneTopH, zoneLW0, zoneMW0, zoneRW0)
+    // Le drapeau/logo doivent remplir tout le carré (retour testeur), donc
+    // dimension MAX (pas min) — même logique que le mode PC plus bas.
+    const squareH = Math.max(zoneTopH, zoneLW0, zoneMW0, zoneRW0)
     const zoneLX  = zoneLX0 + (zoneLW0 - squareH) / 2
     const zoneMX  = zoneMX0 + (zoneMW0 - squareH) / 2
     const zoneRX  = zoneRX0 + (zoneRW0 - squareH) / 2
     const zoneLW  = squareH, zoneMW = squareH, zoneRW = squareH
 
-    const silhouetteSVG = useSilhouette
-      ? generateSilhouetteSVG({
-          style: p.clubs?.kit_style, color1: p.clubs?.kit_color1, color2: p.clubs?.kit_color2,
-          color3: p.clubs?.kit_color3, shorts: p.clubs?.kit_shorts, socks: p.clubs?.kit_socks,
-        }, Math.round(photoW), p.id || p.firstname || 'sil')
-      : ''
-
     return `<div style="position:relative;width:${width}px;height:${height}px;flex-shrink:0;${opacity}user-select:none;${glowStyle}">
 
-    <!-- Fond rareté derrière photo/note -->
-    <div style="position:absolute;left:0;top:${ax(372*0.155)}px;width:100%;height:${ax(372*0.70)-ax(372*0.155)}px;background:${bgFill};z-index:1"></div>
-
-    <!-- Photo/silhouette : ancrée en BAS de sa zone (peut être rognée en haut) -->
-    ${faceUrl ? `<img src="${faceUrl}" style="position:absolute;top:${photoTop}px;left:50%;transform:translateX(-50%);
-      width:${photoW}px;height:${photoH}px;object-fit:cover;object-position:bottom center;z-index:2" onerror="this.style.display='none'">` : ''}
-    ${useSilhouette ? `<div style="position:absolute;top:${photoTop}px;left:50%;transform:translateX(-50%);width:${photoW}px;height:${photoH}px;overflow:hidden;z-index:2">
-      <div style="position:absolute;bottom:0;left:50%;transform:translateX(-50%)">${silhouetteSVG}</div>
-    </div>` : ''}
+    <!-- Fond rareté : occupe toute la zone (plus de photo sur mobile —
+         retour testeur : l'image face doit disparaître, la note prend sa
+         place), jusqu'au bas des carrés (couvre aussi l'espace entre eux) -->
+    <div style="position:absolute;left:0;top:${noteTop}px;width:100%;height:${(squareTop+zoneTopH)-noteTop}px;background:${bgFill};z-index:1"></div>
 
     <!-- Gabarit -->
     <img src="${tmpl}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:fill;z-index:3" draggable="false">
 
-    <!-- Nom -->
-    <div style="position:absolute;top:0;left:0;right:0;height:${ax(372*0.155)}px;z-index:4;display:flex;align-items:center;justify-content:center;padding:0 ${ax(10)}px">
+    <!-- Nom : descendu de quelques pixels -->
+    <div style="position:absolute;top:0;left:0;right:0;height:${ax(372*0.155)}px;z-index:4;display:flex;align-items:center;justify-content:center;padding:${ax(5)}px ${ax(10)}px 0">
       <span style="font-size:${fpx(20,11)};font-weight:900;color:#fff;line-height:1;text-shadow:0 2px 5px #000;font-family:Arial Black,Arial;
         overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${displayName}</span>
     </div>
 
-    <!-- Note principale : énorme, dominante -->
+    <!-- Note principale : occupe toute la zone libérée par la photo, mais
+         plus petite que lors du précédent réglage (retour testeur) -->
     <div style="position:absolute;left:0;top:${noteTop}px;width:100%;height:${noteH}px;z-index:4;display:flex;align-items:center;justify-content:center">
-      <span style="font-size:${fpx(66,26)};font-weight:900;color:${noteColor};font-family:Arial Black,Arial;line-height:1;text-shadow:0 2px 8px rgba(0,0,0,0.95)">${mainNote}</span>
+      <span style="font-size:${fpx(48,22)};font-weight:900;color:${noteColor};font-family:Arial Black,Arial;line-height:1;text-shadow:0 2px 8px rgba(0,0,0,0.95)">${mainNote}</span>
     </div>
 
     ${stadB > 0 ? `<div style="position:absolute;left:${zoneMX + zoneMW/2 - ax(16)}px;top:${squareTop - ax(14)}px;width:${ax(32)}px;height:${ax(32)}px;z-index:6">${stadiumBadgeSVG}</div>` : ''}
@@ -239,18 +225,19 @@ export function renderPlayerCard(p, opts = {}) {
       }, Math.round(photoW), p.id || p.firstname || 'sil')
     : ''
 
-  const noteRectTop = ax(574 * 0.63)
-  const noteRectH   = ax(574 * (0.775 - 0.63))
+  const noteRectTop = ax(574 * 0.60)
+  const noteRectH   = ax(574 * (0.775 - 0.60))
 
   const squareTop = ax(574 * 0.78)
   const zoneTopH  = ax(574 * (0.895 - 0.78))
   const zoneLX0 = ax(372*0.095), zoneLW0 = ax(372*(0.3226-0.095))
   const zoneRX0 = ax(372*0.6694), zoneRW0 = ax(372*(0.905-0.6694))
-  // Vrai carré : la zone mesurée n'est pas exactement carrée (largeur >
-  // hauteur), on prend donc la plus petite dimension et on centre dedans —
-  // sinon le drapeau/logo s'étire en rectangle (retour testeur confirmé
-  // sur le premier gabarit, même correctif nécessaire ici).
-  const squareH = Math.min(zoneTopH, zoneLW0)
+  // Le drapeau/logo doivent remplir tout le carré visible du gabarit (retour
+  // testeur : "trop petits") — on prend donc la plus GRANDE des deux
+  // dimensions mesurées (et non la plus petite comme avant), quitte à
+  // déborder très légèrement du contour dessiné plutôt que de laisser un
+  // espace vide visible autour de l'image.
+  const squareH = Math.max(zoneTopH, zoneLW0)
   const zoneLX  = zoneLX0 + (zoneLW0 - squareH) / 2
   const zoneRX  = zoneRX0 + (zoneRW0 - squareH) / 2
   const zoneLW  = squareH
@@ -259,8 +246,9 @@ export function renderPlayerCard(p, opts = {}) {
   return `<div style="position:relative;width:${width}px;height:${height}px;flex-shrink:0;${opacity}user-select:none;${glowStyle}">
   <div style="position:absolute;top:${opts._cardOffset||0}px;left:0;width:${width}px;height:${height}px">
 
-  <!-- Fond de la zone centrale, selon la rareté -->
-  <div style="position:absolute;left:0;top:${photoTop}px;width:100%;height:${(noteRectTop+noteRectH)-photoTop}px;background:${bgFill};z-index:1"></div>
+  <!-- Fond de la zone centrale, selon la rareté — étendu jusqu'au bas des
+       carrés pour que l'espace ENTRE les deux carrés soit aussi coloré -->
+  <div style="position:absolute;left:0;top:${photoTop}px;width:100%;height:${(squareTop+zoneTopH)-photoTop}px;background:${bgFill};z-index:1"></div>
 
   <!-- Portrait / silhouette -->
   ${faceUrl ? `<img src="${faceUrl}" style="position:absolute;top:${photoTop}px;left:50%;transform:translateX(-50%);
@@ -272,17 +260,17 @@ export function renderPlayerCard(p, opts = {}) {
   <!-- Gabarit -->
   <img src="${tmpl}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:fill;z-index:3" draggable="false">
 
-  <!-- Nom -->
-  <div style="position:absolute;top:0;left:0;right:0;height:${px(574*0.155)};z-index:4;display:flex;align-items:center;justify-content:center;padding:0 ${px(18)}">
+  <!-- Nom : descendu de quelques pixels (retour testeur) -->
+  <div style="position:absolute;top:0;left:0;right:0;height:${px(574*0.155)};z-index:4;display:flex;align-items:center;justify-content:center;padding:${px(6)} ${px(18)} 0">
     <span style="font-size:${fpx(nameFsN,12)};font-weight:900;color:#fff;line-height:1;text-shadow:0 2px 6px #000;font-family:Arial Black,Arial;
       overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:center">${displayName}</span>
   </div>
 
   ${stadB > 0 ? `<div style="position:absolute;left:${width/2 - ax(21)}px;top:${noteRectTop - ax(18)}px;width:${ax(42)}px;height:${ax(42)}px;z-index:6">${stadiumBadgeSVG}</div>` : ''}
 
-  <!-- Note principale : bande centrée, au-dessus des carrés -->
+  <!-- Note principale : bande plus haute et plus grande, sans encadré -->
   <div style="position:absolute;left:0;top:${noteRectTop}px;width:100%;height:${noteRectH}px;z-index:5;display:flex;flex-direction:column;align-items:center;justify-content:center">
-    <span style="font-size:${fpx(46,17)};font-weight:900;color:${noteColor};font-family:Arial Black,Arial;line-height:1;text-shadow:0 2px 6px rgba(0,0,0,0.9)">${mainNote}</span>
+    <span style="font-size:${fpx(58,20)};font-weight:900;color:${noteColor};font-family:Arial Black,Arial;line-height:1;text-shadow:0 2px 6px rgba(0,0,0,0.9)">${mainNote}</span>
     ${job2Note !== null ? `<span style="font-size:${fpx(16,9)};font-weight:900;color:${JOB_ACCENT[job2]||'#e03030'};font-family:Arial Black,Arial;line-height:1;margin-top:${px(2)}">${job2Note}</span>` : ''}
   </div>
 

@@ -200,9 +200,13 @@ export function renderPlayerCard(p, opts = {}) {
   // ── Carrés pays / club : remplissent tout leur emplacement (retour
   // testeur), la config pilote leur CENTRE et un facteur d'échelle sur la
   // taille de base déjà calculée pour "remplir le carré". ──
-  const squareBase = mode === 'mobile'
+  // ×1.3 : mes mesures pixel initiales du gabarit sous-estimaient la vraie
+  // taille du carré dessiné dans le cadre, laissant un espace visible
+  // entre le drapeau (qui remplit pourtant SA zone à 100%) et le cadre
+  // autour — retour testeur confirmé même hors cache (navigation privée).
+  const squareBase = (mode === 'mobile'
     ? Math.max(ax(372*(0.84-0.70)), ax(372*(0.352-0.095)))
-    : Math.max(ax(574*(0.895-0.78)), ax(372*(0.3226-0.095)))
+    : Math.max(ax(574*(0.895-0.78)), ax(372*(0.3226-0.095)))) * 1.3
   const flagBox = place('flag', squareBase, squareBase)
   const clubBox = place('club', squareBase, squareBase)
 

@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase.js'
 import { getTheme, setTheme } from '../app.js'
 import { getVolume, setVolume, playSound } from '../lib/sound.js'
 import { replayTutorial } from '../tutorial/tutorial.js'
+import { startTutorialV2 } from '../tutorial/tutorial-v2.js'
 
 export async function renderSettings(container, ctx) {
   const { state, navigate, toast } = ctx
@@ -164,7 +165,7 @@ export async function renderSettings(container, ctx) {
   })
 
   container.querySelector('#settings-tutorial')?.addEventListener('click', () => {
-    replayTutorial(state.profile, navigate, toast)
+    startTutorialV2(() => {})
   })
 
   container.querySelector('#settings-logout').addEventListener('click', async () => {

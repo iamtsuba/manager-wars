@@ -458,7 +458,7 @@ async function _renderPvpMatchCore(container, ctx, matchId, amIHome, myGC = [], 
         const sel  = chosen.find(x => x.cardId === p.cardId)
         const cardHtml = renderPlayerCard(
           { ...p, _evolution_bonus: 0 },
-          { width: 90, showStad: true, role, extraNote: p.boost || 0 }
+          { width: 90, showStad: true, role, extraNote: p.boost || 0, context: 'match' }
         )
         return `<div class="pp-item" data-cid="${p.cardId}"
           style="position:relative;border-radius:8px;${sel?'outline:3px solid #FFD700;outline-offset:2px;':''}cursor:pointer;flex-shrink:0;${p.used?'opacity:0.3;pointer-events:none':''}">

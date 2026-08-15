@@ -1,6 +1,6 @@
 import { supabase } from '../lib/supabase.js'
 import { renderPlayerCard } from '../components/player-card.js'
-import { FORMATION_LINKS, FORMATION_POSITIONS, computeLinks, linkColor, getActiveLinks } from '../match/formation-links.js'
+import { FORMATION_LINKS, FORMATION_POSITIONS, computeLinks, linkColor, getActiveLinks, computeSafeCardWidth } from '../match/formation-links.js'
 import { renderStadiumCard, renderFormationCard } from '../components/special-cards.js'
 import { getPortrait } from '../lib/portrait.js'
 import { ensureV2Chrome } from '../home/home2.js'
@@ -367,7 +367,7 @@ function renderBuilder(container, builder, ctx, isInitialRender = false) {
             ${subPlayers.map(card => {
               const p = { ...card.player, _evolution_bonus: card.evolution_bonus || 0 }
               return `<div style="position:relative;flex-shrink:0;overflow:visible;padding-bottom:24px">
-                ${renderPlayerCard({ ...p, _evolution_bonus: p._evolution_bonus||0 }, { width: 90, showStad: true, stadDef: _stadDef })}
+                ${renderPlayerCard({ ...p, _evolution_bonus: p._evolution_bonus||0 }, { width: 90, showStad: true, stadDef: _stadDef, context: 'formation' })}
                 <button data-remove-sub="${card.id}"
                   style="position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:20px;height:20px;background:#c0392b;border:none;border-radius:50%;color:#fff;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;padding:0;z-index:10">✕</button>
               </div>`
@@ -447,7 +447,7 @@ function renderBuilder(container, builder, ctx, isInitialRender = false) {
               ${subPlayers.map(card => {
                 const p = { ...card.player, _evolution_bonus: card.evolution_bonus || 0 }
                 return `<div style="position:relative;flex-shrink:0;overflow:visible;padding-bottom:20px">
-                  ${renderPlayerCard({ ...p, _evolution_bonus: p._evolution_bonus||0 }, { width: 44, showStad: true, stadDef: _stadDef })}
+                  ${renderPlayerCard({ ...p, _evolution_bonus: p._evolution_bonus||0 }, { width: 44, showStad: true, stadDef: _stadDef, context: 'formation' })}
                   <button data-remove-sub="${card.id}"
                     style="position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:16px;height:16px;background:#c0392b;border:none;border-radius:50%;color:#fff;font-size:9px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;padding:0;z-index:10">✕</button>
                 </div>`
@@ -646,7 +646,10 @@ function renderDeckField(container, builder, positions, ctx) {
   const availW = isDesktopRDF ? window.innerWidth - 280 : window.innerWidth - 20
   const W      = isDesktopRDF ? Math.min(availW, 860) : availW
   const H      = isDesktopRDF ? Math.round(W * 0.82)  : Math.round(W * 0.85)
-  const CARD_W = isDesktopRDF ? 84 : 44  // 70 * 1.2 = 84
+  const CARD_W = isDesktopRDF ? 84 : computeSafeCardWidth(builder.formation, W, H)
+  // 84 en PC ; en mobile : la plus grande taille possible SANS chevauchement
+  // pour la formation active (49-64px selon la densité, contre 49px fixe
+  // auparavant sur toutes les formations).
 
   // SVG des liens uniquement
   let linkSvg = ''
@@ -666,7 +669,7 @@ function renderDeckField(container, builder, positions, ctx) {
 
   // Cartes HTML
   let cardsHtml = ''
-  const CARD_H = Math.round(CARD_W * 657/507)
+  const CARD_H = isDesktopRDF ? Math.round(CARD_W * 574/372) : CARD_W  // PC : ratio du gabarit 574/372 ; mobile : carré (compactSquare)
   for (const pos of positions) {
     const fp = FPOS[pos]; if (!fp) continue
     const p = slots[pos]
@@ -686,7 +689,7 @@ function renderDeckField(container, builder, positions, ctx) {
       )
       const cardHtml = renderPlayerCard(
         { ...p, _evolution_bonus: p._evolution_bonus||0 },
-        { width: CARD_W, showStad: true, stadDef, role }
+        { width: CARD_W, showStad: true, stadDef, role, compactSquare: !isDesktopRDF, context: 'formation' }
       )
       const stadLogo = hasStad ? (stadDef.club?.logo_url || stadDef.image_url || null) : null
       const badgeSize = Math.round(CARD_W * (isDesktopRDF ? 0.578 : 0.34)) // PC : +70% (demande explicite)
@@ -914,7 +917,7 @@ async function openPlayerSelector(position, builder, container, ctx) {
         ${ownedCard ? `data-card-id="${ownedCard.id}"` : `data-wanted-player-id="${t.p.id}"`}
         ${wantedTag}
         style="cursor:pointer;${t.owned?'':'filter:grayscale(1) brightness(.6)'}">
-        ${renderPlayerCard(pc, { width: 100, showStad: true, stadDef: _stadDef, role })}
+        ${renderPlayerCard(pc, { width: 100, showStad: true, stadDef: _stadDef, role, compactSquare: typeof window!=='undefined' && window.innerWidth<900, context: 'selector' })}
         ${!t.owned ? `<div style="position:absolute;left:50%;bottom:4px;transform:translateX(-50%);z-index:7;white-space:nowrap;
           background:rgba(0,0,0,0.65);color:#fff;border-radius:999px;font-size:8.5px;font-weight:700;padding:2px 7px">+ Ajouter (à acheter)</div>` : ''}
       </div>
@@ -942,7 +945,7 @@ async function openPlayerSelector(position, builder, container, ctx) {
           : ''
         return `<div class="player-option" data-card-id="${c.id}" style="cursor:pointer;position:relative">
           ${badge}
-          ${renderPlayerCard(p, { width: 100, showStad: true, stadDef: _stadDef, role })}
+          ${renderPlayerCard(p, { width: 100, showStad: true, stadDef: _stadDef, role, compactSquare: typeof window!=='undefined' && window.innerWidth<900, context: 'selector' })}
         </div>`
       }).join('') + '</div>' : '<div style="text-align:center;color:var(--tile-fg-dim);padding:20px">Aucun joueur pour ce poste.<br><small>Ouvre des boosters !</small></div>'}
       </div>
@@ -1031,7 +1034,7 @@ function openSubSelector(builder, container, ctx) {
       ${available.length > 0 ? `<div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center">` + available.map(c => {
         const p = { ...c.player, _evolution_bonus: c.evolution_bonus||0 }
         return `<div class="player-option" data-card-id="${c.id}" style="cursor:pointer">
-          ${renderPlayerCard(p, { width: 100, showStad: true, stadDef: _selStadDef })}
+          ${renderPlayerCard(p, { width: 100, showStad: true, stadDef: _selStadDef, compactSquare: typeof window!=='undefined' && window.innerWidth<900, context: 'selector' })}
         </div>`
       }).join('') + '</div>' : '<div style="text-align:center;padding:20px;color:var(--tile-fg-dim)">Tous vos joueurs sont déjà utilisés.</div>'}
     </div>`,

@@ -7,6 +7,8 @@ import { loadActiveBoosters, drawCard, rollDropRate, recordBoosterClaim } from '
 import { playSound } from '../lib/sound.js'
 import { getPortrait } from '../lib/portrait.js'
 import { renderGCCard, renderStadiumCard, renderFormationCard } from '../components/special-cards.js'
+import { showTutorial, STEPS as TUTORIAL_FALLBACK_STEPS } from '../tutorial/tutorial.js'
+import { startTutorialV2 } from '../tutorial/tutorial-v2.js'
 
 // Toutes les formations disponibles (depuis formation-links.js)
 const ALL_FORMATIONS = () => Object.keys(FORMATION_POSITIONS)
@@ -45,7 +47,7 @@ function renderCollectionCard(card) {
   const p = card.player
   if (!p) return ''
   const evo = card.evolution_bonus || 0
-  return renderPlayerCard({ ...p, _evolution_bonus: evo }, { width: 140 })
+  return renderPlayerCard({ ...p, _evolution_bonus: evo }, { width: 140, context: 'boosters' })
 }
 
 // ── Convertir un booster DB en format UI ─────────────────
@@ -1422,6 +1424,9 @@ export async function renderStarterOnboarding(container, { state, navigate, toas
   if (prof) state.profile = prof
 
   let queue = Array.isArray(state.profile?.pending_boosters) ? [...state.profile.pending_boosters] : []
+  // Numérote les boosters Joueurs (1er/2e/3e/4e) une seule fois, à l'ouverture
+  // de la file — reste correct même une fois certains déjà ouverts/retirés.
+  { let n = 0; queue.forEach(q => { if (q.type === 'player') q._ordinal = ++n }) }
 
   // Rien à ouvrir → aller à l'accueil
   if (!queue.length) {
@@ -1441,38 +1446,129 @@ export async function renderStarterOnboarding(container, { state, navigate, toas
 
   const total = queue.length
   let index = 0
+  let batchRemaining = 0   // combien d'items encore à ouvrir avant de revenir à la liste
 
-  // Écran d'intro
-  container.innerHTML = `
-  <div class="page" style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(160deg,#0a3d1e,#063015);padding:24px">
-    <div style="max-width:420px;text-align:center;color:#fff">
-      <div style="font-size:56px;margin-bottom:10px">🎁</div>
-      <h2 style="font-size:24px;font-weight:900;margin-bottom:8px">Bienvenue ${state.profile.pseudo} !</h2>
-      <p style="font-size:14px;color:rgba(255,255,255,0.7);line-height:1.6;margin-bottom:8px">
-        Pour démarrer ton aventure, voici tes cadeaux :
-      </p>
-      <div style="font-size:14px;color:#FFD700;font-weight:700;line-height:1.8;margin-bottom:24px">
-        ⚽ 4 boosters de 5 joueurs<br>
-        ⚡ 1 booster Game Changer<br>
-        📋 1 booster Formation<br>
-        🏟️ 1 booster Stade
+  // Regroupement pour l'affichage : les 4 boosters Joueurs comptent comme
+  // UNE ligne (retour Thomas : "un bouton par booster à ouvrir" — les 4
+  // identiques n'ont pas besoin de 4 boutons séparés), les 3 autres types
+  // restent chacun leur propre ligne.
+  const ORDINALS = { 1: '1er', 2: '2e', 3: '3e', 4: '4e' }
+  const OTHER_TYPES = [
+    { type: 'stadium',      label: 'Booster Stade',        icon: `${import.meta.env.BASE_URL}icons/booster-stade.png` },
+    { type: 'formation',    label: 'Booster Formation',    icon: `${import.meta.env.BASE_URL}icons/booster-formation.png` },
+    { type: 'game_changer', label: 'Booster Game Changer', icon: `${import.meta.env.BASE_URL}icons/booster-gamechanger.png` },
+  ]
+  // Construit la liste des lignes à afficher À PARTIR de la file restante :
+  // un bouton par booster Joueurs (numéroté selon son ordre d'origine, même
+  // si des précédents ont déjà été ouverts et retirés), puis un par autre
+  // type encore en attente.
+  function buildRewardRows() {
+    const rows = []
+    queue.filter(q => q.type === 'player').forEach(q => {
+      rows.push({
+        type: 'player', queueItem: q,
+        label: `Ouvrir mon ${ORDINALS[q._ordinal] || q._ordinal+'e'} booster`,
+        icon: `${import.meta.env.BASE_URL}icons/booster-players.png`,
+      })
+    })
+    OTHER_TYPES.forEach(g => { if (queue.some(q => q.type === g.type)) rows.push({ type: g.type, label: g.label, icon: g.icon }) })
+    return rows
+  }
+
+  async function fetchTutorialSteps() {
+    const { data: rpcData, error: rpcErr } = await supabase.rpc('get_tutorial_steps')
+    if (!rpcErr && rpcData?.length > 0) return rpcData.map(s => ({ emoji: s.emoji, title: s.title, color: s.color, content: s.content, image_url: s.image_url || null }))
+    const { data: directData } = await supabase.from('tutorial_steps').select('*').eq('is_active', true).order('step_order')
+    if (directData?.length > 0) return directData.map(s => ({ emoji: s.emoji, title: s.title, color: s.color, content: s.content, image_url: s.image_url || null }))
+    return null   // showTutorial retombe sur ses étapes locales par défaut si null n'est pas géré ; on gère ce cas à l'appel
+  }
+
+  function renderRewardsList() {
+    const tutoDone = !!state.profile.tutorial_done
+    const remaining = buildRewardRows()
+    const doneCount = total - remaining.length
+
+    container.innerHTML = `
+    <div class="page" style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(160deg,#0a3d1e,#063015);padding:24px">
+      <div style="max-width:440px;width:100%;background:rgba(0,0,0,0.35);border:1px solid rgba(255,215,0,0.35);border-radius:16px;padding:20px;color:#fff">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:2px">
+          <span style="font-size:26px">🎁</span>
+          <h2 style="font-size:19px;font-weight:900;margin:0">Premiers pas</h2>
+        </div>
+        <p style="font-size:12.5px;color:rgba(255,255,255,0.55);margin:0 0 16px">
+          ${remaining.length} récompense${remaining.length>1?'s':''} à récupérer${!tutoDone ? ' — termine le tutoriel pour les débloquer' : ''}
+        </p>
+
+        <div id="reward-row-tuto" style="display:flex;align-items:center;gap:12px;padding:12px;border-radius:12px;
+          background:rgba(255,255,255,0.06);margin-bottom:10px">
+          <div style="width:44px;height:44px;border-radius:10px;background:rgba(255,215,0,0.15);display:flex;align-items:center;justify-content:center;font-size:22px">🎓</div>
+          <div style="flex:1">
+            <div style="font-weight:800;font-size:14px">Tutoriel</div>
+            <div style="font-size:11px;color:rgba(255,255,255,0.5)">${tutoDone ? 'Terminé ✅' : 'À faire pour débloquer tes boosters'}</div>
+          </div>
+          <button class="btn btn-sm" id="btn-do-tutorial" style="background:${tutoDone?'rgba(255,255,255,0.12)':'#1A6B3C'};color:#fff;border:none;font-weight:700;white-space:nowrap">
+            ${tutoDone ? 'Revoir' : 'Faire le tutoriel'}
+          </button>
+        </div>
+
+        ${remaining.map(g => `
+        <div style="display:flex;align-items:center;gap:12px;padding:12px;border-radius:12px;
+          background:rgba(255,255,255,0.06);margin-bottom:10px;opacity:${tutoDone?'1':'0.45'}">
+          <img src="${g.icon}" style="width:44px;height:44px;object-fit:contain;flex-shrink:0" onerror="this.style.display='none'">
+          <div style="flex:1">
+            <div style="font-weight:800;font-size:14px">${g.type === 'player' ? 'Booster Joueurs' : g.label}</div>
+            <div style="font-size:11px;color:rgba(255,255,255,0.5)">${tutoDone ? 'Prêt à ouvrir' : 'Verrouillé'}</div>
+          </div>
+          <button class="btn btn-sm reward-open-btn" data-type="${g.type}" data-ordinal="${g.queueItem?._ordinal||''}" ${tutoDone?'':'disabled'}
+            style="background:${tutoDone?'#1A6B3C':'rgba(255,255,255,0.1)'};color:#fff;border:none;font-weight:700;
+            cursor:${tutoDone?'pointer':'not-allowed'};white-space:nowrap">
+            ${tutoDone ? (g.type==='player' ? g.label : 'Ouvrir 🎉') : '🔒'}
+          </button>
+        </div>`).join('')}
+
+        ${doneCount > 0 ? `<div style="font-size:11px;color:rgba(255,255,255,0.4);text-align:center;margin-top:4px">${doneCount} déjà récupérée${doneCount>1?'s':''} ✅</div>` : ''}
       </div>
-      <p style="font-size:13px;color:rgba(255,255,255,0.55);margin-bottom:24px">
-        Ouvre-les un par un pour découvrir tes cartes !
-      </p>
-      <button class="btn btn-primary" id="onboard-start" style="width:100%;font-size:16px;padding:14px;text-align:center;display:flex;align-items:center;justify-content:center">
-        Ouvrir mon 1er booster 🎉
-      </button>
-    </div>
-  </div>`
+    </div>`
+
+    document.getElementById('btn-do-tutorial')?.addEventListener('click', async () => {
+      const steps = await fetchTutorialSteps()
+      startTutorialV2(async () => {
+        await supabase.from('users').update({ tutorial_done: true }).eq('id', state.user.id)
+        if (refreshProfile) await refreshProfile()
+        const { data: p } = await supabase.from('users').select('*').eq('id', state.user.id).single()
+        if (p) state.profile = p
+        renderRewardsList()
+      })
+    })
+
+    container.querySelectorAll('.reward-open-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        if (btn.disabled) return
+        const type = btn.dataset.type
+        const ordinal = btn.dataset.ordinal ? Number(btn.dataset.ordinal) : null
+        // Un seul exemplaire par clic — identifié précisément (ordinal pour
+        // les boosters Joueurs, sinon le seul de son type), pas "tous ceux
+        // de ce type" : fonctionne quel que soit l'ordre de clic (1er, puis
+        // 3e, puis 2e...), pas seulement dans l'ordre 1→2→3→4.
+        const target = ordinal != null
+          ? queue.find(q => q.type === 'player' && q._ordinal === ordinal)
+          : queue.find(q => q.type === type)
+        if (!target) return
+        batchRemaining = 1
+        openNext(target)
+      })
+    })
+  }
+
+  renderRewardsList()
 
   const persistQueue = async () => {
     await supabase.from('users').update({ pending_boosters: queue }).eq('id', state.user.id)
   }
 
-  async function openNext() {
-    if (index >= total || !queue.length) {
-      // Terminé
+  async function openNext(target = null) {
+    if (!queue.length) {
+      // Terminé : plus rien à ouvrir
       await supabase.from('users')
         .update({ pending_boosters: [], onboarding_done: true })
         .eq('id', state.user.id)
@@ -1482,7 +1578,7 @@ export async function renderStarterOnboarding(container, { state, navigate, toas
       return
     }
 
-    const spec = queue[0]
+    const spec = target || queue[0]
     // Recharger le profil (first_booster_opened à jour pour la garantie GK)
     const { data: p } = await supabase.from('users').select('*').eq('id', state.user.id).single()
     if (p) state.profile = p
@@ -1516,8 +1612,10 @@ export async function renderStarterOnboarding(container, { state, navigate, toas
       return
     }
 
-    // Retirer ce booster de la file et persister
-    queue.shift()
+    // Retirer PRÉCISÉMENT ce booster de la file (où qu'il soit) — pas
+    // toujours le premier, puisqu'on peut cibler un exemplaire précis.
+    const removeIdx = queue.indexOf(spec)
+    if (removeIdx !== -1) queue.splice(removeIdx, 1)
     index++
     await persistQueue()
 
@@ -1528,16 +1626,22 @@ export async function renderStarterOnboarding(container, { state, navigate, toas
       ? { name: 'Booster Game Changer', type: 'game_changer', img: `${import.meta.env.BASE_URL}icons/booster-gamechanger.png` }
       : spec.type === 'stadium'
       ? { name: 'Booster Stade', type: 'stadium', img: `${import.meta.env.BASE_URL}icons/booster-stade.png` }
-      : { name: `Booster Joueurs (${index}/${total})`, type: 'player', img: (newPlayerBooster?.img) || `${import.meta.env.BASE_URL}icons/booster-players.png` }
+      : { name: `Booster Joueurs (${spec._ordinal||index}/4)`, type: 'player', img: (newPlayerBooster?.img) || `${import.meta.env.BASE_URL}icons/booster-players.png` }
 
     // Journaliser aussi les boosters de bienvenue (onboarding)
     logBoosterOpening(state.profile.id, fakeBooster, newCards)
 
-    // Lancer l'animation, puis enchaîner au booster suivant
-    showBoosterAnimation(newCards, fakeBooster, navigate, () => { openNext() })
-  }
+    batchRemaining--
 
-  document.getElementById('onboard-start')?.addEventListener('click', () => openNext())
+    // Chaque clic n'ouvre qu'UN SEUL booster (batchRemaining=1) : retour à
+    // la liste juste après, plutôt que d'enchaîner sur les autres sans y
+    // avoir été invité.
+    showBoosterAnimation(newCards, fakeBooster, navigate, () => {
+      if (batchRemaining > 0 && queue.length) openNext()
+      else if (queue.length) renderRewardsList()
+      else openNext()   // file vide -> déclenche le flux "Terminé" ci-dessus
+    })
+  }
 }
 
 // Garantit qu'au moins un GK figure dans le booster : remplace la 1ère carte par un GK.

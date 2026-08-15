@@ -450,12 +450,15 @@ export async function pageClubs(container, helpers) {
 async function loadClubs(container, helpers) {
   const [{ data, error }, { data: playerCounts }] = await Promise.all([
     supabase.from('clubs').select('*').order('real_name'),
-    supabase.from('players').select('club_id'),
+    // RPC dédiée (GROUP BY côté base) : une ligne par CLUB, jamais concernée
+    // par le plafond PostgREST de 1000 lignes qui affectait l'ancienne
+    // requête (SELECT club_id sur TOUS les joueurs, une ligne par joueur).
+    supabase.rpc('admin_get_player_counts_by_club'),
   ])
   if (error) { container.innerHTML = `<p style="color:red">${error.message}</p>`; return }
   clubs = data || []
   const countMap = {}
-  ;(playerCounts || []).forEach(p => { countMap[p.club_id] = (countMap[p.club_id] || 0) + 1 })
+  ;(playerCounts || []).forEach(row => { countMap[row.club_id] = Number(row.nb_players) || 0 })
   renderClubs(container, helpers, countMap)
 }
 
@@ -1042,7 +1045,7 @@ async function loadClubPlayers(clubId) {
   if (countEl) countEl.textContent = (players||[]).length
   if (!grid) return
   if (!players?.length) { grid.innerHTML = '<div style="color:var(--tile-fg-dim);padding:20px;font-size:13px">Aucun joueur dans ce club.</div>'; return }
-  grid.innerHTML = players.map(p => renderPlayerCard(p, { width: 100 })).join('')
+  grid.innerHTML = players.map(p => renderPlayerCard(p, { width: 100, context: 'admin' })).join('')
 }
 
 function openGenSquadPopup(club, helpers, container) {

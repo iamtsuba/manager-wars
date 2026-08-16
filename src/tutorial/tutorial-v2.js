@@ -1,171 +1,125 @@
 /**
  * tutorial-v2.js — Tutoriel interactif Manager Wars
- * Données 100% fictives (Ligue 1 1999-2000, clubs français)
- * Interface identique à la vraie app (mêmes classes CSS, icônes, header/footer)
+ *
+ * Principe : réutilise les VRAIES fonctions de rendu du jeu (renderCollection,
+ * openDeckBuilder, renderBoosters, renderMarket, renderHome2) en substituant
+ * juste profile.id par un compte "démo" permanent (voir migration
+ * migration_tutorial_demo_account.sql) pré-rempli avec des joueurs réels de
+ * la base 1999-2000. Rendu garanti 100% identique au jeu réel, aujourd'hui
+ * et pour toujours (aucune duplication de markup à maintenir en double).
+ *
+ * Les vrais onglets de nav (déjà liés à la vraie fonction navigate() de
+ * app.js) sont désactivés (pointer-events:none) pendant le tuto pour éviter
+ * qu'un clic dessus ne fasse fuir l'utilisateur vers une vraie page.
  */
-import { renderPlayerCard } from '../components/player-card.js'
-import { renderGCCard, renderFormationCard, renderStadiumCard } from '../components/special-cards.js'
+import { renderCollection } from '../collection/collection.js'
+import { openDeckBuilder } from '../decks/decks.js'
+import { renderBoosters, showBoosterAnimation } from '../boosters/boosters.js'
+import { renderMarket } from '../market/market.js'
+import { renderHome2, ensureV2Chrome } from '../home/home2.js'
 import { buildTeamSVG } from '../match/match-shared.js'
 import { renderMilRow } from '../match/match-engine.js'
-import { showBoosterAnimation } from '../boosters/boosters.js'
 import { supabase } from '../lib/supabase.js'
 
-const BASE = (typeof import.meta !== 'undefined' && import.meta.env?.BASE_URL) || '/'
-const ICON = BASE + 'icons/'
-
-// ═══════════════════════════════════════════════════════════════════════
-// JOUEURS RÉELS — extraits de la base players (saison 1999-2000, clubs FR)
-// evolution_bonus forcé à 0 partout (évite le bug note+bonus déjà corrigé)
-// ═══════════════════════════════════════════════════════════════════════
-function mkP(id, first, sur, job, job2, nG, nD, nM, nA, rarity, flag, clubName) {
-  return {
-    id, firstname: first, surname_real: sur, job, job2,
-    note_g: nG, note_d: nD, note_m: nM, note_a: nA,
-    rarity, country_code: flag, club_id: clubName,
-    clubs: { encoded_name: clubName, logo_url: null },
-    evolution_bonus: 0, _evolution_bonus: 0, face: null,
-  }
-}
-
-// Équipe cohérente autour de Monaco (GK+2DEF+2MIL+2ATT dispo) + Lille
-// (2DEF+1MIL) pour bien illustrer les liens de club dans le tuto.
-const P = {
-  barthez:   mkP('10dfdba1-5793-47b5-99f7-f72c1bbc60df','Fabien','Barthez',   'GK',  null, 17,0,0,0,   'normal','FR','MONACO'),
-  djetou:    mkP('470568c5-a79f-44f9-bd96-27fe73415e20','Martin','Djetou',    'DEF', null, 0,15,0,0,   'normal','FR','MONACO'),
-  sagnol:    mkP('b43818be-80c6-468b-b81d-d1b02f9dc11b','Willy','Sagnol',     'DEF', null, 0,13,0,0,   'normal','FR','MONACO'),
-  girard:    mkP('ba5aa9cf-73b2-4846-8c09-008ee6ef4db9','Ming','Girard',      'DEF', null, 0,20,0,0,   'papyte','FR','LILLE'),
-  bruno:     mkP('8696cf6c-3162-4e2e-b66e-36331dae148e','James','Bruno',      'DEF', null, 0,15,0,0,   'papyte','FR','LILLE'),
-  lamouchi:  mkP('e9481065-766c-4e65-aeaf-3c23215babe0','Sabri','Lamouchi',   'MIL', null, 0,0,15,0,   'normal','FR','MONACO'),
-  legwinski: mkP('0fe9f0be-3215-4634-9df2-ecb39cb23e2f','Sylvain','Legwinski','MIL', null, 0,0,14,0,   'normal','FR','MONACO'),
-  bianchi:   mkP('7cbd6088-3b6e-40ac-9f79-23be6a4b288a','Noah','Bianchi',     'MIL', 'DEF',0,13,15,0,   'normal','FR','LILLE'),
-  trezeguet: mkP('17ebe089-7d5a-44fe-bc51-5a51dc0a22bc','David','Trezeguet', 'ATT', null, 0,0,0,16,    'normal','FR','MONACO'),
-  giuly:     mkP('78181125-55e0-4241-b929-419b5c7feb56','Ludovic','Giuly',    'ATT', null, 0,0,0,16,    'normal','FR','MONACO'),
-  boukhris:  mkP('fd6bb2ab-ee46-4c28-80e9-d359622c71b2','Rayan','Boukhris',   'ATT', null, 0,0,0,20,    'normal','FR','CAPITALE SG'),
-  pires:     mkP('f675e51a-2cdc-4b44-bbc1-7c76cddfa519','Robert','Pires',    'MIL', null, 0,0,17,0,    'normal','FR','OLYMPIC PHOCEENS'),
-  // Adversaire IA : générique, non lié à un vrai joueur de la base
-  ai1: mkP('ai1','Marco','ROSSI','MIL', null, 0,0,16,0, 'normal','IT','GEN'),
-  ai2: mkP('ai2','Luis','GOMEZ', 'MIL', null, 0,0,14,0, 'normal','ES','GEN'),
-  ai3: mkP('ai3','Hans','MULLER','MIL', null, 0,0,15,0, 'normal','DE','GEN'),
-}
-
-const TEAM = {
-  GK:  [P.barthez],
-  DEF: [P.djetou, P.sagnol, P.girard, P.bruno],
-  MIL: [P.lamouchi, null, P.legwinski],   // slot MIL2 vide pour l'étape formation
-  ATT: [P.trezeguet, P.giuly, P.boukhris],
-}
-const TEAM_FULL = {
-  GK:  [P.barthez],
-  DEF: [P.djetou, P.sagnol, P.girard, P.bruno],
-  MIL: [P.lamouchi, P.bianchi, P.legwinski],
-  ATT: [P.trezeguet, P.giuly, P.boukhris],
-}
-
-const BOOSTER_CARDS = [
-  { id:'bc1', card_type:'player', evolution_bonus:0, player: P.girard },
-  { id:'bc2', card_type:'player', evolution_bonus:0, player: P.trezeguet },
-  { id:'bc3', card_type:'player', evolution_bonus:0, player: P.bianchi },
-  { id:'bc4', card_type:'player', evolution_bonus:0, player: P.djetou },
-  { id:'bc5', card_type:'player', evolution_bonus:0, player: P.pires },
-]
-
-// ═══════════════════════════════════════════════════════════════════════
-// MOTEUR
-// ═══════════════════════════════════════════════════════════════════════
+const DEMO_ID = '00000000-0000-4000-8000-000000000001'
+const ICON = (typeof import.meta !== 'undefined' && import.meta.env?.BASE_URL || '/') + 'icons/'
 const isMobile = () => window.innerWidth < 900
-const cw = () => isMobile() ? 100 : 150
+const wait = ms => new Promise(r => setTimeout(r, ms))
 
-let ov = null
+let ov = null            // overlay tutoriel (bulle + spotlight, PAS le contenu)
+let realCtx = null       // ctx réel (pour restaurer l'état + toast/modal réels)
+let fakeCtx = null       // ctx factice (profil démo, navigate neutralisé)
 let onDone = null
+let _idx = 0
 
-export function startTutorialV2(done) {
+export function startTutorialV2(ctxOrCallback, maybeCallback) {
   if (ov) return
-  onDone = done
-  _idx = 0
+  // Compat avec les deux signatures d'appel existantes :
+  //   startTutorialV2(ctx, done)  — nouvel usage, préféré
+  //   startTutorialV2(done)       — ancien usage (ctx réel indisponible)
+  if (typeof ctxOrCallback === 'function') {
+    realCtx = null
+    onDone = ctxOrCallback
+  } else {
+    realCtx = ctxOrCallback
+    onDone = maybeCallback
+  }
+
+  fakeCtx = {
+    state: { profile: { id: DEMO_ID, pseudo: 'Démo', credits: 999999 }, params: {} },
+    navigate: () => {},   // neutralisé : la navigation réelle romprait le tuto
+    toast: (msg) => console.log('[Tuto]', msg),
+    openModal: realCtx?.openModal || (() => {}),
+    closeModal: realCtx?.closeModal || (() => {}),
+    refreshProfile: async () => {},
+  }
+
+  _lockRealNav(true)
   _buildOv()
-  _run(0)
+  _idx = 0
+  STEPS[0]()
+}
+
+// Empêche les vrais onglets de nav / crédits / réglages de réagir aux clics
+// pendant le tuto (ils restent déjà liés à la vraie fonction navigate()).
+function _lockRealNav(lock) {
+  document.querySelectorAll('.home2-chrome-tab, #home2-chrome-credits, #home2-chrome-settings-btn, #home2-mobtop-credits, #home2-mobtop-settings-btn')
+    .forEach(el => { el.style.pointerEvents = lock ? 'none' : '' })
 }
 
 function _buildOv() {
-  if (ov) ov.remove()
   ov = document.createElement('div')
   ov.id = 'tv2'
-  // z-index plus haut que tout (nav fixée à 500, modales à 1000)
-  ov.style.cssText = 'position:fixed;inset:0;z-index:9700;background:#0d1f14;overflow:hidden;display:flex;flex-direction:column'
+  // Ne couvre QUE la zone de contenu (sous le header / au-dessus du bottom
+  // nav) — le vrai header/nav reste visible EN DESSOUS, à travers ce trou,
+  // pour un rendu pixel-identique au jeu réel.
+  const topH = isMobile() ? 62 : 72
+  const botH = isMobile() ? 66 : 0
+  ov.style.cssText = `position:fixed;left:0;right:0;top:${topH}px;bottom:${botH}px;z-index:490;overflow:hidden`
   ov.innerHTML = `
-    <div id="tv2-topbar" style="flex-shrink:0;background:#05080a;border-bottom:1px solid rgba(255,255,255,0.1);
-      display:flex;align-items:center;justify-content:space-between;padding:0 16px;height:${isMobile()?'50':'56'}px;position:relative;z-index:9730">
-      <img src="${ICON}logo-withname.png" style="height:${isMobile()?'38':'44'}px;object-fit:contain" onerror="this.style.display='none'">
-      <div style="display:flex;align-items:center;gap:8px">
-        <div style="background:rgba(255,215,0,0.12);border:1px solid rgba(255,215,0,0.3);border-radius:20px;padding:5px 14px;font-size:${isMobile()?'12':'14'}px;font-weight:800;color:#D4A017">💰 1 839 440</div>
-        <div style="background:rgba(255,255,255,0.08);border-radius:20px;padding:5px 12px;font-size:14px">⚙️</div>
-      </div>
-      <button id="tv2-skip" style="position:absolute;top:50%;right:${isMobile()?'8':'70'}px;transform:translateY(-50%);
-        background:rgba(255,255,255,0.12);color:#fff;border:1px solid rgba(255,255,255,0.25);border-radius:8px;
-        padding:5px 12px;font-size:11px;font-weight:700;cursor:pointer;z-index:9731">✕ Passer le tuto</button>
-    </div>
-
-    <div id="tv2-screen" style="flex:1;overflow-y:auto;position:relative;z-index:9710;padding-bottom:${isMobile()?'65':'16'}px"></div>
-
-    <!-- Bottom nav identique à la vraie app -->
-    <div id="tv2-botnav" style="flex-shrink:0;background:#05080a;border-top:1px solid rgba(255,255,255,0.1);
-      display:${isMobile()?'flex':'none'};align-items:stretch;justify-content:space-around;
-      padding:8px 4px calc(8px + env(safe-area-inset-bottom,0px));position:relative;z-index:9730">
-      ${['ACCUEIL|home2|nav-home.png','CARTES|cards|nav-collection.png','EQUIPES|decks|nav-decks.png',
-         'BOUTIQUE|boosters|nav-boosters.png','MERCATO|market|nav-market.png'].map(s => {
-        const [label,key,icon] = s.split('|')
-        return `<div class="tv2-tab" data-key="${key}" style="flex:1;display:flex;flex-direction:column;align-items:center;
-          justify-content:center;gap:2px;padding:4px 2px;border-radius:10px;font-size:9px;font-weight:700;
-          color:rgba(255,255,255,0.4);cursor:default">
-          <img src="${ICON}${icon}" style="width:26px;height:26px;object-fit:contain;opacity:0.5"
-            onerror="this.style.display='none';this.nextSibling.style.display='block'">
-          <span style="display:none;font-size:20px">⚽</span>
-          ${label}
-        </div>`
-      }).join('')}
-    </div>
-
-    <!-- Overlay bulle : z-index au-dessus de tout sauf le bouton skip -->
-    <div id="tv2-dim" style="position:absolute;inset:0;z-index:9720;background:rgba(0,0,0,0);display:none;pointer-events:none"></div>
-    <div id="tv2-bub" style="position:absolute;z-index:9740;display:none;max-width:${isMobile()?Math.round(window.innerWidth*0.9)+'px':'340px'};
-      background:#fff;border-radius:16px;box-shadow:0 8px 40px rgba(0,0,0,0.5);padding:16px 18px;pointer-events:auto"></div>
-
-    <div id="tv2-prog" style="position:absolute;bottom:${isMobile()?'65':'0'}px;left:0;right:0;height:3px;z-index:9731;background:rgba(255,255,255,0.08)">
-      <div id="tv2-progbar" style="height:100%;background:#1A6B3C;transition:width .4s ease;width:0%"></div>
-    </div>`
-
+    <div id="tv2-content" style="position:absolute;inset:0;overflow-y:auto;background:var(--page-bg,#0d1f14)"></div>
+  `
   document.body.appendChild(ov)
-  ov.querySelector('#tv2-skip').addEventListener('click', _finish)
+
+  // Bouton "Passer le tuto" + barre de progression + bulle/dim : TOUS dans
+  // le calque le plus haut (z-index 9800), au-dessus même d'une vraie
+  // modale (#modal-overlay, z-index 1000) qui pourrait s'ouvrir pendant le
+  // tuto (ex. détail d'une carte cliquée en étape 2).
+  const chrome = document.createElement('div')
+  chrome.id = 'tv2-chrome'
+  chrome.style.cssText = 'position:fixed;inset:0;z-index:9800;pointer-events:none'
+  chrome.innerHTML = `
+    <button id="tv2-skip" style="position:absolute;top:${isMobile()?'8px':'12px'};right:${isMobile()?'8px':'70px'};
+      pointer-events:auto;background:rgba(0,0,0,0.55);color:#fff;border:1px solid rgba(255,255,255,0.3);
+      border-radius:8px;padding:5px 12px;font-size:11px;font-weight:700;cursor:pointer;z-index:9801">✕ Passer le tuto</button>
+    <div style="position:absolute;bottom:${isMobile()?'62px':'0'};left:0;right:0;height:3px;background:rgba(0,0,0,0.2)">
+      <div id="tv2-progbar" style="height:100%;background:#1A6B3C;transition:width .4s ease;width:0%"></div>
+    </div>
+    <div id="tv2-dim" style="position:absolute;inset:0;display:none;pointer-events:none"></div>
+    <div id="tv2-bub" style="position:absolute;display:none;pointer-events:auto;
+      max-width:${isMobile()?Math.round(window.innerWidth*0.88)+'px':'340px'};background:#fff;border-radius:16px;
+      box-shadow:0 8px 40px rgba(0,0,0,0.5);padding:16px 18px"></div>`
+  document.body.appendChild(chrome)
+  chrome.querySelector('#tv2-skip').addEventListener('click', finish)
 }
 
-function setNav(activeKey) {
-  ov.querySelectorAll('.tv2-tab').forEach(t => {
-    const on = t.dataset.key === activeKey
-    t.style.color = on ? '#D4A017' : 'rgba(255,255,255,0.4)'
-    const img = t.querySelector('img')
-    if (img) img.style.opacity = on ? '1' : '0.5'
-  })
+function content() { return ov.querySelector('#tv2-content') }
+
+function setProgress(i) { const bar = document.getElementById('tv2-progbar'); if (bar) bar.style.width = Math.round(i/(STEPS.length-1)*100) + '%' }
+
+function clearBubble() {
+  document.getElementById('tv2-bub').style.display = 'none'
+  document.getElementById('tv2-dim').style.display = 'none'
+  document.getElementById('tv2-dim').innerHTML = ''
+  document.getElementById('tv2-dim').style.pointerEvents = 'none'
 }
 
-function setScreen(html, navKey) {
-  ov.querySelector('#tv2-screen').innerHTML = `<div style="padding:${isMobile()?'16px 16px 8px':'24px'};color:#fff">${html}</div>`
-  if (navKey) setNav(navKey)
-  // Réinitialiser la bulle
-  ov.querySelector('#tv2-bub').style.display = 'none'
-  ov.querySelector('#tv2-dim').style.display = 'none'
-  ov.querySelector('#tv2-dim').innerHTML = ''
-  ov.querySelector('#tv2-dim').style.pointerEvents = 'none'
-}
-
-function setProgress(i, total) {
-  ov.querySelector('#tv2-progbar').style.width = Math.round(i/total*100) + '%'
-}
-
-// Affiche une bulle positionnée sur un sélecteur du tv2-screen
-// Si targetSel est null → bulle centrée à l'écran
-function showBubble({ title, text, targetSel, side='bottom', btnLabel='Suivant →', onNext, isAction=false }) {
-  const bub = ov.querySelector('#tv2-bub')
-  const dim = ov.querySelector('#tv2-dim')
+// Positionne la bulle À CÔTÉ du spotlight (jamais par-dessus) — calcule
+// l'espace disponible dans les 4 directions et choisit la meilleure.
+function showBubble({ title, text, targetSel, container = null, btnLabel = 'Suivant →', onNext, isAction = false, preferSide = null }) {
+  const bub = document.getElementById('tv2-bub')
+  const dim = document.getElementById('tv2-dim')
+  const vw = window.innerWidth, vh = window.innerHeight
 
   bub.innerHTML = `
     <div style="font-weight:900;font-size:${isMobile()?'14':'15'}px;color:#1a1a2e;margin-bottom:8px">${title}</div>
@@ -176,436 +130,343 @@ function showBubble({ title, text, targetSel, side='bottom', btnLabel='Suivant �
           border-radius:10px;padding:9px 20px;font-size:13px;font-weight:800;cursor:pointer">${btnLabel}</button>
          <div style="clear:both"></div>`}`
 
-  const BW = isMobile() ? Math.round(window.innerWidth * 0.88) : 340
+  const BW = isMobile() ? Math.round(vw * 0.88) : 340
   bub.style.width = BW + 'px'
 
-  const vw = window.innerWidth, vh = window.innerHeight
+  const searchRoot = container || ov
+  const el = targetSel ? searchRoot.querySelector(targetSel) : null
 
-  if (targetSel) {
-    const el = ov.querySelector(targetSel)
-    if (el) {
-      const r = el.getBoundingClientRect()
-      // Spotlight via box-shadow sur un div positionné
-      dim.style.display = 'block'
-      dim.style.pointerEvents = 'none'
-      dim.style.background = 'rgba(0,0,0,0)'
-      dim.innerHTML = `<div style="position:absolute;left:${r.left-5}px;top:${r.top-5}px;
-        width:${r.width+10}px;height:${r.height+10}px;border-radius:12px;
-        box-shadow:0 0 0 4000px rgba(0,0,0,0.65);z-index:9721;pointer-events:none"></div>`
-
-      const BH = 180
-      let bl, bt
-      if (side === 'bottom') { bt = r.bottom + 10; bl = r.left + r.width/2 - BW/2 }
-      else if (side === 'top') { bt = r.top - BH - 10; bl = r.left + r.width/2 - BW/2 }
-      else if (side === 'right') { bt = r.top + r.height/2 - BH/2; bl = r.right + 10 }
-      else { bt = r.top + r.height/2 - BH/2; bl = r.left - BW - 10 }
-      bl = Math.max(8, Math.min(bl, vw - BW - 8))
-      bt = Math.max(8, Math.min(bt, vh - 200))
-      bub.style.left = bl + 'px'; bub.style.top = bt + 'px'
-      bub.style.removeProperty('transform')
-    }
-  } else {
-    // Bulle centrée
+  if (el) {
+    const r = el.getBoundingClientRect()
     dim.style.display = 'block'
     dim.style.pointerEvents = 'none'
-    dim.style.background = 'rgba(0,0,0,0)'
-    dim.innerHTML = ''
-    bub.style.left = '50%'; bub.style.top = '50%'
-    bub.style.transform = 'translate(-50%,-50%)'
+    dim.innerHTML = `<div style="position:absolute;left:${r.left-5}px;top:${r.top-5}px;
+      width:${r.width+10}px;height:${r.height+10}px;border-radius:12px;
+      box-shadow:0 0 0 4000px rgba(0,0,0,0.62);z-index:21;pointer-events:none"></div>`
+
+    // Espace disponible dans chaque direction (dans la fenêtre, en tenant
+    // compte du header réel en haut) → on choisit celle qui a le plus de place.
+    const BH = 170
+    const spaceBottom = vh - r.bottom, spaceTop = r.top
+    const spaceRight = vw - r.right, spaceLeft = r.left
+    const sides = { bottom: spaceBottom, top: spaceTop, right: spaceRight, left: spaceLeft }
+    const side = preferSide && sides[preferSide] > (isMobile() ? BH : 100) ? preferSide
+      : Object.entries(sides).sort((a,b)=>b[1]-a[1])[0][0]
+
+    let bl, bt
+    if (side === 'bottom')      { bt = r.bottom + 10;              bl = r.left + r.width/2 - BW/2 }
+    else if (side === 'top')    { bt = r.top - BH - 10;             bl = r.left + r.width/2 - BW/2 }
+    else if (side === 'right')  { bt = r.top + r.height/2 - BH/2;   bl = r.right + 10 }
+    else                        { bt = r.top + r.height/2 - BH/2;   bl = r.left - BW - 10 }
+
+    bl = Math.max(8, Math.min(bl, vw - BW - 8))
+    bt = Math.max(8, Math.min(bt, vh - 160))
+    bub.style.left = bl + 'px'; bub.style.top = bt + 'px'
+    bub.style.removeProperty('transform')
+
+    el.scrollIntoView?.({ block: 'center', behavior: 'smooth' })
+  } else {
+    dim.style.display = 'block'; dim.innerHTML = ''
+    bub.style.left = '50%'; bub.style.top = '50%'; bub.style.transform = 'translate(-50%,-50%)'
   }
 
   bub.style.display = 'block'
 
   if (!isAction) {
-    const btn = bub.querySelector('#tv2-next')
-    btn?.addEventListener('click', () => {
-      bub.style.display = 'none'
-      dim.style.display = 'none'
-      dim.innerHTML = ''
-      onNext?.()
+    bub.querySelector('#tv2-next')?.addEventListener('click', () => { clearBubble(); onNext?.() }, { once: true })
+  } else if (el) {
+    const doIt = () => { clearBubble(); onNext?.() }
+    el.style.cursor = 'pointer'
+    el.addEventListener('click', doIt, { once: true })
+    dim.style.pointerEvents = 'auto'
+    dim.addEventListener('click', (e) => {
+      const r2 = el.getBoundingClientRect()
+      if (e.clientX>=r2.left && e.clientX<=r2.right && e.clientY>=r2.top && e.clientY<=r2.bottom) doIt()
     }, { once: true })
-  } else {
-    // Mode action : rend l'élément cliquable à travers la dim
-    if (targetSel) {
-      const el = ov.querySelector(targetSel)
-      if (el) {
-        // Le dim absorbe les clics; on détecte si c'est dans la zone de l'élément
-        const doClick = (e) => {
-          const r = el.getBoundingClientRect()
-          if (e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom) {
-            bub.style.display = 'none'
-            dim.style.display = 'none'
-            dim.innerHTML = ''
-            onNext?.()
-          }
-        }
-        dim.style.pointerEvents = 'auto'
-        dim.addEventListener('click', doClick, { once: true })
-        // Aussi écouter directement sur l'élément
-        el.style.cursor = 'pointer'
-        el.addEventListener('click', () => {
-          bub.style.display = 'none'
-          dim.style.display = 'none'
-          dim.innerHTML = ''
-          onNext?.()
-        }, { once: true })
-      }
-    }
   }
 }
 
-function wait(ms) { return new Promise(r => setTimeout(r, ms)) }
-
 // ═══════════════════════════════════════════════════════════════════════
-// SÉQUENCES — une fonction par chapitre
+// SÉQUENCE
 // ═══════════════════════════════════════════════════════════════════════
-
-let _idx = 0
-const TOTAL = 20  // nombre d'étapes au total pour la barre de progression
-
-function next() { setProgress(++_idx, TOTAL); STEPS[_idx]?.() }
-
 const STEPS = []
-let _si = 0
 function step(fn) { STEPS.push(fn) }
+function next() { _idx++; setProgress(_idx); STEPS[_idx]?.() }
 
-// ── 0 : Intro ───────────────────────────────────────────────────────
+// ── 0 : Intro ──────────────────────────────────────────────────────────
 step(() => {
-  setScreen(`
-    <div style="display:flex;flex-direction:column;align-items:center;text-align:center;gap:16px;min-height:60vh;justify-content:center">
-      <div style="font-size:${isMobile()?'52':'72'}px">⚽</div>
-      <h1 style="font-size:${isMobile()?'20':'26'}px;font-weight:900;margin:0">Bienvenue dans Manager Wars !</h1>
-      <p style="font-size:${isMobile()?'13':'15'}px;color:rgba(255,255,255,0.65);max-width:380px;line-height:1.6;margin:0">
-        Ce tutoriel te guide à travers toutes les mécaniques du jeu en quelques minutes.
-      </p>
-    </div>`)
-  showBubble({ title:'🏆 Tutoriel Manager Wars', text:'Tu vas découvrir :\n📌 La collection de cartes\n⚽ La formation\n🎁 Les boosters\n🏪 Le Mercato\n⚔️ Comment gagner un match !', btnLabel:"C'est parti !", onNext: next })
+  content().innerHTML = `<div style="display:flex;flex-direction:column;align-items:center;text-align:center;
+    gap:16px;min-height:100%;justify-content:center;padding:24px;color:#fff">
+    <div style="font-size:${isMobile()?'52':'72'}px">⚽</div>
+    <h1 style="font-size:${isMobile()?'20':'26'}px;font-weight:900;margin:0">Bienvenue dans Manager Wars !</h1>
+    <p style="font-size:${isMobile()?'13':'15'}px;color:rgba(255,255,255,0.65);max-width:380px;line-height:1.6;margin:0">
+      Ce tutoriel te fait visiter le jeu tel qu'il est vraiment. Suis le guide !
+    </p>
+  </div>`
+  clearBubble()
+  showBubble({ title:'🏆 Tutoriel Manager Wars', text:"Tu vas découvrir la collection, la formation, les boosters, le mercato et un match complet — avec les vrais écrans du jeu.", btnLabel:"C'est parti !", onNext: next })
 })
 
-// ── 1 : Collection liste ────────────────────────────────────────────
-step(() => {
-  const players = [P.barthez, P.djetou, P.girard, P.bianchi, P.trezeguet, P.giuly, P.boukhris]
-  const mainCard = P.girard
-  setScreen(`
-    <h2 style="font-size:${isMobile()?'17':'21'}px;margin:0 0 14px;font-weight:900">🃏 Ma collection</h2>
-    <div id="tv2-colrow" style="display:flex;gap:${isMobile()?'6':'10'}px;overflow-x:auto;padding-bottom:12px;-webkit-overflow-scrolling:touch">
-      ${players.map(p => {
-        const isMain = p.id === mainCard.id
-        return `<div style="flex-shrink:0;${isMain?'transform:scale(1.08);transform-origin:top;z-index:2;position:relative':'opacity:0.55'}"
-          id="${isMain?'tv2-main-card':''}">${renderPlayerCard(p,{width: isMain?(isMobile()?120:160):cw()*0.7,context:'collection'})}</div>`
-      }).join('')}
+// ── 1 : Collection réelle (compte démo) ──────────────────────────────────
+step(async () => {
+  clearBubble()
+  await renderCollection(content(), fakeCtx)
+  await wait(300)
+  const grid = content().querySelector('#col-grid')
+  showBubble({ title:'🃏 Ta collection', text:"Voici toutes tes cartes joueurs. Glisse horizontalement pour les parcourir — chaque carte affiche le nom, la note, le pays et le club du joueur.", targetSel:'#col-grid', container: content(), preferSide:'bottom', onNext: next })
+})
+
+// ── 2 : Clic sur une carte (interactions réelles) ────────────────────────
+step(async () => {
+  clearBubble()
+  await wait(100)
+  const firstCard = content().querySelector('[data-card-id], .col-mini-item, #col-grid > div')
+  if (!firstCard) { next(); return }
+  showBubble({ title:'👆 Clique sur une carte', text:"Clique sur n'importe quelle carte pour voir les actions possibles : vente rapide, mise en vente sur le Mercato, ou évolution avec des doublons.", targetSel:'[data-card-id], .col-mini-item, #col-grid > div', container: content(), isAction:true, btnLabel:'Clique sur une carte !', onNext: () => {
+    // La vraie modale de détail (vente/mercato/évolution) s'ouvre. On laisse
+    // le temps au DOM de se mettre à jour, on explique, PUIS on la referme
+    // nous-mêmes avant de continuer (sinon elle resterait ouverte par-dessus
+    // la suite du tuto).
+    wait(500).then(() => {
+      showBubble({ title:'💰 Actions sur la carte', text:"Vente rapide, Mercato, Évolution : tu retrouves ici toutes les actions possibles sur cette carte. On les détaillera plus tard — pour l'instant, continuons la visite.", onNext: () => { fakeCtx.closeModal(); next() } })
+    })
+  }})
+})
+
+// ── 3 : Filtres de collection ────────────────────────────────────────────
+step(async () => {
+  clearBubble()
+  const tabBar = content().querySelector('.col-tab-btn')?.parentElement
+  if (!tabBar) { next(); return }
+  showBubble({ title:'🔍 Filtrer ta collection', text:"Ces onglets filtrent par type de carte : Joueurs, Formations, Game Changers, Stades. Pratique pour retrouver rapidement ce que tu cherches !", targetSel:'.col-tab-btn', container: content(), preferSide:'bottom', onNext: next })
+})
+
+// ── 4 : Formation réelle (deck démo, vrai openDeckBuilder) ───────────────
+step(async () => {
+  clearBubble()
+  const { data: deck } = await supabase.from('decks').select('id').eq('owner_id', DEMO_ID).eq('name','France 98').maybeSingle()
+  if (!deck) { next(); return }
+  await openDeckBuilder(deck.id, content(), fakeCtx)
+  await wait(400)
+  const field = content().querySelector('[id*="field"], .pitch-wrap, svg')
+  showBubble({ title:'⚽ Ta formation', text:"Voici le terrain de ton deck. Chaque cercle est un joueur positionné selon la formation choisie. Le poste grisé au milieu n'a pas encore de titulaire !", targetSel:'[id*="field"], .pitch-wrap, svg', container: content(), preferSide:'right', onNext: next })
+})
+
+// ── 5 : Remplir le slot vide (vrai sélecteur de joueur) ──────────────────
+step(async () => {
+  clearBubble()
+  await wait(150)
+  const emptySlot = [...content().querySelectorAll('[data-pos]')].find(el => {
+    const style = el.getAttribute('style') || ''
+    return style.includes('opacity:0.35') || style.includes('opacity: 0.35') || el.querySelector('[style*="opacity:0.35"]')
+  }) || content().querySelector('[data-pos="MIL2"]')
+  if (!emptySlot) { next(); return }
+  showBubble({ title:'➕ Complète ta formation', text:"Clique sur l'emplacement vide pour choisir un joueur de ta collection à placer à ce poste.", targetSel:'[data-pos="MIL2"]', container: content(), isAction:true, btnLabel:'Clique sur le slot vide !', onNext: () => {
+    wait(500).then(() => showBubble({ title:'✅ Choisis un joueur', text:"Une liste de joueurs de ta collection s'affiche. Sélectionnes-en un pour l'ajouter à ta formation — la formation se met à jour instantanément !", onNext: next }))
+  }})
+})
+
+// ── 6 : Liens de formation ────────────────────────────────────────────────
+step(async () => {
+  clearBubble()
+  content().innerHTML = `<div style="padding:${isMobile()?'16px':'24px'};color:#fff">
+    <h2 style="font-size:${isMobile()?'17':'21'}px;margin:0 0 14px;font-weight:900">🔗 Les liens dans ta formation</h2>
+    <div style="display:flex;flex-direction:column;gap:10px;max-width:420px">
+      <div id="tv2-l-pays" style="padding:14px;border-radius:12px;background:rgba(255,215,0,0.08);border:1px solid rgba(255,215,0,0.25)">🇫🇷 <b>Lien Pays +5 pts</b><br><span style="font-size:12px;color:rgba(255,255,255,0.6)">2 joueurs de même nationalité côte à côte sur le terrain</span></div>
+      <div id="tv2-l-club" style="padding:14px;border-radius:12px;background:rgba(212,160,23,0.08);border:1px solid rgba(212,160,23,0.2)">🛡️ <b>Lien Club +5 pts</b><br><span style="font-size:12px;color:rgba(255,255,255,0.6)">2 coéquipiers du même club côte à côte</span></div>
+      <div id="tv2-l-stad" style="padding:14px;border-radius:12px;background:rgba(79,195,247,0.08);border:1px solid rgba(79,195,247,0.2)">🏟️ <b>Bonus Stade +10 pts</b><br><span style="font-size:12px;color:rgba(255,255,255,0.6)">joueur de la nationalité/club du stade équipé</span></div>
     </div>
-    <p style="font-size:11px;color:rgba(255,255,255,0.35);margin:4px 0 0">← Glisse pour parcourir ta collection</p>`, 'cards')
-  wait(150).then(() => showBubble({ title:'🃏 Ta collection', text:'Ici tu trouves toutes tes cartes.\n\nLa carte GIRARD est entourée en argent : c\'est une carte Papyte, une rareté puissante avec des joueurs d\'exception !', targetSel:'#tv2-main-card', side:'bottom', onNext: next }))
-})
-
-// ── 2-6 : Détails de la carte ────────────────────────────────────────
-step(() => {
-  const p = P.bianchi
-  const w = isMobile() ? 140 : 200
-  setScreen(`
-    <h2 style="font-size:${isMobile()?'17':'21'}px;margin:0 0 14px;font-weight:900">🃏 Détails d'une carte</h2>
-    <div style="display:flex;${isMobile()?'flex-direction:column;align-items:center':'gap:28px;align-items:flex-start'}">
-      <div style="flex-shrink:0">${renderPlayerCard(p,{width:w,context:'collection'})}</div>
-      <div style="flex:1;display:flex;flex-direction:column;gap:8px;${isMobile()?'width:100%;margin-top:12px':''}">
-        <div id="tv2-d-nom"   style="padding:10px 14px;border-radius:10px;background:rgba(255,255,255,0.06)"><b>📛 Nom :</b> ${p.surname_real}</div>
-        <div id="tv2-d-note"  style="padding:10px 14px;border-radius:10px;background:rgba(255,255,255,0.06)"><b>🔢 Note principale :</b> ${p.note_m} (MIL)</div>
-        <div id="tv2-d-note2" style="padding:10px 14px;border-radius:10px;background:rgba(212,160,23,0.1);border:1px solid rgba(212,160,23,0.25)"><b>🔸 Note secondaire :</b> ${p.note_d} (DEF) — peut jouer 2 postes !</div>
-        <div id="tv2-d-flag"  style="padding:10px 14px;border-radius:10px;background:rgba(255,255,255,0.06)"><b>🇫🇷 Pays :</b> France → liens de nationalité +5 pts</div>
-        <div id="tv2-d-club"  style="padding:10px 14px;border-radius:10px;background:rgba(255,255,255,0.06)"><b>🛡️ Club :</b> LILLE → liens de club +5 pts avec coéquipiers</div>
-      </div>
-    </div>`, 'cards')
+  </div>`
   const sq = [
-    { sel:'#tv2-d-nom',   t:'📛 Le nom du joueur', tx:'Affiché en haut de la carte.\nLes cartes Papyte (argent) et Légende (violet) ont des joueurs d\'exception avec de meilleures notes.' },
-    { sel:'#tv2-d-note',  t:'🔢 La note principale', tx:'La force du joueur à son poste naturel. C\'est cette note qui est utilisée lors des duels de match.\n\nBianchi a 15 en MIL — solide !' },
-    { sel:'#tv2-d-note2', t:'🔸 Note secondaire', tx:'Certains joueurs polyvalents peuvent jouer à deux postes !\n\nBianchi peut jouer MIL (15) ou DEF (13). Cette flexibilité est un gros avantage tactique.' },
-    { sel:'#tv2-d-flag',  t:'🇫🇷 Le pays', tx:'Le pays crée des liens avec les compatriotes dans ta formation.\n\nDeux joueurs français côte à côte = +5 pts chacun lors des duels !' },
-    { sel:'#tv2-d-club',  t:'🛡️ Le club', tx:'Le club crée aussi des liens dans la formation.\n\nGirard + Bruno + Bianchi jouent tous à Lille → +5 pts entre voisins !' },
+    { sel:'#tv2-l-pays', tx:"Deux joueurs français placés côte à côte gagnent chacun +5 pts lors des duels. Compose ta formation en tenant compte des nationalités !" },
+    { sel:'#tv2-l-club', tx:"Même principe avec le club : deux coéquipiers voisins sur le terrain = +5 pts chacun. Combine les liens pour maximiser tes bonus !" },
+    { sel:'#tv2-l-stad', tx:"En équipant une carte Stade, tous les joueurs qui partagent sa nationalité (ou son club) reçoivent +10 pts en plus lors des duels du milieu — le bonus le plus puissant du jeu !" },
   ]
   let si = 0
-  const runSq = () => {
-    if (si >= sq.length) { next(); return }
-    const s = sq[si++]
-    showBubble({ title:s.t, text:s.tx, targetSel:s.sel, side:'right', onNext: runSq })
-  }
-  wait(150).then(runSq)
+  const run = () => { if (si>=sq.length) { next(); return }; const s = sq[si++]; showBubble({ title: content().querySelector(s.sel).textContent.split('\n')[0], text:s.tx, targetSel:s.sel, container: content(), preferSide:'right', onNext: run }) }
+  run()
 })
 
-// ── 7 : Clic sur une carte ───────────────────────────────────────────
-step(() => {
-  const p = P.giuly
-  setScreen(`
-    <h2 style="font-size:${isMobile()?'17':'21'}px;margin:0 0 14px;font-weight:900">🃏 Interagir avec une carte</h2>
-    <div style="display:flex;${isMobile()?'flex-direction:column;align-items:center':'gap:24px;align-items:flex-start'}">
-      <div id="tv2-clickcard" style="flex-shrink:0;cursor:pointer;transition:transform .15s">
-        ${renderPlayerCard(p,{width:isMobile()?130:180,context:'collection'})}
-      </div>
-      <div id="tv2-cardmenu" style="display:none;flex-direction:column;gap:10px;${isMobile()?'width:100%':'min-width:220px'}">
-        <div id="tv2-m-sell"    style="padding:12px 16px;border-radius:11px;background:rgba(231,76,60,0.12);border:1px solid rgba(231,76,60,0.3);cursor:pointer">💰 <b>Vente rapide</b> — +200 crédits immédiatement</div>
-        <div id="tv2-m-mercato" style="padding:12px 16px;border-radius:11px;background:rgba(26,107,60,0.12);border:1px solid rgba(26,107,60,0.3);cursor:pointer">🏪 <b>Mettre sur le Mercato</b> — fixe ton propre prix</div>
-        <div id="tv2-m-evolve"  style="padding:12px 16px;border-radius:11px;background:rgba(212,160,23,0.12);border:1px solid rgba(212,160,23,0.3);cursor:pointer">⬆️ <b>Faire évoluer</b> — fusionne des doublons pour booster la note</div>
-      </div>
-    </div>`, 'cards')
-  wait(150).then(() => {
-    showBubble({ title:'👆 Clique sur la carte Giuly', text:'En cliquant sur une carte, tu accèdes à des options d\'action.', targetSel:'#tv2-clickcard', isAction:true, btnLabel:'Clique sur la carte !', onNext: () => {
-      const card = ov.querySelector('#tv2-clickcard')
-      card.style.transform = 'scale(0.95)'; setTimeout(()=>card.style.transform='scale(1)',150)
-      ov.querySelector('#tv2-cardmenu').style.display = 'flex'
-      const sq2 = [
-        { sel:'#tv2-m-sell',    t:'💰 Vente rapide', tx:'Vends immédiatement ta carte contre des crédits.\nParfait pour les doublons dont tu n\'as pas besoin !' },
-        { sel:'#tv2-m-mercato', t:'🏪 Le Mercato', tx:'Mets ta carte aux enchères.\nD\'autres joueurs pourront l\'acheter au prix que tu fixes !' },
-        { sel:'#tv2-m-evolve',  t:'⬆️ Faire évoluer', tx:'Si tu as plusieurs fois le même joueur (doublons), tu peux les fusionner !\n\nChaque doublon fusionné augmente définitivement la note du joueur.' },
-      ]
-      let si2 = 0
-      const r2 = () => { if (si2 >= sq2.length) { next(); return }; const s=sq2[si2++]; showBubble({ title:s.t, text:s.tx, targetSel:s.sel, side:'right', onNext:r2 }) }
-      wait(300).then(r2)
-    }})
-  })
+// ── 7 : Boosters réels (page réelle + révélation scriptée) ───────────────
+step(async () => {
+  clearBubble()
+  await renderBoosters(content(), fakeCtx)
+  await wait(300)
+  const firstBooster = content().querySelector('.booster-card:not(.disabled)')
+  if (!firstBooster) { next(); return }
+  showBubble({ title:'🎁 Ouvrir un booster', text:"Voici la Boutique. Chaque booster contient des cartes aléatoires — plus sa rareté est élevée, plus tes chances d'obtenir des joueurs rares augmentent.\n\nClique sur un booster pour l'ouvrir !", targetSel:'.booster-card:not(.disabled)', container: content(), isAction:true, btnLabel:'Clique pour ouvrir !', onNext: () => {
+    // Interception : on affiche une révélation SCRIPTÉE (identique pour
+    // tout le monde) au lieu du vrai tirage aléatoire du compte démo.
+    const cards = [
+      { id:'bc1', card_type:'player', evolution_bonus:0, player_id:'ba5aa9cf-73b2-4846-8c09-008ee6ef4db9' },
+      { id:'bc2', card_type:'player', evolution_bonus:0, player_id:'17ebe089-7d5a-44fe-bc51-5a51dc0a22bc' },
+      { id:'bc3', card_type:'player', evolution_bonus:0, player_id:'7cbd6088-3b6e-40ac-9f79-23be6a4b288a' },
+      { id:'bc4', card_type:'player', evolution_bonus:0, player_id:'470568c5-a79f-44f9-bd96-27fe73415e20' },
+      { id:'bc5', card_type:'player', evolution_bonus:0, player_id:'f675e51a-2cdc-4b44-bbc1-7c76cddfa519' },
+    ]
+    supabase.from('players').select('id,firstname,surname_real,country_code,club_id,job,job2,note_g,note_d,note_m,note_a,rarity,clubs(encoded_name,logo_url)')
+      .in('id', cards.map(c=>c.player_id)).then(({ data: players }) => {
+        const byId = Object.fromEntries((players||[]).map(p=>[p.id,p]))
+        const full = cards.map(c => ({ ...c, player: byId[c.player_id] }))
+        showBoosterAnimation(full, { name:'Booster Joueurs', type:'player', img:null }, () => {}, () => next())
+      })
+  }})
 })
 
-// ── 8 : Cartes spéciales ─────────────────────────────────────────────
-step(() => {
-  const fc = renderFormationCard({ formation:'4-3-3', rarity:'normal' }, isMobile()?120:150)
-  const sc = renderStadiumCard({ id:'s1', name:'Stade de France', country_code:'FR' }, isMobile()?120:150)
-  const gc = renderGCCard({ gc_type:'red_card', rarity:'pepite' }, isMobile()?120:150)
-  setScreen(`
-    <h2 style="font-size:${isMobile()?'17':'21'}px;margin:0 0 14px;font-weight:900">🃏 Cartes spéciales</h2>
-    <div style="display:flex;flex-wrap:wrap;gap:${isMobile()?'14':'20'}px;justify-content:center">
-      <div style="text-align:center"><div id="tv2-c-form">${fc}</div><p style="font-size:11px;color:rgba(255,255,255,0.4);margin:6px 0 0">Formation</p></div>
-      <div style="text-align:center"><div id="tv2-c-stad">${sc}</div><p style="font-size:11px;color:rgba(255,255,255,0.4);margin:6px 0 0">Stade</p></div>
-      <div style="text-align:center"><div id="tv2-c-gc"  >${gc}</div><p style="font-size:11px;color:rgba(255,255,255,0.4);margin:6px 0 0">Game Changer</p></div>
-    </div>`, 'cards')
-  const sq3 = [
-    { sel:'#tv2-c-form', t:'📋 Carte Formation', tx:'La Formation définit la tactique de ton équipe : où se placent tes 11 joueurs sur le terrain.\n\nLa 4-3-3 est la plus équilibrée pour débuter.' },
-    { sel:'#tv2-c-stad', t:'🏟️ Carte Stade', tx:'Le Stade donne +10 pts aux joueurs de la même nationalité ou du même club que le stade.\n\nLe Stade de France booste tous tes joueurs français !' },
-    { sel:'#tv2-c-gc',   t:'⚡ Game Changer', tx:'Carte action secrète jouée pendant le match.\n\nLe Carton Rouge expulse un milieu adverse et réduit son score. Utilisable une seule fois !' },
-  ]
-  let si3 = 0
-  const r3 = () => { if (si3 >= sq3.length) { next(); return }; const s=sq3[si3++]; showBubble({ title:s.t, text:s.tx, targetSel:s.sel, side:'bottom', onNext:r3 }) }
-  wait(150).then(r3)
+// ── 8 : Mercato réel ──────────────────────────────────────────────────────
+step(async () => {
+  clearBubble()
+  await renderMarket(content(), fakeCtx)
+  await wait(300)
+  const list = content().querySelector('.page') || content()
+  showBubble({ title:'🏪 Le Mercato', text:"Voici le Mercato : la place de marché du jeu. Tu peux acheter les cartes vendues par d'autres joueurs, ou mettre les tiennes en vente.\n\nSurveille-le régulièrement pour dénicher de bonnes affaires !", onNext: next })
 })
 
-// ── 9 : Formation ────────────────────────────────────────────────────
-step(() => {
-  const W = isMobile() ? Math.min(window.innerWidth-32,340) : 380
-  const H = Math.round(W*0.92)
-  setScreen(`
-    <h2 style="font-size:${isMobile()?'17':'21'}px;margin:0 0 12px;font-weight:900">👥 Ma formation</h2>
-    <div style="display:flex;${isMobile()?'flex-direction:column':'gap:20px'};align-items:flex-start">
-      <div>
-        <div id="tv2-terrain" style="background:#1a5c28;border-radius:12px;overflow:hidden;width:${W}px;height:${H}px">
-          ${buildTeamSVG(TEAM,'4-3-3',null,[],W,H)}
-        </div>
-        <p style="font-size:10px;color:rgba(255,255,255,0.35);margin:5px 0 0;text-align:center">4-3-3 · Le slot milieu central est vide</p>
-      </div>
-      <div style="flex:1;${isMobile()?'width:100%;margin-top:12px':''}">
-        <div id="tv2-l-pays" style="padding:10px 14px;border-radius:10px;background:rgba(255,215,0,0.07);border:1px solid rgba(255,215,0,0.2);margin-bottom:8px">🇫🇷 <b>Lien Pays +5</b> — 2 joueurs de même nationalité côte à côte</div>
-        <div id="tv2-l-club" style="padding:10px 14px;border-radius:10px;background:rgba(212,160,23,0.07);border:1px solid rgba(212,160,23,0.2);margin-bottom:8px">🛡️ <b>Lien Club +5</b> — 2 coéquipiers du même club</div>
-        <div id="tv2-l-stad" style="padding:10px 14px;border-radius:10px;background:rgba(79,195,247,0.07);border:1px solid rgba(79,195,247,0.2)">🏟️ <b>Bonus Stade +10</b> — joueur de la nationalité du stade</div>
-      </div>
-    </div>`, 'decks')
-  const sq4 = [
-    { sel:'#tv2-terrain', side:'right', t:'⚽ Le terrain', tx:'Voici ta formation. Chaque cercle = un joueur, le cercle grisé = slot vide (Bianchi n\'est pas encore placé).\n\nLes lignes entre joueurs représentent les liens — plus de liens = plus de bonus !' },
-    { sel:'#tv2-l-pays',  side:'left',  t:'🇫🇷 Lien Pays +5 pts',  tx:'Toute cette équipe est française ! Deux joueurs français côte à côte = +5 pts par lien lors des duels.\n\nMets des joueurs de même nationalité ensemble pour maximiser tes bonus.' },
-    { sel:'#tv2-l-club',  side:'left',  t:'🛡️ Lien Club +5 pts',  tx:'Girard et Bruno jouent tous les deux à Lille. Placés côte à côte en défense = +5 pts chacun !\n\nCombine des coéquipiers pour démultiplier les bonus.' },
-    { sel:'#tv2-l-stad',  side:'left',  t:'🏟️ Bonus Stade +10 pts', tx:'Avec le Stade de France équipé, chaque joueur français dans ta formation reçoit +10 pts en plus lors des duels du milieu.\n\nC\'est le bonus le plus puissant du jeu !' },
-  ]
-  let si4 = 0
-  const r4 = () => { if (si4 >= sq4.length) { next(); return }; const s=sq4[si4++]; showBubble({ title:s.t, text:s.tx, targetSel:s.sel, side:s.side, onNext:r4 }) }
-  wait(150).then(r4)
+// ── 9 : Accueil + modes de jeu réels ──────────────────────────────────────
+step(async () => {
+  clearBubble()
+  await renderHome2(content(), fakeCtx)
+  await wait(300)
+  showBubble({ title:'🏠 L\'Accueil', text:"Voici ton accueil : accès rapide aux modes de jeu (Solo, Classé, Ami, Mini-League), à tes récompenses en attente et à l'actualité du jeu.\n\nPassons maintenant à un vrai match, pour voir comment tout ça s'articule !", onNext: () => startMatchSequence() })
 })
 
-// ── 10 : Booster ─────────────────────────────────────────────────────
-step(() => {
-  setScreen(`
-    <h2 style="font-size:${isMobile()?'17':'21'}px;margin:0 0 14px;font-weight:900">🎁 La Boutique</h2>
-    <div style="display:flex;flex-wrap:wrap;gap:14px;justify-content:center">
-      <div id="tv2-bpack" style="cursor:pointer;background:linear-gradient(135deg,#1a3a2a,#0d2016);
-        border:2px solid #1A6B3C;border-radius:16px;padding:24px 20px;text-align:center;width:${isMobile()?'140':'180'}px;
-        transition:transform .15s">
-        <div style="font-size:${isMobile()?'40':'52'}px;margin-bottom:8px">🎴</div>
-        <div style="font-weight:900;font-size:14px;color:#fff">Booster Joueurs</div>
-        <div style="font-size:11px;color:rgba(255,255,255,0.45);margin:4px 0 10px">5 cartes joueurs</div>
-        <div style="background:#1A6B3C;border-radius:8px;padding:8px;font-size:13px;font-weight:800;color:#fff">Ouvrir !</div>
-      </div>
-    </div>`, 'boosters')
-  wait(150).then(() => showBubble({ title:'🎁 Les Boosters', text:'Les boosters contiennent des cartes aléatoires.\nPlus la rareté du booster est élevée, plus tes chances d\'obtenir des joueurs Pépite et Légende augmentent !\n\nClique sur "Ouvrir !" pour voir les 5 cartes.', targetSel:'#tv2-bpack', isAction:true, btnLabel:'Clique pour ouvrir !', onNext: () => {
-    const el = ov.querySelector('#tv2-bpack')
-    if (el) { el.style.transform = 'scale(0.95)'; setTimeout(()=>el.style.transform='scale(1)',150) }
-    showBoosterAnimation(BOOSTER_CARDS, { name:'Booster Joueurs', type:'player', img:null }, ()=>{}, () => next())
-  }}))
-})
+// ═══════════════════════════════════════════════════════════════════════
+// SÉQUENCE MATCH — réutilise les vrais composants (buildTeamSVG, renderMilRow,
+// showBoosterAnimation), sur des données scriptées identiques pour tous.
+// ═══════════════════════════════════════════════════════════════════════
 
-// ── 11 : Mercato ─────────────────────────────────────────────────────
-step(() => {
-  const listings = [
-    { p:P.pires,     price:1200 },
-    { p:P.sagnol,    price:600 },
-    { p:P.boukhris,  price:1800 },
-  ]
-  setScreen(`
-    <h2 style="font-size:${isMobile()?'17':'21'}px;margin:0 0 14px;font-weight:900">🏪 Le Mercato</h2>
-    <div id="tv2-mlist" style="display:flex;flex-direction:column;gap:10px">
-      ${listings.map(l => `<div style="display:flex;align-items:center;gap:12px;padding:10px 14px;
-        background:rgba(255,255,255,0.05);border-radius:12px;border:1px solid rgba(255,255,255,0.08)">
-        <div style="flex-shrink:0">${renderPlayerCard(l.p,{width:isMobile()?80:110,context:'mercato'})}</div>
-        <div style="flex:1;min-width:0">
-          <div style="font-weight:800;font-size:${isMobile()?'13':'15'}px">${l.p.surname_real}</div>
-          <div style="font-size:11px;color:rgba(255,255,255,0.45)">${l.p.job} · ${l.p.country_code}</div>
-        </div>
-        <div style="text-align:right">
-          <div style="font-weight:900;font-size:${isMobile()?'14':'16'}px;color:#D4A017">💰 ${l.price.toLocaleString()}</div>
-          <div style="margin-top:5px;background:#1A6B3C;border-radius:8px;padding:5px 12px;
-            font-size:12px;font-weight:700;color:#fff;cursor:pointer">Acheter</div>
-        </div>
-      </div>`).join('')}
-    </div>`, 'market')
-  wait(150).then(() => showBubble({ title:'🏪 Le Mercato', text:'Le Mercato est la place de marché du jeu.\n\nTu peux vendre tes cartes et acheter celles d\'autres joueurs. Surveille régulièrement les prix pour trouver de bonnes affaires !', targetSel:'#tv2-mlist', side:'top', onNext:next }))
-})
+const TEAM_FULL = {
+  GK:  [{ id:'10dfdba1-5793-47b5-99f7-f72c1bbc60df', firstname:'Fabien', surname_real:'Barthez', job:'GK', job2:null, note_g:17,note_d:0,note_m:0,note_a:0, rarity:'normal', country_code:'FR', clubs:{encoded_name:'MONACO'}, evolution_bonus:0, _evolution_bonus:0 }],
+  DEF: [
+    { id:'470568c5-a79f-44f9-bd96-27fe73415e20', firstname:'Martin', surname_real:'Djetou', job:'DEF', job2:null, note_g:0,note_d:15,note_m:0,note_a:0, rarity:'normal', country_code:'FR', clubs:{encoded_name:'MONACO'}, evolution_bonus:0, _evolution_bonus:0 },
+    { id:'b43818be-80c6-468b-b81d-d1b02f9dc11b', firstname:'Willy', surname_real:'Sagnol', job:'DEF', job2:null, note_g:0,note_d:13,note_m:0,note_a:0, rarity:'normal', country_code:'FR', clubs:{encoded_name:'MONACO'}, evolution_bonus:0, _evolution_bonus:0 },
+    { id:'ba5aa9cf-73b2-4846-8c09-008ee6ef4db9', firstname:'Ming', surname_real:'Girard', job:'DEF', job2:null, note_g:0,note_d:20,note_m:0,note_a:0, rarity:'papyte', country_code:'FR', clubs:{encoded_name:'LILLE'}, evolution_bonus:0, _evolution_bonus:0 },
+    { id:'8696cf6c-3162-4e2e-b66e-36331dae148e', firstname:'James', surname_real:'Bruno', job:'DEF', job2:null, note_g:0,note_d:15,note_m:0,note_a:0, rarity:'papyte', country_code:'FR', clubs:{encoded_name:'LILLE'}, evolution_bonus:0, _evolution_bonus:0 },
+  ],
+  MIL: [
+    { id:'e9481065-766c-4e65-aeaf-3c23215babe0', firstname:'Sabri', surname_real:'Lamouchi', job:'MIL', job2:null, note_g:0,note_d:0,note_m:15,note_a:0, rarity:'normal', country_code:'FR', clubs:{encoded_name:'MONACO'}, evolution_bonus:0, _evolution_bonus:0 },
+    { id:'7cbd6088-3b6e-40ac-9f79-23be6a4b288a', firstname:'Noah', surname_real:'Bianchi', job:'MIL', job2:'DEF', note_g:0,note_d:13,note_m:15,note_a:0, rarity:'normal', country_code:'FR', clubs:{encoded_name:'LILLE'}, evolution_bonus:0, _evolution_bonus:0 },
+    { id:'0fe9f0be-3215-4634-9df2-ecb39cb23e2f', firstname:'Sylvain', surname_real:'Legwinski', job:'MIL', job2:null, note_g:0,note_d:0,note_m:14,note_a:0, rarity:'normal', country_code:'FR', clubs:{encoded_name:'MONACO'}, evolution_bonus:0, _evolution_bonus:0 },
+  ],
+  ATT: [
+    { id:'17ebe089-7d5a-44fe-bc51-5a51dc0a22bc', firstname:'David', surname_real:'Trezeguet', job:'ATT', job2:null, note_g:0,note_d:0,note_m:0,note_a:16, rarity:'normal', country_code:'FR', clubs:{encoded_name:'MONACO'}, evolution_bonus:0, _evolution_bonus:0 },
+    { id:'78181125-55e0-4241-b929-419b5c7feb56', firstname:'Ludovic', surname_real:'Giuly', job:'ATT', job2:null, note_g:0,note_d:0,note_m:0,note_a:16, rarity:'normal', country_code:'FR', clubs:{encoded_name:'MONACO'}, evolution_bonus:0, _evolution_bonus:0 },
+    { id:'fd6bb2ab-ee46-4c28-80e9-d359622c71b2', firstname:'Rayan', surname_real:'Boukhris', job:'ATT', job2:null, note_g:0,note_d:0,note_m:0,note_a:20, rarity:'normal', country_code:'FR', clubs:{encoded_name:'CAPITALE SG'}, evolution_bonus:0, _evolution_bonus:0 },
+  ],
+}
+const AI_MILS = [
+  { id:'ai1', firstname:'Marco', surname_real:'ROSSI', job:'MIL', job2:null, note_g:0,note_d:0,note_m:16,note_a:0, rarity:'normal', country_code:'IT', clubs:{encoded_name:'GEN'}, evolution_bonus:0, _evolution_bonus:0 },
+  { id:'ai2', firstname:'Luis', surname_real:'GOMEZ', job:'MIL', job2:null, note_g:0,note_d:0,note_m:14,note_a:0, rarity:'normal', country_code:'ES', clubs:{encoded_name:'GEN'}, evolution_bonus:0, _evolution_bonus:0 },
+  { id:'ai3', firstname:'Hans', surname_real:'MULLER', job:'MIL', job2:null, note_g:0,note_d:0,note_m:15,note_a:0, rarity:'normal', country_code:'DE', clubs:{encoded_name:'GEN'}, evolution_bonus:0, _evolution_bonus:0 },
+]
 
-// ── 12 : Modes de jeu ────────────────────────────────────────────────
-step(() => {
-  const modes = [
-    { id:'tv2-m-solo',   emoji:'🤖', label:'Solo',       col:'rgba(26,107,60,0.2)',  brd:'rgba(26,107,60,0.4)',  txt:'Affronte l\'IA niveau par niveau. Parfait pour s\'entraîner et gagner des récompenses.' },
-    { id:'tv2-m-rnk',    emoji:'🏆', label:'Classé',     col:'rgba(212,160,23,0.2)', brd:'rgba(212,160,23,0.4)', txt:'Affronte de vrais joueurs. Grimpe dans le classement pour des récompenses exclusives.' },
-    { id:'tv2-m-ami',    emoji:'👥', label:'Ami',         col:'rgba(79,195,247,0.2)', brd:'rgba(79,195,247,0.4)', txt:'Défie un ami en partie privée sans impact sur le classement.' },
-    { id:'tv2-m-league', emoji:'🥇', label:'Mini-League', col:'rgba(155,89,182,0.2)', brd:'rgba(155,89,182,0.4)', txt:'Championnat à 8 managers. Classement final avec récompenses !' },
-  ]
-  setScreen(`
-    <h2 style="font-size:${isMobile()?'17':'21'}px;margin:0 0 14px;font-weight:900">🏠 Les modes de jeu</h2>
-    <div style="display:grid;grid-template-columns:${isMobile()?'1fr':'1fr 1fr'};gap:10px">
-      ${modes.map(m => `<div id="${m.id}" style="padding:16px;background:${m.col};border:1px solid ${m.brd};border-radius:13px">
-        <div style="font-size:${isMobile()?'24':'30'}px;margin-bottom:6px">${m.emoji}</div>
-        <div style="font-weight:900;font-size:${isMobile()?'14':'16'}px;margin-bottom:4px">${m.label}</div>
-        <div style="font-size:${isMobile()?'11':'12'}px;color:rgba(255,255,255,0.55);line-height:1.5">${m.txt}</div>
-      </div>`).join('')}
-    </div>`, 'home')
-  const sq5 = modes.map(m => ({ sel:`#${m.id}`, t:`${m.emoji} Mode ${m.label}`, tx:m.txt + '\n\nTu peux rejouer ce tutoriel depuis les Réglages à tout moment.' }))
-  let si5 = 0
-  const r5 = () => { if (si5 >= sq5.length) { next(); return }; const s=sq5[si5++]; showBubble({ title:s.t, text:s.tx, targetSel:s.sel, side:'right', btnLabel:si5>=sq5.length?'Jouer ! →':'Suivant →', onNext:r5 }) }
-  wait(150).then(r5)
-})
+function matchPage(inner) {
+  return `<div style="background:#0a1628;min-height:100%;padding:${isMobile()?'16px':'24px'};color:#fff">${inner}</div>`
+}
 
-// ── 13 : Match — choisir deck ────────────────────────────────────────
-step(() => {
-  setScreen(`
-    <h2 style="font-size:${isMobile()?'17':'21'}px;margin:0 0 14px;font-weight:900">⚽ Lancer un match Solo</h2>
+async function startMatchSequence() {
+  clearBubble()
+  content().innerHTML = matchPage(`
+    <h2 style="margin:0 0 16px;font-size:${isMobile()?'17':'21'}px">⚽ Lancer un match Solo</h2>
     <div id="tv2-deckrow" style="display:flex;align-items:center;gap:12px;padding:14px;
-      background:rgba(26,107,60,0.12);border:2px solid rgba(26,107,60,0.45);border-radius:13px;cursor:pointer">
+      background:rgba(26,107,60,0.12);border:2px solid rgba(26,107,60,0.45);border-radius:13px;cursor:pointer;max-width:400px">
       <div style="font-size:${isMobile()?'22':'28'}px">🇫🇷</div>
-      <div style="flex:1">
-        <div style="font-weight:800;font-size:${isMobile()?'14':'16'}px">France 98</div>
-        <div style="font-size:11px;color:rgba(255,255,255,0.45)">4-3-3 · 11/11 joueurs</div>
-      </div>
+      <div style="flex:1"><div style="font-weight:800">France 98</div><div style="font-size:11px;color:rgba(255,255,255,0.45)">4-3-3 · 11/11 joueurs</div></div>
       <div style="font-size:12px;color:#1A6B3C;font-weight:700">Sélectionner →</div>
-    </div>`, 'home')
-  wait(150).then(() => showBubble({ title:'⚽ Choix du deck', text:'Avant chaque match, tu choisis quelle équipe aligner.\n\nSélectionne le deck France 98 !', targetSel:'#tv2-deckrow', isAction:true, btnLabel:'Sélectionne le deck !', onNext: next }))
-})
+    </div>`)
+  await wait(150)
+  showBubble({ title:'⚽ Choix du deck', text:"Avant chaque match, choisis quelle équipe aligner. Sélectionne le deck France 98 !", targetSel:'#tv2-deckrow', container: content(), isAction:true, btnLabel:'Sélectionne le deck !', onNext: showMatchGC })
+}
 
-// ── 14 : Choisir Game Changer ────────────────────────────────────────
-step(() => {
-  const gcH = renderGCCard({ gc_type:'red_card', rarity:'pepite' }, isMobile()?100:130)
-  setScreen(`
-    <h2 style="font-size:${isMobile()?'17':'21'}px;margin:0 0 14px;font-weight:900">⚡ Choix du Game Changer</h2>
-    <p style="font-size:${isMobile()?'12':'13'}px;color:rgba(255,255,255,0.55);margin:0 0 14px">Choisis une carte action secrète à garder en main pour ce match.</p>
-    <div style="display:flex;flex-wrap:wrap;gap:12px">
-      <div id="tv2-gcchoice" style="cursor:pointer;padding:8px;background:rgba(212,160,23,0.08);
-        border:2px solid rgba(212,160,23,0.35);border-radius:12px;text-align:center">
-        ${gcH}
-        <div style="font-size:11px;color:rgba(255,255,255,0.5);margin-top:6px">Carton Rouge</div>
-      </div>
-      <div style="padding:8px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);
-        border-radius:12px;text-align:center;opacity:0.4">
-        <div style="width:${isMobile()?100:130}px;height:${isMobile()?100:130}px;display:flex;align-items:center;justify-content:center;font-size:30px">❔</div>
-        <div style="font-size:11px;color:rgba(255,255,255,0.3);margin-top:6px">Verrouillé</div>
-      </div>
-    </div>`, 'home')
-  wait(150).then(() => showBubble({ title:'⚡ Le Game Changer', text:'Garde un Game Changer secret pour surprendre ton adversaire au bon moment !\n\nChoisis le Carton Rouge — il expulse un milieu adverse.', targetSel:'#tv2-gcchoice', isAction:true, btnLabel:'Sélectionner !', onNext: next }))
-})
+async function showMatchGC() {
+  const { renderGCCard } = await import('../components/special-cards.js')
+  content().innerHTML = matchPage(`
+    <h2 style="margin:0 0 14px;font-size:${isMobile()?'17':'21'}px">⚡ Choix du Game Changer</h2>
+    <div id="tv2-gcchoice" style="display:inline-block;cursor:pointer;padding:8px;background:rgba(212,160,23,0.08);
+      border:2px solid rgba(212,160,23,0.35);border-radius:12px;text-align:center">
+      ${renderGCCard({ gc_type:'red_card', rarity:'pepite' }, isMobile()?110:140)}
+      <div style="font-size:11px;color:rgba(255,255,255,0.5);margin-top:6px">Carton Rouge</div>
+    </div>`)
+  await wait(150)
+  showBubble({ title:'⚡ Ton Game Changer', text:"Choisis une carte action secrète à garder en main. Prends le Carton Rouge — il expulsera un milieu adverse !", targetSel:'#tv2-gcchoice', container: content(), isAction:true, btnLabel:'Sélectionner !', onNext: showMatchDuel })
+}
 
-// ── 15 : Duel du milieu ──────────────────────────────────────────────
-step(() => {
-  const homeMils = [P.lamouchi, P.bianchi, P.legwinski]
-  const aiMils   = [P.ai1, P.ai2, P.ai3]
-  setScreen(`
-    <h2 style="text-align:center;font-size:${isMobile()?'15':'19'}px;margin:0 0 16px;font-weight:900">⚔️ Duel du milieu de terrain</h2>
+async function showMatchDuel() {
+  const homeMils = TEAM_FULL.MIL
+  const W = isMobile() ? Math.min(window.innerWidth-32,340) : 420
+  content().innerHTML = matchPage(`
+    <h2 style="text-align:center;margin:0 0 16px;font-size:${isMobile()?'15':'19'}px">⚔️ Duel du milieu de terrain</h2>
     <div id="tv2-scores" style="display:flex;align-items:center;justify-content:center;gap:20px;margin-bottom:20px">
       <div style="font-size:${isMobile()?'32':'44'}px;font-weight:900;color:#D4A017">0</div>
       <div style="font-size:14px;color:rgba(255,255,255,0.4)">—</div>
       <div style="font-size:${isMobile()?'32':'44'}px;font-weight:900;color:#bb2020">0</div>
     </div>
     <div style="display:flex;flex-direction:column;gap:20px;align-items:center">
-      <div id="tv2-ai-row">${renderMilRow(aiMils,'MILIEU ADVERSE','#bb2020','ai',null)}</div>
+      <div id="tv2-ai-row">${renderMilRow(AI_MILS,'MILIEU ADVERSE','#bb2020','ai',null)}</div>
       <div id="tv2-home-row">${renderMilRow(homeMils,'TON MILIEU','#D4A017','home',null)}</div>
     </div>
-    <div id="tv2-gc-banner" style="display:none;margin-top:14px;padding:12px;background:rgba(212,160,23,0.12);border:1px solid rgba(212,160,23,0.3);border-radius:10px;text-align:center;font-weight:700;color:#D4A017">
+    <div id="tv2-gc-banner" style="display:none;margin-top:14px;padding:12px;background:rgba(212,160,23,0.12);
+      border:1px solid rgba(212,160,23,0.3);border-radius:10px;text-align:center;font-weight:700;color:#D4A017">
       ⚡ Carton Rouge ! Luis Gomez est expulsé — score adverse réduit !
-    </div>`, 'home')
-  wait(400).then(() => {
-    // Animer apparition des cartes
-    ov.querySelectorAll('.duel-card').forEach((el,i)=>setTimeout(()=>{el.style.opacity='1';el.style.transform='translateY(0) scale(1)'},100+i*100))
-    ov.querySelectorAll('.duel-link').forEach((el,i)=>setTimeout(()=>el.style.opacity='1',600+i*60))
-    ov.querySelectorAll('.duel-score-line').forEach(el=>setTimeout(()=>el.style.opacity='1',1100))
-    wait(800).then(() => {
-      const scoreHome = P.lamouchi.note_m + P.bianchi.note_m + P.legwinski.note_m
-      const scoreAI   = P.ai1.note_m + P.ai2.note_m + P.ai3.note_m
-      const showGC = () => {
-        ov.querySelector('#tv2-gc-banner').style.display = 'block'
-        const newAI = scoreAI - P.ai2.note_m
-        ov.querySelector('#tv2-scores').innerHTML = `
-          <div style="font-size:${isMobile()?'32':'44'}px;font-weight:900;color:#D4A017">${scoreHome}</div>
-          <div style="font-size:14px;color:rgba(255,255,255,0.4)">—</div>
-          <div style="font-size:${isMobile()?'32':'44'}px;font-weight:900;color:#bb2020">${newAI}</div>`
-        wait(600).then(() => showBubble({ title:'🏆 Tu gagnes le duel !', text:`Ton score : ${scoreHome} pts\nAdversaire après carton rouge : ${newAI} pts\n\nTu prends l'avantage grâce au Game Changer ! Maintenant tu peux attaquer.`, onNext:next }))
-      }
-      showBubble({ title:'⚔️ Le duel du milieu', text:`Les scores actuels :\nToi : ${scoreHome} pts | Adversaire : ${scoreAI} pts\n\nTu es légèrement derrière... C\'est le moment d\'utiliser ton Carton Rouge sur Luis Gomez !`, targetSel:'#tv2-ai-row', side:'bottom', btnLabel:'Jouer le Carton Rouge !', onNext: showGC })
-    })
-  })
-})
+    </div>`)
+  await wait(400)
+  content().querySelectorAll('.duel-card').forEach((el,i)=>setTimeout(()=>{el.style.opacity='1';el.style.transform='translateY(0) scale(1)'},100+i*100))
+  content().querySelectorAll('.duel-link').forEach((el,i)=>setTimeout(()=>el.style.opacity='1',600+i*60))
+  content().querySelectorAll('.duel-score-line').forEach(el=>setTimeout(()=>el.style.opacity='1',1100))
 
-// ── 16 : Phase d'attaque ─────────────────────────────────────────────
-step(() => {
-  const W = isMobile() ? Math.min(window.innerWidth-32,320) : 340
+  await wait(900)
+  const scoreHome = homeMils.reduce((s,p)=>s+p.note_m,0)
+  const scoreAI   = AI_MILS.reduce((s,p)=>s+p.note_m,0)
+  showBubble({ title:'⚔️ Le duel du milieu', text:`Scores actuels :\nToi : ${scoreHome} pts | Adversaire : ${scoreAI} pts\n\nUtilise ton Carton Rouge sur Luis Gomez pour prendre l'avantage !`, targetSel:'#tv2-ai-row', container: content(), preferSide:'bottom', btnLabel:'Jouer le Carton Rouge !', onNext: () => {
+    content().querySelector('#tv2-gc-banner').style.display = 'block'
+    const newAI = scoreAI - AI_MILS[1].note_m
+    content().querySelector('#tv2-scores').innerHTML = `
+      <div style="font-size:${isMobile()?'32':'44'}px;font-weight:900;color:#D4A017">${scoreHome}</div>
+      <div style="font-size:14px;color:rgba(255,255,255,0.4)">—</div>
+      <div style="font-size:${isMobile()?'32':'44'}px;font-weight:900;color:#bb2020">${newAI}</div>`
+    wait(700).then(() => showBubble({ title:'🏆 Tu gagnes le duel !', text:`Ton score : ${scoreHome} pts\nAdversaire après carton rouge : ${newAI} pts\n\nTu prends l'avantage ! Tu peux maintenant attaquer.`, onNext: showAttackPhase }))
+  }})
+}
+
+async function showAttackPhase() {
+  const W = isMobile() ? Math.min(window.innerWidth-32,320) : 360
   const H = Math.round(W*0.92)
-  setScreen(`
-    <h2 style="text-align:center;font-size:${isMobile()?'14':'18'}px;margin:0 0 8px;font-weight:900">⚽ Phase de match — Attaque</h2>
-    <p style="text-align:center;font-size:${isMobile()?'11':'12'}px;color:rgba(255,255,255,0.5);margin:0 0 12px">Tu remportes le duel → tu attaques ! Sélectionne 3 joueurs.</p>
+  content().innerHTML = matchPage(`
+    <h2 style="text-align:center;font-size:${isMobile()?'14':'18'}px;margin:0 0 8px">⚔️ Phase d'attaque</h2>
+    <p style="text-align:center;font-size:${isMobile()?'11':'12'}px;color:rgba(255,255,255,0.5);margin:0 0 12px">Tu gagnes le duel → tu attaques en premier. Sélectionne 3 joueurs.</p>
     <div style="display:flex;justify-content:center;margin-bottom:12px">
-      <div style="background:#1a5c28;border-radius:12px;overflow:hidden;width:${W}px;height:${H}px">
-        ${buildTeamSVG(TEAM_FULL,'4-3-3','attack',[],W,H)}
-      </div>
+      <div style="background:#1a5c28;border-radius:12px;overflow:hidden;width:${W}px;height:${H}px">${buildTeamSVG(TEAM_FULL,'4-3-3','attack',[],W,H)}</div>
     </div>
-    <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
+    <div style="display:flex;justify-content:center">
       <button id="tv2-atk" style="background:#1A6B3C;color:#fff;border:none;border-radius:10px;padding:10px 20px;font-size:${isMobile()?'13':'14'}px;font-weight:800;cursor:pointer">⚔️ Attaquer (3 sélectionnés)</button>
-    </div>`, 'home')
-  wait(150).then(() => showBubble({ title:'⚔️ Phase d\'attaque', text:'Tu gagnes le duel du milieu → tu attaques en premier !\n\nSur le terrain, les joueurs en surbrillance sont ceux que tu peux sélectionner. Choisis 3 attaquants ou milieux offensifs.', targetSel:'#tv2-atk', isAction:true, btnLabel:'Lancer l\'attaque !', onNext:next }))
-})
+    </div>`)
+  await wait(150)
+  showBubble({ title:'⚔️ Sélectionne tes attaquants', text:"Sur le terrain, les joueurs en surbrillance sont sélectionnables. Choisis 3 attaquants ou milieux offensifs pour lancer ton attaque.", targetSel:'#tv2-atk', container: content(), isAction:true, btnLabel:'Lancer l\'attaque !', onNext: showDefensePhase })
+}
 
-// ── 17 : Phase de défense ────────────────────────────────────────────
-step(() => {
-  const W = isMobile() ? Math.min(window.innerWidth-32,320) : 340
+async function showDefensePhase() {
+  const W = isMobile() ? Math.min(window.innerWidth-32,320) : 360
   const H = Math.round(W*0.92)
-  setScreen(`
-    <h2 style="text-align:center;font-size:${isMobile()?'14':'18'}px;margin:0 0 8px;font-weight:900">🛡️ Phase de match — Défense</h2>
-    <p style="text-align:center;font-size:${isMobile()?'11':'12'}px;color:rgba(255,255,255,0.5);margin:0 0 12px">L\'adversaire attaque ! Choisis 3 défenseurs.</p>
+  content().innerHTML = matchPage(`
+    <h2 style="text-align:center;font-size:${isMobile()?'14':'18'}px;margin:0 0 8px">🛡️ Phase de défense</h2>
+    <p style="text-align:center;font-size:${isMobile()?'11':'12'}px;color:rgba(255,255,255,0.5);margin:0 0 12px">L'adversaire attaque ! Choisis 3 défenseurs.</p>
     <div style="display:flex;justify-content:center;margin-bottom:12px">
-      <div style="background:#1a5c28;border-radius:12px;overflow:hidden;width:${W}px;height:${H}px">
-        ${buildTeamSVG(TEAM_FULL,'4-3-3','defense',[],W,H)}
-      </div>
+      <div style="background:#1a5c28;border-radius:12px;overflow:hidden;width:${W}px;height:${H}px">${buildTeamSVG(TEAM_FULL,'4-3-3','defense',[],W,H)}</div>
     </div>
-    <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
+    <div style="display:flex;justify-content:center">
       <button id="tv2-def" style="background:#1a3a8a;color:#fff;border:none;border-radius:10px;padding:10px 20px;font-size:${isMobile()?'13':'14'}px;font-weight:800;cursor:pointer">🛡️ Défendre (3 sélectionnés)</button>
-    </div>`, 'home')
-  wait(150).then(() => showBubble({ title:'🛡️ Phase de défense', text:'L\'adversaire attaque maintenant !\n\nChoisis 3 défenseurs (DEF) ou milieux défensifs. Plus leurs notes sont élevées, plus tu as de chances de stopper l\'attaque.', targetSel:'#tv2-def', isAction:true, btnLabel:'Défendre !', onNext:next }))
-})
+    </div>`)
+  await wait(150)
+  showBubble({ title:'🛡️ Sélectionne tes défenseurs', text:"L'adversaire attaque à son tour ! Choisis 3 défenseurs ou milieux défensifs pour stopper l'attaque.", targetSel:'#tv2-def', container: content(), isAction:true, btnLabel:'Défendre !', onNext: showWinCondition })
+}
 
-// ── 18 : Résultat et conditions de victoire ──────────────────────────
-step(() => {
-  setScreen(`
-    <div style="display:flex;flex-direction:column;align-items:center;text-align:center;gap:16px;min-height:50vh;justify-content:center">
+async function showWinCondition() {
+  content().innerHTML = matchPage(`
+    <div style="display:flex;flex-direction:column;align-items:center;text-align:center;gap:16px;min-height:60vh;justify-content:center">
       <div style="font-size:${isMobile()?'48':'64'}px;font-weight:900;letter-spacing:4px">2 — 1</div>
       <div style="font-size:${isMobile()?'18':'22'}px;font-weight:900;color:#1A6B3C">Victoire ! 🏆</div>
-      <div id="tv2-winbox" style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:14px;padding:18px;max-width:380px;text-align:left;width:100%">
+      <div id="tv2-winbox" style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);
+        border-radius:14px;padding:18px;max-width:380px;text-align:left;width:100%">
         <div style="font-weight:900;font-size:${isMobile()?'13':'15'}px;margin-bottom:10px">🏆 Règles pour gagner :</div>
         <div style="font-size:${isMobile()?'12':'13'}px;color:rgba(255,255,255,0.7);line-height:1.8">
           • <b>3 phases d'attaque</b> + <b>3 phases de défense</b><br>
@@ -615,34 +476,39 @@ step(() => {
           • Les <b>Game Changers</b> peuvent tout renverser !
         </div>
       </div>
-    </div>`, 'home')
-  wait(150).then(() => showBubble({ title:'🏆 Conditions de victoire', text:'Un match = 6 phases. Chaque attaque réussie marque 1 but.\n\nLe joueur avec le plus de buts gagne et monte dans le classement !', targetSel:'#tv2-winbox', side:'top', btnLabel:"Terminer ! 🚀", onNext:next }))
-})
-
-// ── 19 : Fin ─────────────────────────────────────────────────────────
-step(() => {
-  setScreen(`
-    <div style="display:flex;flex-direction:column;align-items:center;text-align:center;gap:16px;min-height:70vh;justify-content:center">
-      <div style="font-size:${isMobile()?'56':'72'}px">🏆</div>
-      <h1 style="font-size:${isMobile()?'20':'26'}px;font-weight:900;margin:0">Tutoriel terminé !</h1>
-      <p style="font-size:${isMobile()?'12':'14'}px;color:rgba(255,255,255,0.65);max-width:360px;line-height:1.6;margin:0">
-        Tu connais maintenant toutes les bases de Manager Wars.<br>
-        Ouvre tes boosters, construis ta formation et lance ton premier match !
-      </p>
-      <button id="tv2-finish" style="background:#1A6B3C;color:#fff;border:none;border-radius:12px;
-        padding:14px 36px;font-size:${isMobile()?'15':'17'}px;font-weight:900;cursor:pointer;margin-top:8px">🚀 Commencer à jouer !</button>
     </div>`)
-  ov.querySelector('#tv2-finish').addEventListener('click', _finish)
-  ov.querySelector('#tv2-progbar').style.width = '100%'
-})
+  await wait(150)
+  showBubble({ title:'🏆 Conditions de victoire', text:"Un match = 6 phases. Chaque attaque réussie marque 1 but. Le joueur avec le plus de buts gagne et monte au classement !", targetSel:'#tv2-winbox', container: content(), preferSide:'top', btnLabel:"Terminer ! 🚀", onNext: showFinalScreen })
+}
 
-function _run(i) { setProgress(i, STEPS.length-1); STEPS[i]?.() }
+async function showFinalScreen() {
+  clearBubble()
+  content().innerHTML = `<div style="display:flex;flex-direction:column;align-items:center;text-align:center;gap:16px;
+    min-height:100%;justify-content:center;padding:24px;color:#fff">
+    <div style="font-size:${isMobile()?'56':'72'}px">🏆</div>
+    <h1 style="font-size:${isMobile()?'20':'26'}px;font-weight:900;margin:0">Tutoriel terminé !</h1>
+    <p style="font-size:${isMobile()?'12':'14'}px;color:rgba(255,255,255,0.65);max-width:360px;line-height:1.6;margin:0">
+      Tu connais maintenant toutes les bases de Manager Wars.<br>Ouvre tes boosters, construis ta formation et lance ton premier match !
+    </p>
+    <button id="tv2-finish" style="background:#1A6B3C;color:#fff;border:none;border-radius:12px;
+      padding:14px 36px;font-size:${isMobile()?'15':'17'}px;font-weight:900;cursor:pointer;margin-top:8px">🚀 Commencer à jouer !</button>
+  </div>`
+  document.getElementById('tv2-progbar').style.width = '100%'
+  content().querySelector('#tv2-finish').addEventListener('click', finish)
+}
 
-async function _finish() {
+async function finish() {
+  _lockRealNav(false)
   if (ov) { ov.remove(); ov = null }
+  document.getElementById('tv2-chrome')?.remove()
   try {
     const { data:{user} } = await supabase.auth.getUser()
     if (user) await supabase.from('users').update({ tutorial_done:true }).eq('id', user.id)
   } catch {}
+  // Restaure le vrai chrome (header/nav) avec le vrai profil, sinon les
+  // crédits/pseudo affichés resteraient ceux du compte démo.
+  if (realCtx?.state?.profile) {
+    ensureV2Chrome(realCtx.navigate, realCtx.state.profile, realCtx.state.page || 'home2', ICON, realCtx.toast)
+  }
   onDone?.()
 }

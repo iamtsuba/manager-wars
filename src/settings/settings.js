@@ -165,7 +165,7 @@ export async function renderSettings(container, ctx) {
   })
 
   container.querySelector('#settings-tutorial')?.addEventListener('click', () => {
-    startTutorialV2(() => {})
+    startTutorialV2({ state, navigate, toast }, () => {})
   })
 
   container.querySelector('#settings-logout').addEventListener('click', async () => {

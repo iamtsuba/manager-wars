@@ -8,7 +8,7 @@ import { playSound } from '../lib/sound.js'
 import { getPortrait } from '../lib/portrait.js'
 import { renderGCCard, renderStadiumCard, renderFormationCard } from '../components/special-cards.js'
 import { showTutorial, STEPS as TUTORIAL_FALLBACK_STEPS } from '../tutorial/tutorial.js'
-import { startTutorialV2 } from '../tutorial/tutorial-v2.js'
+import { startTutorialV3 } from '../tutorial/tutorial-v3.js'
 
 // Toutes les formations disponibles (depuis formation-links.js)
 const ALL_FORMATIONS = () => Object.keys(FORMATION_POSITIONS)

@@ -225,7 +225,7 @@ export async function renderDecks(container, ctx) {
 }
 
 // ── Deck Builder ──────────────────────────────────────────
-async function openDeckBuilder(deckId, container, ctx) {
+export async function openDeckBuilder(deckId, container, ctx) {
   const { state, toast } = ctx
   container.innerHTML = '<div class="page" style="padding:40px;text-align:center;color:#aaa">⚽ Chargement...</div>'
 

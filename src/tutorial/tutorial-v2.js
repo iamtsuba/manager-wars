@@ -14,56 +14,59 @@ const BASE = (typeof import.meta !== 'undefined' && import.meta.env?.BASE_URL) |
 const ICON = BASE + 'icons/'
 
 // ═══════════════════════════════════════════════════════════════════════
-// JOUEURS FICTIFS — Ligue 1 française 1999-2000, evolution_bonus: 0
-// (évite le bug note 96+45=141)
+// JOUEURS RÉELS — extraits de la base players (saison 1999-2000, clubs FR)
+// evolution_bonus forcé à 0 partout (évite le bug note+bonus déjà corrigé)
 // ═══════════════════════════════════════════════════════════════════════
-function mkP(id, first, sur, job, job2, nG, nD, nM, nA, rarity, flag, clubId, clubName) {
+function mkP(id, first, sur, job, job2, nG, nD, nM, nA, rarity, flag, clubName) {
   return {
     id, firstname: first, surname_real: sur, job, job2,
     note_g: nG, note_d: nD, note_m: nM, note_a: nA,
-    rarity, country_code: flag, club_id: clubId,
+    rarity, country_code: flag, club_id: clubName,
     clubs: { encoded_name: clubName, logo_url: null },
     evolution_bonus: 0, _evolution_bonus: 0, face: null,
   }
 }
 
+// Équipe cohérente autour de Monaco (GK+2DEF+2MIL+2ATT dispo) + Lille
+// (2DEF+1MIL) pour bien illustrer les liens de club dans le tuto.
 const P = {
-  barthez:   mkP('t1','Fabien','BARTHEZ',    'GK',  null,  80,0,0,0,  'pepite', 'FR','OM1','OM'),
-  vieira:    mkP('t2','Patrick','VIEIRA',    'MIL', 'ATT', 0,0,82,70, 'pepite', 'FR','ARS','ARS'),
-  deschamps: mkP('t3','Didier','DESCHAMPS',  'MIL', null,  0,0,76,0,  'normal', 'FR','JUV','JUV'),
-  desailly:  mkP('t4','Marcel','DESAILLY',   'DEF', 'MIL', 0,80,68,0, 'pepite', 'FR','CHE','CHE'),
-  thuram:    mkP('t5','Lilian','THURAM',     'DEF', null,  0,82,0,0,  'normal', 'FR','PAR','PAR'),
-  blanc:     mkP('t6','Laurent','BLANC',     'DEF', null,  0,80,0,0,  'normal', 'FR','INT','INT'),
-  lizarazu:  mkP('t7','Bixente','LIZARAZU',  'DEF', null,  0,78,0,0,  'normal', 'FR','BAY','BAY'),
-  zidane:    mkP('t8','Zinedine','ZIDANE',   'MIL', 'ATT', 0,0,92,78, 'legende','FR','JUV','JUV'),
-  henry:     mkP('t9','Thierry','HENRY',     'ATT', null,  0,0,0,88,  'legende','FR','ARS','ARS'),
-  trezeguet: mkP('t10','David','TREZEGUET', 'ATT', null,  0,0,0,84,  'pepite', 'FR','JUV','JUV'),
-  petit:     mkP('t11','Emmanuel','PETIT',   'MIL', null,  0,0,74,0,  'normal', 'FR','BAR','BAR'),
-  // Adversaires IA
-  maradona:  mkP('ai1','Diego','MARADONA',   'MIL', null,  0,0,94,0,  'legende','AR','NAP','NAP'),
-  ronaldo:   mkP('ai2','Ronaldo','NAZARIO',  'ATT', 'MIL', 0,0,72,92, 'legende','BR','BAR','BAR'),
-  rivaldo:   mkP('ai3','Ronaldo','RIVALDO',  'MIL', null,  0,0,85,0,  'pepite', 'BR','BAR','BAR'),
+  barthez:   mkP('10dfdba1-5793-47b5-99f7-f72c1bbc60df','Fabien','Barthez',   'GK',  null, 17,0,0,0,   'normal','FR','MONACO'),
+  djetou:    mkP('470568c5-a79f-44f9-bd96-27fe73415e20','Martin','Djetou',    'DEF', null, 0,15,0,0,   'normal','FR','MONACO'),
+  sagnol:    mkP('b43818be-80c6-468b-b81d-d1b02f9dc11b','Willy','Sagnol',     'DEF', null, 0,13,0,0,   'normal','FR','MONACO'),
+  girard:    mkP('ba5aa9cf-73b2-4846-8c09-008ee6ef4db9','Ming','Girard',      'DEF', null, 0,20,0,0,   'papyte','FR','LILLE'),
+  bruno:     mkP('8696cf6c-3162-4e2e-b66e-36331dae148e','James','Bruno',      'DEF', null, 0,15,0,0,   'papyte','FR','LILLE'),
+  lamouchi:  mkP('e9481065-766c-4e65-aeaf-3c23215babe0','Sabri','Lamouchi',   'MIL', null, 0,0,15,0,   'normal','FR','MONACO'),
+  legwinski: mkP('0fe9f0be-3215-4634-9df2-ecb39cb23e2f','Sylvain','Legwinski','MIL', null, 0,0,14,0,   'normal','FR','MONACO'),
+  bianchi:   mkP('7cbd6088-3b6e-40ac-9f79-23be6a4b288a','Noah','Bianchi',     'MIL', 'DEF',0,13,15,0,   'normal','FR','LILLE'),
+  trezeguet: mkP('17ebe089-7d5a-44fe-bc51-5a51dc0a22bc','David','Trezeguet', 'ATT', null, 0,0,0,16,    'normal','FR','MONACO'),
+  giuly:     mkP('78181125-55e0-4241-b929-419b5c7feb56','Ludovic','Giuly',    'ATT', null, 0,0,0,16,    'normal','FR','MONACO'),
+  boukhris:  mkP('fd6bb2ab-ee46-4c28-80e9-d359622c71b2','Rayan','Boukhris',   'ATT', null, 0,0,0,20,    'normal','FR','CAPITALE SG'),
+  pires:     mkP('f675e51a-2cdc-4b44-bbc1-7c76cddfa519','Robert','Pires',    'MIL', null, 0,0,17,0,    'normal','FR','OLYMPIC PHOCEENS'),
+  // Adversaire IA : générique, non lié à un vrai joueur de la base
+  ai1: mkP('ai1','Marco','ROSSI','MIL', null, 0,0,16,0, 'normal','IT','GEN'),
+  ai2: mkP('ai2','Luis','GOMEZ', 'MIL', null, 0,0,14,0, 'normal','ES','GEN'),
+  ai3: mkP('ai3','Hans','MULLER','MIL', null, 0,0,15,0, 'normal','DE','GEN'),
 }
 
 const TEAM = {
   GK:  [P.barthez],
-  DEF: [P.desailly, P.thuram, P.blanc, P.lizarazu],
-  MIL: [P.deschamps, null, P.petit],   // slot MIL2 vide pour l'étape formation
-  ATT: [P.henry, P.trezeguet, P.vieira],
+  DEF: [P.djetou, P.sagnol, P.girard, P.bruno],
+  MIL: [P.lamouchi, null, P.legwinski],   // slot MIL2 vide pour l'étape formation
+  ATT: [P.trezeguet, P.giuly, P.boukhris],
 }
 const TEAM_FULL = {
   GK:  [P.barthez],
-  DEF: [P.desailly, P.thuram, P.blanc, P.lizarazu],
-  MIL: [P.deschamps, P.zidane, P.petit],
-  ATT: [P.henry, P.trezeguet, P.vieira],
+  DEF: [P.djetou, P.sagnol, P.girard, P.bruno],
+  MIL: [P.lamouchi, P.bianchi, P.legwinski],
+  ATT: [P.trezeguet, P.giuly, P.boukhris],
 }
 
 const BOOSTER_CARDS = [
-  { id:'bc1', card_type:'player', evolution_bonus:0, player: P.zidane },
-  { id:'bc2', card_type:'player', evolution_bonus:0, player: P.henry },
-  { id:'bc3', card_type:'player', evolution_bonus:0, player: P.vieira },
-  { id:'bc4', card_type:'player', evolution_bonus:0, player: P.desailly },
-  { id:'bc5', card_type:'player', evolution_bonus:0, player: P.petit },
+  { id:'bc1', card_type:'player', evolution_bonus:0, player: P.girard },
+  { id:'bc2', card_type:'player', evolution_bonus:0, player: P.trezeguet },
+  { id:'bc3', card_type:'player', evolution_bonus:0, player: P.bianchi },
+  { id:'bc4', card_type:'player', evolution_bonus:0, player: P.djetou },
+  { id:'bc5', card_type:'player', evolution_bonus:0, player: P.pires },
 ]
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -281,8 +284,8 @@ step(() => {
 
 // ── 1 : Collection liste ────────────────────────────────────────────
 step(() => {
-  const players = [P.barthez, P.desailly, P.thuram, P.zidane, P.henry, P.trezeguet, P.petit]
-  const mainCard = P.zidane
+  const players = [P.barthez, P.djetou, P.girard, P.bianchi, P.trezeguet, P.giuly, P.boukhris]
+  const mainCard = P.girard
   setScreen(`
     <h2 style="font-size:${isMobile()?'17':'21'}px;margin:0 0 14px;font-weight:900">🃏 Ma collection</h2>
     <div id="tv2-colrow" style="display:flex;gap:${isMobile()?'6':'10'}px;overflow-x:auto;padding-bottom:12px;-webkit-overflow-scrolling:touch">
@@ -293,12 +296,12 @@ step(() => {
       }).join('')}
     </div>
     <p style="font-size:11px;color:rgba(255,255,255,0.35);margin:4px 0 0">← Glisse pour parcourir ta collection</p>`, 'cards')
-  wait(150).then(() => showBubble({ title:'🃏 Ta collection', text:'Ici tu trouves toutes tes cartes.\n\nLa carte ZIDANE est entourée en or : c\'est une carte Légende, la rareté la plus puissante du jeu !', targetSel:'#tv2-main-card', side:'bottom', onNext: next }))
+  wait(150).then(() => showBubble({ title:'🃏 Ta collection', text:'Ici tu trouves toutes tes cartes.\n\nLa carte GIRARD est entourée en argent : c\'est une carte Papyte, une rareté puissante avec des joueurs d\'exception !', targetSel:'#tv2-main-card', side:'bottom', onNext: next }))
 })
 
 // ── 2-6 : Détails de la carte ────────────────────────────────────────
 step(() => {
-  const p = P.zidane
+  const p = P.bianchi
   const w = isMobile() ? 140 : 200
   setScreen(`
     <h2 style="font-size:${isMobile()?'17':'21'}px;margin:0 0 14px;font-weight:900">🃏 Détails d'une carte</h2>
@@ -307,17 +310,17 @@ step(() => {
       <div style="flex:1;display:flex;flex-direction:column;gap:8px;${isMobile()?'width:100%;margin-top:12px':''}">
         <div id="tv2-d-nom"   style="padding:10px 14px;border-radius:10px;background:rgba(255,255,255,0.06)"><b>📛 Nom :</b> ${p.surname_real}</div>
         <div id="tv2-d-note"  style="padding:10px 14px;border-radius:10px;background:rgba(255,255,255,0.06)"><b>🔢 Note principale :</b> ${p.note_m} (MIL)</div>
-        <div id="tv2-d-note2" style="padding:10px 14px;border-radius:10px;background:rgba(212,160,23,0.1);border:1px solid rgba(212,160,23,0.25)"><b>🔸 Note secondaire :</b> ${p.note_a} (ATT) — peut jouer 2 postes !</div>
+        <div id="tv2-d-note2" style="padding:10px 14px;border-radius:10px;background:rgba(212,160,23,0.1);border:1px solid rgba(212,160,23,0.25)"><b>🔸 Note secondaire :</b> ${p.note_d} (DEF) — peut jouer 2 postes !</div>
         <div id="tv2-d-flag"  style="padding:10px 14px;border-radius:10px;background:rgba(255,255,255,0.06)"><b>🇫🇷 Pays :</b> France → liens de nationalité +5 pts</div>
-        <div id="tv2-d-club"  style="padding:10px 14px;border-radius:10px;background:rgba(255,255,255,0.06)"><b>🛡️ Club :</b> JUV → liens de club +5 pts avec coéquipiers</div>
+        <div id="tv2-d-club"  style="padding:10px 14px;border-radius:10px;background:rgba(255,255,255,0.06)"><b>🛡️ Club :</b> LILLE → liens de club +5 pts avec coéquipiers</div>
       </div>
     </div>`, 'cards')
   const sq = [
-    { sel:'#tv2-d-nom',   t:'📛 Le nom du joueur', tx:'Affiché en haut de la carte.\nLes cartes Pépite (or) et Légende (violet) ont des joueurs d\'exception avec de meilleures notes.' },
-    { sel:'#tv2-d-note',  t:'🔢 La note principale', tx:'La force du joueur à son poste naturel. C\'est cette note qui est utilisée lors des duels de match.\n\nZidane a 92 en MIL — excellent !' },
-    { sel:'#tv2-d-note2', t:'🔸 Note secondaire', tx:'Certains joueurs polyvalents peuvent jouer à deux postes !\n\nZidane peut jouer MIL (92) ou ATT (78). Cette flexibilité est un gros avantage tactique.' },
+    { sel:'#tv2-d-nom',   t:'📛 Le nom du joueur', tx:'Affiché en haut de la carte.\nLes cartes Papyte (argent) et Légende (violet) ont des joueurs d\'exception avec de meilleures notes.' },
+    { sel:'#tv2-d-note',  t:'🔢 La note principale', tx:'La force du joueur à son poste naturel. C\'est cette note qui est utilisée lors des duels de match.\n\nBianchi a 15 en MIL — solide !' },
+    { sel:'#tv2-d-note2', t:'🔸 Note secondaire', tx:'Certains joueurs polyvalents peuvent jouer à deux postes !\n\nBianchi peut jouer MIL (15) ou DEF (13). Cette flexibilité est un gros avantage tactique.' },
     { sel:'#tv2-d-flag',  t:'🇫🇷 Le pays', tx:'Le pays crée des liens avec les compatriotes dans ta formation.\n\nDeux joueurs français côte à côte = +5 pts chacun lors des duels !' },
-    { sel:'#tv2-d-club',  t:'🛡️ Le club', tx:'Le club crée aussi des liens dans la formation.\n\nDeschamps + Zidane + Trezeguet jouent tous à la Juventus → +5 pts entre voisins !' },
+    { sel:'#tv2-d-club',  t:'🛡️ Le club', tx:'Le club crée aussi des liens dans la formation.\n\nGirard + Bruno + Bianchi jouent tous à Lille → +5 pts entre voisins !' },
   ]
   let si = 0
   const runSq = () => {
@@ -330,7 +333,7 @@ step(() => {
 
 // ── 7 : Clic sur une carte ───────────────────────────────────────────
 step(() => {
-  const p = P.henry
+  const p = P.giuly
   setScreen(`
     <h2 style="font-size:${isMobile()?'17':'21'}px;margin:0 0 14px;font-weight:900">🃏 Interagir avec une carte</h2>
     <div style="display:flex;${isMobile()?'flex-direction:column;align-items:center':'gap:24px;align-items:flex-start'}">
@@ -344,7 +347,7 @@ step(() => {
       </div>
     </div>`, 'cards')
   wait(150).then(() => {
-    showBubble({ title:'👆 Clique sur la carte Henry', text:'En cliquant sur une carte, tu accèdes à des options d\'action.', targetSel:'#tv2-clickcard', isAction:true, btnLabel:'Clique sur la carte !', onNext: () => {
+    showBubble({ title:'👆 Clique sur la carte Giuly', text:'En cliquant sur une carte, tu accèdes à des options d\'action.', targetSel:'#tv2-clickcard', isAction:true, btnLabel:'Clique sur la carte !', onNext: () => {
       const card = ov.querySelector('#tv2-clickcard')
       card.style.transform = 'scale(0.95)'; setTimeout(()=>card.style.transform='scale(1)',150)
       ov.querySelector('#tv2-cardmenu').style.display = 'flex'
@@ -402,9 +405,9 @@ step(() => {
       </div>
     </div>`, 'decks')
   const sq4 = [
-    { sel:'#tv2-terrain', side:'right', t:'⚽ Le terrain', tx:'Voici ta formation. Chaque cercle = un joueur, le cercle grisé = slot vide (Zidane n\'est pas encore placé).\n\nLes lignes entre joueurs représentent les liens — plus de liens = plus de bonus !' },
-    { sel:'#tv2-l-pays',  side:'left',  t:'🇫🇷 Lien Pays +5 pts',  tx:'Deschamps, Zidane et Petit sont tous français. Placés côte à côte = +5 pts par lien lors des duels !\n\nMets des joueurs de même nationalité ensemble pour maximiser tes bonus.' },
-    { sel:'#tv2-l-club',  side:'left',  t:'🛡️ Lien Club +5 pts',  tx:'Deschamps, Zidane et Trezeguet jouent à la Juventus. Côte à côte dans la formation = +5 pts chacun !\n\nCombine des coéquipiers pour démultiplier les bonus.' },
+    { sel:'#tv2-terrain', side:'right', t:'⚽ Le terrain', tx:'Voici ta formation. Chaque cercle = un joueur, le cercle grisé = slot vide (Bianchi n\'est pas encore placé).\n\nLes lignes entre joueurs représentent les liens — plus de liens = plus de bonus !' },
+    { sel:'#tv2-l-pays',  side:'left',  t:'🇫🇷 Lien Pays +5 pts',  tx:'Toute cette équipe est française ! Deux joueurs français côte à côte = +5 pts par lien lors des duels.\n\nMets des joueurs de même nationalité ensemble pour maximiser tes bonus.' },
+    { sel:'#tv2-l-club',  side:'left',  t:'🛡️ Lien Club +5 pts',  tx:'Girard et Bruno jouent tous les deux à Lille. Placés côte à côte en défense = +5 pts chacun !\n\nCombine des coéquipiers pour démultiplier les bonus.' },
     { sel:'#tv2-l-stad',  side:'left',  t:'🏟️ Bonus Stade +10 pts', tx:'Avec le Stade de France équipé, chaque joueur français dans ta formation reçoit +10 pts en plus lors des duels du milieu.\n\nC\'est le bonus le plus puissant du jeu !' },
   ]
   let si4 = 0
@@ -436,9 +439,9 @@ step(() => {
 // ── 11 : Mercato ─────────────────────────────────────────────────────
 step(() => {
   const listings = [
-    { p:P.vieira,  price:1200 },
-    { p:P.blanc,   price:600 },
-    { p:P.henry,   price:1800 },
+    { p:P.pires,     price:1200 },
+    { p:P.sagnol,    price:600 },
+    { p:P.boukhris,  price:1800 },
   ]
   setScreen(`
     <h2 style="font-size:${isMobile()?'17':'21'}px;margin:0 0 14px;font-weight:900">🏪 Le Mercato</h2>
@@ -522,8 +525,8 @@ step(() => {
 
 // ── 15 : Duel du milieu ──────────────────────────────────────────────
 step(() => {
-  const homeMils = [P.deschamps, P.zidane, P.petit]
-  const aiMils   = [P.maradona, P.ronaldo, P.rivaldo]
+  const homeMils = [P.lamouchi, P.bianchi, P.legwinski]
+  const aiMils   = [P.ai1, P.ai2, P.ai3]
   setScreen(`
     <h2 style="text-align:center;font-size:${isMobile()?'15':'19'}px;margin:0 0 16px;font-weight:900">⚔️ Duel du milieu de terrain</h2>
     <div id="tv2-scores" style="display:flex;align-items:center;justify-content:center;gap:20px;margin-bottom:20px">
@@ -536,7 +539,7 @@ step(() => {
       <div id="tv2-home-row">${renderMilRow(homeMils,'TON MILIEU','#D4A017','home',null)}</div>
     </div>
     <div id="tv2-gc-banner" style="display:none;margin-top:14px;padding:12px;background:rgba(212,160,23,0.12);border:1px solid rgba(212,160,23,0.3);border-radius:10px;text-align:center;font-weight:700;color:#D4A017">
-      ⚡ Carton Rouge ! Ronaldo Nazario est expulsé — score adverse réduit !
+      ⚡ Carton Rouge ! Luis Gomez est expulsé — score adverse réduit !
     </div>`, 'home')
   wait(400).then(() => {
     // Animer apparition des cartes
@@ -544,18 +547,18 @@ step(() => {
     ov.querySelectorAll('.duel-link').forEach((el,i)=>setTimeout(()=>el.style.opacity='1',600+i*60))
     ov.querySelectorAll('.duel-score-line').forEach(el=>setTimeout(()=>el.style.opacity='1',1100))
     wait(800).then(() => {
-      const scoreHome = P.deschamps.note_m + P.zidane.note_m + P.petit.note_m  // 242
-      const scoreAI   = P.maradona.note_m + P.ronaldo.note_m + P.rivaldo.note_m // 251
+      const scoreHome = P.lamouchi.note_m + P.bianchi.note_m + P.legwinski.note_m
+      const scoreAI   = P.ai1.note_m + P.ai2.note_m + P.ai3.note_m
       const showGC = () => {
         ov.querySelector('#tv2-gc-banner').style.display = 'block'
-        const newAI = scoreAI - P.ronaldo.note_m  // 179
+        const newAI = scoreAI - P.ai2.note_m
         ov.querySelector('#tv2-scores').innerHTML = `
           <div style="font-size:${isMobile()?'32':'44'}px;font-weight:900;color:#D4A017">${scoreHome}</div>
           <div style="font-size:14px;color:rgba(255,255,255,0.4)">—</div>
           <div style="font-size:${isMobile()?'32':'44'}px;font-weight:900;color:#bb2020">${newAI}</div>`
         wait(600).then(() => showBubble({ title:'🏆 Tu gagnes le duel !', text:`Ton score : ${scoreHome} pts\nAdversaire après carton rouge : ${newAI} pts\n\nTu prends l'avantage grâce au Game Changer ! Maintenant tu peux attaquer.`, onNext:next }))
       }
-      showBubble({ title:'⚔️ Le duel du milieu', text:`Les scores actuels :\nToi : ${scoreHome} pts | Adversaire : ${scoreAI} pts\n\nTu es légèrement derrière... C\'est le moment d\'utiliser ton Carton Rouge sur Ronaldo Nazario !`, targetSel:'#tv2-ai-row', side:'bottom', btnLabel:'Jouer le Carton Rouge !', onNext: showGC })
+      showBubble({ title:'⚔️ Le duel du milieu', text:`Les scores actuels :\nToi : ${scoreHome} pts | Adversaire : ${scoreAI} pts\n\nTu es légèrement derrière... C\'est le moment d\'utiliser ton Carton Rouge sur Luis Gomez !`, targetSel:'#tv2-ai-row', side:'bottom', btnLabel:'Jouer le Carton Rouge !', onNext: showGC })
     })
   })
 })

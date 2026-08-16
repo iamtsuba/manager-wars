@@ -67,7 +67,7 @@
       if (e.touches && e.touches.length > 1) e.preventDefault()   // pinch = 2 doigts
     }, { passive: false })
   </script>
-  <script type="module" crossorigin src="/assets/main-uflFbzkp.js"></script>
+  <script type="module" crossorigin src="/assets/main-DVyojaK_.js"></script>
   <link rel="modulepreload" crossorigin href="/assets/match-shared-BPr03YEd.js">
   <link rel="stylesheet" crossorigin href="/assets/match-shared-D_M6t_P4.css">
   <link rel="stylesheet" crossorigin href="/assets/main-D6pCH0RO.css">
@@ -83,6 +83,26 @@
     <img src="./icons/logo-withname.png" alt="Manager Wars" id="loader-logo" style="width:240px;max-width:70vw;height:auto">
     <div style="width:40px;height:40px;border:3px solid rgba(255,255,255,0.2);
       border-top-color:#D4A017;border-radius:50%;animation:spin 0.8s linear infinite"></div>
+  </div>
+
+  <!-- Contenu texte statique, visible avant même le chargement de l'app JS
+       (donc indexable par les moteurs de recherche / robots publicitaires).
+       Masqué automatiquement dès que l'app démarre, voir hideLoader() dans
+       app.js — n'affecte donc en rien le comportement existant du bouton
+       "Jouer" ni le flux de connexion. -->
+  <div id="seo-content" style="position:fixed;inset:0;overflow:auto;background:#0d141e;color:#eee;z-index:9998;padding:32px 20px;font-family:system-ui,sans-serif;line-height:1.6">
+    <div style="max-width:640px;margin:0 auto">
+      <p style="text-transform:uppercase;letter-spacing:2px;color:#D4A017;font-size:13px;font-weight:700">Jeu de cartes football — gratuit</p>
+      <h1 style="font-size:clamp(28px,6vw,42px);margin:8px 0 20px">Composez votre onze, activez vos liens, gagnez le duel.</h1>
+      <p>Manager Wars est un jeu de cartes football au tour par tour. Placez vos joueurs sur une grille de formation, activez des bonus de club et de pays entre joueurs adjacents, et affrontez d'autres managers en duel d'attaque et de défense.</p>
+      <h2 style="margin-top:28px;font-size:22px">Chaque position compte</h2>
+      <p>Gardien, défenseur, milieu, attaquant : chaque poste a son rôle dans la grille de formation et dans les liens que vous activez entre joueurs adjacents.</p>
+      <h2 style="margin-top:28px;font-size:22px">Des cartes à collectionner</h2>
+      <p>Chaque joueur a sa propre note, son pays, son club — la matière première de vos liens.</p>
+      <h2 style="margin-top:28px;font-size:22px">Le Mercato</h2>
+      <p>Achetez, vendez, renforcez-vous : votre collection n'est jamais figée, échangez librement avec les autres managers.</p>
+      <p style="margin-top:28px;font-size:13px;color:#888">Le jeu se charge automatiquement ci-dessous — patientez quelques secondes, ou <a href="/accueil.html" style="color:#D4A017">consultez la présentation complète</a>.</p>
+    </div>
   </div>
 
   <!-- App container -->

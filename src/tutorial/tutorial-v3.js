@@ -331,21 +331,22 @@ step(async () => {
   await renderCollection(el, fakeCtx())
   _armBlocklist(el)
   await wait(250)
-  // Cible la première carte réellement rendue dans la grille
-  const firstCard = el.querySelector('[data-idx]') || el.querySelector('#col-grid > div') || el.querySelector('#col-grid')
-  showBubble({ title:'🃏 Ta collection', text:'Voici la vraie collection du jeu, avec l\'équipe de démonstration. Chaque carte affiche le nom, la note, le pays et le club du joueur.', targetEl:firstCard, preferSide:'bottom', onNext:next })
+  // Grande carte centrale = l'élément cliquable réel (data-card-id)
+  const bigCard = el.querySelector('[data-card-id]') || el.querySelector('[data-form-id]')
+  showBubble({ title:'🃏 Ta collection', text:'Voici ta collection avec l\'équipe de démonstration. Chaque carte affiche le nom, la note, le pays et le club du joueur.', targetEl:bigCard, preferSide:'bottom', onNext:next })
 })
 
 // ── 2 : Clic sur une carte (menu réel, actions bloquées) ─────────────
 step(async () => {
   const el = contentEl()
   await wait(100)
-  const firstCard = el.querySelector('[data-idx]') || el.querySelector('#col-grid > div')
-  if (!firstCard) { next(); return }
-  showBubble({ title:'👆 Clique sur une carte', text:'Clique sur la carte mise en avant pour voir les actions possibles.', targetEl:firstCard, isAction:true, btnLabel:'Clique sur la carte !', onNext: () => {
-    // Le clic a déjà eu lieu (c'est lui qui a déclenché onNext) — on attend juste que le modal s'ouvre
-    wait(400).then(() => {
-      showBubble({ title:'⚙️ Actions sur une carte', text:'Depuis ce menu tu peux : vendre rapidement, mettre en vente sur le Mercato, ou faire évoluer le joueur en fusionnant des doublons.\n\n(Ces actions sont désactivées sur le compte démo, mais fonctionnent normalement sur ton vrai compte !)', onNext: () => { _closeFakeModal(); next() } })
+  // Grande carte centrale = seul élément avec un handler openCardDetail
+  const bigCard = el.querySelector('[data-card-id]') || el.querySelector('[data-form-id]')
+  if (!bigCard) { next(); return }
+  showBubble({ title:'👆 Clique sur la carte', text:'Clique sur la grande carte pour voir les actions possibles.', targetEl:bigCard, isAction:true, btnLabel:'Clique sur la carte !', onNext: () => {
+    // Le clic a déjà atteint bigCard (isAction bubble listener) — on attend que le modal s'ouvre
+    wait(500).then(() => {
+      showBubble({ title:'⚙️ Actions sur une carte', text:'Depuis ce menu tu peux vendre, mettre en vente sur le Mercato, ou faire évoluer le joueur.\n\n(Actions désactivées sur le compte démo — fonctionnelles sur ton vrai compte !)', onNext: () => { _closeFakeModal(); next() } })
     })
   }})
 })

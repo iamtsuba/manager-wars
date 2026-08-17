@@ -234,8 +234,22 @@ function showBubble({ title, text, targetEl, preferSide='bottom', btnLabel='Suiv
   if (targetEl) {
     const r = targetEl.getBoundingClientRect()
     dim.style.display = 'block'
-    dim.innerHTML = `<div style="position:absolute;left:${r.left-5}px;top:${r.top-5}px;width:${r.width+10}px;height:${r.height+10}px;
-      border-radius:12px;box-shadow:0 0 0 4000px rgba(0,0,0,0.62);pointer-events:none"></div>`
+    // clip-path perce un trou → le clic passe directement jusqu'à targetEl (dim reste pointer-events:none)
+    dim.innerHTML = `
+      <div style="position:absolute;inset:0;background:rgba(0,0,0,0.62);pointer-events:none;
+        clip-path:polygon(
+          0% 0%,100% 0%,100% 100%,0% 100%,
+          0% ${r.top-5}px,
+          ${r.left-5}px ${r.top-5}px,
+          ${r.left-5}px ${r.bottom+5}px,
+          ${r.right+5}px ${r.bottom+5}px,
+          ${r.right+5}px ${r.top-5}px,
+          0% ${r.top-5}px
+        )"></div>
+      <div style="position:absolute;left:${r.left-5}px;top:${r.top-5}px;
+        width:${r.width+10}px;height:${r.height+10}px;
+        border-radius:10px;border:2.5px solid rgba(255,255,255,0.9);
+        box-shadow:0 0 0 2px #1A6B3C,0 0 18px 4px rgba(26,107,60,0.5);pointer-events:none"></div>`
 
     // Espace disponible dans chaque direction autour de la cible
     const space = {
@@ -273,18 +287,17 @@ function showBubble({ title, text, targetEl, preferSide='bottom', btnLabel='Suiv
       onNext?.()
     }, { once: true })
   } else if (targetEl) {
+    // Écoute en capture sur ov : le clic passe à travers le dim (clip-path + pointer-events:none)
+    // et atteint réellement targetEl. On intercepte ici APRÈS que le vrai handler a été déclenché.
     const handler = (e) => {
-      dim.removeEventListener('click', handler)
-      bub.style.display = 'none'; dim.style.display = 'none'; dim.innerHTML = ''
-      onNext?.()
-    }
-    dim.style.pointerEvents = 'auto'
-    dim.addEventListener('click', (e) => {
       const r2 = targetEl.getBoundingClientRect()
-      if (e.clientX>=r2.left && e.clientX<=r2.right && e.clientY>=r2.top && e.clientY<=r2.bottom) handler(e)
-    })
-    targetEl.style.position = targetEl.style.position || 'relative'
-    targetEl.style.zIndex = '9751'
+      if (e.clientX>=r2.left && e.clientX<=r2.right && e.clientY>=r2.top && e.clientY<=r2.bottom) {
+        ov.removeEventListener('click', handler, true)
+        bub.style.display = 'none'; dim.style.display = 'none'; dim.innerHTML = ''
+        onNext?.()
+      }
+    }
+    ov.addEventListener('click', handler, true)
   }
 }
 
@@ -589,3 +602,4 @@ async function finish() {
   } catch {}
   onDone?.()
 }
+

@@ -34,7 +34,8 @@ const BASE = (typeof import.meta !== 'undefined' && import.meta.env?.BASE_URL) |
 const ICON = BASE + 'icons/'
 const isMobile = () => window.innerWidth < 900
 
-const DEMO_ID = '00000000-0000-4000-8000-000000000001'   // compte démo (migration_tutorial_demo_account.sql)
+const DEMO_ID      = '00000000-0000-4000-8000-000000000001'
+const DEMO_DECK_ID_FIXED = '00000000-0000-4000-8000-0000dec00000'
 
 let ov = null
 let onDone = null
@@ -561,16 +562,19 @@ export async function startTutorialV3(done) {
   onDone = done
   _i = 0
 
-  // Charge le profil démo + l'id du deck démo (créés par la migration)
-  const { data: prof } = await supabase.from('users').select('*').eq('id', DEMO_ID).single()
-  if (!prof) {
-    console.error('[Tutoriel] Compte démo introuvable — la migration a-t-elle été exécutée ?')
-    done?.()
-    return
+  // Profil et deck hardcodés — les requêtes Supabase étaient bloquées par
+  // RLS (chaque utilisateur ne voit que ses propres lignes, pas celles du
+  // compte démo). UUIDs fixes, identiques à ceux de la migration SQL.
+  DEMO_PROFILE = {
+    id:              DEMO_ID,
+    pseudo:          'Démo Tutoriel',
+    club_name:       'FC Tutoriel',
+    credits:         999999,
+    tutorial_done:   true,
+    onboarding_done: true,
+    is_admin:        false,
   }
-  DEMO_PROFILE = prof
-  const { data: deck } = await supabase.from('decks').select('id').eq('owner_id', DEMO_ID).eq('name', 'France 98').limit(1).single()
-  DEMO_DECK_ID = deck?.id || null
+  DEMO_DECK_ID = DEMO_DECK_ID_FIXED
 
   buildOv()
   setProgress(0, STEPS.length-1)

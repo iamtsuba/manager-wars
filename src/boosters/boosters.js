@@ -1531,8 +1531,7 @@ export async function renderStarterOnboarding(container, { state, navigate, toas
     </div>`
 
     document.getElementById('btn-do-tutorial')?.addEventListener('click', async () => {
-      const steps = await fetchTutorialSteps()
-      startTutorialV2({ state, navigate, toast }, async () => {
+      startTutorialV3(async () => {
         await supabase.from('users').update({ tutorial_done: true }).eq('id', state.user.id)
         if (refreshProfile) await refreshProfile()
         const { data: p } = await supabase.from('users').select('*').eq('id', state.user.id).single()

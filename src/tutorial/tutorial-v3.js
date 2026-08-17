@@ -287,17 +287,17 @@ function showBubble({ title, text, targetEl, preferSide='bottom', btnLabel='Suiv
       onNext?.()
     }, { once: true })
   } else if (targetEl) {
-    // Écoute en capture sur ov : le clic passe à travers le dim (clip-path + pointer-events:none)
-    // et atteint réellement targetEl. On intercepte ici APRÈS que le vrai handler a été déclenché.
+    // Écoute en BUBBLE (pas capture) sur ov après que targetEl a reçu le clic.
+    // On attend un tick (setTimeout 0) pour laisser le vrai handler de la carte s'exécuter d'abord.
     const handler = (e) => {
       const r2 = targetEl.getBoundingClientRect()
       if (e.clientX>=r2.left && e.clientX<=r2.right && e.clientY>=r2.top && e.clientY<=r2.bottom) {
-        ov.removeEventListener('click', handler, true)
+        ov.removeEventListener('click', handler)
         bub.style.display = 'none'; dim.style.display = 'none'; dim.innerHTML = ''
-        onNext?.()
+        setTimeout(() => onNext?.(), 0)
       }
     }
-    ov.addEventListener('click', handler, true)
+    ov.addEventListener('click', handler)
   }
 }
 
@@ -343,7 +343,7 @@ step(async () => {
   const firstCard = el.querySelector('[data-idx]') || el.querySelector('#col-grid > div')
   if (!firstCard) { next(); return }
   showBubble({ title:'👆 Clique sur une carte', text:'Clique sur la carte mise en avant pour voir les actions possibles.', targetEl:firstCard, isAction:true, btnLabel:'Clique sur la carte !', onNext: () => {
-    firstCard.click()
+    // Le clic a déjà eu lieu (c'est lui qui a déclenché onNext) — on attend juste que le modal s'ouvre
     wait(400).then(() => {
       showBubble({ title:'⚙️ Actions sur une carte', text:'Depuis ce menu tu peux : vendre rapidement, mettre en vente sur le Mercato, ou faire évoluer le joueur en fusionnant des doublons.\n\n(Ces actions sont désactivées sur le compte démo, mais fonctionnent normalement sur ton vrai compte !)', onNext: () => { _closeFakeModal(); next() } })
     })

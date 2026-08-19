@@ -745,7 +745,13 @@ function drawTutorialPreviewOverlay(params) {
   document.getElementById('tut-preview-overlay')?.remove()
 
   const selector  = params.get('selector') || ''
-  const position  = params.get('position') || 'center'
+  // L'iframe de l'admin est redimensionnée réellement (320px mobile /
+  // 1100px desktop, voir tutorial-admin-v2.js) — window.innerWidth ici
+  // reflète donc fidèlement le mode simulé, même seuil que le jeu (900px).
+  const isMobileViewport = window.innerWidth < 900
+  const position = (isMobileViewport
+    ? params.get('position')
+    : (params.get('positionDesktop') || params.get('position'))) || 'center'
   const title     = params.get('title') || ''
   const text      = params.get('text') || ''
   const action    = params.get('action') || ''

@@ -213,7 +213,7 @@ function render(step) {
   // (center/top/bottom/upper-center/lower-center) — les positions en coin
   // (top-left, bottom-right, etc.) restent compactes, une largeur forcée
   // les ferait déborder de l'écran.
-  const isCenteredPos = ['center', 'top', 'bottom', 'upper-center', 'lower-center'].includes(chosenPosition)
+  const isCenteredPos = ['center', 'top', 'bottom', 'upper-center', 'lower-center', 'above-nav'].includes(chosenPosition)
   const widthRule = isCenteredPos ? `width:${bw}px;` : ''
   const isLast = idx === steps.length - 1
   const canSkip = step.skip_allowed !== false

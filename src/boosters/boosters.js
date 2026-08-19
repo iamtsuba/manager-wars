@@ -7,8 +7,8 @@ import { loadActiveBoosters, drawCard, rollDropRate, recordBoosterClaim } from '
 import { playSound } from '../lib/sound.js'
 import { getPortrait } from '../lib/portrait.js'
 import { renderGCCard, renderStadiumCard, renderFormationCard } from '../components/special-cards.js'
-import { showTutorial, STEPS as TUTORIAL_FALLBACK_STEPS } from '../tutorial/tutorial.js'
-import { startTutorialV3 } from '../tutorial/tutorial-v3.js'
+import { startTutorialV2 } from '../tutorial/tutorial-v2-player.js'
+import { launchApp } from '../app.js'
 
 // Toutes les formations disponibles (depuis formation-links.js)
 const ALL_FORMATIONS = () => Object.keys(FORMATION_POSITIONS)
@@ -1475,14 +1475,6 @@ export async function renderStarterOnboarding(container, { state, navigate, toas
     return rows
   }
 
-  async function fetchTutorialSteps() {
-    const { data: rpcData, error: rpcErr } = await supabase.rpc('get_tutorial_steps')
-    if (!rpcErr && rpcData?.length > 0) return rpcData.map(s => ({ emoji: s.emoji, title: s.title, color: s.color, content: s.content, image_url: s.image_url || null }))
-    const { data: directData } = await supabase.from('tutorial_steps').select('*').eq('is_active', true).order('step_order')
-    if (directData?.length > 0) return directData.map(s => ({ emoji: s.emoji, title: s.title, color: s.color, content: s.content, image_url: s.image_url || null }))
-    return null   // showTutorial retombe sur ses étapes locales par défaut si null n'est pas géré ; on gère ce cas à l'appel
-  }
-
   function renderRewardsList() {
     const tutoDone = !!state.profile.tutorial_done
     const remaining = buildRewardRows()
@@ -1531,7 +1523,12 @@ export async function renderStarterOnboarding(container, { state, navigate, toas
     </div>`
 
     document.getElementById('btn-do-tutorial')?.addEventListener('click', async () => {
-      startTutorialV3(async () => {
+      // Le shell réel (nav + page-content) n'existe pas encore à ce stade
+      // (on est sur l'écran "Premiers pas", affiché avant lui) — startTutorialV2
+      // navigue via la VRAIE fonction navigate(), qui a besoin du shell pour
+      // fonctionner. On le construit donc d'abord.
+      launchApp()
+      startTutorialV2({ state, navigate, toast, refreshProfile }, async () => {
         await supabase.from('users').update({ tutorial_done: true }).eq('id', state.user.id)
         if (refreshProfile) await refreshProfile()
         const { data: p } = await supabase.from('users').select('*').eq('id', state.user.id).single()

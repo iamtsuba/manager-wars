@@ -131,6 +131,19 @@ function render(step) {
   ov.innerHTML = ''
 
   const targetEl = step.dom_selector ? findVisibleTarget(step.dom_selector) : null
+
+  // Un sélecteur qui matche un conteneur quasi plein écran (ex: "#app", le
+  // wrapper racine de toute l'app) rend le spotlight/grisage inopérant en
+  // pratique : le "trou" découpé dans le voile aurait alors la taille de
+  // l'écran entier, donc rien ne semble grisé. On ignore délibérément ces
+  // cibles pour le rendu visuel du grisage/anneau (même logique que
+  // l'aperçu admin dans app.js).
+  let visualTargetEl = targetEl
+  if (targetEl) {
+    const r0 = targetEl.getBoundingClientRect()
+    const coverage = (r0.width * r0.height) / (window.innerWidth * window.innerHeight)
+    if (coverage > 0.9) visualTargetEl = null
+  }
   const highlight = step.highlight_type || 'none'
   const dimScreen = !!step.dim_overlay
   const allowInteraction = !!step.allow_interaction
@@ -143,8 +156,8 @@ function render(step) {
   let html = ''
 
   if (dimScreen) {
-    if (targetEl) {
-      const r = targetEl.getBoundingClientRect()
+    if (visualTargetEl) {
+      const r = visualTargetEl.getBoundingClientRect()
       html += `<div style="position:absolute;top:0;left:0;right:0;bottom:0;width:100%;height:100%;background:rgba(0,0,0,0.62);
         clip-path:polygon(0% 0%,100% 0%,100% 100%,0% 100%,
           0% ${r.top - 6}px,${r.left - 6}px ${r.top - 6}px,${r.left - 6}px ${r.bottom + 6}px,
@@ -154,8 +167,8 @@ function render(step) {
     }
   }
 
-  if (targetEl && highlight !== 'none') {
-    const r = targetEl.getBoundingClientRect()
+  if (visualTargetEl && highlight !== 'none') {
+    const r = visualTargetEl.getBoundingClientRect()
     const ringColor = highlight === 'glow' ? '#D4A017' : '#1A6B3C'
     const anim = highlight === 'pulse' ? 'animation:tv2Pulse 1.6s infinite;'
                : highlight === 'glow'  ? 'animation:tv2Glow 1.6s infinite;' : ''

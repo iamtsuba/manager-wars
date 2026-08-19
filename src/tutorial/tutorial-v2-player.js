@@ -165,7 +165,7 @@ function render(step) {
   }
 
   const vw = window.innerWidth, vh = window.innerHeight
-  const bw = Math.min(340, vw - 32)
+  const bw = vw - 32
   const posMap = {
     center:         'top:50%;left:50%;transform:translate(-50%,-50%);',
     top:            'top:16px;left:50%;transform:translateX(-50%);',

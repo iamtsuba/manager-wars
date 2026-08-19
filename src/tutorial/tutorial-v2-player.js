@@ -212,12 +212,12 @@ function render(step) {
     </div>
     <div style="font-weight:900;font-size:15px;color:#1a1a2e;margin-bottom:6px;text-align:center">${escapeHtmlV2(step.popup_title)}</div>
     <div style="font-size:13px;color:#555;line-height:1.5;margin-bottom:12px;text-align:center">${step.popup_text || ''}</div>
-    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
-      ${canSkip ? `<button id="tv2-skip" style="background:none;border:none;font-size:11px;color:#999;cursor:pointer;padding:4px">Passer le tutoriel</button>` : '<div></div>'}
+    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px">
       ${showNext
-        ? `<button id="tv2-next" style="background:#1A6B3C;color:#fff;border:none;border-radius:9px;padding:9px 20px;font-size:13px;font-weight:800;cursor:pointer">${isLast ? '🚀 Terminer' : 'Suivant →'}</button>`
-        : `<div style="font-size:11px;color:#1A6B3C;font-weight:800">👆 ${escapeHtmlV2(step.action_required || 'Clique sur l\'élément indiqué')}</div>`
+        ? `<button id="tv2-next" style="background:#1A6B3C;color:#fff;border:none;border-radius:9px;padding:9px 20px;font-size:13px;font-weight:800;cursor:pointer;text-align:center">${isLast ? '🚀 Terminer' : 'Suivant →'}</button>`
+        : `<div style="font-size:11px;color:#1A6B3C;font-weight:800;text-align:center">👆 ${escapeHtmlV2(step.action_required || 'Clique sur l\'élément indiqué')}</div>`
       }
+      ${canSkip ? `<button id="tv2-skip" style="background:none;border:none;font-size:11px;color:#999;cursor:pointer;padding:4px;text-align:center">Passer le tutoriel</button>` : ''}
     </div>
   </div>`
 

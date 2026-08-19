@@ -163,10 +163,18 @@ export async function renderTutorialAdminV2(container, { toast, openModal, close
         </div>
 
         <div class="form-group">
-          <label style="${LABEL_STYLE}">Position popup</label>
+          <label style="${LABEL_STYLE}">📱 Position popup (Mobile)</label>
           <select id="popup-position" style="${INPUT_STYLE}">
             <option value="">-- Sélectionne --</option>
             ${POPUP_POSITIONS.map(p => `<option value="${p.value}" ${step.popup_position === p.value ? 'selected' : ''}>${p.label}</option>`).join('')}
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label style="${LABEL_STYLE}">🖥️ Position popup (PC)</label>
+          <select id="popup-position-desktop" style="${INPUT_STYLE}">
+            <option value="">-- Identique au mobile --</option>
+            ${POPUP_POSITIONS.map(p => `<option value="${p.value}" ${step.popup_position_desktop === p.value ? 'selected' : ''}>${p.label}</option>`).join('')}
           </select>
         </div>
 
@@ -270,6 +278,7 @@ export async function renderTutorialAdminV2(container, { toast, openModal, close
       page_route: val('page-route') || 'home',
       dom_selector: val('dom-selector'),
       popup_position: val('popup-position') || 'center',
+      popup_position_desktop: val('popup-position-desktop'),
       popup_title: val('popup-title'),
       popup_text: val('popup-text'),
       action_required: val('action-required'),
@@ -288,6 +297,7 @@ export async function renderTutorialAdminV2(container, { toast, openModal, close
       page: state.page_route,
       selector: state.dom_selector || '',
       position: state.popup_position,
+      positionDesktop: state.popup_position_desktop || '',
       title: state.popup_title || '',
       text: state.popup_text || '',
       action: state.action_required || '',
@@ -571,7 +581,7 @@ export async function renderTutorialAdminV2(container, { toast, openModal, close
 
     // Live preview : tout champ met à jour l'iframe réelle en direct
     const formFieldIds = [
-      'page-route', 'dom-selector', 'popup-position', 'popup-title', 'popup-text',
+      'page-route', 'dom-selector', 'popup-position', 'popup-position-desktop', 'popup-title', 'popup-text',
       'action-required', 'validator-logic', 'highlight-type', 'dim-overlay',
       'allow-interaction', 'show-next-button', 'skip-allowed', 'is-mandatory'
     ]
@@ -606,6 +616,7 @@ export async function renderTutorialAdminV2(container, { toast, openModal, close
     const pageRoute = container.querySelector('#page-route').value || null
     const domSelector = container.querySelector('#dom-selector').value.trim() || null
     const popupPosition = container.querySelector('#popup-position').value || null
+    const popupPositionDesktop = container.querySelector('#popup-position-desktop').value || null
     const popupTitle = container.querySelector('#popup-title').value.trim()
     const popupText = container.querySelector('#popup-text').value.trim()
     const actionRequired = container.querySelector('#action-required').value.trim() || null
@@ -630,6 +641,7 @@ export async function renderTutorialAdminV2(container, { toast, openModal, close
       page_route: pageRoute,
       dom_selector: domSelector,
       popup_position: popupPosition,
+      popup_position_desktop: popupPositionDesktop,
       popup_title: popupTitle,
       popup_text: popupText,
       action_required: actionRequired,

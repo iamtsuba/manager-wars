@@ -2,7 +2,7 @@
 /**
  * Admin Tutorial Manager v2
  * CRUD complet pour les étapes du tutoriel
- * Table: tutorial_steps
+ * Table: tutorial_steps_v2
  */
 
 import { supabase } from '../../lib/supabase.js'
@@ -20,7 +20,7 @@ export async function renderTutorialAdminV2(container, { toast, openModal, close
   // Charger toutes les étapes
   async function loadSteps() {
     const { data, error } = await supabase
-      .from('tutorial_steps')
+      .from('tutorial_steps_v2')
       .select('*')
       .order('step_number', { ascending: true })
     
@@ -210,6 +210,8 @@ export async function renderTutorialAdminV2(container, { toast, openModal, close
 
   // Rendu principal
   function render() {
+    const step = editingId ? steps.find(s => s.id === editingId) : null
+
     container.innerHTML = `
     <div style="padding:20px;background:#f9f9f9">
       <div style="margin-bottom:24px">
@@ -233,17 +235,19 @@ export async function renderTutorialAdminV2(container, { toast, openModal, close
     const cancelBtn = container.querySelector('#cancel-edit-btn')
 
     if (titleInput) {
+      const titleCount = container.querySelector('#title-count')
+      if (titleCount) titleCount.textContent = titleInput.value.length
       titleInput.addEventListener('input', e => {
-        container.querySelector('#title-count').textContent = e.target.value.length
+        if (titleCount) titleCount.textContent = e.target.value.length
       })
-      if (step?.popup_title) container.querySelector('#title-count').textContent = step.popup_title.length
     }
 
     if (textInput) {
+      const textCount = container.querySelector('#text-count')
+      if (textCount) textCount.textContent = textInput.value.length
       textInput.addEventListener('input', e => {
-        container.querySelector('#text-count').textContent = e.target.value.length
+        if (textCount) textCount.textContent = e.target.value.length
       })
-      if (step?.popup_text) container.querySelector('#text-count').textContent = step.popup_text.length
     }
 
     if (saveBtn) saveBtn.addEventListener('click', saveStep)
@@ -252,7 +256,7 @@ export async function renderTutorialAdminV2(container, { toast, openModal, close
     // Listeners édition/suppression
     container.querySelectorAll('.edit-step-btn').forEach(btn => {
       btn.addEventListener('click', () => {
-        editingId = BigInt(btn.dataset.id)
+        editingId = Number(btn.dataset.id)
         render()
         window.scrollTo(0, 0)
       })
@@ -261,9 +265,9 @@ export async function renderTutorialAdminV2(container, { toast, openModal, close
     container.querySelectorAll('.delete-step-btn').forEach(btn => {
       btn.addEventListener('click', async () => {
         if (!confirm('Supprimer cette étape ? Action irréversible.')) return
-        const id = BigInt(btn.dataset.id)
+        const id = Number(btn.dataset.id)
         const { error } = await supabase
-          .from('tutorial_steps')
+          .from('tutorial_steps_v2')
           .delete()
           .eq('id', id)
         if (error) toast(`Erreur suppression: ${error.message}`, 'error')
@@ -316,14 +320,14 @@ export async function renderTutorialAdminV2(container, { toast, openModal, close
     let error
     if (editingId) {
       const result = await supabase
-        .from('tutorial_steps')
+        .from('tutorial_steps_v2')
         .update(payload)
         .eq('id', editingId)
       error = result.error
       if (!error) toast('Étape mise à jour', 'success')
     } else {
       const result = await supabase
-        .from('tutorial_steps')
+        .from('tutorial_steps_v2')
         .insert([payload])
       error = result.error
       if (!error) toast('Étape créée', 'success')

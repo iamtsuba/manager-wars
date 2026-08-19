@@ -698,6 +698,19 @@ function drawTutorialPreviewOverlay(params) {
     }, '*')
   } catch (e) { /* pas dans un iframe (accès direct à l'URL) */ }
 
+  // Un sélecteur qui matche un conteneur quasi plein écran (ex: "#app", le
+  // wrapper racine de toute l'app) rend le spotlight/grisage inopérant en
+  // pratique : le "trou" découpé dans le voile a alors la taille de
+  // l'écran entier, donc rien ne semble grisé. On ignore délibérément ces
+  // cibles pour le rendu visuel (le statut "found" envoyé ci-dessus reste
+  // néanmoins correct pour l'admin).
+  let visualTargetEl = targetEl
+  if (targetEl) {
+    const r0 = targetEl.getBoundingClientRect()
+    const coverage = (r0.width * r0.height) / (window.innerWidth * window.innerHeight)
+    if (coverage > 0.9) visualTargetEl = null
+  }
+
   const dim = document.createElement('div')
   dim.id = 'tut-preview-overlay'
   dim.style.cssText = 'position:fixed;inset:0;z-index:9800;pointer-events:none'
@@ -707,8 +720,8 @@ function drawTutorialPreviewOverlay(params) {
   // Grisage de l'écran (indépendant du style d'anneau) — avec découpe
   // autour de l'élément ciblé s'il existe, sinon plein écran.
   if (dimScreen) {
-    if (targetEl) {
-      const r = targetEl.getBoundingClientRect()
+    if (visualTargetEl) {
+      const r = visualTargetEl.getBoundingClientRect()
       html += `<div style="position:absolute;inset:0;background:rgba(0,0,0,0.62);
         clip-path:polygon(0% 0%,100% 0%,100% 100%,0% 100%,
           0% ${r.top - 6}px,${r.left - 6}px ${r.top - 6}px,${r.left - 6}px ${r.bottom + 6}px,
@@ -719,8 +732,8 @@ function drawTutorialPreviewOverlay(params) {
   }
 
   // Anneau de mise en évidence autour de l'élément ciblé
-  if (targetEl && highlight !== 'none') {
-    const r = targetEl.getBoundingClientRect()
+  if (visualTargetEl && highlight !== 'none') {
+    const r = visualTargetEl.getBoundingClientRect()
     const ringColor = highlight === 'glow' ? '#D4A017' : '#1A6B3C'
     const anim = highlight === 'pulse' ? 'animation:tutPreviewPulse 1.6s infinite;'
                : highlight === 'glow'  ? 'animation:tutPreviewGlow 1.6s infinite;' : ''
@@ -740,6 +753,8 @@ function drawTutorialPreviewOverlay(params) {
   const posMap = {
     center:       'top:50%;left:50%;transform:translate(-50%,-50%);',
     top:          'top:16px;left:50%;transform:translateX(-50%);',
+    'upper-center': 'top:28%;left:50%;transform:translate(-50%,-50%);',
+    'lower-center': 'top:72%;left:50%;transform:translate(-50%,-50%);',
     'top-left':   'top:16px;left:16px;',
     'top-right':  'top:16px;right:16px;',
     bottom:       'bottom:16px;left:50%;transform:translateX(-50%);',

@@ -15,6 +15,7 @@ import { renderBoostersConfig } from './pages/boosters-config.js'
 import { renderSellPriceConfig } from './pages/sell-price-config.js'
 import { renderJournal         } from './pages/journal.js'
 import { renderTutorialAdmin   } from './pages/tutorial-admin.js'
+import { renderTutorialAdminV2 } from './pages/tutorial-admin-v2.js'
 import { renderStadiums        } from './pages/stadiums.js'
 import { renderGCCards }         from './pages/gc-cards.js'
 import { renderRankedSeasons }   from './pages/ranked-seasons.js'
@@ -54,6 +55,7 @@ const PAGES = {
   'sell-price':      { title: 'Prix vente directe',    fn: renderSellPriceConfig },
   'journal':         { title: 'Actualités',            fn: renderJournal },
   'tutorial':        { title: 'Tutoriel',              fn: renderTutorialAdmin },
+  'tutorial-v2':     { title: '🎓 Tutoriel v2',         fn: renderTutorialAdminV2 },
   'stadiums':        { title: 'Stades',                fn: renderStadiums },
   'gc-cards':         { title: 'Game Changers',          fn: renderGCCards },
   'ranked-seasons':   { title: 'Saisons Ranked',         fn: renderRankedSeasons },

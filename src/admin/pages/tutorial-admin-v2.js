@@ -4,6 +4,9 @@
  * CRUD complet pour les étapes du tutoriel
  * Table: tutorial_steps_v2
  *
+ * Layout : liste des étapes à gauche (colonne fixe, scrollable),
+ * formulaire de création/édition à droite.
+ *
  * NOTE CSS : .admin-content applique color:rgba(255,255,255,0.9) (thème sombre).
  * Ce composant utilise des fonds clairs → on force explicitement color:#1a1a1a
  * sur tous les textes/labels/inputs pour éviter le texte blanc sur fond blanc.
@@ -41,17 +44,48 @@ export async function renderTutorialAdminV2(container, { toast, openModal, close
     render()
   }
 
-  // Formulaire pour ajouter/éditer une étape
+  // ── Colonne gauche : liste des étapes ──────────────────────
+  function renderStepsList() {
+    if (!steps.length) {
+      return `<div style="text-align:center;padding:40px 12px;color:${TEXT_MUTED};font-size:13px">Aucune étape créée.<br>Utilise le formulaire à droite pour en créer une.</div>`
+    }
+
+    return steps.map(step => `
+      <div class="tsv2-list-item" data-id="${step.id}" style="
+        padding:12px;border-radius:10px;margin-bottom:8px;cursor:pointer;
+        background:${editingId === step.id ? '#eaf7ee' : '#fff'};
+        border:1.5px solid ${editingId === step.id ? '#1A6B3C' : '#eee'};
+        transition:border-color .15s,background .15s;
+      ">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:4px">
+          <span style="font-weight:800;font-size:13px;color:${TEXT_DARK}">#${step.step_number} · ${step.step_name}</span>
+          ${step.is_mandatory ? '<span style="font-size:10px;background:#D4A017;color:#1a1a1a;padding:1px 6px;border-radius:8px;font-weight:700">OBLI.</span>' : ''}
+        </div>
+        <div style="font-size:12px;color:${TEXT_MUTED};margin-bottom:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+          ${step.popup_title || '—'}
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+          <code style="font-size:10px;background:#f0f0f0;color:${TEXT_DARK};padding:2px 6px;border-radius:4px">${step.page_route || 'aucune page'}</code>
+          <div style="display:flex;gap:4px">
+            <button class="btn btn-sm btn-ghost edit-step-btn" data-id="${step.id}" style="padding:3px 7px;font-size:11px">✏️</button>
+            <button class="btn btn-sm btn-danger delete-step-btn" data-id="${step.id}" style="padding:3px 7px;font-size:11px;color:#c0392b">🗑️</button>
+          </div>
+        </div>
+      </div>
+    `).join('')
+  }
+
+  // ── Colonne droite : formulaire ─────────────────────────────
   function renderForm() {
     const step = editingId ? steps.find(s => s.id === editingId) : {}
 
     return `
-    <div style="background:#f5f5f5;border-radius:12px;padding:20px;margin-bottom:20px;color:${TEXT_DARK}">
+    <div style="background:#f5f5f5;border-radius:12px;padding:20px;color:${TEXT_DARK}">
       <h3 style="margin:0 0 16px 0;font-size:16px;font-weight:700;color:${TEXT_DARK}">
         ${editingId ? '✏️ Éditer étape #' + step.step_number : '➕ Nouvelle étape'}
       </h3>
 
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px;margin-bottom:16px">
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-bottom:16px">
         <!-- Numéro de step -->
         <div class="form-group">
           <label style="${LABEL_STYLE}">Numéro de step *</label>
@@ -170,58 +204,11 @@ export async function renderTutorialAdminV2(container, { toast, openModal, close
     `
   }
 
-  // Liste des étapes
-  function renderStepsList() {
-    if (!steps.length) {
-      return `<div style="text-align:center;padding:40px;color:${TEXT_MUTED}">Aucune étape créée. Crée-en une en haut.</div>`
-    }
-
-    return `
-    <div style="background:#fff;border-radius:12px;padding:16px;color:${TEXT_DARK}">
-      <h3 style="margin:0 0 16px 0;font-size:16px;font-weight:700;color:${TEXT_DARK}">
-        📋 ${steps.length} étape(s) créée(s)
-      </h3>
-
-      <div style="overflow-x:auto">
-        <table style="width:100%;border-collapse:collapse;font-size:13px;color:${TEXT_DARK}">
-          <thead>
-            <tr style="background:#f0f0f0;border-bottom:2px solid #ddd">
-              <th style="padding:10px;text-align:left;font-weight:700;color:${TEXT_DARK}">N°</th>
-              <th style="padding:10px;text-align:left;font-weight:700;color:${TEXT_DARK}">Nom</th>
-              <th style="padding:10px;text-align:left;font-weight:700;color:${TEXT_DARK}">Page</th>
-              <th style="padding:10px;text-align:left;font-weight:700;color:${TEXT_DARK}">Titre</th>
-              <th style="padding:10px;text-align:center;font-weight:700;color:${TEXT_DARK}">Obli.</th>
-              <th style="padding:10px;text-align:center;font-weight:700;color:${TEXT_DARK}">Skip</th>
-              <th style="padding:10px;text-align:center;font-weight:700;color:${TEXT_DARK}">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${steps.map(step => `
-            <tr style="border-bottom:1px solid #eee;background:${editingId === step.id ? '#ffffeb' : '#fff'};color:${TEXT_DARK}">
-              <td style="padding:10px;color:${TEXT_DARK}"><strong>#${step.step_number}</strong></td>
-              <td style="padding:10px;color:${TEXT_DARK}">${step.step_name}</td>
-              <td style="padding:10px;color:${TEXT_DARK}"><code style="background:#f0f0f0;padding:2px 6px;border-radius:3px;color:${TEXT_DARK}">${step.page_route || '—'}</code></td>
-              <td style="padding:10px;color:${TEXT_DARK}">${step.popup_title || '—'}</td>
-              <td style="padding:10px;text-align:center;color:${TEXT_DARK}">${step.is_mandatory ? '✅' : '—'}</td>
-              <td style="padding:10px;text-align:center;color:${TEXT_DARK}">${step.skip_allowed ? '✓' : '✗'}</td>
-              <td style="padding:10px;text-align:center;white-space:nowrap">
-                <button class="btn btn-sm btn-ghost edit-step-btn" data-id="${step.id}" style="padding:4px 8px;font-size:12px">✏️ Éditer</button>
-                <button class="btn btn-sm btn-danger delete-step-btn" data-id="${step.id}" style="padding:4px 8px;font-size:12px;color:#c0392b">🗑️ Supprimer</button>
-              </td>
-            </tr>
-            `).join('')}
-          </tbody>
-        </table>
-      </div>
-    </div>
-    `
-  }
-
-  // Rendu principal
+  // ── Rendu principal (layout 2 colonnes) ─────────────────────
   function render() {
     container.innerHTML = `
     <div style="padding:20px;background:#f9f9f9;color:${TEXT_DARK}">
-      <div style="margin-bottom:24px">
+      <div style="margin-bottom:20px">
         <h2 style="margin:0 0 8px 0;font-size:20px;font-weight:900;color:${TEXT_DARK}">
           🎓 Tutoriel Manager Wars v2
         </h2>
@@ -230,8 +217,27 @@ export async function renderTutorialAdminV2(container, { toast, openModal, close
         </p>
       </div>
 
-      ${renderForm()}
-      ${renderStepsList()}
+      <div style="display:flex;gap:20px;align-items:flex-start;flex-wrap:wrap">
+
+        <!-- Colonne gauche : liste des étapes -->
+        <div style="width:320px;flex-shrink:0;max-width:100%">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+            <h3 style="margin:0;font-size:14px;font-weight:800;color:${TEXT_DARK}">
+              📋 ${steps.length} étape(s)
+            </h3>
+            <button class="btn btn-sm btn-primary" id="new-step-btn" style="padding:5px 10px;font-size:12px">➕ Nouvelle</button>
+          </div>
+          <div style="max-height:calc(100vh - 220px);overflow-y:auto;padding-right:4px">
+            ${renderStepsList()}
+          </div>
+        </div>
+
+        <!-- Colonne droite : formulaire -->
+        <div style="flex:1;min-width:320px">
+          ${renderForm()}
+        </div>
+
+      </div>
     </div>
     `
 
@@ -240,6 +246,7 @@ export async function renderTutorialAdminV2(container, { toast, openModal, close
     const textInput = container.querySelector('#popup-text')
     const saveBtn = container.querySelector('#save-step-btn')
     const cancelBtn = container.querySelector('#cancel-edit-btn')
+    const newBtn = container.querySelector('#new-step-btn')
 
     if (titleInput) {
       const titleCount = container.querySelector('#title-count')
@@ -259,18 +266,28 @@ export async function renderTutorialAdminV2(container, { toast, openModal, close
 
     if (saveBtn) saveBtn.addEventListener('click', saveStep)
     if (cancelBtn) cancelBtn.addEventListener('click', () => { editingId = null; render() })
+    if (newBtn) newBtn.addEventListener('click', () => { editingId = null; render() })
 
-    // Listeners édition/suppression
+    // Clic sur une carte de la liste (hors boutons) → édite l'étape
+    container.querySelectorAll('.tsv2-list-item').forEach(item => {
+      item.addEventListener('click', e => {
+        if (e.target.closest('.edit-step-btn') || e.target.closest('.delete-step-btn')) return
+        editingId = Number(item.dataset.id)
+        render()
+      })
+    })
+
+    // Listeners édition/suppression (boutons dans la liste)
     container.querySelectorAll('.edit-step-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         editingId = Number(btn.dataset.id)
         render()
-        window.scrollTo(0, 0)
       })
     })
 
     container.querySelectorAll('.delete-step-btn').forEach(btn => {
-      btn.addEventListener('click', async () => {
+      btn.addEventListener('click', async e => {
+        e.stopPropagation()
         if (!confirm('Supprimer cette étape ? Action irréversible.')) return
         const id = Number(btn.dataset.id)
         const { error } = await supabase
@@ -278,7 +295,11 @@ export async function renderTutorialAdminV2(container, { toast, openModal, close
           .delete()
           .eq('id', id)
         if (error) toast(`Erreur suppression: ${error.message}`, 'error')
-        else { toast('Étape supprimée', 'success'); await loadSteps() }
+        else {
+          if (editingId === id) editingId = null
+          toast('Étape supprimée', 'success')
+          await loadSteps()
+        }
       })
     })
   }

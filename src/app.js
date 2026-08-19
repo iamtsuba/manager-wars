@@ -687,6 +687,30 @@ function buildSelectorFor(el) {
   return path.join(' > ') || el.tagName.toLowerCase()
 }
 
+// Certains éléments (barre de navigation notamment) existent EN DOUBLE dans
+// le DOM — une version desktop et une version mobile — la bascule entre les
+// deux se faisant uniquement via CSS (display:none), pas en JS. Un simple
+// querySelector() attrape alors systématiquement le premier des deux dans
+// l'ordre du DOM, qui peut très bien être la version actuellement CACHÉE
+// (taille 0×0, donc highlight invisible). On cherche ici explicitement le
+// premier élément correspondant qui a une taille réelle (donc visible).
+function findVisibleTarget(selector) {
+  let all
+  try {
+    all = document.querySelectorAll(selector)
+  } catch (e) {
+    return null // sélecteur CSS invalide
+  }
+  for (const el of all) {
+    const r = el.getBoundingClientRect()
+    if (r.width > 0 && r.height > 0) return el
+  }
+  // Aucun match visible : retourne le premier quand même (pour que le
+  // statut "found" reste correct côté admin), même s'il ne sera pas
+  // visuellement mis en évidence.
+  return all[0] || null
+}
+
 function drawTutorialPreviewOverlay(params) {
   document.getElementById('tut-preview-overlay')?.remove()
 
@@ -698,7 +722,7 @@ function drawTutorialPreviewOverlay(params) {
   const highlight = params.get('highlight') || 'none'   // style de l'anneau : none/glow/pulse/highlight
   const dimScreen = params.get('dim') === '1'            // grisage indépendant du highlight
 
-  const targetEl = selector ? document.querySelector(selector) : null
+  const targetEl = selector ? findVisibleTarget(selector) : null
 
   // Informe l'admin (parent) si le sélecteur ne matche rien, pour afficher
   // un avertissement au lieu de laisser l'utilisateur deviner pourquoi rien

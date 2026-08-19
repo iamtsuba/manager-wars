@@ -524,7 +524,8 @@ async function initTutorialPreview(params) {
   hideLoader()
   launchApp()
 
-  // Neutralise toute interaction réelle : ceci est un aperçu, pas le jeu
+  // Neutralise toute interaction réelle : ceci est un aperçu, pas le jeu.
+  // (Le mode "picker" ci-dessous réactive temporairement les clics.)
   const appEl = document.getElementById('app')
   if (appEl) appEl.style.pointerEvents = 'none'
 
@@ -533,27 +534,156 @@ async function initTutorialPreview(params) {
 
   // Mises à jour live depuis le parent (admin), sans recharger l'iframe
   window.addEventListener('message', e => {
-    if (!e.data || e.data.type !== 'tutorial-preview-update') return
-    const p = new URLSearchParams(e.data.payload)
-    const newPage = p.get('page') || 'home'
-    if (newPage !== state.page) {
-      navigate(newPage)
-      setTimeout(() => drawTutorialPreviewOverlay(p), 350)
-    } else {
-      drawTutorialPreviewOverlay(p)
+    if (!e.data) return
+
+    if (e.data.type === 'tutorial-preview-update') {
+      const p = new URLSearchParams(e.data.payload)
+      const newPage = p.get('page') || 'home'
+      if (newPage !== state.page) {
+        navigate(newPage)
+        setTimeout(() => drawTutorialPreviewOverlay(p), 350)
+      } else {
+        drawTutorialPreviewOverlay(p)
+      }
+      return
+    }
+
+    if (e.data.type === 'tutorial-preview-picker-start') {
+      startElementPicker()
+      return
+    }
+
+    if (e.data.type === 'tutorial-preview-picker-cancel') {
+      stopElementPicker()
+      return
     }
   })
+}
+
+// ── Sélecteur d'élément (picker) ────────────────────────────────────────
+// Permet à l'admin de cliquer directement sur un élément dans l'aperçu
+// pour récupérer automatiquement un sélecteur CSS, au lieu de le taper à
+// la main. Réactive temporairement les clics (normalement désactivés),
+// les intercepte en phase capture pour empêcher toute navigation réelle,
+// puis les restaure à la sortie du mode picker.
+let _pickerActive = false
+let _pickerHoverEl = null
+
+function startElementPicker() {
+  if (_pickerActive) return
+  _pickerActive = true
+  const appEl = document.getElementById('app')
+  if (appEl) appEl.style.pointerEvents = ''
+
+  _pickerHoverEl = document.createElement('div')
+  _pickerHoverEl.id = 'tut-picker-hover'
+  _pickerHoverEl.style.cssText = 'position:fixed;z-index:9900;pointer-events:none;border:2px dashed #1A6B3C;background:rgba(26,107,60,0.15);border-radius:4px;display:none'
+  document.body.appendChild(_pickerHoverEl)
+
+  document.addEventListener('mouseover', onPickerMouseOver, true)
+  document.addEventListener('click', onPickerClick, true)
+  document.addEventListener('keydown', onPickerKeydown, true)
+
+  // Bandeau d'instruction pendant la sélection
+  let banner = document.getElementById('tut-picker-banner')
+  if (!banner) {
+    banner = document.createElement('div')
+    banner.id = 'tut-picker-banner'
+    banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:9901;background:#1A6B3C;color:#fff;text-align:center;padding:8px;font-size:13px;font-weight:700;pointer-events:none'
+    banner.textContent = '🎯 Clique sur un élément de la page pour le sélectionner (Échap pour annuler)'
+    document.body.appendChild(banner)
+  }
+}
+
+function stopElementPicker() {
+  if (!_pickerActive) return
+  _pickerActive = false
+  const appEl = document.getElementById('app')
+  if (appEl) appEl.style.pointerEvents = 'none'
+  document.removeEventListener('mouseover', onPickerMouseOver, true)
+  document.removeEventListener('click', onPickerClick, true)
+  document.removeEventListener('keydown', onPickerKeydown, true)
+  _pickerHoverEl?.remove()
+  _pickerHoverEl = null
+  document.getElementById('tut-picker-banner')?.remove()
+}
+
+function onPickerMouseOver(e) {
+  if (!_pickerHoverEl) return
+  const r = e.target.getBoundingClientRect()
+  _pickerHoverEl.style.display = 'block'
+  _pickerHoverEl.style.left = r.left + 'px'
+  _pickerHoverEl.style.top = r.top + 'px'
+  _pickerHoverEl.style.width = r.width + 'px'
+  _pickerHoverEl.style.height = r.height + 'px'
+}
+
+function onPickerClick(e) {
+  e.preventDefault()
+  e.stopPropagation()
+  e.stopImmediatePropagation()
+  const selector = buildSelectorFor(e.target)
+  window.parent.postMessage({ type: 'tutorial-preview-picker-result', selector }, '*')
+  stopElementPicker()
+}
+
+function onPickerKeydown(e) {
+  if (e.key === 'Escape') {
+    window.parent.postMessage({ type: 'tutorial-preview-picker-cancelled' }, '*')
+    stopElementPicker()
+  }
+}
+
+// Construit un sélecteur CSS lisible et si possible stable pour l'élément
+// cliqué : priorité à un attribut data-* distinctif (convention déjà
+// utilisée dans tout le jeu : data-page, data-card-id...), puis à l'id,
+// puis à un chemin tag.class:nth-of-type limité à 3 niveaux.
+function buildSelectorFor(el) {
+  if (!el || el === document.body) return 'body'
+
+  // Cherche l'élément lui-même puis ses parents proches pour un attribut
+  // data-* exploitable (un clic tombe souvent sur une icône/texte enfant)
+  let node = el
+  for (let depth = 0; depth < 3 && node && node.nodeType === 1; depth++) {
+    for (const attr of Array.from(node.attributes || [])) {
+      if (attr.name.startsWith('data-') && attr.value) {
+        return `[${attr.name}="${attr.value}"]`
+      }
+    }
+    if (node.id) return '#' + node.id
+    node = node.parentElement
+  }
+
+  // Fallback : chemin structurel court
+  const path = []
+  node = el
+  for (let i = 0; i < 3 && node && node.nodeType === 1 && node !== document.body; i++) {
+    let sel = node.tagName.toLowerCase()
+    if (typeof node.className === 'string' && node.className.trim()) {
+      const cls = node.className.trim().split(/\s+/).filter(Boolean).slice(0, 2).join('.')
+      if (cls) sel += '.' + cls
+    }
+    const parent = node.parentElement
+    if (parent) {
+      const siblings = Array.from(parent.children).filter(s => s.tagName === node.tagName)
+      if (siblings.length > 1) sel += `:nth-of-type(${siblings.indexOf(node) + 1})`
+    }
+    path.unshift(sel)
+    node = parent
+  }
+  return path.join(' > ') || el.tagName.toLowerCase()
 }
 
 function drawTutorialPreviewOverlay(params) {
   document.getElementById('tut-preview-overlay')?.remove()
 
-  const selector = params.get('selector') || ''
-  const position = params.get('position') || 'center'
-  const title    = params.get('title') || ''
-  const text     = params.get('text') || ''
-  const action   = params.get('action') || ''
-  const highlight = params.get('highlight') || 'none'
+  const selector  = params.get('selector') || ''
+  const position  = params.get('position') || 'center'
+  const title     = params.get('title') || ''
+  const text      = params.get('text') || ''
+  const action    = params.get('action') || ''
+  const highlight = params.get('highlight') || 'none'   // style de l'anneau : none/glow/pulse/highlight
+  const dimScreen = params.get('dim') === '1'            // grisage indépendant du highlight
 
   const targetEl = selector ? document.querySelector(selector) : null
 
@@ -563,22 +693,29 @@ function drawTutorialPreviewOverlay(params) {
 
   let html = ''
 
-  if (targetEl && highlight !== 'none') {
-    const r = targetEl.getBoundingClientRect()
-    if (highlight === 'dim-overlay') {
+  // Grisage de l'écran (indépendant du style d'anneau) — avec découpe
+  // autour de l'élément ciblé s'il existe, sinon plein écran.
+  if (dimScreen) {
+    if (targetEl) {
+      const r = targetEl.getBoundingClientRect()
       html += `<div style="position:absolute;inset:0;background:rgba(0,0,0,0.62);
         clip-path:polygon(0% 0%,100% 0%,100% 100%,0% 100%,
           0% ${r.top - 6}px,${r.left - 6}px ${r.top - 6}px,${r.left - 6}px ${r.bottom + 6}px,
           ${r.right + 6}px ${r.bottom + 6}px,${r.right + 6}px ${r.top - 6}px,0% ${r.top - 6}px)"></div>`
+    } else {
+      html += `<div style="position:absolute;inset:0;background:rgba(0,0,0,0.62)"></div>`
     }
+  }
+
+  // Anneau de mise en évidence autour de l'élément ciblé
+  if (targetEl && highlight !== 'none') {
+    const r = targetEl.getBoundingClientRect()
     const ringColor = highlight === 'glow' ? '#D4A017' : '#1A6B3C'
     const anim = highlight === 'pulse' ? 'animation:tutPreviewPulse 1.6s infinite;'
                : highlight === 'glow'  ? 'animation:tutPreviewGlow 1.6s infinite;' : ''
     html += `<div style="position:absolute;left:${r.left - 6}px;top:${r.top - 6}px;
       width:${r.width + 12}px;height:${r.height + 12}px;border-radius:10px;
       border:2.5px solid ${ringColor};box-shadow:0 0 0 2px rgba(255,255,255,0.85);${anim}"></div>`
-  } else if (highlight === 'dim-overlay' && !targetEl) {
-    html += `<div style="position:absolute;inset:0;background:rgba(0,0,0,0.62)"></div>`
   }
 
   const vw = window.innerWidth, vh = window.innerHeight

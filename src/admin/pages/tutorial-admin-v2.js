@@ -81,6 +81,7 @@ export async function renderTutorialAdminV2(container, { toast, openModal, close
     { value: 'center',        label: 'Centre' },
     { value: 'lower-center',  label: 'Entre centre et bas' },
     { value: 'bottom',        label: 'Bas' },
+    { value: 'above-nav',     label: '🧭 Au-dessus de la navigation' },
     { value: 'top-left',      label: 'Haut gauche' },
     { value: 'top-right',     label: 'Haut droite' },
     { value: 'bottom-left',   label: 'Bas gauche' },

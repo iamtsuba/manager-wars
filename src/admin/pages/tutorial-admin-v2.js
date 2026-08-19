@@ -26,6 +26,20 @@ const TEXT_MUTED = '#666'
 const INPUT_STYLE = `width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;font-size:14px;background:#fff;color:${TEXT_DARK}`
 const LABEL_STYLE = `display:block;font-weight:600;font-size:12px;margin-bottom:6px;color:${TEXT_DARK}`
 
+// Échappe une valeur avant de l'injecter dans un attribut HTML value="...".
+// CRITIQUE : les sélecteurs CSS contiennent presque toujours des guillemets
+// (ex: [data-key="home2"]) — sans échappement, le premier " referme
+// prématurément l'attribut et tronque tout le reste de la valeur (bug
+// silencieux : la valeur semble "sauvegardée" mais est en fait coupée dès
+// le premier re-rendu du formulaire).
+function escAttr(str) {
+  return String(str ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+}
+
 // Dimensions réelles de l'iframe selon le mode (déclenche les vrais
 // breakpoints CSS de l'app — le seuil mobile/desktop du jeu est 900px,
 // voir isMobile() dans tutorial-v3.js)
@@ -45,7 +59,17 @@ export async function renderTutorialAdminV2(container, { toast, openModal, close
 
   // Options pour les listes déroulantes
   const PAGE_ROUTES = ['home', 'collection', 'decks', 'boosters', 'match', 'market', 'rankings', 'matches', 'settings']
-  const POPUP_POSITIONS = ['center', 'top', 'top-left', 'top-right', 'bottom', 'bottom-left', 'bottom-right']
+  const POPUP_POSITIONS = [
+    { value: 'top',           label: 'Haut' },
+    { value: 'upper-center',  label: 'Entre haut et centre' },
+    { value: 'center',        label: 'Centre' },
+    { value: 'lower-center',  label: 'Entre centre et bas' },
+    { value: 'bottom',        label: 'Bas' },
+    { value: 'top-left',      label: 'Haut gauche' },
+    { value: 'top-right',     label: 'Haut droite' },
+    { value: 'bottom-left',   label: 'Bas gauche' },
+    { value: 'bottom-right',  label: 'Bas droite' },
+  ]
   const HIGHLIGHT_TYPES = ['none', 'glow', 'pulse', 'highlight']
   const VALIDATORS = ['none', 'page_loaded', 'click_detected', 'card_shown', 'booster_opened', 'card_bought', 'card_sold', 'deck_created', 'formation_selected', '8_players_placed', 'links_visible', 'sub_added', 'deck_valid', 'filter_applied', 'match_started', 'deck_selected', 'gc_selected', 'rendered', 'phase_done', 'attack_sent', 'defense_sent', 'gc_used', 'match_won', 'accepted', 'pvp_started', 'matched', 'synced', 'tutorial_done']
 
@@ -114,7 +138,7 @@ export async function renderTutorialAdminV2(container, { toast, openModal, close
 
         <div class="form-group">
           <label style="${LABEL_STYLE}">Nom étape (identifiant) *</label>
-          <input type="text" id="step-name" value="${step.step_name || ''}" placeholder="Ex: home-welcome"
+          <input type="text" id="step-name" value="${escAttr(step.step_name)}" placeholder="Ex: home-welcome"
             style="${INPUT_STYLE}" />
         </div>
 
@@ -129,7 +153,7 @@ export async function renderTutorialAdminV2(container, { toast, openModal, close
         <div class="form-group">
           <label style="${LABEL_STYLE}">Sélecteur DOM</label>
           <div style="display:flex;gap:6px">
-            <input type="text" id="dom-selector" value="${step.dom_selector || ''}" placeholder="Ex: [data-page='collection']"
+            <input type="text" id="dom-selector" value="${escAttr(step.dom_selector)}" placeholder="Ex: [data-page='collection']"
               style="${INPUT_STYLE};flex:1" />
             <button type="button" id="picker-btn" title="Cliquer sur un élément dans l'aperçu"
               style="flex-shrink:0;padding:0 10px;border:1px solid #ddd;border-radius:6px;background:#fff;cursor:pointer;font-size:14px">🎯</button>
@@ -141,7 +165,7 @@ export async function renderTutorialAdminV2(container, { toast, openModal, close
           <label style="${LABEL_STYLE}">Position popup</label>
           <select id="popup-position" style="${INPUT_STYLE}">
             <option value="">-- Sélectionne --</option>
-            ${POPUP_POSITIONS.map(p => `<option value="${p}" ${step.popup_position === p ? 'selected' : ''}>${p}</option>`).join('')}
+            ${POPUP_POSITIONS.map(p => `<option value="${p.value}" ${step.popup_position === p.value ? 'selected' : ''}>${p.label}</option>`).join('')}
           </select>
         </div>
 
@@ -176,7 +200,7 @@ export async function renderTutorialAdminV2(container, { toast, openModal, close
 
       <div class="form-group" style="margin-bottom:12px">
         <label style="${LABEL_STYLE}">Titre du popup *</label>
-        <input type="text" id="popup-title" value="${step.popup_title || ''}" maxlength="150" placeholder="Ex: 👋 Bienvenue dans Manager Wars !"
+        <input type="text" id="popup-title" value="${escAttr(step.popup_title)}" maxlength="150" placeholder="Ex: 👋 Bienvenue dans Manager Wars !"
           style="${INPUT_STYLE}" />
         <div style="font-size:11px;color:${TEXT_MUTED};margin-top:4px">Caractères: <span id="title-count">0</span>/150</div>
       </div>
@@ -184,13 +208,13 @@ export async function renderTutorialAdminV2(container, { toast, openModal, close
       <div class="form-group" style="margin-bottom:12px">
         <label style="${LABEL_STYLE}">Texte du popup *</label>
         <textarea id="popup-text" maxlength="500" placeholder="Ex: Explique ce que le joueur doit faire..."
-          style="${INPUT_STYLE};min-height:80px;font-family:monospace;resize:vertical">${step.popup_text || ''}</textarea>
+          style="${INPUT_STYLE};min-height:80px;font-family:monospace;resize:vertical">${escAttr(step.popup_text)}</textarea>
         <div style="font-size:11px;color:${TEXT_MUTED};margin-top:4px">Caractères: <span id="text-count">0</span>/500</div>
       </div>
 
       <div class="form-group" style="margin-bottom:12px">
         <label style="${LABEL_STYLE}">Action requise</label>
-        <input type="text" id="action-required" value="${step.action_required || ''}" placeholder="Ex: Clique sur Collection"
+        <input type="text" id="action-required" value="${escAttr(step.action_required)}" placeholder="Ex: Clique sur Collection"
           style="${INPUT_STYLE}" />
       </div>
 

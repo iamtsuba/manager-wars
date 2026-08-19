@@ -720,28 +720,22 @@ function drawTutorialPreviewOverlay(params) {
 
   const vw = window.innerWidth, vh = window.innerHeight
   const bw = Math.min(340, vw - 32)
-  let bubbleStyle
 
-  if (targetEl) {
-    const r = targetEl.getBoundingClientRect()
-    let bt = r.bottom + 12
-    let bl = r.left + r.width / 2 - bw / 2
-    bl = Math.max(12, Math.min(bl, vw - bw - 12))
-    if (bt > vh - 140) bt = Math.max(12, r.top - 150) // pas assez de place en dessous → au-dessus
-    bt = Math.min(bt, vh - 140)
-    bubbleStyle = `left:${bl}px;top:${bt}px;`
-  } else {
-    const posMap = {
-      center:       'top:50%;left:50%;transform:translate(-50%,-50%);',
-      top:          'top:16px;left:50%;transform:translateX(-50%);',
-      'top-left':   'top:16px;left:16px;',
-      'top-right':  'top:16px;right:16px;',
-      bottom:       'bottom:16px;left:50%;transform:translateX(-50%);',
-      'bottom-left':  'bottom:16px;left:16px;',
-      'bottom-right': 'bottom:16px;right:16px;',
-    }
-    bubbleStyle = posMap[position] || posMap.center
+  // La position du popup respecte TOUJOURS le choix manuel (popup_position),
+  // qu'un élément soit ciblé ou non — le sélecteur DOM ne pilote que le
+  // spotlight/highlight, jamais l'emplacement de la bulle. (Auparavant, un
+  // dom_selector qui matchait un élément — ex. "#app" — écrasait la
+  // position choisie en collant systématiquement le popup à cet élément.)
+  const posMap = {
+    center:       'top:50%;left:50%;transform:translate(-50%,-50%);',
+    top:          'top:16px;left:50%;transform:translateX(-50%);',
+    'top-left':   'top:16px;left:16px;',
+    'top-right':  'top:16px;right:16px;',
+    bottom:       'bottom:16px;left:50%;transform:translateX(-50%);',
+    'bottom-left':  'bottom:16px;left:16px;',
+    'bottom-right': 'bottom:16px;right:16px;',
   }
+  const bubbleStyle = posMap[position] || posMap.center
 
   if (title || text) {
     html += `<div style="position:absolute;${bubbleStyle}max-width:${bw}px;background:#fff;

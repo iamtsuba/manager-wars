@@ -228,6 +228,14 @@ async function finish(skipped) {
       tutorial_skipped: skipped,
       completed_at: new Date().toISOString(),
     }, { onConflict: 'user_id' })
+
+    // Compatibilité : plusieurs écrans existants (ex. panneau "Premiers
+    // pas") vérifient encore users.tutorial_done pour débloquer le contenu
+    // post-tutoriel. On le maintient synchronisé pour éviter de casser ces
+    // écrans en attendant leur éventuelle migration vers tutorial_progress_v2.
+    await supabase.from('users').update({ tutorial_done: true }).eq('id', userId)
+    if (ctxRef.state.profile) ctxRef.state.profile.tutorial_done = true
+    await ctxRef.refreshProfile?.()
   }
 
   onCompleteRef?.()

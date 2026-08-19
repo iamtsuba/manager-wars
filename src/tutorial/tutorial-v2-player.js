@@ -178,7 +178,7 @@ function render(step) {
   }
 
   const vw = window.innerWidth, vh = window.innerHeight
-  const bw = vw - 32
+  const bw = vw
   const posMap = {
     center:         'top:50%;left:50%;transform:translate(-50%,-50%);',
     top:            'top:16px;left:50%;transform:translateX(-50%);',
@@ -196,10 +196,16 @@ function render(step) {
   const isMobileViewport = window.innerWidth < 900
   const chosenPosition = (isMobileViewport ? step.popup_position : step.popup_position_desktop) || step.popup_position
   const bubbleStyle = posMap[chosenPosition] || posMap.center
+  // Largeur pleine uniquement pour les positions centrées horizontalement
+  // (center/top/bottom/upper-center/lower-center) — les positions en coin
+  // (top-left, bottom-right, etc.) restent compactes, une largeur forcée
+  // les ferait déborder de l'écran.
+  const isCenteredPos = ['center', 'top', 'bottom', 'upper-center', 'lower-center'].includes(chosenPosition)
+  const widthRule = isCenteredPos ? `width:${bw}px;` : ''
   const isLast = idx === steps.length - 1
   const canSkip = step.skip_allowed !== false
 
-  html += `<div id="tv2-bubble" style="position:absolute;${bubbleStyle}max-width:${bw}px;background:#fff;
+  html += `<div id="tv2-bubble" style="position:absolute;${bubbleStyle}max-width:${bw}px;${widthRule}background:#fff;
     border-radius:14px;box-shadow:0 8px 36px rgba(0,0,0,0.5);padding:16px 18px;pointer-events:auto">
     <div style="height:3px;background:#eee;border-radius:2px;margin-bottom:12px;overflow:hidden">
       <div style="height:100%;width:${Math.round(((idx + 1) / steps.length) * 100)}%;background:#1A6B3C;transition:width .3s"></div>

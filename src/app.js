@@ -22,7 +22,7 @@ import { renderMatchRandom } from './match/match-random.js'
 import { renderMatchFriend } from './match/match-friend.js'
 import { renderMiniLeague  } from './mini-league/mini-league.js'
 import { renderMatchMiniLeague } from './match/match-minileague.js'
-import { checkAndShowTutorial, replayTutorial } from './tutorial/tutorial.js'
+import { checkAndShowTutorialV2, startTutorialV2 } from './tutorial/tutorial-v2-player.js'
 import { renderMarket }     from './market/market.js'
 import { renderRankings }   from './rankings/rankings.js'
 import { renderRanked }     from './ranked/ranked.js'
@@ -412,7 +412,7 @@ async function init() {
       state, toast, refreshProfile,
       navigate: () => {
         launchApp()
-        setTimeout(() => checkAndShowTutorial(state.profile, navigate, toast), 800)
+        setTimeout(() => checkAndShowTutorialV2(state.profile, navigate, toast), 800)
       },
     })
     return
@@ -424,9 +424,9 @@ async function init() {
   const wantsTutorial = new URLSearchParams(location.search).get('tutorial') === '1'
   if (wantsTutorial) {
     history.replaceState({}, '', location.pathname)
-    setTimeout(() => replayTutorial(state.profile, navigate, toast), 800)
+    setTimeout(() => startTutorialV2({ state, navigate, toast }, () => navigate('settings')), 800)
   } else {
-    setTimeout(() => checkAndShowTutorial(state.profile, navigate, toast), 800)
+    setTimeout(() => checkAndShowTutorialV2(state.profile, navigate, toast), 800)
   }
 
   supabase.auth.onAuthStateChange(async (event, session) => {

@@ -210,8 +210,8 @@ function render(step) {
     <div style="height:3px;background:#eee;border-radius:2px;margin-bottom:12px;overflow:hidden">
       <div style="height:100%;width:${Math.round(((idx + 1) / steps.length) * 100)}%;background:#1A6B3C;transition:width .3s"></div>
     </div>
-    <div style="font-weight:900;font-size:15px;color:#1a1a2e;margin-bottom:6px">${escapeHtmlV2(step.popup_title)}</div>
-    <div style="font-size:13px;color:#555;line-height:1.5;margin-bottom:12px">${escapeHtmlV2(step.popup_text)}</div>
+    <div style="font-weight:900;font-size:15px;color:#1a1a2e;margin-bottom:6px;text-align:center">${escapeHtmlV2(step.popup_title)}</div>
+    <div style="font-size:13px;color:#555;line-height:1.5;margin-bottom:12px;text-align:center">${step.popup_text || ''}</div>
     <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
       ${canSkip ? `<button id="tv2-skip" style="background:none;border:none;font-size:11px;color:#999;cursor:pointer;padding:4px">Passer le tutoriel</button>` : '<div></div>'}
       ${showNext

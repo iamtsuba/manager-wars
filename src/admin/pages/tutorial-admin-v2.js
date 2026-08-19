@@ -282,34 +282,36 @@ export async function renderTutorialAdminV2(container, { toast, openModal, close
   }
 
   // Construit le mockup HTML d'un écran (mobile ou desktop) avec popup + target
+  // NOTE : screenW DOIT toujours inclure une unité CSS (px/%) — un nombre nu
+  // (ex: "220" au lieu de "220px") rend la règle CSS invalide et casse la mise en page.
   function buildScreenMockup(state, kind) {
     const isMobile = kind === 'mobile'
-    const screenW = isMobile ? 220 : '100%'
-    const screenH = isMobile ? 420 : 220
+    const screenW = isMobile ? '240px' : '100%'
+    const screenH = isMobile ? 440 : 230
     const target = targetStyle(state.highlight_type)
-    const popupMaxWidth = isMobile ? '170px' : '220px'
+    const popupMaxWidth = isMobile ? '190px' : '230px'
 
     const title = state.popup_title || 'Titre du popup…'
     const text = state.popup_text || 'Le texte du popup apparaîtra ici…'
     const pageLabel = state.page_route || 'page'
 
     return `
-      <div style="position:relative;width:${screenW};height:${screenH}px;background:#eef1ee;border-radius:${isMobile ? '4px' : '6px'};overflow:hidden">
+      <div style="position:relative;width:${screenW};height:${screenH}px;background:#eef1ee;border-radius:${isMobile ? '4px' : '6px'};overflow:hidden;box-sizing:border-box">
         <!-- Barre d'entête simulée -->
-        <div style="height:${isMobile ? '22px' : '20px'};background:#1a1a2e;display:flex;align-items:center;gap:4px;padding:0 8px">
+        <div style="height:${isMobile ? '24px' : '22px'};background:#1a1a2e;display:flex;align-items:center;gap:4px;padding:0 8px;box-sizing:border-box">
           ${isMobile
-            ? `<span style="font-size:9px;color:#fff;opacity:.8">${pageLabel}</span>`
-            : `<span style="width:7px;height:7px;border-radius:50%;background:#ff5f57"></span><span style="width:7px;height:7px;border-radius:50%;background:#febc2e"></span><span style="width:7px;height:7px;border-radius:50%;background:#28c840"></span><span style="font-size:9px;color:#fff;opacity:.7;margin-left:8px">fmwar.com/${pageLabel}</span>`
+            ? `<span style="font-size:10px;color:#fff;opacity:.8">${pageLabel}</span>`
+            : `<span style="width:7px;height:7px;border-radius:50%;background:#ff5f57"></span><span style="width:7px;height:7px;border-radius:50%;background:#febc2e"></span><span style="width:7px;height:7px;border-radius:50%;background:#28c840"></span><span style="font-size:10px;color:#fff;opacity:.7;margin-left:8px">fmwar.com/${pageLabel}</span>`
           }
         </div>
 
         <!-- Élément ciblé (simulateur) -->
         <div class="${target.cls}" style="
           position:absolute;top:${isMobile ? '46%' : '42%'};left:16%;
-          width:${isMobile ? '60px' : '80px'};height:${isMobile ? '22px' : '26px'};
+          width:${isMobile ? '64px' : '84px'};height:${isMobile ? '24px' : '28px'};
           border-radius:6px;${target.style};
           display:flex;align-items:center;justify-content:center;
-          font-size:8px;color:#555;overflow:hidden;padding:0 4px;text-align:center;white-space:nowrap;text-overflow:ellipsis
+          font-size:9px;color:#555;overflow:hidden;padding:0 4px;text-align:center;white-space:nowrap;text-overflow:ellipsis;box-sizing:border-box
         ">
           ${state.dom_selector ? state.dom_selector.slice(0, 14) : 'élément'}
         </div>
@@ -317,18 +319,18 @@ export async function renderTutorialAdminV2(container, { toast, openModal, close
         <!-- Popup -->
         <div style="
           position:absolute;${positionStyle(state.popup_position)};
-          max-width:${popupMaxWidth};width:calc(100% - 20px);
-          background:#fff;border-radius:10px;padding:${isMobile ? '8px 10px' : '10px 12px'};
+          max-width:${popupMaxWidth};width:calc(100% - 20px);box-sizing:border-box;
+          background:#fff;border-radius:10px;padding:${isMobile ? '9px 11px' : '10px 12px'};
           box-shadow:0 6px 20px rgba(0,0,0,0.25);z-index:5;
         ">
-          <div style="font-weight:800;font-size:${isMobile ? '10px' : '11px'};color:${TEXT_DARK};margin-bottom:3px;line-height:1.3">
+          <div style="font-weight:800;font-size:${isMobile ? '11px' : '11px'};color:${TEXT_DARK};margin-bottom:3px;line-height:1.3">
             ${escapeHtml(title)}
           </div>
-          <div style="font-size:${isMobile ? '9px' : '10px'};color:#444;line-height:1.35;margin-bottom:${state.action_required ? '6px' : '0'}">
+          <div style="font-size:${isMobile ? '10px' : '10px'};color:#444;line-height:1.35;margin-bottom:${state.action_required ? '6px' : '0'}">
             ${escapeHtml(text)}
           </div>
           ${state.action_required ? `
-          <div style="display:inline-block;background:#1A6B3C;color:#fff;font-size:8px;font-weight:700;padding:3px 8px;border-radius:12px">
+          <div style="display:inline-block;background:#1A6B3C;color:#fff;font-size:9px;font-weight:700;padding:3px 8px;border-radius:12px">
             ${escapeHtml(state.action_required)}
           </div>` : ''}
         </div>
@@ -343,9 +345,14 @@ export async function renderTutorialAdminV2(container, { toast, openModal, close
       .replace(/>/g, '&gt;')
   }
 
-  // Corps de la preview (mockups + badges d'état), régénéré à chaque frappe
+  // Mode de preview actif : 'mobile' ou 'desktop'
+  let previewMode = 'mobile'
+
+  // Corps de la preview (mockup unique + badges d'état), régénéré à chaque frappe
   function renderPreviewBody() {
     const state = getFormState()
+    const isMobile = previewMode === 'mobile'
+
     return `
       <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px">
         <span style="font-size:10px;font-weight:700;background:#e8e8e8;color:${TEXT_DARK};padding:3px 8px;border-radius:10px">
@@ -358,21 +365,17 @@ export async function renderTutorialAdminV2(container, { toast, openModal, close
         ${state.skip_allowed ? `<span style="font-size:10px;font-weight:700;background:#eaf7ee;color:#1A6B3C;padding:3px 8px;border-radius:10px">Skip OK</span>` : `<span style="font-size:10px;font-weight:700;background:#fdecea;color:#c0392b;padding:3px 8px;border-radius:10px">Non skippable</span>`}
       </div>
 
-      <div style="margin-bottom:8px">
-        <div style="font-size:11px;font-weight:800;color:${TEXT_DARK};margin-bottom:6px">📱 Aperçu mobile</div>
-        <div style="display:flex;justify-content:center">
-          <div style="border:8px solid #1a1a2e;border-radius:22px;padding:0;box-shadow:0 4px 14px rgba(0,0,0,0.2)">
-            ${buildScreenMockup(state, 'mobile')}
-          </div>
+      ${isMobile ? `
+      <div style="display:flex;justify-content:center">
+        <div style="border:8px solid #1a1a2e;border-radius:22px;padding:0;box-shadow:0 4px 14px rgba(0,0,0,0.2)">
+          ${buildScreenMockup(state, 'mobile')}
         </div>
       </div>
-
-      <div>
-        <div style="font-size:11px;font-weight:800;color:${TEXT_DARK};margin:14px 0 6px">🖥️ Aperçu desktop</div>
-        <div style="border:1px solid #ccc;border-radius:8px;overflow:hidden;box-shadow:0 4px 14px rgba(0,0,0,0.15)">
-          ${buildScreenMockup(state, 'desktop')}
-        </div>
+      ` : `
+      <div style="border:1px solid #ccc;border-radius:8px;overflow:hidden;box-shadow:0 4px 14px rgba(0,0,0,0.15)">
+        ${buildScreenMockup(state, 'desktop')}
       </div>
+      `}
     `
   }
 
@@ -380,6 +383,21 @@ export async function renderTutorialAdminV2(container, { toast, openModal, close
     return `
     <div style="background:#f5f5f5;border-radius:12px;padding:16px;color:${TEXT_DARK}">
       <h3 style="margin:0 0 14px 0;font-size:14px;font-weight:800;color:${TEXT_DARK}">👁️ Prévisualisation</h3>
+
+      <!-- Toggle Mobile / Desktop -->
+      <div style="display:flex;gap:6px;margin-bottom:14px;background:#e8e8e8;border-radius:8px;padding:3px">
+        <button type="button" id="tsv2-tab-mobile" style="
+          flex:1;padding:6px 8px;border:none;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;
+          background:${previewMode === 'mobile' ? '#1A6B3C' : 'transparent'};
+          color:${previewMode === 'mobile' ? '#fff' : TEXT_DARK};
+        ">📱 Mobile</button>
+        <button type="button" id="tsv2-tab-desktop" style="
+          flex:1;padding:6px 8px;border:none;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;
+          background:${previewMode === 'desktop' ? '#1A6B3C' : 'transparent'};
+          color:${previewMode === 'desktop' ? '#fff' : TEXT_DARK};
+        ">🖥️ Desktop</button>
+      </div>
+
       <div id="tsv2-preview-body">
         ${renderPreviewBody()}
       </div>
@@ -390,6 +408,21 @@ export async function renderTutorialAdminV2(container, { toast, openModal, close
   function updatePreview() {
     const body = container.querySelector('#tsv2-preview-body')
     if (body) body.innerHTML = renderPreviewBody()
+  }
+
+  function setPreviewMode(mode) {
+    previewMode = mode
+    const mobileTab = container.querySelector('#tsv2-tab-mobile')
+    const desktopTab = container.querySelector('#tsv2-tab-desktop')
+    if (mobileTab) {
+      mobileTab.style.background = mode === 'mobile' ? '#1A6B3C' : 'transparent'
+      mobileTab.style.color = mode === 'mobile' ? '#fff' : TEXT_DARK
+    }
+    if (desktopTab) {
+      desktopTab.style.background = mode === 'desktop' ? '#1A6B3C' : 'transparent'
+      desktopTab.style.color = mode === 'desktop' ? '#fff' : TEXT_DARK
+    }
+    updatePreview()
   }
 
   // ── Rendu principal (layout 3 colonnes) ─────────────────────
@@ -426,7 +459,7 @@ export async function renderTutorialAdminV2(container, { toast, openModal, close
         </div>
 
         <!-- Colonne droite : prévisualisation -->
-        <div style="width:280px;flex-shrink:0;max-width:100%">
+        <div style="width:300px;flex-shrink:0;max-width:100%">
           ${renderPreviewPanel()}
         </div>
 
@@ -508,6 +541,12 @@ export async function renderTutorialAdminV2(container, { toast, openModal, close
       const evt = (el.tagName === 'SELECT' || el.type === 'checkbox') ? 'change' : 'input'
       el.addEventListener(evt, updatePreview)
     })
+
+    // Toggle Mobile / Desktop de la preview
+    const tabMobile = container.querySelector('#tsv2-tab-mobile')
+    const tabDesktop = container.querySelector('#tsv2-tab-desktop')
+    if (tabMobile) tabMobile.addEventListener('click', () => setPreviewMode('mobile'))
+    if (tabDesktop) tabDesktop.addEventListener('click', () => setPreviewMode('desktop'))
 
     // Preview initiale au chargement du formulaire
     updatePreview()

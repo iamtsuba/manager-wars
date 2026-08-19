@@ -816,7 +816,7 @@ function drawTutorialPreviewOverlay(params) {
   }
 
   const vw = window.innerWidth, vh = window.innerHeight
-  const bw = vw - 20
+  const bw = vw - 100
 
   // La position du popup respecte TOUJOURS le choix manuel (popup_position),
   // qu'un élément soit ciblé ou non — le sélecteur DOM ne pilote que le

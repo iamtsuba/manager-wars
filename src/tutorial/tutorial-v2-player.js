@@ -179,6 +179,15 @@ function render(step) {
 
   const vw = window.innerWidth, vh = window.innerHeight
   const bw = vw - 100
+  const isMobileViewport = window.innerWidth < 900
+
+  // Hauteur réelle de la nav (mesurée en JS par le jeu lui-même, posée sur
+  // documentElement — voir home2.js applyAppHeight/ensureV2Chrome). On s'en
+  // sert pour placer précisément le popup juste au-dessus (mobile, nav en
+  // bas) ou juste en dessous (desktop, nav en haut) de la vraie barre.
+  const navBottomH = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--v2-bottom-height')) || 76
+  const navTopH = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--v2-top-height')) || 56
+
   const posMap = {
     center:         'top:50%;left:50%;transform:translate(-50%,-50%);',
     top:            'top:16px;left:50%;transform:translateX(-50%);',
@@ -189,11 +198,15 @@ function render(step) {
     bottom:         'bottom:16px;left:50%;transform:translateX(-50%);',
     'bottom-left':  'bottom:16px;left:16px;',
     'bottom-right': 'bottom:16px;right:16px;',
+    // Mobile : nav en bas → popup juste au-dessus. Desktop : nav en haut →
+    // pas de "au-dessus" possible (hors écran), donc juste en dessous.
+    'above-nav':    isMobileViewport
+      ? `bottom:${navBottomH + 12}px;left:50%;transform:translateX(-50%);`
+      : `top:${navTopH + 12}px;left:50%;transform:translateX(-50%);`,
   }
   // Position réellement adaptée au device courant (seuil 900px, identique
   // au reste du jeu) — pas au mode simulé dans l'admin, qui ne concerne
   // que sa propre preview figée.
-  const isMobileViewport = window.innerWidth < 900
   const chosenPosition = (isMobileViewport ? step.popup_position : step.popup_position_desktop) || step.popup_position
   const bubbleStyle = posMap[chosenPosition] || posMap.center
   // Largeur pleine uniquement pour les positions centrées horizontalement

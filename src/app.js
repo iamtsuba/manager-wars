@@ -348,6 +348,17 @@ function renderPublicLanding(root, { onPlay }) {
 
 // ── BOOTSTRAP ─────────────────────────────────────────────
 async function init() {
+  // ── Mode "Preview Tutoriel" (?tutorialPreview=1) ─────────────────────
+  // Utilisé par l'admin (Tutoriel v2) pour afficher un aperçu 100% fidèle
+  // d'une étape de tutoriel : charge la VRAIE page du jeu avec le compte
+  // démo partagé (même compte que tutorial-v3.js), puis dessine un
+  // spotlight + une bulle par-dessus, pilotés en direct par le parent via
+  // postMessage. Ne touche à AUCUN flux normal (auth, session réelle).
+  const __previewParams = new URLSearchParams(location.search)
+  if (__previewParams.get('tutorialPreview') === '1') {
+    return initTutorialPreview(__previewParams)
+  }
+
   // Applique le thème choisi (club par défaut, ou la préférence sauvegardée)
   applyTheme(getTheme())
 
@@ -491,6 +502,136 @@ function showBootError(msg) {
     <button id="boot-retry" style="margin-top:8px;padding:12px 30px;border-radius:10px;border:none;background:#1A6B3C;color:#fff;font-size:15px;font-weight:700;cursor:pointer">Réessayer</button>`
   document.body.appendChild(ov)
   document.getElementById('boot-retry')?.addEventListener('click', () => window.location.reload())
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// MODE PREVIEW TUTORIEL — rendu 100% réel piloté depuis l'admin
+// ═══════════════════════════════════════════════════════════════════════
+// Compte démo partagé, identique à celui utilisé par tutorial-v3.js
+// (voir migration_tutorial_demo_account.sql). Jamais modifié : toutes les
+// interactions sont désactivées (pointer-events:none sur #app) — ceci est
+// un aperçu à regarder, pas un tutoriel jouable.
+const PREVIEW_DEMO_ID = '00000000-0000-4000-8000-000000000001'
+
+async function initTutorialPreview(params) {
+  const { data: demoProfile } = await supabase
+    .from('users').select('*').eq('id', PREVIEW_DEMO_ID).single()
+
+  state.user    = { id: PREVIEW_DEMO_ID }
+  state.profile = demoProfile || { credits: 0, pseudo: 'Démo' }
+
+  applyTheme(getTheme())
+  hideLoader()
+  launchApp()
+
+  // Neutralise toute interaction réelle : ceci est un aperçu, pas le jeu
+  const appEl = document.getElementById('app')
+  if (appEl) appEl.style.pointerEvents = 'none'
+
+  navigate(params.get('page') || 'home')
+  setTimeout(() => drawTutorialPreviewOverlay(params), 400)
+
+  // Mises à jour live depuis le parent (admin), sans recharger l'iframe
+  window.addEventListener('message', e => {
+    if (!e.data || e.data.type !== 'tutorial-preview-update') return
+    const p = new URLSearchParams(e.data.payload)
+    const newPage = p.get('page') || 'home'
+    if (newPage !== state.page) {
+      navigate(newPage)
+      setTimeout(() => drawTutorialPreviewOverlay(p), 350)
+    } else {
+      drawTutorialPreviewOverlay(p)
+    }
+  })
+}
+
+function drawTutorialPreviewOverlay(params) {
+  document.getElementById('tut-preview-overlay')?.remove()
+
+  const selector = params.get('selector') || ''
+  const position = params.get('position') || 'center'
+  const title    = params.get('title') || ''
+  const text     = params.get('text') || ''
+  const action   = params.get('action') || ''
+  const highlight = params.get('highlight') || 'none'
+
+  const targetEl = selector ? document.querySelector(selector) : null
+
+  const dim = document.createElement('div')
+  dim.id = 'tut-preview-overlay'
+  dim.style.cssText = 'position:fixed;inset:0;z-index:9800;pointer-events:none'
+
+  let html = ''
+
+  if (targetEl && highlight !== 'none') {
+    const r = targetEl.getBoundingClientRect()
+    if (highlight === 'dim-overlay') {
+      html += `<div style="position:absolute;inset:0;background:rgba(0,0,0,0.62);
+        clip-path:polygon(0% 0%,100% 0%,100% 100%,0% 100%,
+          0% ${r.top - 6}px,${r.left - 6}px ${r.top - 6}px,${r.left - 6}px ${r.bottom + 6}px,
+          ${r.right + 6}px ${r.bottom + 6}px,${r.right + 6}px ${r.top - 6}px,0% ${r.top - 6}px)"></div>`
+    }
+    const ringColor = highlight === 'glow' ? '#D4A017' : '#1A6B3C'
+    const anim = highlight === 'pulse' ? 'animation:tutPreviewPulse 1.6s infinite;'
+               : highlight === 'glow'  ? 'animation:tutPreviewGlow 1.6s infinite;' : ''
+    html += `<div style="position:absolute;left:${r.left - 6}px;top:${r.top - 6}px;
+      width:${r.width + 12}px;height:${r.height + 12}px;border-radius:10px;
+      border:2.5px solid ${ringColor};box-shadow:0 0 0 2px rgba(255,255,255,0.85);${anim}"></div>`
+  } else if (highlight === 'dim-overlay' && !targetEl) {
+    html += `<div style="position:absolute;inset:0;background:rgba(0,0,0,0.62)"></div>`
+  }
+
+  const vw = window.innerWidth, vh = window.innerHeight
+  const bw = Math.min(340, vw - 32)
+  let bubbleStyle
+
+  if (targetEl) {
+    const r = targetEl.getBoundingClientRect()
+    let bt = r.bottom + 12
+    let bl = r.left + r.width / 2 - bw / 2
+    bl = Math.max(12, Math.min(bl, vw - bw - 12))
+    if (bt > vh - 140) bt = Math.max(12, r.top - 150) // pas assez de place en dessous → au-dessus
+    bt = Math.min(bt, vh - 140)
+    bubbleStyle = `left:${bl}px;top:${bt}px;`
+  } else {
+    const posMap = {
+      center:       'top:50%;left:50%;transform:translate(-50%,-50%);',
+      top:          'top:16px;left:50%;transform:translateX(-50%);',
+      'top-left':   'top:16px;left:16px;',
+      'top-right':  'top:16px;right:16px;',
+      bottom:       'bottom:16px;left:50%;transform:translateX(-50%);',
+      'bottom-left':  'bottom:16px;left:16px;',
+      'bottom-right': 'bottom:16px;right:16px;',
+    }
+    bubbleStyle = posMap[position] || posMap.center
+  }
+
+  if (title || text) {
+    html += `<div style="position:absolute;${bubbleStyle}max-width:${bw}px;background:#fff;
+      border-radius:14px;box-shadow:0 8px 36px rgba(0,0,0,0.5);padding:16px 18px;pointer-events:none">
+      <div style="font-weight:900;font-size:15px;color:#1a1a2e;margin-bottom:6px">${escapeTutPreview(title)}</div>
+      <div style="font-size:13px;color:#555;line-height:1.5">${escapeTutPreview(text)}</div>
+      ${action ? `<div style="margin-top:10px;display:inline-block;background:#1A6B3C;color:#fff;
+        font-size:12px;font-weight:800;padding:6px 14px;border-radius:20px">${escapeTutPreview(action)}</div>` : ''}
+    </div>`
+  }
+
+  dim.innerHTML = html
+  document.body.appendChild(dim)
+
+  if (!document.getElementById('tut-preview-anim-style')) {
+    const st = document.createElement('style')
+    st.id = 'tut-preview-anim-style'
+    st.textContent = `
+      @keyframes tutPreviewPulse { 0%{box-shadow:0 0 0 0 rgba(26,107,60,0.6);} 70%{box-shadow:0 0 0 12px rgba(26,107,60,0);} 100%{box-shadow:0 0 0 0 rgba(26,107,60,0);} }
+      @keyframes tutPreviewGlow  { 0%,100%{box-shadow:0 0 8px 3px rgba(212,160,23,0.7);} 50%{box-shadow:0 0 20px 8px rgba(212,160,23,0.95);} }
+    `
+    document.head.appendChild(st)
+  }
+}
+
+function escapeTutPreview(str) {
+  return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 }
 
 init().catch(err => {

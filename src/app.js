@@ -687,6 +687,17 @@ function drawTutorialPreviewOverlay(params) {
 
   const targetEl = selector ? document.querySelector(selector) : null
 
+  // Informe l'admin (parent) si le sélecteur ne matche rien, pour afficher
+  // un avertissement au lieu de laisser l'utilisateur deviner pourquoi rien
+  // ne s'affiche.
+  try {
+    window.parent.postMessage({
+      type: 'tutorial-preview-target-status',
+      selector,
+      found: !selector || !!targetEl,
+    }, '*')
+  } catch (e) { /* pas dans un iframe (accès direct à l'URL) */ }
+
   const dim = document.createElement('div')
   dim.id = 'tut-preview-overlay'
   dim.style.cssText = 'position:fixed;inset:0;z-index:9800;pointer-events:none'

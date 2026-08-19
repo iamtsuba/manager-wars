@@ -618,12 +618,25 @@ function onPickerMouseOver(e) {
   _pickerHoverEl.style.height = r.height + 'px'
 }
 
+// Sélecteurs des conteneurs de navigation persistante (chrome), visibles
+// sur TOUTES les pages du jeu — un élément dedans n'est jamais "propre" à
+// une seule page, même si l'aperçu est actuellement sur telle ou telle page.
+const GLOBAL_NAV_CONTAINERS = [
+  '.home2-chrome-header', '.home2-mobile-top', '.home2-mobile-bottom',
+  '.home2-chrome-tabs', '.top-nav', '.bottom-nav',
+]
+
+function isInGlobalNav(el) {
+  return GLOBAL_NAV_CONTAINERS.some(sel => el.closest(sel))
+}
+
 function onPickerClick(e) {
   e.preventDefault()
   e.stopPropagation()
   e.stopImmediatePropagation()
   const selector = buildSelectorFor(e.target)
-  window.parent.postMessage({ type: 'tutorial-preview-picker-result', selector }, '*')
+  const isGlobalNav = isInGlobalNav(e.target)
+  window.parent.postMessage({ type: 'tutorial-preview-picker-result', selector, isGlobalNav }, '*')
   stopElementPicker()
 }
 

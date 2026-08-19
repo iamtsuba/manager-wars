@@ -56,6 +56,7 @@ export async function renderTutorialAdminV2(container, { toast, openModal, close
   let previewLoadedPage = null   // page actuellement chargée dans l'iframe
   let updateDebounceTimer = null
   let targetNotFound = false     // dernier statut reçu de l'iframe (sélecteur introuvable)
+  let selectorIsGlobalNav = false // dernier élément pické fait partie de la nav globale (chrome)
 
   // Options pour les listes déroulantes
   const PAGE_ROUTES = ['home', 'collection', 'decks', 'boosters', 'match', 'market', 'rankings', 'matches', 'settings']
@@ -317,6 +318,7 @@ export async function renderTutorialAdminV2(container, { toast, openModal, close
       <span style="font-size:10px;font-weight:700;background:#e8e8e8;color:${TEXT_DARK};padding:3px 8px;border-radius:10px">Highlight: ${state.highlight_type}</span>
       ${state.dim_overlay ? `<span style="font-size:10px;font-weight:700;background:#333;color:#fff;padding:3px 8px;border-radius:10px">🌑 Grisé</span>` : ''}
       ${state.dom_selector && targetNotFound ? `<span style="font-size:10px;font-weight:700;background:#fdecea;color:#c0392b;padding:3px 8px;border-radius:10px">⚠️ Élément introuvable sur cette page</span>` : ''}
+      ${state.dom_selector && selectorIsGlobalNav ? `<span style="font-size:10px;font-weight:700;background:#e0eefe;color:#1a5fb4;padding:3px 8px;border-radius:10px">🧭 Navigation globale (toutes les pages)</span>` : ''}
       ${state.is_mandatory ? `<span style="font-size:10px;font-weight:700;background:#D4A017;color:#1a1a1a;padding:3px 8px;border-radius:10px">Obligatoire</span>` : ''}
       ${state.skip_allowed ? `<span style="font-size:10px;font-weight:700;background:#eaf7ee;color:#1A6B3C;padding:3px 8px;border-radius:10px">Skip OK</span>` : `<span style="font-size:10px;font-weight:700;background:#fdecea;color:#c0392b;padding:3px 8px;border-radius:10px">Non skippable</span>`}
     `
@@ -354,6 +356,7 @@ export async function renderTutorialAdminV2(container, { toast, openModal, close
     previewIframe = container.querySelector('#tsv2-preview-iframe')
     previewLoadedPage = state.page_route
     targetNotFound = false
+    selectorIsGlobalNav = false
     previewIframe.src = '/index.html?' + stateToParams(state).toString()
   }
 
@@ -424,7 +427,13 @@ export async function renderTutorialAdminV2(container, { toast, openModal, close
         domInput.dispatchEvent(new Event('input', { bubbles: true }))
       }
       endPickerUI()
-      toast(`Élément sélectionné : ${e.data.selector}`, 'success')
+      selectorIsGlobalNav = !!e.data.isGlobalNav
+      if (e.data.isGlobalNav) {
+        toast(`Élément sélectionné : ${e.data.selector} — 🧭 fait partie de la navigation, visible sur toutes les pages`, 'success', 5000)
+      } else {
+        toast(`Élément sélectionné : ${e.data.selector}`, 'success')
+      }
+      renderBadges(getFormState())
     }
     if (e.data.type === 'tutorial-preview-picker-cancelled') {
       endPickerUI()
@@ -559,6 +568,15 @@ export async function renderTutorialAdminV2(container, { toast, openModal, close
     // Sélecteur d'élément cliquable dans l'aperçu
     const pickerBtn = container.querySelector('#picker-btn')
     if (pickerBtn) pickerBtn.addEventListener('click', startPicker)
+
+    // Si le sélecteur est modifié manuellement (pas via le picker), le
+    // badge "navigation globale" du pick précédent n'est plus fiable
+    const domSelectorInput = container.querySelector('#dom-selector')
+    if (domSelectorInput) {
+      domSelectorInput.addEventListener('input', () => {
+        selectorIsGlobalNav = false
+      })
+    }
 
     // Monte l'iframe (premier chargement du formulaire)
     mountPreviewFrame()

@@ -41,6 +41,7 @@ export async function renderTutorialAdminV2(container, { toast, openModal, close
   let previewIframe = null
   let previewLoadedPage = null   // page actuellement chargée dans l'iframe
   let updateDebounceTimer = null
+  let targetNotFound = false     // dernier statut reçu de l'iframe (sélecteur introuvable)
 
   // Options pour les listes déroulantes
   const PAGE_ROUTES = ['home', 'collection', 'decks', 'boosters', 'match', 'market', 'rankings', 'matches', 'settings']
@@ -133,6 +134,7 @@ export async function renderTutorialAdminV2(container, { toast, openModal, close
             <button type="button" id="picker-btn" title="Cliquer sur un élément dans l'aperçu"
               style="flex-shrink:0;padding:0 10px;border:1px solid #ddd;border-radius:6px;background:#fff;cursor:pointer;font-size:14px">🎯</button>
           </div>
+          <div style="font-size:10px;color:${TEXT_MUTED};margin-top:4px">Utilise 🎯 plutôt que de taper un sélecteur à la main — évite les fautes de frappe (attribut/valeur inexistants).</div>
         </div>
 
         <div class="form-group">
@@ -290,6 +292,7 @@ export async function renderTutorialAdminV2(container, { toast, openModal, close
       <span style="font-size:10px;font-weight:700;background:#e8e8e8;color:${TEXT_DARK};padding:3px 8px;border-radius:10px">Page: ${state.page_route}</span>
       <span style="font-size:10px;font-weight:700;background:#e8e8e8;color:${TEXT_DARK};padding:3px 8px;border-radius:10px">Highlight: ${state.highlight_type}</span>
       ${state.dim_overlay ? `<span style="font-size:10px;font-weight:700;background:#333;color:#fff;padding:3px 8px;border-radius:10px">🌑 Grisé</span>` : ''}
+      ${state.dom_selector && targetNotFound ? `<span style="font-size:10px;font-weight:700;background:#fdecea;color:#c0392b;padding:3px 8px;border-radius:10px">⚠️ Élément introuvable sur cette page</span>` : ''}
       ${state.is_mandatory ? `<span style="font-size:10px;font-weight:700;background:#D4A017;color:#1a1a1a;padding:3px 8px;border-radius:10px">Obligatoire</span>` : ''}
       ${state.skip_allowed ? `<span style="font-size:10px;font-weight:700;background:#eaf7ee;color:#1A6B3C;padding:3px 8px;border-radius:10px">Skip OK</span>` : `<span style="font-size:10px;font-weight:700;background:#fdecea;color:#c0392b;padding:3px 8px;border-radius:10px">Non skippable</span>`}
     `
@@ -326,6 +329,7 @@ export async function renderTutorialAdminV2(container, { toast, openModal, close
 
     previewIframe = container.querySelector('#tsv2-preview-iframe')
     previewLoadedPage = state.page_route
+    targetNotFound = false
     previewIframe.src = '/index.html?' + stateToParams(state).toString()
   }
 
@@ -400,6 +404,10 @@ export async function renderTutorialAdminV2(container, { toast, openModal, close
     }
     if (e.data.type === 'tutorial-preview-picker-cancelled') {
       endPickerUI()
+    }
+    if (e.data.type === 'tutorial-preview-target-status') {
+      targetNotFound = !e.data.found
+      renderBadges(getFormState())
     }
   })
 

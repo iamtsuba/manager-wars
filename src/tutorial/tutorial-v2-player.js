@@ -43,6 +43,25 @@ function escapeHtmlV2(str) {
   return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 }
 
+// La barre de navigation (home2-chrome-header, home2-mobile-top,
+// home2-mobile-bottom) est montée directement sur document.body — HORS de
+// #app — pour survivre aux re-rendus de page. Le blocage/déblocage des
+// interactions doit donc l'inclure explicitement en plus de #app.
+const NAV_CONTAINER_SELECTORS = [
+  '.home2-chrome-header', '.home2-mobile-top', '.home2-mobile-bottom',
+  '.top-nav', '.bottom-nav',
+]
+
+function setInteractionAllowed(allowed) {
+  const appEl = document.getElementById('app')
+  if (appEl) appEl.style.pointerEvents = allowed ? '' : 'none'
+  NAV_CONTAINER_SELECTORS.forEach(sel => {
+    document.querySelectorAll(sel).forEach(el => {
+      el.style.pointerEvents = allowed ? '' : 'none'
+    })
+  })
+}
+
 async function loadSteps() {
   const { data, error } = await supabase
     .from('tutorial_steps_v2')
@@ -117,10 +136,9 @@ function render(step) {
   const allowInteraction = !!step.allow_interaction
   const showNext = step.show_next_button !== false
 
-  // Réactive ou bloque les vraies interactions du joueur sur le reste de
-  // l'app selon le choix de l'étape.
-  const appEl = document.getElementById('app')
-  if (appEl) appEl.style.pointerEvents = allowInteraction ? '' : 'none'
+  // Réactive ou bloque les vraies interactions du joueur — sur #app ET sur
+  // la nav (qui vit hors de #app, voir NAV_CONTAINER_SELECTORS).
+  setInteractionAllowed(allowInteraction)
 
   let html = ''
 
@@ -159,7 +177,12 @@ function render(step) {
     'bottom-left':  'bottom:16px;left:16px;',
     'bottom-right': 'bottom:16px;right:16px;',
   }
-  const bubbleStyle = posMap[step.popup_position] || posMap.center
+  // Position réellement adaptée au device courant (seuil 900px, identique
+  // au reste du jeu) — pas au mode simulé dans l'admin, qui ne concerne
+  // que sa propre preview figée.
+  const isMobileViewport = window.innerWidth < 900
+  const chosenPosition = (isMobileViewport ? step.popup_position : step.popup_position_desktop) || step.popup_position
+  const bubbleStyle = posMap[chosenPosition] || posMap.center
   const isLast = idx === steps.length - 1
   const canSkip = step.skip_allowed !== false
 
@@ -216,8 +239,7 @@ async function finish(skipped) {
   cleanupCurrentStep?.()
   cleanupCurrentStep = null
   ov?.remove()
-  const appEl = document.getElementById('app')
-  if (appEl) appEl.style.pointerEvents = ''
+  setInteractionAllowed(true)
 
   const userId = ctxRef?.state?.profile?.id
   if (userId) {

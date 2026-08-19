@@ -359,6 +359,16 @@ async function init() {
     return initTutorialPreview(__previewParams)
   }
 
+  // ── Mode "Démo publique du tutoriel" (?tutorialDemo=1) ────────────────
+  // Utilisé par le bouton "Voir le tutoriel" de la page de présentation
+  // publique (accueil.html, visiteurs SANS compte). Charge le compte démo
+  // partagé et joue le VRAI tutoriel interactif complet (tutorial-v2-player)
+  // exactement comme le vivrait un joueur inscrit — aucune duplication de
+  // contenu, aucun compte requis.
+  if (__previewParams.get('tutorialDemo') === '1') {
+    return initTutorialDemo()
+  }
+
   // Applique le thème choisi (club par défaut, ou la préférence sauvegardée)
   applyTheme(getTheme())
 
@@ -558,6 +568,26 @@ async function initTutorialPreview(params) {
       return
     }
   })
+}
+
+// ── Mode démo publique : joue le VRAI tutoriel interactif, sans compte ──
+async function initTutorialDemo() {
+  const { data: demoProfile } = await supabase
+    .from('users').select('*').eq('id', PREVIEW_DEMO_ID).single()
+
+  state.user    = { id: PREVIEW_DEMO_ID }
+  state.profile = demoProfile || { credits: 0, pseudo: 'Démo' }
+
+  applyTheme(getTheme())
+  hideLoader()
+  launchApp()
+
+  setTimeout(() => {
+    startTutorialV2({ state, navigate, toast }, () => {
+      // Fin de la démo publique → invite à créer un vrai compte
+      window.location.href = '/'
+    })
+  }, 400)
 }
 
 // ── Sélecteur d'élément (picker) ────────────────────────────────────────

@@ -847,7 +847,7 @@ function drawTutorialPreviewOverlay(params) {
   const bubbleStyle = posMap[position] || posMap.center
   // Largeur pleine uniquement pour les positions centrées horizontalement —
   // les positions en coin restent compactes (sinon débordement d'écran).
-  const isCenteredPos = ['center', 'top', 'bottom', 'upper-center', 'lower-center'].includes(position)
+  const isCenteredPos = ['center', 'top', 'bottom', 'upper-center', 'lower-center', 'above-nav'].includes(position)
   const widthRule = isCenteredPos ? `width:${bw}px;` : ''
 
   if (title || text) {

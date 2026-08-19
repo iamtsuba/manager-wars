@@ -816,7 +816,7 @@ function drawTutorialPreviewOverlay(params) {
   }
 
   const vw = window.innerWidth, vh = window.innerHeight
-  const bw = vw - 32
+  const bw = vw
 
   // La position du popup respecte TOUJOURS le choix manuel (popup_position),
   // qu'un élément soit ciblé ou non — le sélecteur DOM ne pilote que le
@@ -835,9 +835,13 @@ function drawTutorialPreviewOverlay(params) {
     'bottom-right': 'bottom:16px;right:16px;',
   }
   const bubbleStyle = posMap[position] || posMap.center
+  // Largeur pleine uniquement pour les positions centrées horizontalement —
+  // les positions en coin restent compactes (sinon débordement d'écran).
+  const isCenteredPos = ['center', 'top', 'bottom', 'upper-center', 'lower-center'].includes(position)
+  const widthRule = isCenteredPos ? `width:${bw}px;` : ''
 
   if (title || text) {
-    html += `<div style="position:absolute;${bubbleStyle}max-width:${bw}px;background:#fff;
+    html += `<div style="position:absolute;${bubbleStyle}max-width:${bw}px;${widthRule}background:#fff;
       border-radius:14px;box-shadow:0 8px 36px rgba(0,0,0,0.5);padding:16px 18px;pointer-events:none">
       <div style="font-weight:900;font-size:15px;color:#1a1a2e;margin-bottom:6px">${escapeTutPreview(title)}</div>
       <div style="font-size:13px;color:#555;line-height:1.5">${escapeTutPreview(text)}</div>

@@ -83,7 +83,7 @@ export async function startTutorialV2(ctx, onComplete) {
   ov?.remove()
   ov = document.createElement('div')
   ov.id = 'tv2-player-overlay'
-  ov.style.cssText = 'position:fixed;inset:0;z-index:9800;pointer-events:none'
+  ov.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;width:100%;height:100%;z-index:2147483000;pointer-events:none'
   document.body.appendChild(ov)
 
   if (!document.getElementById('tv2-player-anim-style')) {
@@ -145,12 +145,12 @@ function render(step) {
   if (dimScreen) {
     if (targetEl) {
       const r = targetEl.getBoundingClientRect()
-      html += `<div style="position:absolute;inset:0;background:rgba(0,0,0,0.62);
+      html += `<div style="position:absolute;top:0;left:0;right:0;bottom:0;width:100%;height:100%;background:rgba(0,0,0,0.62);
         clip-path:polygon(0% 0%,100% 0%,100% 100%,0% 100%,
           0% ${r.top - 6}px,${r.left - 6}px ${r.top - 6}px,${r.left - 6}px ${r.bottom + 6}px,
           ${r.right + 6}px ${r.bottom + 6}px,${r.right + 6}px ${r.top - 6}px,0% ${r.top - 6}px)"></div>`
     } else {
-      html += `<div style="position:absolute;inset:0;background:rgba(0,0,0,0.62)"></div>`
+      html += `<div style="position:absolute;top:0;left:0;right:0;bottom:0;width:100%;height:100%;background:rgba(0,0,0,0.62)"></div>`
     }
   }
 

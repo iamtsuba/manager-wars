@@ -45,7 +45,7 @@ export async function renderTutorialAdminV2(container, { toast, openModal, close
   // Options pour les listes déroulantes
   const PAGE_ROUTES = ['home', 'collection', 'decks', 'boosters', 'match', 'market', 'rankings', 'matches', 'settings']
   const POPUP_POSITIONS = ['center', 'top', 'top-left', 'top-right', 'bottom', 'bottom-left', 'bottom-right']
-  const HIGHLIGHT_TYPES = ['none', 'glow', 'pulse', 'dim-overlay', 'highlight']
+  const HIGHLIGHT_TYPES = ['none', 'glow', 'pulse', 'highlight']
   const VALIDATORS = ['none', 'page_loaded', 'click_detected', 'card_shown', 'booster_opened', 'card_bought', 'card_sold', 'deck_created', 'formation_selected', '8_players_placed', 'links_visible', 'sub_added', 'deck_valid', 'filter_applied', 'match_started', 'deck_selected', 'gc_selected', 'rendered', 'phase_done', 'attack_sent', 'defense_sent', 'gc_used', 'match_won', 'accepted', 'pvp_started', 'matched', 'synced', 'tutorial_done']
 
   // Charger toutes les étapes
@@ -127,8 +127,12 @@ export async function renderTutorialAdminV2(container, { toast, openModal, close
 
         <div class="form-group">
           <label style="${LABEL_STYLE}">Sélecteur DOM</label>
-          <input type="text" id="dom-selector" value="${step.dom_selector || ''}" placeholder="Ex: [data-page='collection']"
-            style="${INPUT_STYLE}" />
+          <div style="display:flex;gap:6px">
+            <input type="text" id="dom-selector" value="${step.dom_selector || ''}" placeholder="Ex: [data-page='collection']"
+              style="${INPUT_STYLE};flex:1" />
+            <button type="button" id="picker-btn" title="Cliquer sur un élément dans l'aperçu"
+              style="flex-shrink:0;padding:0 10px;border:1px solid #ddd;border-radius:6px;background:#fff;cursor:pointer;font-size:14px">🎯</button>
+          </div>
         </div>
 
         <div class="form-group">
@@ -188,6 +192,13 @@ export async function renderTutorialAdminV2(container, { toast, openModal, close
           style="${INPUT_STYLE}" />
       </div>
 
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;color:${TEXT_DARK}">
+          <input type="checkbox" id="dim-overlay" ${step.dim_overlay ? 'checked' : ''} />
+          <span style="font-weight:600;font-size:13px;color:${TEXT_DARK}">🌑 Griser le reste de l'écran</span>
+        </label>
+      </div>
+
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
         <label style="display:flex;align-items:center;gap:8px;cursor:pointer;color:${TEXT_DARK}">
           <input type="checkbox" id="skip-allowed" ${step.skip_allowed !== false ? 'checked' : ''} />
@@ -222,6 +233,7 @@ export async function renderTutorialAdminV2(container, { toast, openModal, close
       popup_text: val('popup-text'),
       action_required: val('action-required'),
       highlight_type: val('highlight-type') || 'none',
+      dim_overlay: checked('dim-overlay'),
       is_mandatory: checked('is-mandatory'),
       skip_allowed: checked('skip-allowed'),
     }
@@ -237,6 +249,7 @@ export async function renderTutorialAdminV2(container, { toast, openModal, close
       text: state.popup_text || '',
       action: state.action_required || '',
       highlight: state.highlight_type,
+      dim: state.dim_overlay ? '1' : '0',
     })
   }
 
@@ -276,6 +289,7 @@ export async function renderTutorialAdminV2(container, { toast, openModal, close
     el.innerHTML = `
       <span style="font-size:10px;font-weight:700;background:#e8e8e8;color:${TEXT_DARK};padding:3px 8px;border-radius:10px">Page: ${state.page_route}</span>
       <span style="font-size:10px;font-weight:700;background:#e8e8e8;color:${TEXT_DARK};padding:3px 8px;border-radius:10px">Highlight: ${state.highlight_type}</span>
+      ${state.dim_overlay ? `<span style="font-size:10px;font-weight:700;background:#333;color:#fff;padding:3px 8px;border-radius:10px">🌑 Grisé</span>` : ''}
       ${state.is_mandatory ? `<span style="font-size:10px;font-weight:700;background:#D4A017;color:#1a1a1a;padding:3px 8px;border-radius:10px">Obligatoire</span>` : ''}
       ${state.skip_allowed ? `<span style="font-size:10px;font-weight:700;background:#eaf7ee;color:#1A6B3C;padding:3px 8px;border-radius:10px">Skip OK</span>` : `<span style="font-size:10px;font-weight:700;background:#fdecea;color:#c0392b;padding:3px 8px;border-radius:10px">Non skippable</span>`}
     `
@@ -352,6 +366,42 @@ export async function renderTutorialAdminV2(container, { toast, openModal, close
     }
     mountPreviewFrame()
   }
+
+  // ── Picker : clique sur un élément DANS l'aperçu pour le sélectionner ──
+  let pickerActive = false
+
+  function startPicker() {
+    if (!previewIframe) return
+    pickerActive = true
+    const btn = container.querySelector('#picker-btn')
+    if (btn) { btn.textContent = '⏳'; btn.style.background = '#eaf7ee'; btn.disabled = true }
+    try {
+      previewIframe.contentWindow.postMessage({ type: 'tutorial-preview-picker-start' }, '*')
+    } catch (e) { /* iframe pas prête */ }
+  }
+
+  function endPickerUI() {
+    pickerActive = false
+    const btn = container.querySelector('#picker-btn')
+    if (btn) { btn.textContent = '🎯'; btn.style.background = '#fff'; btn.disabled = false }
+  }
+
+  // Écoute globale (une seule fois) des messages venant de l'iframe preview
+  window.addEventListener('message', e => {
+    if (!e.data) return
+    if (e.data.type === 'tutorial-preview-picker-result') {
+      const domInput = container.querySelector('#dom-selector')
+      if (domInput) {
+        domInput.value = e.data.selector || ''
+        domInput.dispatchEvent(new Event('input', { bubbles: true }))
+      }
+      endPickerUI()
+      toast(`Élément sélectionné : ${e.data.selector}`, 'success')
+    }
+    if (e.data.type === 'tutorial-preview-picker-cancelled') {
+      endPickerUI()
+    }
+  })
 
   // ── Rendu principal (layout 3 colonnes) ─────────────────────
   function render() {
@@ -465,7 +515,7 @@ export async function renderTutorialAdminV2(container, { toast, openModal, close
     // Live preview : tout champ met à jour l'iframe réelle en direct
     const formFieldIds = [
       'page-route', 'dom-selector', 'popup-position', 'popup-title', 'popup-text',
-      'action-required', 'validator-logic', 'highlight-type', 'skip-allowed', 'is-mandatory'
+      'action-required', 'validator-logic', 'highlight-type', 'dim-overlay', 'skip-allowed', 'is-mandatory'
     ]
     formFieldIds.forEach(id => {
       const el = container.querySelector('#' + id)
@@ -473,6 +523,10 @@ export async function renderTutorialAdminV2(container, { toast, openModal, close
       const evt = (el.tagName === 'SELECT' || el.type === 'checkbox') ? 'change' : 'input'
       el.addEventListener(evt, debouncedUpdatePreview)
     })
+
+    // Sélecteur d'élément cliquable dans l'aperçu
+    const pickerBtn = container.querySelector('#picker-btn')
+    if (pickerBtn) pickerBtn.addEventListener('click', startPicker)
 
     // Monte l'iframe (premier chargement du formulaire)
     mountPreviewFrame()
@@ -490,6 +544,7 @@ export async function renderTutorialAdminV2(container, { toast, openModal, close
     const actionRequired = container.querySelector('#action-required').value.trim() || null
     const validatorLogic = container.querySelector('#validator-logic').value || null
     const highlightType = container.querySelector('#highlight-type').value || 'none'
+    const dimOverlay = container.querySelector('#dim-overlay').checked
     const skipAllowed = container.querySelector('#skip-allowed').checked
     const isMandatory = container.querySelector('#is-mandatory').checked
     const displayDuration = parseInt(container.querySelector('#display-duration').value) || 0
@@ -511,6 +566,7 @@ export async function renderTutorialAdminV2(container, { toast, openModal, close
       action_required: actionRequired,
       validator_logic: validatorLogic,
       highlight_type: highlightType,
+      dim_overlay: dimOverlay,
       skip_allowed: skipAllowed,
       is_mandatory: isMandatory,
       display_duration_ms: displayDuration,

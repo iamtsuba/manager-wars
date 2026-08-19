@@ -468,7 +468,7 @@ if (window.visualViewport) {
   window.visualViewport.addEventListener('resize', applyAppHeight)
 }
 
-function launchApp() {
+export function launchApp() {
   // Ping de présence : mise à jour last_seen_at au démarrage et toutes les 60s
   const pingPresence = () => {
     if (state.user?.id) {

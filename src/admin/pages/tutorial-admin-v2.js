@@ -224,6 +224,20 @@ export async function renderTutorialAdminV2(container, { toast, openModal, close
           <input type="checkbox" id="dim-overlay" ${step.dim_overlay ? 'checked' : ''} />
           <span style="font-weight:600;font-size:13px;color:${TEXT_DARK}">🌑 Griser le reste de l'écran</span>
         </label>
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;color:${TEXT_DARK}">
+          <input type="checkbox" id="allow-interaction" ${step.allow_interaction ? 'checked' : ''} />
+          <span style="font-weight:600;font-size:13px;color:${TEXT_DARK}">👆 Autoriser le clic sur les boutons</span>
+        </label>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;color:${TEXT_DARK}">
+          <input type="checkbox" id="show-next-button" ${step.show_next_button !== false ? 'checked' : ''} />
+          <span style="font-weight:600;font-size:13px;color:${TEXT_DARK}">➡️ Afficher le bouton "Suivant"</span>
+        </label>
+      </div>
+      <div style="font-size:10px;color:${TEXT_MUTED};margin-bottom:16px;margin-top:-6px">
+        Si décoché : l'étape avance automatiquement quand le joueur clique sur l'élément ciblé (Sélecteur DOM) — nécessite "Autoriser le clic" activé.
       </div>
 
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
@@ -261,6 +275,8 @@ export async function renderTutorialAdminV2(container, { toast, openModal, close
       action_required: val('action-required'),
       highlight_type: val('highlight-type') || 'none',
       dim_overlay: checked('dim-overlay'),
+      allow_interaction: checked('allow-interaction'),
+      show_next_button: checked('show-next-button'),
       is_mandatory: checked('is-mandatory'),
       skip_allowed: checked('skip-allowed'),
     }
@@ -556,7 +572,8 @@ export async function renderTutorialAdminV2(container, { toast, openModal, close
     // Live preview : tout champ met à jour l'iframe réelle en direct
     const formFieldIds = [
       'page-route', 'dom-selector', 'popup-position', 'popup-title', 'popup-text',
-      'action-required', 'validator-logic', 'highlight-type', 'dim-overlay', 'skip-allowed', 'is-mandatory'
+      'action-required', 'validator-logic', 'highlight-type', 'dim-overlay',
+      'allow-interaction', 'show-next-button', 'skip-allowed', 'is-mandatory'
     ]
     formFieldIds.forEach(id => {
       const el = container.querySelector('#' + id)
@@ -595,6 +612,8 @@ export async function renderTutorialAdminV2(container, { toast, openModal, close
     const validatorLogic = container.querySelector('#validator-logic').value || null
     const highlightType = container.querySelector('#highlight-type').value || 'none'
     const dimOverlay = container.querySelector('#dim-overlay').checked
+    const allowInteraction = container.querySelector('#allow-interaction').checked
+    const showNextButton = container.querySelector('#show-next-button').checked
     const skipAllowed = container.querySelector('#skip-allowed').checked
     const isMandatory = container.querySelector('#is-mandatory').checked
     const displayDuration = parseInt(container.querySelector('#display-duration').value) || 0
@@ -617,6 +636,8 @@ export async function renderTutorialAdminV2(container, { toast, openModal, close
       validator_logic: validatorLogic,
       highlight_type: highlightType,
       dim_overlay: dimOverlay,
+      allow_interaction: allowInteraction,
+      show_next_button: showNextButton,
       skip_allowed: skipAllowed,
       is_mandatory: isMandatory,
       display_duration_ms: displayDuration,

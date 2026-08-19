@@ -4,9 +4,15 @@
  * CRUD complet pour les étapes du tutoriel
  * Table: tutorial_steps_v2
  *
- * Layout : liste des étapes à gauche (colonne fixe, scrollable),
- * formulaire de création/édition au centre,
- * prévisualisation live (mobile + desktop) à droite.
+ * Layout : liste des étapes à gauche, formulaire au centre,
+ * PRÉVISUALISATION RÉELLE à droite.
+ *
+ * La prévisualisation charge le VRAI site (index.html) dans un iframe, en
+ * mode "?tutorialPreview=1" : le compte démo partagé (le même que celui
+ * utilisé par tutorial-v3.js côté joueur) rend la vraie page ciblée, et un
+ * overlay (spotlight + bulle) piloté en direct par postMessage montre
+ * exactement ce qu'un nouveau joueur verrait. Zéro mockup, zéro duplication
+ * visuelle — si le design du jeu change, la preview suit automatiquement.
  *
  * NOTE CSS : .admin-content applique color:rgba(255,255,255,0.9) (thème sombre).
  * Ce composant utilise des fonds clairs → on force explicitement color:#1a1a1a
@@ -20,32 +26,21 @@ const TEXT_MUTED = '#666'
 const INPUT_STYLE = `width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;font-size:14px;background:#fff;color:${TEXT_DARK}`
 const LABEL_STYLE = `display:block;font-weight:600;font-size:12px;margin-bottom:6px;color:${TEXT_DARK}`
 
-// Injecte une seule fois les keyframes CSS utilisées par les mockups de preview
-function ensurePreviewStyles() {
-  if (document.getElementById('tsv2-preview-styles')) return
-  const style = document.createElement('style')
-  style.id = 'tsv2-preview-styles'
-  style.textContent = `
-    @keyframes tsv2Pulse {
-      0%   { box-shadow: 0 0 0 0 rgba(26,107,60,0.55); }
-      70%  { box-shadow: 0 0 0 9px rgba(26,107,60,0); }
-      100% { box-shadow: 0 0 0 0 rgba(26,107,60,0); }
-    }
-    @keyframes tsv2Glow {
-      0%, 100% { box-shadow: 0 0 6px 2px rgba(212,160,23,0.6); }
-      50%      { box-shadow: 0 0 16px 7px rgba(212,160,23,0.9); }
-    }
-    .tsv2-target-pulse { animation: tsv2Pulse 1.6s infinite; }
-    .tsv2-target-glow  { animation: tsv2Glow 1.6s infinite; }
-  `
-  document.head.appendChild(style)
+// Dimensions réelles de l'iframe selon le mode (déclenche les vrais
+// breakpoints CSS de l'app — le seuil mobile/desktop du jeu est 900px,
+// voir isMobile() dans tutorial-v3.js)
+const PREVIEW_SIZES = {
+  mobile:  { w: 320, h: 640 },
+  desktop: { w: 1100, h: 650 },
 }
 
 export async function renderTutorialAdminV2(container, { toast, openModal, closeModal }) {
   let steps = []
   let editingId = null
-
-  ensurePreviewStyles()
+  let previewMode = 'mobile'
+  let previewIframe = null
+  let previewLoadedPage = null   // page actuellement chargée dans l'iframe
+  let updateDebounceTimer = null
 
   // Options pour les listes déroulantes
   const PAGE_ROUTES = ['home', 'collection', 'decks', 'boosters', 'match', 'market', 'rankings', 'matches', 'settings']
@@ -110,21 +105,18 @@ export async function renderTutorialAdminV2(container, { toast, openModal, close
       </h3>
 
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:16px">
-        <!-- Numéro de step -->
         <div class="form-group">
           <label style="${LABEL_STYLE}">Numéro de step *</label>
           <input type="number" id="step-number" value="${step.step_number || ''}" min="1" max="100" placeholder="Ex: 1"
             style="${INPUT_STYLE}" />
         </div>
 
-        <!-- Nom de l'étape -->
         <div class="form-group">
           <label style="${LABEL_STYLE}">Nom étape (identifiant) *</label>
           <input type="text" id="step-name" value="${step.step_name || ''}" placeholder="Ex: home-welcome"
             style="${INPUT_STYLE}" />
         </div>
 
-        <!-- Page/Route -->
         <div class="form-group">
           <label style="${LABEL_STYLE}">Page/Route</label>
           <select id="page-route" style="${INPUT_STYLE}">
@@ -133,14 +125,12 @@ export async function renderTutorialAdminV2(container, { toast, openModal, close
           </select>
         </div>
 
-        <!-- Sélecteur DOM -->
         <div class="form-group">
           <label style="${LABEL_STYLE}">Sélecteur DOM</label>
           <input type="text" id="dom-selector" value="${step.dom_selector || ''}" placeholder="Ex: [data-page='collection']"
             style="${INPUT_STYLE}" />
         </div>
 
-        <!-- Position du popup -->
         <div class="form-group">
           <label style="${LABEL_STYLE}">Position popup</label>
           <select id="popup-position" style="${INPUT_STYLE}">
@@ -149,7 +139,6 @@ export async function renderTutorialAdminV2(container, { toast, openModal, close
           </select>
         </div>
 
-        <!-- Type highlight -->
         <div class="form-group">
           <label style="${LABEL_STYLE}">Type de highlight</label>
           <select id="highlight-type" style="${INPUT_STYLE}">
@@ -158,7 +147,6 @@ export async function renderTutorialAdminV2(container, { toast, openModal, close
           </select>
         </div>
 
-        <!-- Validateur -->
         <div class="form-group">
           <label style="${LABEL_STYLE}">Validateur</label>
           <select id="validator-logic" style="${INPUT_STYLE}">
@@ -167,14 +155,12 @@ export async function renderTutorialAdminV2(container, { toast, openModal, close
           </select>
         </div>
 
-        <!-- Durée affichage -->
         <div class="form-group">
           <label style="${LABEL_STYLE}">Durée affichage (ms, 0=infini)</label>
           <input type="number" id="display-duration" value="${step.display_duration_ms || 0}" min="0" step="1000"
             style="${INPUT_STYLE}" />
         </div>
 
-        <!-- Ordre de tri -->
         <div class="form-group">
           <label style="${LABEL_STYLE}">Ordre de tri</label>
           <input type="number" id="sort-order" value="${step.sort_order || 0}" min="0"
@@ -182,7 +168,6 @@ export async function renderTutorialAdminV2(container, { toast, openModal, close
         </div>
       </div>
 
-      <!-- Titre du popup (champ plus grand) -->
       <div class="form-group" style="margin-bottom:12px">
         <label style="${LABEL_STYLE}">Titre du popup *</label>
         <input type="text" id="popup-title" value="${step.popup_title || ''}" maxlength="150" placeholder="Ex: 👋 Bienvenue dans Manager Wars !"
@@ -190,7 +175,6 @@ export async function renderTutorialAdminV2(container, { toast, openModal, close
         <div style="font-size:11px;color:${TEXT_MUTED};margin-top:4px">Caractères: <span id="title-count">0</span>/150</div>
       </div>
 
-      <!-- Texte du popup (zone de texte) -->
       <div class="form-group" style="margin-bottom:12px">
         <label style="${LABEL_STYLE}">Texte du popup *</label>
         <textarea id="popup-text" maxlength="500" placeholder="Ex: Explique ce que le joueur doit faire..."
@@ -198,14 +182,12 @@ export async function renderTutorialAdminV2(container, { toast, openModal, close
         <div style="font-size:11px;color:${TEXT_MUTED};margin-top:4px">Caractères: <span id="text-count">0</span>/500</div>
       </div>
 
-      <!-- Action requise -->
       <div class="form-group" style="margin-bottom:12px">
         <label style="${LABEL_STYLE}">Action requise</label>
         <input type="text" id="action-required" value="${step.action_required || ''}" placeholder="Ex: Clique sur Collection"
           style="${INPUT_STYLE}" />
       </div>
 
-      <!-- Toggles -->
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
         <label style="display:flex;align-items:center;gap:8px;cursor:pointer;color:${TEXT_DARK}">
           <input type="checkbox" id="skip-allowed" ${step.skip_allowed !== false ? 'checked' : ''} />
@@ -217,7 +199,6 @@ export async function renderTutorialAdminV2(container, { toast, openModal, close
         </label>
       </div>
 
-      <!-- Boutons d'action -->
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         <button class="btn btn-primary" id="save-step-btn" style="flex:1;min-width:120px">
           ${editingId ? '💾 Mettre à jour' : '➕ Créer'}
@@ -228,253 +209,45 @@ export async function renderTutorialAdminV2(container, { toast, openModal, close
     `
   }
 
-  // ── Colonne droite : prévisualisation live ──────────────────
+  // ── Colonne droite : prévisualisation RÉELLE (iframe) ───────
 
-  // Lit l'état courant du formulaire directement dans le DOM
   function getFormState() {
     const val = id => container.querySelector('#' + id)?.value || ''
     const checked = id => container.querySelector('#' + id)?.checked || false
     return {
-      step_number: val('step-number'),
-      step_name: val('step-name'),
-      page_route: val('page-route'),
+      page_route: val('page-route') || 'home',
       dom_selector: val('dom-selector'),
       popup_position: val('popup-position') || 'center',
       popup_title: val('popup-title'),
       popup_text: val('popup-text'),
       action_required: val('action-required'),
-      validator_logic: val('validator-logic'),
       highlight_type: val('highlight-type') || 'none',
-      skip_allowed: checked('skip-allowed'),
       is_mandatory: checked('is-mandatory'),
+      skip_allowed: checked('skip-allowed'),
     }
   }
 
-  // Style CSS absolute pour positionner le popup dans le mockup selon popup_position
-  function positionStyle(pos) {
-    switch (pos) {
-      case 'top':          return 'top:10px;left:50%;transform:translateX(-50%)'
-      case 'top-left':     return 'top:10px;left:10px'
-      case 'top-right':    return 'top:10px;right:10px'
-      case 'bottom':       return 'bottom:10px;left:50%;transform:translateX(-50%)'
-      case 'bottom-left':  return 'bottom:10px;left:10px'
-      case 'bottom-right': return 'bottom:10px;right:10px'
-      case 'center':
-      default:              return 'top:50%;left:50%;transform:translate(-50%,-50%)'
-    }
-  }
-
-  // Style du "target" (élément DOM ciblé) selon highlight_type
-  function targetStyle(type) {
-    switch (type) {
-      case 'glow':
-        return { cls: 'tsv2-target-glow', style: 'border:2px solid #D4A017;background:rgba(212,160,23,0.15)' }
-      case 'pulse':
-        return { cls: 'tsv2-target-pulse', style: 'border:2px solid #1A6B3C;background:rgba(26,107,60,0.12)' }
-      case 'highlight':
-        return { cls: '', style: 'border:2px solid #1A6B3C;background:rgba(26,107,60,0.18);box-shadow:0 0 0 3px rgba(26,107,60,0.25)' }
-      case 'dim-overlay':
-        return { cls: '', style: 'border:2px solid #fff;background:#fff;box-shadow:0 0 0 4000px rgba(0,0,0,0.55)' }
-      case 'none':
-      default:
-        return { cls: '', style: 'border:1.5px dashed #bbb;background:#eee' }
-    }
-  }
-
-  // Mini-mockup représentatif du contenu de chaque page (pour que la preview
-  // montre visuellement "on est sur telle page" et pas juste un fond vide)
-  function pageBackgroundHTML(pageRoute) {
-    switch (pageRoute) {
-      case 'home':
-        return `
-          <div style="font-size:9px;font-weight:800;color:#1A6B3C;margin-bottom:6px">⚽ Manager Wars</div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px">
-            ${['🃏 Collection', '📋 Decks', '📦 Boosters', '🎮 Jouer'].map(t => `
-              <div style="background:#fff;border:1px solid #ddd;border-radius:6px;padding:6px 4px;text-align:center;font-size:7px;font-weight:700;color:#333">${t}</div>
-            `).join('')}
-          </div>
-        `
-      case 'collection':
-        return `
-          <div style="height:12px;background:#fff;border:1px solid #ddd;border-radius:5px;margin-bottom:6px"></div>
-          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px">
-            ${['#fff', '#D4A017', '#909090', '#7a28b8', '#fff', '#fff', '#D4A017', '#fff'].map(c => `
-              <div style="aspect-ratio:2/3;background:#fff;border:2px solid ${c};border-radius:4px"></div>
-            `).join('')}
-          </div>
-        `
-      case 'decks':
-        return `
-          <div style="background:#1A6B3C;border-radius:6px;height:70%;position:relative;padding:6px">
-            ${[15, 40, 65, 88].map(top => `
-              <div style="position:absolute;top:${top}%;left:20%;width:8px;height:8px;border-radius:50%;background:#fff"></div>
-              <div style="position:absolute;top:${top}%;left:50%;width:8px;height:8px;border-radius:50%;background:#fff"></div>
-              <div style="position:absolute;top:${top}%;left:78%;width:8px;height:8px;border-radius:50%;background:#fff"></div>
-            `).join('')}
-          </div>
-          <div style="display:flex;gap:3px;margin-top:5px">
-            ${Array(5).fill('').map(() => '<div style="flex:1;height:10px;background:#fff;border:1px solid #ddd;border-radius:3px"></div>').join('')}
-          </div>
-        `
-      case 'boosters':
-        return `
-          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:5px;height:70%">
-            ${['#1A6B3C', '#7a28b8', '#D4A017', '#00bcd4'].map(c => `
-              <div style="background:linear-gradient(160deg, ${c}, #1a1a2e);border-radius:6px"></div>
-            `).join('')}
-          </div>
-        `
-      case 'match':
-        return `
-          <div style="text-align:center;font-size:9px;font-weight:800;color:${TEXT_DARK};background:#fff;border-radius:6px;padding:5px;margin-bottom:6px;border:1px solid #ddd">
-            Toi <span style="color:#1A6B3C">0</span> — <span style="color:#c0392b">0</span> IA
-          </div>
-          <div style="background:#1A6B3C;border-radius:6px;height:16px;margin-bottom:4px"></div>
-          <div style="background:#333;border-radius:6px;height:16px"></div>
-        `
-      case 'market':
-        return Array(3).fill('').map((_, i) => `
-          <div style="display:flex;align-items:center;gap:5px;background:#fff;border:1px solid #ddd;border-radius:5px;padding:4px 6px;margin-bottom:4px">
-            <div style="width:14px;height:14px;border-radius:3px;background:#D4A017"></div>
-            <div style="flex:1;height:5px;background:#ddd;border-radius:3px"></div>
-            <div style="font-size:7px;font-weight:700;color:#1A6B3C">${(i + 1) * 1000}cr</div>
-          </div>
-        `).join('')
-      case 'rankings':
-        return Array(4).fill('').map((_, i) => `
-          <div style="display:flex;align-items:center;gap:6px;margin-bottom:5px">
-            <div style="width:14px;height:14px;border-radius:50%;background:${i === 0 ? '#D4A017' : '#ddd'};font-size:7px;display:flex;align-items:center;justify-content:center;font-weight:800;color:#1a1a1a">${i + 1}</div>
-            <div style="flex:1;height:8px;background:#fff;border:1px solid #ddd;border-radius:3px"></div>
-          </div>
-        `).join('')
-      case 'matches':
-        return Array(3).fill('').map((_, i) => `
-          <div style="display:flex;align-items:center;justify-content:space-between;background:#fff;border:1px solid #ddd;border-radius:5px;padding:5px 7px;margin-bottom:4px">
-            <div style="font-size:7px;color:#666">Match ${i + 1}</div>
-            <div style="font-size:7px;font-weight:800;color:${i % 2 === 0 ? '#1A6B3C' : '#c0392b'}">${i % 2 === 0 ? 'Victoire' : 'Défaite'}</div>
-          </div>
-        `).join('')
-      case 'settings':
-        return Array(3).fill('').map(() => `
-          <div style="display:flex;align-items:center;justify-content:space-between;background:#fff;border:1px solid #ddd;border-radius:5px;padding:5px 7px;margin-bottom:5px">
-            <div style="width:60%;height:6px;background:#ddd;border-radius:3px"></div>
-            <div style="width:18px;height:10px;border-radius:6px;background:#1A6B3C"></div>
-          </div>
-        `).join('')
-      default:
-        return `<div style="display:flex;align-items:center;justify-content:center;height:100%;font-size:9px;color:#999;text-align:center;padding:0 10px">Sélectionne une page pour la prévisualiser</div>`
-    }
-  }
-
-  // Construit le mockup HTML d'un écran (mobile ou desktop) avec popup + target
-  // NOTE : screenW DOIT toujours inclure une unité CSS (px/%) — un nombre nu
-  // (ex: "220" au lieu de "220px") rend la règle CSS invalide et casse la mise en page.
-  function buildScreenMockup(state, kind) {
-    const isMobile = kind === 'mobile'
-    const screenW = isMobile ? '240px' : '100%'
-    const screenH = isMobile ? 440 : 230
-    const headerH = isMobile ? 24 : 22
-    const target = targetStyle(state.highlight_type)
-    const popupMaxWidth = isMobile ? '190px' : '230px'
-
-    const title = state.popup_title || 'Titre du popup…'
-    const text = state.popup_text || 'Le texte du popup apparaîtra ici…'
-    const pageLabel = state.page_route || 'page'
-
-    return `
-      <div style="position:relative;width:${screenW};height:${screenH}px;background:#eef1ee;border-radius:${isMobile ? '4px' : '6px'};overflow:hidden;box-sizing:border-box">
-        <!-- Barre d'entête simulée -->
-        <div style="height:${headerH}px;background:#1a1a2e;display:flex;align-items:center;gap:4px;padding:0 8px;box-sizing:border-box;position:relative;z-index:2">
-          ${isMobile
-            ? `<span style="font-size:10px;color:#fff;opacity:.8">${pageLabel}</span>`
-            : `<span style="width:7px;height:7px;border-radius:50%;background:#ff5f57"></span><span style="width:7px;height:7px;border-radius:50%;background:#febc2e"></span><span style="width:7px;height:7px;border-radius:50%;background:#28c840"></span><span style="font-size:10px;color:#fff;opacity:.7;margin-left:8px">fmwar.com/${pageLabel}</span>`
-          }
-        </div>
-
-        <!-- Contenu représentatif de la page ciblée -->
-        <div style="position:absolute;top:${headerH}px;left:0;right:0;bottom:0;padding:8px;box-sizing:border-box;overflow:hidden;z-index:1">
-          ${pageBackgroundHTML(state.page_route)}
-        </div>
-
-        <!-- Élément ciblé (simulateur) -->
-        <div class="${target.cls}" style="
-          position:absolute;top:${isMobile ? '46%' : '42%'};left:16%;
-          width:${isMobile ? '64px' : '84px'};height:${isMobile ? '24px' : '28px'};
-          border-radius:6px;${target.style};
-          display:flex;align-items:center;justify-content:center;
-          font-size:9px;color:#555;overflow:hidden;padding:0 4px;text-align:center;white-space:nowrap;text-overflow:ellipsis;box-sizing:border-box;
-          z-index:3;
-        ">
-          ${state.dom_selector ? state.dom_selector.slice(0, 14) : 'élément'}
-        </div>
-
-        <!-- Popup -->
-        <div style="
-          position:absolute;${positionStyle(state.popup_position)};
-          max-width:${popupMaxWidth};width:calc(100% - 20px);box-sizing:border-box;
-          background:#fff;border-radius:10px;padding:${isMobile ? '9px 11px' : '10px 12px'};
-          box-shadow:0 6px 20px rgba(0,0,0,0.25);z-index:5;
-        ">
-          <div style="font-weight:800;font-size:${isMobile ? '11px' : '11px'};color:${TEXT_DARK};margin-bottom:3px;line-height:1.3">
-            ${escapeHtml(title)}
-          </div>
-          <div style="font-size:${isMobile ? '10px' : '10px'};color:#444;line-height:1.35;margin-bottom:${state.action_required ? '6px' : '0'}">
-            ${escapeHtml(text)}
-          </div>
-          ${state.action_required ? `
-          <div style="display:inline-block;background:#1A6B3C;color:#fff;font-size:9px;font-weight:700;padding:3px 8px;border-radius:12px">
-            ${escapeHtml(state.action_required)}
-          </div>` : ''}
-        </div>
-      </div>
-    `
-  }
-
-  function escapeHtml(str) {
-    return String(str)
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-  }
-
-  // Mode de preview actif : 'mobile' ou 'desktop'
-  let previewMode = 'mobile'
-
-  // Corps de la preview (mockup unique + badges d'état), régénéré à chaque frappe
-  function renderPreviewBody() {
-    const state = getFormState()
-    const isMobile = previewMode === 'mobile'
-
-    return `
-      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px">
-        <span style="font-size:10px;font-weight:700;background:#e8e8e8;color:${TEXT_DARK};padding:3px 8px;border-radius:10px">
-          Position: ${state.popup_position}
-        </span>
-        <span style="font-size:10px;font-weight:700;background:#e8e8e8;color:${TEXT_DARK};padding:3px 8px;border-radius:10px">
-          Highlight: ${state.highlight_type}
-        </span>
-        ${state.is_mandatory ? `<span style="font-size:10px;font-weight:700;background:#D4A017;color:#1a1a1a;padding:3px 8px;border-radius:10px">Obligatoire</span>` : ''}
-        ${state.skip_allowed ? `<span style="font-size:10px;font-weight:700;background:#eaf7ee;color:#1A6B3C;padding:3px 8px;border-radius:10px">Skip OK</span>` : `<span style="font-size:10px;font-weight:700;background:#fdecea;color:#c0392b;padding:3px 8px;border-radius:10px">Non skippable</span>`}
-      </div>
-
-      ${isMobile ? `
-      <div style="display:flex;justify-content:center">
-        <div style="border:8px solid #1a1a2e;border-radius:22px;padding:0;box-shadow:0 4px 14px rgba(0,0,0,0.2)">
-          ${buildScreenMockup(state, 'mobile')}
-        </div>
-      </div>
-      ` : `
-      <div style="border:1px solid #ccc;border-radius:8px;overflow:hidden;box-shadow:0 4px 14px rgba(0,0,0,0.15)">
-        ${buildScreenMockup(state, 'desktop')}
-      </div>
-      `}
-    `
+  function stateToParams(state) {
+    return new URLSearchParams({
+      tutorialPreview: '1',
+      page: state.page_route,
+      selector: state.dom_selector || '',
+      position: state.popup_position,
+      title: state.popup_title || '',
+      text: state.popup_text || '',
+      action: state.action_required || '',
+      highlight: state.highlight_type,
+    })
   }
 
   function renderPreviewPanel() {
+    const size = PREVIEW_SIZES[previewMode]
     return `
     <div style="background:#f5f5f5;border-radius:12px;padding:16px;color:${TEXT_DARK}">
-      <h3 style="margin:0 0 14px 0;font-size:14px;font-weight:800;color:${TEXT_DARK}">👁️ Prévisualisation</h3>
+      <h3 style="margin:0 0 10px 0;font-size:14px;font-weight:800;color:${TEXT_DARK}">👁️ Prévisualisation réelle</h3>
+      <div style="font-size:11px;color:${TEXT_MUTED};margin-bottom:12px;line-height:1.4">
+        Rendu du vrai jeu (compte démo), aperçu figé — clics désactivés.
+      </div>
 
       <!-- Toggle Mobile / Desktop -->
       <div style="display:flex;gap:6px;margin-bottom:14px;background:#e8e8e8;border-radius:8px;padding:3px">
@@ -490,16 +263,79 @@ export async function renderTutorialAdminV2(container, { toast, openModal, close
         ">🖥️ Desktop</button>
       </div>
 
-      <div id="tsv2-preview-body">
-        ${renderPreviewBody()}
-      </div>
+      <div id="tsv2-preview-badges" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px"></div>
+
+      <div id="tsv2-preview-frame-wrap" style="display:flex;justify-content:center"></div>
     </div>
     `
   }
 
-  function updatePreview() {
-    const body = container.querySelector('#tsv2-preview-body')
-    if (body) body.innerHTML = renderPreviewBody()
+  function renderBadges(state) {
+    const el = container.querySelector('#tsv2-preview-badges')
+    if (!el) return
+    el.innerHTML = `
+      <span style="font-size:10px;font-weight:700;background:#e8e8e8;color:${TEXT_DARK};padding:3px 8px;border-radius:10px">Page: ${state.page_route}</span>
+      <span style="font-size:10px;font-weight:700;background:#e8e8e8;color:${TEXT_DARK};padding:3px 8px;border-radius:10px">Highlight: ${state.highlight_type}</span>
+      ${state.is_mandatory ? `<span style="font-size:10px;font-weight:700;background:#D4A017;color:#1a1a1a;padding:3px 8px;border-radius:10px">Obligatoire</span>` : ''}
+      ${state.skip_allowed ? `<span style="font-size:10px;font-weight:700;background:#eaf7ee;color:#1A6B3C;padding:3px 8px;border-radius:10px">Skip OK</span>` : `<span style="font-size:10px;font-weight:700;background:#fdecea;color:#c0392b;padding:3px 8px;border-radius:10px">Non skippable</span>`}
+    `
+  }
+
+  // (Re)crée le wrapper + l'iframe pour le mode courant (mobile/desktop).
+  // Appelé uniquement au changement de mode, PAS à chaque frappe.
+  function mountPreviewFrame() {
+    const wrap = container.querySelector('#tsv2-preview-frame-wrap')
+    if (!wrap) return
+    const size = PREVIEW_SIZES[previewMode]
+    const state = getFormState()
+
+    if (previewMode === 'mobile') {
+      wrap.innerHTML = `
+        <div style="border:8px solid #1a1a2e;border-radius:22px;box-shadow:0 4px 14px rgba(0,0,0,0.2);overflow:hidden;line-height:0">
+          <iframe id="tsv2-preview-iframe" style="width:${size.w}px;height:${size.h}px;border:none;display:block"></iframe>
+        </div>
+      `
+    } else {
+      // Rendu réel en pleine largeur desktop (1100px), affiché à échelle
+      // réduite pour tenir dans la colonne, SANS changer son viewport interne
+      // (le transform:scale ne déclenche pas de resize dans l'iframe : les
+      // breakpoints CSS du jeu restent bien évalués sur 1100px réels).
+      const visibleW = 380
+      const scale = visibleW / size.w
+      const visibleH = Math.round(size.h * scale)
+      wrap.innerHTML = `
+        <div style="border:1px solid #ccc;border-radius:8px;box-shadow:0 4px 14px rgba(0,0,0,0.15);overflow:hidden;width:${visibleW}px;height:${visibleH}px">
+          <iframe id="tsv2-preview-iframe" style="width:${size.w}px;height:${size.h}px;border:none;display:block;transform:scale(${scale});transform-origin:top left"></iframe>
+        </div>
+      `
+    }
+
+    previewIframe = container.querySelector('#tsv2-preview-iframe')
+    previewLoadedPage = state.page_route
+    previewIframe.src = '/index.html?' + stateToParams(state).toString()
+  }
+
+  // Met à jour l'aperçu en direct : si la page a changé, on renavigue via
+  // postMessage (le jeu réel gère la transition) ; sinon on ne fait que
+  // redessiner le spotlight/la bulle. Aucun rechargement d'iframe.
+  function updatePreviewLive() {
+    const state = getFormState()
+    renderBadges(state)
+    if (!previewIframe) return
+    previewLoadedPage = state.page_route
+    try {
+      previewIframe.contentWindow.postMessage({
+        type: 'tutorial-preview-update',
+        payload: stateToParams(state).toString(),
+      }, '*')
+    } catch (e) {
+      // iframe pas encore chargée — ignorer, le prochain 'input' réessaiera
+    }
+  }
+
+  function debouncedUpdatePreview() {
+    clearTimeout(updateDebounceTimer)
+    updateDebounceTimer = setTimeout(updatePreviewLive, 150)
   }
 
   function setPreviewMode(mode) {
@@ -514,7 +350,7 @@ export async function renderTutorialAdminV2(container, { toast, openModal, close
       desktopTab.style.background = mode === 'desktop' ? '#1A6B3C' : 'transparent'
       desktopTab.style.color = mode === 'desktop' ? '#fff' : TEXT_DARK
     }
-    updatePreview()
+    mountPreviewFrame()
   }
 
   // ── Rendu principal (layout 3 colonnes) ─────────────────────
@@ -533,7 +369,7 @@ export async function renderTutorialAdminV2(container, { toast, openModal, close
       <div style="display:flex;gap:20px;align-items:flex-start;flex-wrap:wrap">
 
         <!-- Colonne gauche : liste des étapes -->
-        <div style="width:300px;flex-shrink:0;max-width:100%">
+        <div style="width:280px;flex-shrink:0;max-width:100%">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
             <h3 style="margin:0;font-size:14px;font-weight:800;color:${TEXT_DARK}">
               📋 ${steps.length} étape(s)
@@ -550,8 +386,8 @@ export async function renderTutorialAdminV2(container, { toast, openModal, close
           ${renderForm()}
         </div>
 
-        <!-- Colonne droite : prévisualisation -->
-        <div style="width:300px;flex-shrink:0;max-width:100%">
+        <!-- Colonne droite : prévisualisation réelle -->
+        <div style="width:420px;flex-shrink:0;max-width:100%">
           ${renderPreviewPanel()}
         </div>
 
@@ -595,7 +431,6 @@ export async function renderTutorialAdminV2(container, { toast, openModal, close
       })
     })
 
-    // Listeners édition/suppression (boutons dans la liste)
     container.querySelectorAll('.edit-step-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         editingId = Number(btn.dataset.id)
@@ -621,27 +456,26 @@ export async function renderTutorialAdminV2(container, { toast, openModal, close
       })
     })
 
-    // Live preview : tout champ du formulaire met à jour la preview sans re-render complet
-    const formFieldIds = [
-      'step-number', 'step-name', 'page-route', 'dom-selector', 'popup-position',
-      'popup-title', 'popup-text', 'action-required', 'validator-logic',
-      'highlight-type', 'skip-allowed', 'is-mandatory'
-    ]
-    formFieldIds.forEach(id => {
-      const el = container.querySelector('#' + id)
-      if (!el) return
-      const evt = (el.tagName === 'SELECT' || el.type === 'checkbox') ? 'change' : 'input'
-      el.addEventListener(evt, updatePreview)
-    })
-
-    // Toggle Mobile / Desktop de la preview
+    // Toggle Mobile / Desktop
     const tabMobile = container.querySelector('#tsv2-tab-mobile')
     const tabDesktop = container.querySelector('#tsv2-tab-desktop')
     if (tabMobile) tabMobile.addEventListener('click', () => setPreviewMode('mobile'))
     if (tabDesktop) tabDesktop.addEventListener('click', () => setPreviewMode('desktop'))
 
-    // Preview initiale au chargement du formulaire
-    updatePreview()
+    // Live preview : tout champ met à jour l'iframe réelle en direct
+    const formFieldIds = [
+      'page-route', 'dom-selector', 'popup-position', 'popup-title', 'popup-text',
+      'action-required', 'validator-logic', 'highlight-type', 'skip-allowed', 'is-mandatory'
+    ]
+    formFieldIds.forEach(id => {
+      const el = container.querySelector('#' + id)
+      if (!el) return
+      const evt = (el.tagName === 'SELECT' || el.type === 'checkbox') ? 'change' : 'input'
+      el.addEventListener(evt, debouncedUpdatePreview)
+    })
+
+    // Monte l'iframe (premier chargement du formulaire)
+    mountPreviewFrame()
   }
 
   // Sauvegarder une étape
@@ -661,7 +495,6 @@ export async function renderTutorialAdminV2(container, { toast, openModal, close
     const displayDuration = parseInt(container.querySelector('#display-duration').value) || 0
     const sortOrder = parseInt(container.querySelector('#sort-order').value) || 0
 
-    // Validation
     if (!stepNumber || stepNumber < 1) { toast('Numéro de step invalide', 'error'); return }
     if (!stepName) { toast('Nom d\'étape requis', 'error'); return }
     if (!popupTitle) { toast('Titre du popup requis', 'error'); return }

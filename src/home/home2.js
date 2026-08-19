@@ -547,7 +547,7 @@ async function fetchNews(limit = 4) {
 async function fetchPromoBoosters() {
   const { data } = await supabase
     .from('booster_configs')
-    .select('id,name,icon,price_type,price_credits,card_count')
+    .select('id,name,image_url,price_type,price_credits,card_count')
     .eq('is_active', true)
     .order('sort_order', { ascending: true })
     .limit(5)
@@ -775,7 +775,7 @@ export async function renderHome2(container, { state, navigate, toast, openModal
   let promoIdx = 0
   const promoSlideHTML = (b) => `
     <div class="promo-icon-wrap">
-      <img src="${ICON}${b.icon || 'nav-boosters.png'}" class="promo-icon" onerror="this.style.display='none'">
+      <img src="${ICON}${b.image_url || 'nav-boosters.png'}" class="promo-icon" onerror="this.style.display='none'">
     </div>
     <div class="promo-info">
       <div class="promo-kicker">NOUVEAU BOOSTER</div>

@@ -281,6 +281,91 @@ export async function renderTutorialAdminV2(container, { toast, openModal, close
     }
   }
 
+  // Mini-mockup représentatif du contenu de chaque page (pour que la preview
+  // montre visuellement "on est sur telle page" et pas juste un fond vide)
+  function pageBackgroundHTML(pageRoute) {
+    switch (pageRoute) {
+      case 'home':
+        return `
+          <div style="font-size:9px;font-weight:800;color:#1A6B3C;margin-bottom:6px">⚽ Manager Wars</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px">
+            ${['🃏 Collection', '📋 Decks', '📦 Boosters', '🎮 Jouer'].map(t => `
+              <div style="background:#fff;border:1px solid #ddd;border-radius:6px;padding:6px 4px;text-align:center;font-size:7px;font-weight:700;color:#333">${t}</div>
+            `).join('')}
+          </div>
+        `
+      case 'collection':
+        return `
+          <div style="height:12px;background:#fff;border:1px solid #ddd;border-radius:5px;margin-bottom:6px"></div>
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px">
+            ${['#fff', '#D4A017', '#909090', '#7a28b8', '#fff', '#fff', '#D4A017', '#fff'].map(c => `
+              <div style="aspect-ratio:2/3;background:#fff;border:2px solid ${c};border-radius:4px"></div>
+            `).join('')}
+          </div>
+        `
+      case 'decks':
+        return `
+          <div style="background:#1A6B3C;border-radius:6px;height:70%;position:relative;padding:6px">
+            ${[15, 40, 65, 88].map(top => `
+              <div style="position:absolute;top:${top}%;left:20%;width:8px;height:8px;border-radius:50%;background:#fff"></div>
+              <div style="position:absolute;top:${top}%;left:50%;width:8px;height:8px;border-radius:50%;background:#fff"></div>
+              <div style="position:absolute;top:${top}%;left:78%;width:8px;height:8px;border-radius:50%;background:#fff"></div>
+            `).join('')}
+          </div>
+          <div style="display:flex;gap:3px;margin-top:5px">
+            ${Array(5).fill('').map(() => '<div style="flex:1;height:10px;background:#fff;border:1px solid #ddd;border-radius:3px"></div>').join('')}
+          </div>
+        `
+      case 'boosters':
+        return `
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:5px;height:70%">
+            ${['#1A6B3C', '#7a28b8', '#D4A017', '#00bcd4'].map(c => `
+              <div style="background:linear-gradient(160deg, ${c}, #1a1a2e);border-radius:6px"></div>
+            `).join('')}
+          </div>
+        `
+      case 'match':
+        return `
+          <div style="text-align:center;font-size:9px;font-weight:800;color:${TEXT_DARK};background:#fff;border-radius:6px;padding:5px;margin-bottom:6px;border:1px solid #ddd">
+            Toi <span style="color:#1A6B3C">0</span> — <span style="color:#c0392b">0</span> IA
+          </div>
+          <div style="background:#1A6B3C;border-radius:6px;height:16px;margin-bottom:4px"></div>
+          <div style="background:#333;border-radius:6px;height:16px"></div>
+        `
+      case 'market':
+        return Array(3).fill('').map((_, i) => `
+          <div style="display:flex;align-items:center;gap:5px;background:#fff;border:1px solid #ddd;border-radius:5px;padding:4px 6px;margin-bottom:4px">
+            <div style="width:14px;height:14px;border-radius:3px;background:#D4A017"></div>
+            <div style="flex:1;height:5px;background:#ddd;border-radius:3px"></div>
+            <div style="font-size:7px;font-weight:700;color:#1A6B3C">${(i + 1) * 1000}cr</div>
+          </div>
+        `).join('')
+      case 'rankings':
+        return Array(4).fill('').map((_, i) => `
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:5px">
+            <div style="width:14px;height:14px;border-radius:50%;background:${i === 0 ? '#D4A017' : '#ddd'};font-size:7px;display:flex;align-items:center;justify-content:center;font-weight:800;color:#1a1a1a">${i + 1}</div>
+            <div style="flex:1;height:8px;background:#fff;border:1px solid #ddd;border-radius:3px"></div>
+          </div>
+        `).join('')
+      case 'matches':
+        return Array(3).fill('').map((_, i) => `
+          <div style="display:flex;align-items:center;justify-content:space-between;background:#fff;border:1px solid #ddd;border-radius:5px;padding:5px 7px;margin-bottom:4px">
+            <div style="font-size:7px;color:#666">Match ${i + 1}</div>
+            <div style="font-size:7px;font-weight:800;color:${i % 2 === 0 ? '#1A6B3C' : '#c0392b'}">${i % 2 === 0 ? 'Victoire' : 'Défaite'}</div>
+          </div>
+        `).join('')
+      case 'settings':
+        return Array(3).fill('').map(() => `
+          <div style="display:flex;align-items:center;justify-content:space-between;background:#fff;border:1px solid #ddd;border-radius:5px;padding:5px 7px;margin-bottom:5px">
+            <div style="width:60%;height:6px;background:#ddd;border-radius:3px"></div>
+            <div style="width:18px;height:10px;border-radius:6px;background:#1A6B3C"></div>
+          </div>
+        `).join('')
+      default:
+        return `<div style="display:flex;align-items:center;justify-content:center;height:100%;font-size:9px;color:#999;text-align:center;padding:0 10px">Sélectionne une page pour la prévisualiser</div>`
+    }
+  }
+
   // Construit le mockup HTML d'un écran (mobile ou desktop) avec popup + target
   // NOTE : screenW DOIT toujours inclure une unité CSS (px/%) — un nombre nu
   // (ex: "220" au lieu de "220px") rend la règle CSS invalide et casse la mise en page.
@@ -288,6 +373,7 @@ export async function renderTutorialAdminV2(container, { toast, openModal, close
     const isMobile = kind === 'mobile'
     const screenW = isMobile ? '240px' : '100%'
     const screenH = isMobile ? 440 : 230
+    const headerH = isMobile ? 24 : 22
     const target = targetStyle(state.highlight_type)
     const popupMaxWidth = isMobile ? '190px' : '230px'
 
@@ -298,11 +384,16 @@ export async function renderTutorialAdminV2(container, { toast, openModal, close
     return `
       <div style="position:relative;width:${screenW};height:${screenH}px;background:#eef1ee;border-radius:${isMobile ? '4px' : '6px'};overflow:hidden;box-sizing:border-box">
         <!-- Barre d'entête simulée -->
-        <div style="height:${isMobile ? '24px' : '22px'};background:#1a1a2e;display:flex;align-items:center;gap:4px;padding:0 8px;box-sizing:border-box">
+        <div style="height:${headerH}px;background:#1a1a2e;display:flex;align-items:center;gap:4px;padding:0 8px;box-sizing:border-box;position:relative;z-index:2">
           ${isMobile
             ? `<span style="font-size:10px;color:#fff;opacity:.8">${pageLabel}</span>`
             : `<span style="width:7px;height:7px;border-radius:50%;background:#ff5f57"></span><span style="width:7px;height:7px;border-radius:50%;background:#febc2e"></span><span style="width:7px;height:7px;border-radius:50%;background:#28c840"></span><span style="font-size:10px;color:#fff;opacity:.7;margin-left:8px">fmwar.com/${pageLabel}</span>`
           }
+        </div>
+
+        <!-- Contenu représentatif de la page ciblée -->
+        <div style="position:absolute;top:${headerH}px;left:0;right:0;bottom:0;padding:8px;box-sizing:border-box;overflow:hidden;z-index:1">
+          ${pageBackgroundHTML(state.page_route)}
         </div>
 
         <!-- Élément ciblé (simulateur) -->
@@ -311,7 +402,8 @@ export async function renderTutorialAdminV2(container, { toast, openModal, close
           width:${isMobile ? '64px' : '84px'};height:${isMobile ? '24px' : '28px'};
           border-radius:6px;${target.style};
           display:flex;align-items:center;justify-content:center;
-          font-size:9px;color:#555;overflow:hidden;padding:0 4px;text-align:center;white-space:nowrap;text-overflow:ellipsis;box-sizing:border-box
+          font-size:9px;color:#555;overflow:hidden;padding:0 4px;text-align:center;white-space:nowrap;text-overflow:ellipsis;box-sizing:border-box;
+          z-index:3;
         ">
           ${state.dom_selector ? state.dom_selector.slice(0, 14) : 'élément'}
         </div>

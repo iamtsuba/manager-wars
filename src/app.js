@@ -818,6 +818,13 @@ function drawTutorialPreviewOverlay(params) {
   const vw = window.innerWidth, vh = window.innerHeight
   const bw = vw - 100
 
+  // Hauteur réelle de la nav (mesurée par le jeu lui-même dans l'iframe,
+  // posée sur documentElement — voir home2.js). Sert à placer le popup
+  // juste au-dessus (mobile, nav en bas) ou juste en dessous (desktop,
+  // nav en haut) de la vraie barre.
+  const navBottomH = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--v2-bottom-height')) || 76
+  const navTopH = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--v2-top-height')) || 56
+
   // La position du popup respecte TOUJOURS le choix manuel (popup_position),
   // qu'un élément soit ciblé ou non — le sélecteur DOM ne pilote que le
   // spotlight/highlight, jamais l'emplacement de la bulle. (Auparavant, un
@@ -833,6 +840,9 @@ function drawTutorialPreviewOverlay(params) {
     bottom:       'bottom:16px;left:50%;transform:translateX(-50%);',
     'bottom-left':  'bottom:16px;left:16px;',
     'bottom-right': 'bottom:16px;right:16px;',
+    'above-nav':  isMobileViewport
+      ? `bottom:${navBottomH + 12}px;left:50%;transform:translateX(-50%);`
+      : `top:${navTopH + 12}px;left:50%;transform:translateX(-50%);`,
   }
   const bubbleStyle = posMap[position] || posMap.center
   // Largeur pleine uniquement pour les positions centrées horizontalement —

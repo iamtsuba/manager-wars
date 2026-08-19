@@ -845,8 +845,10 @@ function drawTutorialPreviewOverlay(params) {
       border-radius:14px;box-shadow:0 8px 36px rgba(0,0,0,0.5);padding:16px 18px;pointer-events:none">
       <div style="font-weight:900;font-size:15px;color:#1a1a2e;margin-bottom:6px;text-align:center">${escapeTutPreview(title)}</div>
       <div style="font-size:13px;color:#555;line-height:1.5;text-align:center">${text || ''}</div>
-      ${action ? `<div style="margin-top:10px;display:inline-block;background:#1A6B3C;color:#fff;
-        font-size:12px;font-weight:800;padding:6px 14px;border-radius:20px">${escapeTutPreview(action)}</div>` : ''}
+      ${action ? `<div style="margin-top:10px;text-align:center">
+        <span style="display:inline-block;background:#1A6B3C;color:#fff;
+        font-size:12px;font-weight:800;padding:6px 14px;border-radius:20px">${escapeTutPreview(action)}</span>
+      </div>` : ''}
     </div>`
   }
 

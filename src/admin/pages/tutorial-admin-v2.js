@@ -24,6 +24,20 @@ import { supabase } from '../../lib/supabase.js'
 const TEXT_DARK = '#1a1a1a'
 const TEXT_MUTED = '#666'
 const INPUT_STYLE = `width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;font-size:14px;background:#fff;color:${TEXT_DARK}`
+
+// Injecté une seule fois : la balise contenteditable n'a pas de placeholder
+// natif contrairement à <textarea> — cette astuce CSS (content:attr()) le
+// simule proprement.
+function ensureEditorStyles() {
+  if (document.getElementById('tsv2-editor-styles')) return
+  const style = document.createElement('style')
+  style.id = 'tsv2-editor-styles'
+  style.textContent = `
+    #popup-text[contenteditable]:empty:before { content: attr(placeholder); color: #999; }
+    .tsv2-fmt-btn:hover { background:#f0f0f0 !important; }
+  `
+  document.head.appendChild(style)
+}
 const LABEL_STYLE = `display:block;font-weight:600;font-size:12px;margin-bottom:6px;color:${TEXT_DARK}`
 
 // Échappe une valeur avant de l'injecter dans un attribut HTML value="...".
@@ -49,6 +63,7 @@ const PREVIEW_SIZES = {
 }
 
 export async function renderTutorialAdminV2(container, { toast, openModal, closeModal }) {
+  ensureEditorStyles()
   let steps = []
   let editingId = null
   let previewMode = 'mobile'
@@ -216,9 +231,16 @@ export async function renderTutorialAdminV2(container, { toast, openModal, close
 
       <div class="form-group" style="margin-bottom:12px">
         <label style="${LABEL_STYLE}">Texte du popup *</label>
-        <textarea id="popup-text" maxlength="500" placeholder="Ex: Explique ce que le joueur doit faire..."
-          style="${INPUT_STYLE};min-height:80px;font-family:monospace;resize:vertical">${escAttr(step.popup_text)}</textarea>
-        <div style="font-size:11px;color:${TEXT_MUTED};margin-top:4px">Caractères: <span id="text-count">0</span>/500</div>
+        <div style="display:flex;gap:4px;margin-bottom:6px">
+          <button type="button" class="tsv2-fmt-btn" data-cmd="bold" title="Gras" style="width:30px;height:28px;border:1px solid #ddd;border-radius:5px;background:#fff;cursor:pointer;font-weight:900;font-size:13px;color:${TEXT_DARK}">B</button>
+          <button type="button" class="tsv2-fmt-btn" data-cmd="italic" title="Italique" style="width:30px;height:28px;border:1px solid #ddd;border-radius:5px;background:#fff;cursor:pointer;font-style:italic;font-size:13px;color:${TEXT_DARK}">I</button>
+          <button type="button" class="tsv2-fmt-btn" data-cmd="underline" title="Souligné" style="width:30px;height:28px;border:1px solid #ddd;border-radius:5px;background:#fff;cursor:pointer;text-decoration:underline;font-size:13px;color:${TEXT_DARK}">U</button>
+          <button type="button" class="tsv2-fmt-btn" data-cmd="insertUnorderedList" title="Liste à puces" style="padding:0 10px;height:28px;border:1px solid #ddd;border-radius:5px;background:#fff;cursor:pointer;font-size:12px;color:${TEXT_DARK}">• Liste</button>
+          <button type="button" id="tsv2-fmt-clear" title="Effacer la mise en forme" style="padding:0 10px;height:28px;border:1px solid #ddd;border-radius:5px;background:#fff;cursor:pointer;font-size:12px;color:${TEXT_MUTED}">✕ Format</button>
+        </div>
+        <div id="popup-text" contenteditable="true" placeholder="Ex: Explique ce que le joueur doit faire..."
+          style="${INPUT_STYLE};min-height:80px;overflow-y:auto;line-height:1.5">${step.popup_text || ''}</div>
+        <div style="font-size:11px;color:${TEXT_MUTED};margin-top:4px">Caractères: <span id="text-count">0</span> · mise en forme HTML (gras/italique/liste) rendue telle quelle dans le popup</div>
       </div>
 
       <div class="form-group" style="margin-bottom:12px">
@@ -274,13 +296,14 @@ export async function renderTutorialAdminV2(container, { toast, openModal, close
   function getFormState() {
     const val = id => container.querySelector('#' + id)?.value || ''
     const checked = id => container.querySelector('#' + id)?.checked || false
+    const html = id => container.querySelector('#' + id)?.innerHTML || ''
     return {
       page_route: val('page-route') || 'home',
       dom_selector: val('dom-selector'),
       popup_position: val('popup-position') || 'center',
       popup_position_desktop: val('popup-position-desktop'),
       popup_title: val('popup-title'),
-      popup_text: val('popup-text'),
+      popup_text: html('popup-text'),
       action_required: val('action-required'),
       highlight_type: val('highlight-type') || 'none',
       dim_overlay: checked('dim-overlay'),
@@ -529,11 +552,29 @@ export async function renderTutorialAdminV2(container, { toast, openModal, close
 
     if (textInput) {
       const textCount = container.querySelector('#text-count')
-      if (textCount) textCount.textContent = textInput.value.length
+      if (textCount) textCount.textContent = textInput.textContent.length
       textInput.addEventListener('input', e => {
-        if (textCount) textCount.textContent = e.target.value.length
+        if (textCount) textCount.textContent = e.target.textContent.length
       })
     }
+
+    // Barre d'outils de mise en forme (Gras/Italique/Souligné/Liste)
+    container.querySelectorAll('.tsv2-fmt-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const editor = container.querySelector('#popup-text')
+        editor?.focus()
+        document.execCommand(btn.dataset.cmd, false, null)
+        const textCount = container.querySelector('#text-count')
+        if (textCount && editor) textCount.textContent = editor.textContent.length
+        debouncedUpdatePreview()
+      })
+    })
+    container.querySelector('#tsv2-fmt-clear')?.addEventListener('click', () => {
+      const editor = container.querySelector('#popup-text')
+      editor?.focus()
+      document.execCommand('removeFormat', false, null)
+      debouncedUpdatePreview()
+    })
 
     if (saveBtn) saveBtn.addEventListener('click', saveStep)
     if (cancelBtn) cancelBtn.addEventListener('click', () => { editingId = null; render() })
@@ -618,7 +659,7 @@ export async function renderTutorialAdminV2(container, { toast, openModal, close
     const popupPosition = container.querySelector('#popup-position').value || null
     const popupPositionDesktop = container.querySelector('#popup-position-desktop').value || null
     const popupTitle = container.querySelector('#popup-title').value.trim()
-    const popupText = container.querySelector('#popup-text').value.trim()
+    const popupText = container.querySelector('#popup-text').innerHTML.trim()
     const actionRequired = container.querySelector('#action-required').value.trim() || null
     const validatorLogic = container.querySelector('#validator-logic').value || null
     const highlightType = container.querySelector('#highlight-type').value || 'none'
@@ -633,7 +674,8 @@ export async function renderTutorialAdminV2(container, { toast, openModal, close
     if (!stepNumber || stepNumber < 1) { toast('Numéro de step invalide', 'error'); return }
     if (!stepName) { toast('Nom d\'étape requis', 'error'); return }
     if (!popupTitle) { toast('Titre du popup requis', 'error'); return }
-    if (!popupText) { toast('Texte du popup requis', 'error'); return }
+    const popupTextIsEmpty = !popupText || popupText === '<br>' || popupText === '<div><br></div>'
+    if (popupTextIsEmpty) { toast('Texte du popup requis', 'error'); return }
 
     const payload = {
       step_number: stepNumber,

@@ -2,8 +2,7 @@
 import { supabase } from '../lib/supabase.js'
 import { getTheme, setTheme } from '../app.js'
 import { getVolume, setVolume, playSound } from '../lib/sound.js'
-import { replayTutorial } from '../tutorial/tutorial.js'
-import { startTutorialV3 } from '../tutorial/tutorial-v3.js'
+import { startTutorialV2 } from '../tutorial/tutorial-v2-player.js'
 
 export async function renderSettings(container, ctx) {
   const { state, navigate, toast } = ctx

@@ -748,6 +748,12 @@ export async function renderHome2(container, { state, navigate, toast, openModal
     supabase.from('pending_rewards').select('*', { count: 'exact', head: true }).eq('user_id', p.id).eq('claimed', false)
   ])
 
+  // Protection anti-race condition : si le joueur (ou une navigation
+  // programmatique, ex. le tutoriel) a déjà changé de page pendant que ces
+  // requêtes étaient en cours, on abandonne — sinon ce rendu périmé
+  // écraserait le contenu de la page réellement affichée entre-temps.
+  if (state.page !== 'home' && state.page !== 'home2') return
+
   const rankRowHTML = (u, i) => {
     const uTier = getTier(u.mmr ?? 0)
     const uSub  = getSubTier(u.mmr ?? 0, uTier)

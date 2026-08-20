@@ -119,12 +119,44 @@ async function playStep() {
   cleanupCurrentStep = null
 
   const targetPage = step.page_route || 'home'
-  if (ctxRef.state.page !== targetPage) {
+  const needsNav = ctxRef.state.page !== targetPage
+  if (needsNav) {
     ctxRef.navigate(targetPage)
-    await wait(400)
   }
 
+  // Certaines pages font plusieurs requêtes Supabase avant de construire
+  // leur contenu réel (ex: collection.js charge cartes+joueurs+GC+stades
+  // en 4 requêtes successives avant d'afficher ses onglets). Un délai fixe
+  // est fragile : on attend donc activement que l'élément ciblé apparaisse
+  // réellement dans le DOM, plutôt que de deviner un timing.
+  await waitForStepReady(step, needsNav)
+
   render(step)
+}
+
+function waitForStepReady(step, needsNav) {
+  return new Promise(resolve => {
+    const maxWait = 4000
+    const interval = 100
+    let waited = 0
+
+    const tick = () => {
+      // Sans sélecteur : un court délai suffit (juste laisser le DOM se stabiliser)
+      if (!step.dom_selector) {
+        return setTimeout(resolve, needsNav ? 250 : 0)
+      }
+      if (findVisibleTarget(step.dom_selector) || waited >= maxWait) {
+        return resolve()
+      }
+      waited += interval
+      setTimeout(tick, interval)
+    }
+
+    // Laisse au minimum le temps à navigate() de démarrer son rendu avant
+    // le premier essai, pour éviter de tester sur l'ancienne page encore
+    // affichée à l'écran.
+    setTimeout(tick, needsNav ? 150 : 0)
+  })
 }
 
 function render(step) {

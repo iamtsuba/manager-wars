@@ -143,7 +143,7 @@ function waitForStepReady(step, needsNav) {
     const tick = () => {
       // Sans sélecteur : un court délai suffit (juste laisser le DOM se stabiliser)
       if (!step.dom_selector) {
-        return setTimeout(resolve, needsNav ? 250 : 0)
+        return setTimeout(resolve, needsNav ? 250 : 200)
       }
       if (findVisibleTarget(step.dom_selector) || waited >= maxWait) {
         return resolve()

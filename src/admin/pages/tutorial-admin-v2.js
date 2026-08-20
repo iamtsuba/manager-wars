@@ -267,8 +267,12 @@ export async function renderTutorialAdminV2(container, { toast, openModal, close
           <span style="font-weight:600;font-size:13px;color:${TEXT_DARK}">➡️ Afficher le bouton "Suivant"</span>
         </label>
       </div>
-      <div style="font-size:10px;color:${TEXT_MUTED};margin-bottom:16px;margin-top:-6px">
+      <div style="font-size:10px;color:${TEXT_MUTED};margin-bottom:6px;margin-top:-6px">
         Si décoché : l'étape avance automatiquement quand le joueur clique sur l'élément ciblé (Sélecteur DOM) — nécessite "Autoriser le clic" activé.
+        Exemple : cible une carte dans Collection avec "Autoriser le clic" ✅ et "Suivant" ✕ → le joueur clique la carte, son détail réel s'ouvre, et l'étape suivante s'affiche automatiquement dessus.
+      </div>
+      <div id="tsv2-softlock-warning" style="display:none;font-size:11px;font-weight:700;color:#c0392b;background:#fdecea;border-radius:6px;padding:6px 10px;margin-bottom:16px">
+        ⚠️ Sans bouton "Suivant" NI "Autoriser le clic", cette étape ne pourra jamais avancer.
       </div>
 
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
@@ -416,6 +420,7 @@ export async function renderTutorialAdminV2(container, { toast, openModal, close
   function updatePreviewLive() {
     const state = getFormState()
     renderBadges(state)
+    updateSoftlockWarning(state)
     if (!previewIframe) return
     previewLoadedPage = state.page_route
     try {
@@ -426,6 +431,13 @@ export async function renderTutorialAdminV2(container, { toast, openModal, close
     } catch (e) {
       // iframe pas encore chargée — ignorer, le prochain 'input' réessaiera
     }
+  }
+
+  function updateSoftlockWarning(state) {
+    const el = container.querySelector('#tsv2-softlock-warning')
+    if (!el) return
+    const isSoftlocked = !state.show_next_button && !state.allow_interaction
+    el.style.display = isSoftlocked ? 'block' : 'none'
   }
 
   function debouncedUpdatePreview() {
@@ -649,6 +661,7 @@ export async function renderTutorialAdminV2(container, { toast, openModal, close
 
     // Monte l'iframe (premier chargement du formulaire)
     mountPreviewFrame()
+    updateSoftlockWarning(getFormState())
   }
 
   // Sauvegarder une étape

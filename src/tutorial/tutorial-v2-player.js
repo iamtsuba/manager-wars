@@ -45,21 +45,43 @@ function escapeHtmlV2(str) {
 
 // La barre de navigation (home2-chrome-header, home2-mobile-top,
 // home2-mobile-bottom) est montée directement sur document.body — HORS de
-// #app — pour survivre aux re-rendus de page. Le blocage/déblocage des
-// interactions doit donc l'inclure explicitement en plus de #app.
+// #app — pour survivre aux re-rendus de page. Le blocage des interactions
+// doit donc l'inclure explicitement en plus de #app.
 const NAV_CONTAINER_SELECTORS = [
   '.home2-chrome-header', '.home2-mobile-top', '.home2-mobile-bottom',
   '.top-nav', '.bottom-nav',
 ]
 
-function setInteractionAllowed(allowed) {
+// Bloque TOUJOURS l'ensemble de l'app (rien n'est cliquable par défaut).
+// L'interaction n'est jamais rouverte globalement — voir setOnlyClickable()
+// ci-dessous, qui n'autorise qu'un seul élément précis à la fois.
+function blockAllInteraction() {
   const appEl = document.getElementById('app')
-  if (appEl) appEl.style.pointerEvents = allowed ? '' : 'none'
+  if (appEl) appEl.style.pointerEvents = 'none'
   NAV_CONTAINER_SELECTORS.forEach(sel => {
-    document.querySelectorAll(sel).forEach(el => {
-      el.style.pointerEvents = allowed ? '' : 'none'
-    })
+    document.querySelectorAll(sel).forEach(el => { el.style.pointerEvents = 'none' })
   })
+}
+
+function restoreAllInteraction() {
+  const appEl = document.getElementById('app')
+  if (appEl) appEl.style.pointerEvents = ''
+  NAV_CONTAINER_SELECTORS.forEach(sel => {
+    document.querySelectorAll(sel).forEach(el => { el.style.pointerEvents = '' })
+  })
+}
+
+// Seul l'élément passé en argument devient cliquable (le reste de l'app
+// reste bloqué par blockAllInteraction). pointer-events:auto sur un
+// descendant redevient cliquable même si un ancêtre a pointer-events:none —
+// comportement standard CSS, aucune astuce nécessaire.
+let lastClickableEl = null
+function setOnlyClickable(el) {
+  if (lastClickableEl && lastClickableEl !== el) {
+    lastClickableEl.style.pointerEvents = ''
+  }
+  if (el) el.style.pointerEvents = 'auto'
+  lastClickableEl = el || null
 }
 
 async function loadSteps() {
@@ -104,6 +126,8 @@ export async function startTutorialV2(ctx, onComplete) {
   ctxRef = ctx
   onCompleteRef = onComplete
   idx = 0
+  lastClickableEl = null
+  blockAllInteraction()
 
   ov?.remove()
   ov = document.createElement('div')
@@ -222,9 +246,11 @@ function render(step) {
   const allowInteraction = !!step.allow_interaction
   const showNext = step.show_next_button !== false
 
-  // Réactive ou bloque les vraies interactions du joueur — sur #app ET sur
-  // la nav (qui vit hors de #app, voir NAV_CONTAINER_SELECTORS).
-  setInteractionAllowed(allowInteraction)
+  // Seul l'élément CIBLÉ (dom_selector) devient cliquable si
+  // "allow_interaction" est activé — jamais l'app entière. Le reste de
+  // l'app/nav reste bloqué à tout moment (blockAllInteraction() appelée
+  // une fois au démarrage du tutoriel, voir startTutorialV2).
+  setOnlyClickable(allowInteraction ? targetEl : null)
 
   let html = ''
 
@@ -344,7 +370,8 @@ async function finish(skipped) {
   cleanupCurrentStep?.()
   cleanupCurrentStep = null
   ov?.remove()
-  setInteractionAllowed(true)
+  restoreAllInteraction()
+  lastClickableEl = null
 
   // La progression se sauvegarde TOUJOURS pour le vrai joueur, même si
   // l'affichage a tourné sur le compte démo pendant le tutoriel.

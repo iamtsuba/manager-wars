@@ -586,6 +586,16 @@ async function initTutorialPreview(params) {
       stopElementPicker()
       return
     }
+
+    if (e.data.type === 'tutorial-preview-navmode-start') {
+      startNavMode()
+      return
+    }
+
+    if (e.data.type === 'tutorial-preview-navmode-stop') {
+      stopNavMode()
+      return
+    }
   })
 }
 
@@ -617,6 +627,27 @@ async function initTutorialDemo() {
 // puis les restaure à la sortie du mode picker.
 let _pickerActive = false
 let _pickerHoverEl = null
+let _navModeActive = false // mode "Explorer" : clics réels autorisés (ouvrir une popup, etc.)
+
+// Mode "Explorer" : laisse l'admin interagir VRAIMENT avec l'aperçu (ex:
+// cliquer une carte pour ouvrir sa vraie popup de détail), afin de pouvoir
+// ensuite sélectionner un élément À L'INTÉRIEUR de cette popup avec le
+// picker. Indépendant du picker lui-même — les deux peuvent s'enchaîner.
+function startNavMode() {
+  _navModeActive = true
+  if (!_pickerActive) {
+    const appEl = document.getElementById('app')
+    if (appEl) appEl.style.pointerEvents = ''
+  }
+}
+
+function stopNavMode() {
+  _navModeActive = false
+  if (!_pickerActive) {
+    const appEl = document.getElementById('app')
+    if (appEl) appEl.style.pointerEvents = 'none'
+  }
+}
 
 function startElementPicker() {
   if (_pickerActive) return
@@ -647,8 +678,11 @@ function startElementPicker() {
 function stopElementPicker() {
   if (!_pickerActive) return
   _pickerActive = false
+  // Revient à l'état du mode "Explorer" (pas forcément figé) plutôt que de
+  // toujours tout re-bloquer — permet d'enchaîner plusieurs sélections
+  // sans quitter le mode exploration entre chaque.
   const appEl = document.getElementById('app')
-  if (appEl) appEl.style.pointerEvents = 'none'
+  if (appEl) appEl.style.pointerEvents = _navModeActive ? '' : 'none'
   document.removeEventListener('mouseover', onPickerMouseOver, true)
   document.removeEventListener('click', onPickerClick, true)
   document.removeEventListener('keydown', onPickerKeydown, true)

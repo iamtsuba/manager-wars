@@ -72,9 +72,34 @@ async function loadSteps() {
 }
 
 // ── Point d'entrée : joue le tutoriel depuis le début ────────────────────
+// Compte démo partagé — même compte que l'aperçu admin et la démo publique
+// (?tutorialPreview=1 / ?tutorialDemo=1 dans app.js).
+const DEMO_ID = '00000000-0000-4000-8000-000000000001'
+
+let realProgressUserId = null // vrai joueur, pour la sauvegarde de progression
+
 export async function startTutorialV2(ctx, onComplete) {
   steps = await loadSteps()
   if (!steps.length) { onComplete?.(); return }
+
+  // La progression (tutorial_done) doit toujours être enregistrée pour le
+  // VRAI joueur qui suit le tutoriel, même si on bascule ensuite l'affichage
+  // sur le compte démo ci-dessous.
+  realProgressUserId = ctx.state.profile?.id || null
+
+  // Bascule temporairement le contexte de rendu sur le compte démo partagé,
+  // pour que les pages affichent toujours des cartes/decks de démonstration
+  // — indépendamment de l'état réel du compte du joueur qui suit le
+  // tutoriel (fraîchement créé, cartes vendues, etc.). Restauré dans
+  // finish() une fois le tutoriel terminé ou passé.
+  const realUser = ctx.state.user
+  const realProfile = ctx.state.profile
+  const { data: demoProfile } = await supabase
+    .from('users').select('*').eq('id', DEMO_ID).single()
+  ctx.state.user = { id: DEMO_ID }
+  ctx.state.profile = demoProfile || realProfile
+  ctx._tv2RealUser = realUser
+  ctx._tv2RealProfile = realProfile
 
   ctxRef = ctx
   onCompleteRef = onComplete
@@ -321,7 +346,9 @@ async function finish(skipped) {
   ov?.remove()
   setInteractionAllowed(true)
 
-  const userId = ctxRef?.state?.profile?.id
+  // La progression se sauvegarde TOUJOURS pour le vrai joueur, même si
+  // l'affichage a tourné sur le compte démo pendant le tutoriel.
+  const userId = realProgressUserId
   if (userId) {
     await supabase.from('tutorial_progress_v2').upsert({
       user_id: userId,
@@ -336,8 +363,22 @@ async function finish(skipped) {
     // post-tutoriel. On le maintient synchronisé pour éviter de casser ces
     // écrans en attendant leur éventuelle migration vers tutorial_progress_v2.
     await supabase.from('users').update({ tutorial_done: true }).eq('id', userId)
-    if (ctxRef.state.profile) ctxRef.state.profile.tutorial_done = true
+  }
+
+  // Restaure le vrai compte du joueur (annule la bascule démo faite au
+  // démarrage) avant de rendre la main à l'appelant, pour que la suite
+  // (ex: renderRewardsList()) opère bien sur les vraies données.
+  if (ctxRef) {
+    if (ctxRef._tv2RealUser)    ctxRef.state.user = ctxRef._tv2RealUser
+    if (ctxRef._tv2RealProfile) {
+      ctxRef._tv2RealProfile.tutorial_done = true
+      ctxRef.state.profile = ctxRef._tv2RealProfile
+    }
     await ctxRef.refreshProfile?.()
+    // Le fond affiché pendant le tutoriel montrait les pages du compte démo
+    // — on rafraîchit la page courante avec les vraies données avant de
+    // continuer, pour éviter tout résidu visuel du compte démo.
+    if (ctxRef.state.page) ctxRef.navigate?.(ctxRef.state.page)
   }
 
   onCompleteRef?.()

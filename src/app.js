@@ -523,6 +523,25 @@ function showBootError(msg) {
 // un aperçu à regarder, pas un tutoriel jouable.
 const PREVIEW_DEMO_ID = '00000000-0000-4000-8000-000000000001'
 
+// Attente active de l'élément ciblé (au lieu d'un délai fixe fragile) —
+// certaines pages font plusieurs requêtes Supabase avant de construire
+// leur contenu réel (ex: collection.js). Voir même logique côté vrai
+// moteur (tutorial-v2-player.js).
+function waitForPreviewTarget(selector, needsNav, cb) {
+  const maxWait = 4000
+  const interval = 100
+  let waited = 0
+
+  const tick = () => {
+    if (!selector) return setTimeout(cb, needsNav ? 250 : 0)
+    if (findVisibleTarget(selector) || waited >= maxWait) return cb()
+    waited += interval
+    setTimeout(tick, interval)
+  }
+
+  setTimeout(tick, needsNav ? 150 : 0)
+}
+
 async function initTutorialPreview(params) {
   const { data: demoProfile } = await supabase
     .from('users').select('*').eq('id', PREVIEW_DEMO_ID).single()
@@ -540,7 +559,7 @@ async function initTutorialPreview(params) {
   if (appEl) appEl.style.pointerEvents = 'none'
 
   navigate(params.get('page') || 'home')
-  setTimeout(() => drawTutorialPreviewOverlay(params), 400)
+  waitForPreviewTarget(params.get('selector'), true, () => drawTutorialPreviewOverlay(params))
 
   // Mises à jour live depuis le parent (admin), sans recharger l'iframe
   window.addEventListener('message', e => {
@@ -551,7 +570,7 @@ async function initTutorialPreview(params) {
       const newPage = p.get('page') || 'home'
       if (newPage !== state.page) {
         navigate(newPage)
-        setTimeout(() => drawTutorialPreviewOverlay(p), 350)
+        waitForPreviewTarget(p.get('selector'), true, () => drawTutorialPreviewOverlay(p))
       } else {
         drawTutorialPreviewOverlay(p)
       }

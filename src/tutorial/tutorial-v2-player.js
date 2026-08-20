@@ -132,6 +132,22 @@ async function playStep() {
   await waitForStepReady(step, needsNav)
 
   render(step)
+
+  if (needsNav) {
+    // Filet de sécurité : certaines pages du jeu font des requêtes async
+    // avant de construire leur contenu, SANS vérifier si la page a changé
+    // entre-temps (ex: race condition corrigée dans home2.js, mais d'autres
+    // pages pourraient avoir le même souci). Si le rendu de la page
+    // précédente termine APRÈS notre navigation et écrase le contenu, on
+    // renavigue une seconde fois une fois ce risque très probablement
+    // retombé — seulement si cette étape est toujours celle affichée.
+    setTimeout(() => {
+      if (steps[idx] === step) {
+        ctxRef.navigate(targetPage)
+        render(step)
+      }
+    }, 700)
+  }
 }
 
 function waitForStepReady(step, needsNav) {

@@ -172,10 +172,15 @@ export async function renderTutorialAdminV2(container, { toast, openModal, close
           <div style="display:flex;gap:6px">
             <input type="text" id="dom-selector" value="${escAttr(step.dom_selector)}" placeholder="Ex: [data-page='collection']"
               style="${INPUT_STYLE};flex:1" />
+            <button type="button" id="explore-btn" title="Interagir vraiment avec l'aperçu (ouvrir une popup, une carte...)"
+              style="flex-shrink:0;padding:0 10px;border:1px solid #ddd;border-radius:6px;background:#fff;cursor:pointer;font-size:14px">🖱️</button>
             <button type="button" id="picker-btn" title="Cliquer sur un élément dans l'aperçu"
               style="flex-shrink:0;padding:0 10px;border:1px solid #ddd;border-radius:6px;background:#fff;cursor:pointer;font-size:14px">🎯</button>
           </div>
-          <div style="font-size:10px;color:${TEXT_MUTED};margin-top:4px">Utilise 🎯 plutôt que de taper un sélecteur à la main — évite les fautes de frappe (attribut/valeur inexistants).</div>
+          <div style="font-size:10px;color:${TEXT_MUTED};margin-top:4px">
+            🖱️ Explorer = interagir réellement (ouvrir une popup de détail, un menu...) avant de sélectionner un élément à l'intérieur avec 🎯.
+            🎯 seul = sélection directe. Évite de taper un sélecteur à la main (fautes de frappe possibles).
+          </div>
         </div>
 
         <div class="form-group">
@@ -411,6 +416,11 @@ export async function renderTutorialAdminV2(container, { toast, openModal, close
     previewLoadedPage = state.page_route
     targetNotFound = false
     selectorIsGlobalNav = false
+    // Un rechargement d'iframe repart d'un état neutre côté jeu (aucun mode
+    // exploration actif dedans) — on resynchronise le bouton en conséquence.
+    exploreActive = false
+    const exploreBtn = container.querySelector('#explore-btn')
+    if (exploreBtn) { exploreBtn.style.background = '#fff'; exploreBtn.style.borderColor = '#ddd' }
     previewIframe.src = '/index.html?' + stateToParams(state).toString()
   }
 
@@ -462,6 +472,22 @@ export async function renderTutorialAdminV2(container, { toast, openModal, close
 
   // ── Picker : clique sur un élément DANS l'aperçu pour le sélectionner ──
   let pickerActive = false
+  let exploreActive = false
+
+  function toggleExplore() {
+    if (!previewIframe) return
+    exploreActive = !exploreActive
+    const btn = container.querySelector('#explore-btn')
+    if (btn) {
+      btn.style.background = exploreActive ? '#eaf7ee' : '#fff'
+      btn.style.borderColor = exploreActive ? '#1A6B3C' : '#ddd'
+    }
+    try {
+      previewIframe.contentWindow.postMessage({
+        type: exploreActive ? 'tutorial-preview-navmode-start' : 'tutorial-preview-navmode-stop',
+      }, '*')
+    } catch (e) { /* iframe pas prête */ }
+  }
 
   function startPicker() {
     if (!previewIframe) return
@@ -649,6 +675,10 @@ export async function renderTutorialAdminV2(container, { toast, openModal, close
     // Sélecteur d'élément cliquable dans l'aperçu
     const pickerBtn = container.querySelector('#picker-btn')
     if (pickerBtn) pickerBtn.addEventListener('click', startPicker)
+
+    // Mode exploration : interaction réelle temporaire dans l'aperçu
+    const exploreBtn = container.querySelector('#explore-btn')
+    if (exploreBtn) exploreBtn.addEventListener('click', toggleExplore)
 
     // Si le sélecteur est modifié manuellement (pas via le picker), le
     // badge "navigation globale" du pick précédent n'est plus fiable

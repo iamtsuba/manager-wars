@@ -8,7 +8,7 @@ import { playSound } from '../lib/sound.js'
 import { getPortrait } from '../lib/portrait.js'
 import { renderGCCard, renderStadiumCard, renderFormationCard } from '../components/special-cards.js'
 import { startTutorialV2 } from '../tutorial/tutorial-v2-player.js'
-import { launchApp } from '../app.js'
+import { launchApp, navigate as realNavigate } from '../app.js'
 
 // Toutes les formations disponibles (depuis formation-links.js)
 const ALL_FORMATIONS = () => Object.keys(FORMATION_POSITIONS)
@@ -1527,8 +1527,15 @@ export async function renderStarterOnboarding(container, { state, navigate, toas
       // (on est sur l'écran "Premiers pas", affiché avant lui) — startTutorialV2
       // navigue via la VRAIE fonction navigate(), qui a besoin du shell pour
       // fonctionner. On le construit donc d'abord.
+      //
+      // ⚠️ Le `navigate` du contexte ci-dessus est un callback LOCAL propre à
+      // ce panneau (déclenché à la fin de l'onboarding, sans rapport avec la
+      // navigation entre pages) — surtout ne pas l'utiliser ici. On utilise
+      // explicitement `realNavigate` (la vraie fonction navigate(page) de
+      // app.js), sinon le tutoriel reste bloqué sur la page courante quel
+      // que soit le page_route configuré dans chaque étape.
       launchApp()
-      startTutorialV2({ state, navigate, toast, refreshProfile }, async () => {
+      startTutorialV2({ state, navigate: realNavigate, toast, refreshProfile }, async () => {
         await supabase.from('users').update({ tutorial_done: true }).eq('id', state.user.id)
         if (refreshProfile) await refreshProfile()
         const { data: p } = await supabase.from('users').select('*').eq('id', state.user.id).single()

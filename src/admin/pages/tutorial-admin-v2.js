@@ -95,7 +95,7 @@ export async function renderTutorialAdminV2(container, { toast, openModal, close
     const { data, error } = await supabase
       .from('tutorial_steps_v2')
       .select('*')
-      .order('step_number', { ascending: true })
+      .order('created_at', { ascending: false })
 
     if (error) {
       toast(`Erreur chargement: ${error.message}`, 'error')
@@ -106,34 +106,71 @@ export async function renderTutorialAdminV2(container, { toast, openModal, close
   }
 
   // ── Colonne gauche : liste des étapes ──────────────────────
+  let stepFilter = ''
+
   function renderStepsList() {
     if (!steps.length) {
       return `<div style="text-align:center;padding:40px 12px;color:${TEXT_MUTED};font-size:13px">Aucune étape créée.<br>Utilise le formulaire pour en créer une.</div>`
     }
 
-    return steps.map(step => `
-      <div class="tsv2-list-item" data-id="${step.id}" style="
-        padding:12px;border-radius:10px;margin-bottom:8px;cursor:pointer;
-        background:${editingId === step.id ? '#eaf7ee' : '#fff'};
-        border:1.5px solid ${editingId === step.id ? '#1A6B3C' : '#eee'};
-        transition:border-color .15s,background .15s;
-      ">
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:4px">
-          <span style="font-weight:800;font-size:13px;color:${TEXT_DARK}">#${step.step_number} · ${step.step_name}</span>
-          ${step.is_mandatory ? '<span style="font-size:10px;background:#D4A017;color:#1a1a1a;padding:1px 6px;border-radius:8px;font-weight:700">OBLI.</span>' : ''}
+    const q = stepFilter.trim().toLowerCase()
+    const filtered = q
+      ? steps.filter(s =>
+          String(s.step_number).includes(q) ||
+          (s.step_name || '').toLowerCase().includes(q)
+        )
+      : steps
+
+    if (!filtered.length) {
+      return `<div style="text-align:center;padding:24px 12px;color:${TEXT_MUTED};font-size:13px">Aucun résultat pour "${escAttr(stepFilter)}".</div>`
+    }
+
+    return `
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:6px">
+      ${filtered.map(step => `
+        <div class="tsv2-list-item" data-id="${step.id}" title="${escAttr(step.step_name)}" style="
+          position:relative;padding:8px 6px;border-radius:8px;cursor:pointer;text-align:center;
+          background:${editingId === step.id ? '#eaf7ee' : '#fff'};
+          border:1.5px solid ${editingId === step.id ? '#1A6B3C' : '#eee'};
+          transition:border-color .15s,background .15s;
+        ">
+          ${step.is_mandatory ? `<span style="position:absolute;top:3px;right:3px;width:6px;height:6px;border-radius:50%;background:#D4A017"></span>` : ''}
+          <div style="font-weight:900;font-size:14px;color:${TEXT_DARK};line-height:1.2">#${step.step_number}</div>
+          <div style="font-size:9px;color:${TEXT_MUTED};margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${step.step_name}</div>
+          <button class="delete-step-btn" data-id="${step.id}" title="Supprimer"
+            style="position:absolute;bottom:2px;right:2px;width:16px;height:16px;line-height:16px;padding:0;border:none;background:transparent;color:#c0392b;font-size:10px;cursor:pointer;opacity:.6">🗑️</button>
         </div>
-        <div style="font-size:12px;color:${TEXT_MUTED};margin-bottom:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
-          ${step.popup_title || '—'}
-        </div>
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
-          <code style="font-size:10px;background:#f0f0f0;color:${TEXT_DARK};padding:2px 6px;border-radius:4px">${step.page_route || 'aucune page'}</code>
-          <div style="display:flex;gap:4px">
-            <button class="btn btn-sm btn-ghost edit-step-btn" data-id="${step.id}" style="padding:3px 7px;font-size:11px">✏️</button>
-            <button class="btn btn-sm btn-danger delete-step-btn" data-id="${step.id}" style="padding:3px 7px;font-size:11px;color:#c0392b">🗑️</button>
-          </div>
-        </div>
-      </div>
-    `).join('')
+      `).join('')}
+    </div>
+    `
+  }
+
+  function bindStepsListListeners() {
+    container.querySelectorAll('.tsv2-list-item').forEach(item => {
+      item.addEventListener('click', e => {
+        if (e.target.closest('.delete-step-btn')) return
+        editingId = Number(item.dataset.id)
+        render()
+      })
+    })
+
+    container.querySelectorAll('.delete-step-btn').forEach(btn => {
+      btn.addEventListener('click', async e => {
+        e.stopPropagation()
+        if (!confirm('Supprimer cette étape ? Action irréversible.')) return
+        const id = Number(btn.dataset.id)
+        const { error } = await supabase
+          .from('tutorial_steps_v2')
+          .delete()
+          .eq('id', id)
+        if (error) toast(`Erreur suppression: ${error.message}`, 'error')
+        else {
+          if (editingId === id) editingId = null
+          toast('Étape supprimée', 'success')
+          await loadSteps()
+        }
+      })
+    })
   }
 
   // ── Colonne centrale : formulaire ───────────────────────────
@@ -555,7 +592,9 @@ export async function renderTutorialAdminV2(container, { toast, openModal, close
             </h3>
             <button class="btn btn-sm btn-primary" id="new-step-btn" style="padding:5px 10px;font-size:12px">➕ Nouvelle</button>
           </div>
-          <div style="max-height:calc(100vh - 220px);overflow-y:auto;padding-right:4px">
+          <input type="text" id="step-filter" value="${escAttr(stepFilter)}" placeholder="🔍 Filtrer par nom ou numéro..."
+            style="${INPUT_STYLE};margin-bottom:10px;font-size:13px" />
+          <div id="tsv2-steps-list-wrap" style="max-height:calc(100vh - 260px);overflow-y:auto;padding-right:4px">
             ${renderStepsList()}
           </div>
         </div>
@@ -580,6 +619,18 @@ export async function renderTutorialAdminV2(container, { toast, openModal, close
     const saveBtn = container.querySelector('#save-step-btn')
     const cancelBtn = container.querySelector('#cancel-edit-btn')
     const newBtn = container.querySelector('#new-step-btn')
+
+    // Filtre de la liste des étapes (nom ou numéro), mise à jour live sans
+    // toucher au reste du formulaire (préserve le focus dans les champs)
+    const filterInput = container.querySelector('#step-filter')
+    if (filterInput) {
+      filterInput.addEventListener('input', e => {
+        stepFilter = e.target.value
+        const wrap = container.querySelector('#tsv2-steps-list-wrap')
+        if (wrap) wrap.innerHTML = renderStepsList()
+        bindStepsListListeners()
+      })
+    }
 
     if (titleInput) {
       const titleCount = container.querySelector('#title-count')
@@ -619,39 +670,11 @@ export async function renderTutorialAdminV2(container, { toast, openModal, close
     if (cancelBtn) cancelBtn.addEventListener('click', () => { editingId = null; render() })
     if (newBtn) newBtn.addEventListener('click', () => { editingId = null; render() })
 
-    // Clic sur une carte de la liste (hors boutons) → édite l'étape
-    container.querySelectorAll('.tsv2-list-item').forEach(item => {
-      item.addEventListener('click', e => {
-        if (e.target.closest('.edit-step-btn') || e.target.closest('.delete-step-btn')) return
-        editingId = Number(item.dataset.id)
-        render()
-      })
-    })
-
-    container.querySelectorAll('.edit-step-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        editingId = Number(btn.dataset.id)
-        render()
-      })
-    })
-
-    container.querySelectorAll('.delete-step-btn').forEach(btn => {
-      btn.addEventListener('click', async e => {
-        e.stopPropagation()
-        if (!confirm('Supprimer cette étape ? Action irréversible.')) return
-        const id = Number(btn.dataset.id)
-        const { error } = await supabase
-          .from('tutorial_steps_v2')
-          .delete()
-          .eq('id', id)
-        if (error) toast(`Erreur suppression: ${error.message}`, 'error')
-        else {
-          if (editingId === id) editingId = null
-          toast('Étape supprimée', 'success')
-          await loadSteps()
-        }
-      })
-    })
+    // Clic sur une tuile (hors bouton supprimer) → édite l'étape ;
+    // clic sur 🗑️ → supprime. Extrait dans une fonction réutilisable, car
+    // le filtre de recherche ré-attache aussi ces listeners après avoir
+    // remplacé uniquement le contenu de la liste (sans re-render() complet).
+    bindStepsListListeners()
 
     // Toggle Mobile / Desktop
     const tabMobile = container.querySelector('#tsv2-tab-mobile')

@@ -824,17 +824,17 @@ function drawTutorialPreviewOverlay(params) {
     }, '*')
   } catch (e) { /* pas dans un iframe (accès direct à l'URL) */ }
 
-  // Un sélecteur qui matche un conteneur quasi plein écran (ex: "#app", le
-  // wrapper racine de toute l'app) rend le spotlight/grisage inopérant en
-  // pratique : le "trou" découpé dans le voile a alors la taille de
-  // l'écran entier, donc rien ne semble grisé. On ignore délibérément ces
-  // cibles pour le rendu visuel (le statut "found" envoyé ci-dessus reste
-  // néanmoins correct pour l'admin).
+  // Un sélecteur qui matche un conteneur QUASI EXACTEMENT plein écran (ex:
+  // "#app") rend le spotlight/grisage inopérant en pratique. On ignore
+  // délibérément CES cibles précises — mais pas une modale simplement
+  // large (ex: #modal-body), d'où une vérification largeur ET hauteur
+  // séparément (>97% des deux), plus stricte qu'un simple ratio de surface.
   let visualTargetEl = targetEl
   if (targetEl) {
     const r0 = targetEl.getBoundingClientRect()
-    const coverage = (r0.width * r0.height) / (window.innerWidth * window.innerHeight)
-    if (coverage > 0.9) visualTargetEl = null
+    const coversFullWidth = r0.width / window.innerWidth > 0.97
+    const coversFullHeight = r0.height / window.innerHeight > 0.97
+    if (coversFullWidth && coversFullHeight) visualTargetEl = null
   }
 
   const dim = document.createElement('div')

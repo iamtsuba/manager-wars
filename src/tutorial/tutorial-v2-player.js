@@ -229,17 +229,21 @@ function render(step) {
 
   const targetEl = step.dom_selector ? findVisibleTarget(step.dom_selector) : null
 
-  // Un sélecteur qui matche un conteneur quasi plein écran (ex: "#app", le
-  // wrapper racine de toute l'app) rend le spotlight/grisage inopérant en
-  // pratique : le "trou" découpé dans le voile aurait alors la taille de
-  // l'écran entier, donc rien ne semble grisé. On ignore délibérément ces
-  // cibles pour le rendu visuel du grisage/anneau (même logique que
-  // l'aperçu admin dans app.js).
+  // Un sélecteur qui matche un conteneur QUASI EXACTEMENT plein écran (ex:
+  // "#app", le wrapper racine de toute l'app) rend le spotlight/grisage
+  // inopérant en pratique : le "trou" découpé dans le voile aurait alors la
+  // taille de l'écran entier, donc rien ne semble grisé. On ignore
+  // délibérément CES cibles précises pour le rendu visuel du grisage/anneau
+  // — mais PAS une modale simplement large (ex: #modal-body), qui a presque
+  // toujours une marge sur au moins une dimension. D'où une vérification
+  // sur largeur ET hauteur séparément (>97% des deux), plus stricte qu'un
+  // simple ratio de surface qui inclurait à tort de grandes modales.
   let visualTargetEl = targetEl
   if (targetEl) {
     const r0 = targetEl.getBoundingClientRect()
-    const coverage = (r0.width * r0.height) / (window.innerWidth * window.innerHeight)
-    if (coverage > 0.9) visualTargetEl = null
+    const coversFullWidth = r0.width / window.innerWidth > 0.97
+    const coversFullHeight = r0.height / window.innerHeight > 0.97
+    if (coversFullWidth && coversFullHeight) visualTargetEl = null
   }
   const highlight = step.highlight_type || 'none'
   const dimScreen = !!step.dim_overlay

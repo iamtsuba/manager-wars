@@ -65,9 +65,16 @@ function ensureQuickActionStyles() {
       0%,100% { box-shadow:0 0 6px rgba(212,160,23,0.7), 0 0 14px rgba(212,160,23,0.45) }
       50%     { box-shadow:0 0 12px rgba(212,160,23,1),  0 0 26px rgba(212,160,23,0.75) }
     }
-    .big-evolve-btn {
+    /* Les 3 boutons (marché / évoluer / vente directe) forment un groupe
+       flex centré en bas de la carte — ils collent naturellement les uns
+       aux autres quelle que soit la largeur variable de "Faire évoluer",
+       sans calcul de décalage fragile. */
+    .big-action-row {
       position:absolute; left:50%; bottom:2%; transform:translateX(-50%);
-      z-index:12; white-space:nowrap; cursor:pointer;
+      z-index:12; display:flex; align-items:center; gap:6px;
+    }
+    .big-evolve-btn {
+      white-space:nowrap; cursor:pointer;
       background:linear-gradient(135deg,#f6d365,#D4A017 45%,#f0c040);
       color:#1a1a1a; border:1px solid #ffe9a8; border-radius:999px;
       font-weight:900; font-size:9px; letter-spacing:.3px;
@@ -75,14 +82,13 @@ function ensureQuickActionStyles() {
     }
     .big-evolve-btn:hover { filter:brightness(1.08) }
     .big-quicksell-btn, .big-market-btn {
-      position:absolute; bottom:2%; z-index:12; cursor:pointer;
+      cursor:pointer; flex-shrink:0;
       width:28px; height:28px; border-radius:50%; padding:0;
       display:flex; align-items:center; justify-content:center;
       background:linear-gradient(135deg,#f6d365,#D4A017 45%,#f0c040);
       border:1px solid #ffe9a8; box-shadow:0 2px 6px rgba(0,0,0,0.35);
     }
-    .big-market-btn { left:6px; }
-    .big-quicksell-btn { right:6px; color:#1a1a1a; font-size:14px; }
+    .big-quicksell-btn { color:#1a1a1a; font-size:14px; }
     .big-market-btn img { width:16px; height:16px; object-fit:contain; }
     .big-quicksell-btn:hover, .big-market-btn:hover { filter:brightness(1.08) }
   `
@@ -106,21 +112,29 @@ function renderCard(card, countBadge = '', copies = 1, opts = {}) {
       title="Fusionner les ${copies - 1} exemplaire(s) en trop">⬆️ Faire évoluer</button>` : ''
   // Actions rapides : uniquement pour la grande carte mise en avant
   // (opts.showQuickActions) — jamais sur les mini-cartes du bandeau du bas.
-  let quickActions = ''
+  // Groupées avec "Faire évoluer" dans une même rangée flex centrée, pour
+  // coller immédiatement à ses côtés (marché à gauche, vente directe à droite).
+  let actionRow = ''
   if (opts.showQuickActions) {
     ensureQuickActionStyles()
     const marketIcon = `${import.meta.env.BASE_URL}icons/nav-market.png`
-    quickActions = `
-      <button type="button" class="big-quicksell-btn" data-quicksell-card="${card.id}"
-        title="Vente directe immédiate">⚡</button>
-      <button type="button" class="big-market-btn" data-market-card="${card.id}"
-        title="Mettre en vente sur le marché"><img src="${marketIcon}" alt="Marché"></button>`
+    actionRow = `
+      <div class="big-action-row">
+        <button type="button" class="big-market-btn" data-market-card="${card.id}"
+          title="Mettre en vente sur le marché"><img src="${marketIcon}" alt="Marché"></button>
+        ${evolveBtn}
+        <button type="button" class="big-quicksell-btn" data-quicksell-card="${card.id}"
+          title="Vente directe immédiate">⚡</button>
+      </div>`
+  } else if (evolveBtn) {
+    // Contexte sans actions rapides (mini-cartes) : "Faire évoluer" garde
+    // son ancien positionnement centré simple, sans les boutons additionnels.
+    actionRow = `<div class="big-action-row">${evolveBtn}</div>`
   }
   return `<div style="position:relative;display:inline-block;cursor:pointer" data-card-id="${card.id}">
     ${badge}
     ${renderPlayerCard(player, { width: 140, context: 'collection' })}
-    ${evolveBtn}
-    ${quickActions}
+    ${actionRow}
   </div>`
 }
 // ── Rendu d'une carte joueur MANQUANTE (grisée, non possédée) ──
@@ -718,7 +732,7 @@ export async function renderCollection(container, ctx) {
         deduped,
         (card) => {
           const count = countByPlayer[card.player.id] || 1
-          const badge = count > 1 ? `<div style="position:absolute;top:4px;right:4px;background:#1A6B3C;color:#fff;border-radius:10px;font-size:9px;font-weight:700;padding:1px 6px;z-index:3">×${count}</div>` : ''
+          const badge = count > 1 ? `<div style="position:absolute;top:-10px;right:-10px;background:#1A6B3C;color:#fff;border-radius:12px;font-size:11px;font-weight:800;padding:3px 8px;z-index:3;box-shadow:0 2px 5px rgba(0,0,0,0.4);border:1.5px solid #fff">×${count}</div>` : ''
           const forSale = playerCards.filter(c => c.player.id === card.player.id && c.is_for_sale).length
           const saleBadge = forSale > 0 ? `<div style="position:absolute;top:4px;left:4px;background:#D4A017;color:#fff;border-radius:10px;font-size:9px;font-weight:700;padding:1px 5px;z-index:3">🏷️</div>` : ''
           return renderCard(card, badge + saleBadge, count, { showQuickActions: true })

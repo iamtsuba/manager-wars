@@ -1241,7 +1241,7 @@ async function openAddToManagerModal(player, helpers) {
           btn.textContent = '...'
           const { error: insertErr } = await supabase
             .from('cards')
-            .insert({ owner_id: btn.dataset.uid, card_type: 'player', player_id: player.id, rarity: player.rarity || 'normal' })
+            .insert({ owner_id: btn.dataset.uid, card_type: 'player', player_id: player.id })
           if (insertErr) {
             toast(`Erreur: ${insertErr.message}`, 'error')
             btn.disabled = false

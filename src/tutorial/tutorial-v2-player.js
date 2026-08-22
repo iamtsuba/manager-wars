@@ -204,15 +204,34 @@ function waitForStepReady(step, needsNav) {
     const maxWait = 4000
     const interval = 100
     let waited = 0
+    let lastRect = null
+
+    const rectsMatch = (a, b) =>
+      a && b && a.top === b.top && a.left === b.left && a.width === b.width && a.height === b.height
 
     const tick = () => {
       // Sans sélecteur : un court délai suffit (juste laisser le DOM se stabiliser)
       if (!step.dom_selector) {
         return setTimeout(resolve, needsNav ? 250 : 200)
       }
-      if (findVisibleTarget(step.dom_selector) || waited >= maxWait) {
+
+      const el = findVisibleTarget(step.dom_selector)
+      if (!el) {
+        if (waited >= maxWait) return resolve()
+        waited += interval
+        return setTimeout(tick, interval)
+      }
+
+      // L'élément existe et est visible, mais peut être encore en pleine
+      // animation d'entrée (ouverture de modale, transition CSS) : on
+      // attend que sa position/taille soit STABLE sur deux mesures
+      // consécutives avant de dessiner le spotlight, sinon l'anneau se
+      // positionne sur des coordonnées transitoires et semble "raté".
+      const rect = el.getBoundingClientRect()
+      if (rectsMatch(rect, lastRect) || waited >= maxWait) {
         return resolve()
       }
+      lastRect = rect
       waited += interval
       setTimeout(tick, interval)
     }
@@ -275,9 +294,14 @@ function render(step) {
     const ringColor = highlight === 'glow' ? '#D4A017' : '#1A6B3C'
     const anim = highlight === 'pulse' ? 'animation:tv2Pulse 1.6s infinite;'
                : highlight === 'glow'  ? 'animation:tv2Glow 1.6s infinite;' : ''
-    html += `<div id="tv2-ring" style="position:absolute;left:${r.left - 6}px;top:${r.top - 6}px;
-      width:${r.width + 12}px;height:${r.height + 12}px;border-radius:10px;
-      border:2.5px solid ${ringColor};box-shadow:0 0 0 2px rgba(255,255,255,0.85);${anim}"></div>`
+    // Double liseré (blanc puis sombre) autour de la couleur principale pour
+    // rester bien visible même sur un élément déjà coloré (ex: un bouton
+    // vert vif) — sans ça, un anneau doré fin pouvait se fondre visuellement.
+    html += `<div id="tv2-ring" style="position:absolute;left:${r.left - 7}px;top:${r.top - 7}px;
+      width:${r.width + 14}px;height:${r.height + 14}px;border-radius:11px;
+      border:3.5px solid ${ringColor};
+      box-shadow:0 0 0 2px rgba(255,255,255,0.95), 0 0 0 4px rgba(0,0,0,0.35), 0 0 14px 2px ${ringColor};
+      ${anim}"></div>`
   }
 
   const vw = window.innerWidth, vh = window.innerHeight

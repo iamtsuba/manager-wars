@@ -21,7 +21,19 @@ let idx = 0
 let ctxRef = null
 let onCompleteRef = null
 let ov = null
-let cleanupCurrentStep = null
+let cleanupFns = []
+function addStepCleanup(fn) { cleanupFns.push(fn) }
+function runStepCleanup() { cleanupFns.forEach(fn => { try { fn() } catch (e) {} }); cleanupFns = []; clearClickAdvanceListener() }
+
+// Listener "clic pour avancer" : géré à PART de cleanupFns ci-dessus, car
+// render() est désormais rappelée à chaque scroll (voir playStep) — sans
+// cette séparation, chaque re-rendu empilerait un nouveau listener au lieu
+// de remplacer le précédent.
+let clickAdvanceCleanup = null
+function clearClickAdvanceListener() {
+  clickAdvanceCleanup?.()
+  clickAdvanceCleanup = null
+}
 
 function wait(ms) { return new Promise(r => setTimeout(r, ms)) }
 
@@ -164,8 +176,7 @@ async function playStep() {
   const step = steps[idx]
   if (!step) return finish(false)
 
-  cleanupCurrentStep?.()
-  cleanupCurrentStep = null
+  runStepCleanup()
 
   const targetPage = step.page_route || 'home'
   const needsNav = ctxRef.state.page !== targetPage
@@ -181,6 +192,26 @@ async function playStep() {
   await waitForStepReady(step, needsNav)
 
   render(step)
+
+  // Si l'utilisateur défile manuellement APRÈS l'affichage initial (pour
+  // lire la suite d'une modale par exemple), le spotlight/popup — dessinés
+  // une fois comme un instantané — doivent suivre. On réécoute le scroll
+  // (y compris dans un conteneur imbriqué, d'où capture:true) et on
+  // redessine, avec un throttle via requestAnimationFrame pour rester
+  // fluide pendant un défilement continu.
+  let scrollRaf = null
+  const onScroll = () => {
+    if (scrollRaf) return
+    scrollRaf = requestAnimationFrame(() => {
+      scrollRaf = null
+      if (steps[idx] === step) render(step)
+    })
+  }
+  document.addEventListener('scroll', onScroll, true)
+  addStepCleanup(() => {
+    document.removeEventListener('scroll', onScroll, true)
+    if (scrollRaf) cancelAnimationFrame(scrollRaf)
+  })
 
   if (needsNav) {
     // Filet de sécurité : certaines pages du jeu font des requêtes async
@@ -205,6 +236,7 @@ function waitForStepReady(step, needsNav) {
     const interval = 100
     let waited = 0
     let lastRect = null
+    let scrolled = false
 
     const rectsMatch = (a, b) =>
       a && b && a.top === b.top && a.left === b.left && a.width === b.width && a.height === b.height
@@ -222,11 +254,22 @@ function waitForStepReady(step, needsNav) {
         return setTimeout(tick, interval)
       }
 
+      // L'élément peut être hors-écran (sous la ligne de flottaison, dans
+      // une modale scrollable). On le fait défiler dans la vue UNE SEULE
+      // fois, dès qu'on le trouve — le scroll (fluide) modifie sa position
+      // à chaque frame, ce que la vérification de stabilité ci-dessous
+      // détecte naturellement : elle ne validera qu'une fois le scroll
+      // terminé, sans code de synchronisation supplémentaire.
+      if (!scrolled) {
+        scrolled = true
+        el.scrollIntoView({ block: 'center', behavior: 'smooth' })
+      }
+
       // L'élément existe et est visible, mais peut être encore en pleine
-      // animation d'entrée (ouverture de modale, transition CSS) : on
-      // attend que sa position/taille soit STABLE sur deux mesures
-      // consécutives avant de dessiner le spotlight, sinon l'anneau se
-      // positionne sur des coordonnées transitoires et semble "raté".
+      // animation d'entrée (ouverture de modale, transition CSS, scroll en
+      // cours) : on attend que sa position/taille soit STABLE sur deux
+      // mesures consécutives avant de dessiner le spotlight, sinon l'anneau
+      // se positionne sur des coordonnées transitoires et semble "raté".
       const rect = el.getBoundingClientRect()
       if (rectsMatch(rect, lastRect) || waited >= maxWait) {
         return resolve()
@@ -363,6 +406,11 @@ function render(step) {
 
   ov.innerHTML = html
 
+  // Toujours nettoyer l'éventuel listener "clic pour avancer" d'un rendu
+  // précédent de CETTE MÊME étape (re-rendue à chaque scroll) avant d'en
+  // attacher un nouveau — sinon accumulation de doublons.
+  clearClickAdvanceListener()
+
   const skipBtn = ov.querySelector('#tv2-skip')
   skipBtn?.addEventListener('click', () => {
     if (confirm('Passer le tutoriel ? Tu pourras le revoir plus tard depuis les paramètres.')) finish(true)
@@ -382,21 +430,19 @@ function render(step) {
       }
     }
     document.addEventListener('click', handler, true)
-    cleanupCurrentStep = () => document.removeEventListener('click', handler, true)
+    clickAdvanceCleanup = () => document.removeEventListener('click', handler, true)
   }
 }
 
 function advance() {
-  cleanupCurrentStep?.()
-  cleanupCurrentStep = null
+  runStepCleanup()
   idx++
   if (idx >= steps.length) finish(false)
   else playStep()
 }
 
 async function finish(skipped) {
-  cleanupCurrentStep?.()
-  cleanupCurrentStep = null
+  runStepCleanup()
   ov?.remove()
   restoreAllInteraction()
   lastClickableEl = null

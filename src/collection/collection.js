@@ -50,7 +50,46 @@ function getNote(p, job) {
 }
 
 // ── Rendu d'une carte joueur ──────────────────────────────
-function renderCard(card, countBadge = '', copies = 1) {
+// Styles des actions rapides (⚡ vente directe, marché) injectés UNE SEULE
+// FOIS, jamais répétés dans le HTML de chaque carte — répéter un <style>
+// identique par instance de carte causait des conflits de cascade CSS
+// (le dernier bloc injecté dans le DOM écrasait le positionnement de TOUS
+// les autres, y compris sur les mini-cartes du bandeau où ces boutons ne
+// doivent même pas apparaître).
+function ensureQuickActionStyles() {
+  if (document.getElementById('col-quickaction-styles')) return
+  const style = document.createElement('style')
+  style.id = 'col-quickaction-styles'
+  style.textContent = `
+    @keyframes bigEvolveGlow {
+      0%,100% { box-shadow:0 0 6px rgba(212,160,23,0.7), 0 0 14px rgba(212,160,23,0.45) }
+      50%     { box-shadow:0 0 12px rgba(212,160,23,1),  0 0 26px rgba(212,160,23,0.75) }
+    }
+    .big-evolve-btn {
+      position:absolute; left:50%; bottom:2%; transform:translateX(-50%);
+      z-index:12; white-space:nowrap; cursor:pointer;
+      background:linear-gradient(135deg,#f6d365,#D4A017 45%,#f0c040);
+      color:#1a1a1a; border:1px solid #ffe9a8; border-radius:999px;
+      font-weight:900; font-size:9px; letter-spacing:.3px;
+      padding:4px 10px; animation:bigEvolveGlow 1.8s ease-in-out infinite;
+    }
+    .big-evolve-btn:hover { filter:brightness(1.08) }
+    .big-quicksell-btn, .big-market-btn {
+      position:absolute; bottom:2%; z-index:12; cursor:pointer;
+      width:28px; height:28px; border-radius:50%; padding:0;
+      display:flex; align-items:center; justify-content:center;
+      background:linear-gradient(135deg,#f6d365,#D4A017 45%,#f0c040);
+      border:1px solid #ffe9a8; box-shadow:0 2px 6px rgba(0,0,0,0.35);
+    }
+    .big-market-btn { left:6px; }
+    .big-quicksell-btn { right:6px; color:#1a1a1a; font-size:14px; }
+    .big-market-btn img { width:16px; height:16px; object-fit:contain; }
+    .big-quicksell-btn:hover, .big-market-btn:hover { filter:brightness(1.08) }
+  `
+  document.head.appendChild(style)
+}
+
+function renderCard(card, countBadge = '', copies = 1, opts = {}) {
   const p = card.player
   if (!p) return ''
   const evo = card.evolution_bonus || 0
@@ -58,57 +97,30 @@ function renderCard(card, countBadge = '', copies = 1) {
   // NOTE : countBadge est déjà un <div> entièrement positionné construit par
   // l'appelant (top/right propres) — ne JAMAIS le ré-envelopper dans un
   // second conteneur absolu ici, sinon on obtient deux boîtes superposées
-  // légèrement décalées (le petit "bâtonnet" visible au-dessus du badge).
+  // légèrement décalées.
   const badge = countBadge || ''
   // Bouton "Faire évoluer" : uniquement si des exemplaires en trop existent
   // (il faut au moins 2 cartes du joueur pour fusionner).
-  const hasEvolve = copies > 1
-  const evolveBtn = hasEvolve ? `
+  const evolveBtn = copies > 1 ? `
     <button type="button" class="big-evolve-btn" data-evolve-card="${card.id}"
       title="Fusionner les ${copies - 1} exemplaire(s) en trop">⬆️ Faire évoluer</button>` : ''
-  // Deux actions rapides : vente directe (⚡) et mise en vente marché (Ⓜ️).
-  // Positionnées de part et d'autre du bouton "Faire évoluer" quand il est
-  // visible ; sinon simplement dans les coins bas de la carte.
-  const quickSellBtn = `
-    <button type="button" class="big-quicksell-btn" data-quicksell-card="${card.id}"
-      title="Vente directe immédiate">⚡</button>`
-  const marketBtn = `
-    <button type="button" class="big-market-btn" data-market-card="${card.id}"
-      title="Mettre en vente sur le marché">Ⓜ️</button>`
+  // Actions rapides : uniquement pour la grande carte mise en avant
+  // (opts.showQuickActions) — jamais sur les mini-cartes du bandeau du bas.
+  let quickActions = ''
+  if (opts.showQuickActions) {
+    ensureQuickActionStyles()
+    const marketIcon = `${import.meta.env.BASE_URL}icons/nav-market.png`
+    quickActions = `
+      <button type="button" class="big-quicksell-btn" data-quicksell-card="${card.id}"
+        title="Vente directe immédiate">⚡</button>
+      <button type="button" class="big-market-btn" data-market-card="${card.id}"
+        title="Mettre en vente sur le marché"><img src="${marketIcon}" alt="Marché"></button>`
+  }
   return `<div style="position:relative;display:inline-block;cursor:pointer" data-card-id="${card.id}">
-    <style>
-      @keyframes bigEvolveGlow {
-        0%,100% { box-shadow:0 0 6px rgba(212,160,23,0.7), 0 0 14px rgba(212,160,23,0.45) }
-        50%     { box-shadow:0 0 12px rgba(212,160,23,1),  0 0 26px rgba(212,160,23,0.75) }
-      }
-      .big-evolve-btn {
-        position:absolute; left:50%; bottom:2%; transform:translateX(-50%);
-        z-index:12; white-space:nowrap; cursor:pointer;
-        background:linear-gradient(135deg,#f6d365,#D4A017 45%,#f0c040);
-        color:#1a1a1a; border:1px solid #ffe9a8; border-radius:999px;
-        font-weight:900; font-size:9px; letter-spacing:.3px;
-        padding:4px 10px; animation:bigEvolveGlow 1.8s ease-in-out infinite;
-      }
-      .big-evolve-btn:hover { filter:brightness(1.08) }
-      .big-quicksell-btn, .big-market-btn {
-        position:absolute; bottom:2%; z-index:12; cursor:pointer;
-        width:26px; height:26px; border-radius:50%; padding:0;
-        display:flex; align-items:center; justify-content:center;
-        background:linear-gradient(135deg,#f6d365,#D4A017 45%,#f0c040);
-        border:1px solid #ffe9a8; color:#1a1a1a; font-size:13px;
-        box-shadow:0 2px 6px rgba(0,0,0,0.35);
-      }
-      .big-quicksell-btn:hover, .big-market-btn:hover { filter:brightness(1.08) }
-      /* Écarte les 2 boutons de chaque côté du bouton "Faire évoluer" quand
-         il existe ; sinon, simples coins bas-gauche/bas-droite de la carte. */
-      .big-market-btn    { ${hasEvolve ? 'right:calc(50% + 62px);' : 'left:6px;'} }
-      .big-quicksell-btn { ${hasEvolve ? 'left:calc(50% + 62px);'  : 'right:6px;'} }
-    </style>
     ${badge}
     ${renderPlayerCard(player, { width: 140, context: 'collection' })}
     ${evolveBtn}
-    ${marketBtn}
-    ${quickSellBtn}
+    ${quickActions}
   </div>`
 }
 // ── Rendu d'une carte joueur MANQUANTE (grisée, non possédée) ──
@@ -709,7 +721,7 @@ export async function renderCollection(container, ctx) {
           const badge = count > 1 ? `<div style="position:absolute;top:4px;right:4px;background:#1A6B3C;color:#fff;border-radius:10px;font-size:9px;font-weight:700;padding:1px 6px;z-index:3">×${count}</div>` : ''
           const forSale = playerCards.filter(c => c.player.id === card.player.id && c.is_for_sale).length
           const saleBadge = forSale > 0 ? `<div style="position:absolute;top:4px;left:4px;background:#D4A017;color:#fff;border-radius:10px;font-size:9px;font-weight:700;padding:1px 5px;z-index:3">🏷️</div>` : ''
-          return renderCard(card, badge + saleBadge, count)
+          return renderCard(card, badge + saleBadge, count, { showQuickActions: true })
         },
         (card) => miniPlayerCard(card),
         (card, opts) => openCardDetail(card, playerCards, countByPlayer, ctx, opts),

@@ -332,6 +332,7 @@ export async function renderTutorialAdminV2(container, { toast, openModal, close
         <button class="btn btn-primary" id="save-step-btn" style="flex:1;min-width:120px">
           ${editingId ? '💾 Mettre à jour' : '➕ Créer'}
         </button>
+        ${editingId ? `<button class="btn btn-ghost" id="duplicate-step-btn" style="flex:1;min-width:120px">📋 Dupliquer</button>` : ''}
         ${editingId ? `<button class="btn btn-ghost" id="cancel-edit-btn" style="flex:1;min-width:120px">✕ Annuler</button>` : ''}
       </div>
     </div>
@@ -669,6 +670,7 @@ export async function renderTutorialAdminV2(container, { toast, openModal, close
     if (saveBtn) saveBtn.addEventListener('click', saveStep)
     if (cancelBtn) cancelBtn.addEventListener('click', () => { editingId = null; render() })
     if (newBtn) newBtn.addEventListener('click', () => { editingId = null; render() })
+    container.querySelector('#duplicate-step-btn')?.addEventListener('click', duplicateStep)
 
     // Clic sur une tuile (hors bouton supprimer) → édite l'étape ;
     // clic sur 🗑️ → supprime. Extrait dans une fonction réutilisable, car
@@ -718,6 +720,46 @@ export async function renderTutorialAdminV2(container, { toast, openModal, close
   }
 
   // Sauvegarder une étape
+  // Duplique l'étape actuellement en édition : copie tous les champs,
+  // step_number = plus haut existant + 1, step_name suffixé pour rester
+  // unique (contrainte UNIQUE en base).
+  async function duplicateStep() {
+    if (!editingId) return
+    const original = steps.find(s => s.id === editingId)
+    if (!original) return
+
+    const nextNumber = steps.reduce((max, s) => Math.max(max, s.step_number || 0), 0) + 1
+
+    // Garantit un step_name unique même en cas de duplications successives
+    const existingNames = new Set(steps.map(s => s.step_name))
+    let baseName = `${original.step_name}-copie`
+    let newName = baseName
+    let suffix = 2
+    while (existingNames.has(newName)) {
+      newName = `${baseName}-${suffix}`
+      suffix++
+    }
+
+    const copy = { ...original }
+    delete copy.id
+    delete copy.created_at
+    delete copy.updated_at
+    copy.step_number = nextNumber
+    copy.step_name = newName
+
+    const { data, error } = await supabase
+      .from('tutorial_steps_v2')
+      .insert([copy])
+      .select()
+      .single()
+
+    if (error) { toast(`Erreur duplication: ${error.message}`, 'error'); return }
+
+    toast(`Étape dupliquée en #${nextNumber}`, 'success')
+    editingId = data.id
+    await loadSteps()
+  }
+
   async function saveStep() {
     const stepNumber = parseInt(container.querySelector('#step-number').value)
     const stepName = container.querySelector('#step-name').value.trim()

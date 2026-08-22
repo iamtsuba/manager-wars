@@ -1053,10 +1053,11 @@ async function openPlayerModal(player, clubs, container, helpers) {
         </div>
 
         <div id="pm-error" style="color:#bb2020;font-size:13px;min-height:16px"></div>
-        <div class="pm-save-bar" style="position:sticky;bottom:0;background:#fff;padding:8px 0 4px;margin-top:4px">
-        <button class="btn btn-primary" id="pm-save" style="width:100%;padding:14px;font-size:15px">
+        <div class="pm-save-bar" style="position:sticky;bottom:0;background:#fff;padding:8px 0 4px;margin-top:4px;display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-primary" id="pm-save" style="flex:1;min-width:140px;padding:14px;font-size:15px">
           ${isEdit ? '💾 Enregistrer' : '✅ Créer le joueur'}
         </button>
+        ${isEdit ? `<button class="btn btn-ghost" id="pm-add-to-manager" style="flex:1;min-width:140px;padding:14px;font-size:14px">👤 Ajouter à un Manager</button>` : ''}
         </div>
       </div>
     </div>`
@@ -1181,7 +1182,84 @@ async function openPlayerModal(player, clubs, container, helpers) {
     })
 
     document.getElementById('pm-save')?.addEventListener('click', () => savePlayer(player, isEdit, currentFace, container, helpers))
+    document.getElementById('pm-add-to-manager')?.addEventListener('click', () => openAddToManagerModal(player, helpers))
     refreshCard()
+  }, 50)
+}
+
+// ── Ajoute une carte de ce joueur à un manager choisi ────────────────────
+async function openAddToManagerModal(player, helpers) {
+  const { toast, openModal, closeModal } = helpers
+
+  openModal(
+    `👤 Ajouter ${player.firstname} ${player.surname_real} à un Manager`,
+    `
+    <div class="form-group" style="margin-bottom:10px">
+      <label>Rechercher un manager (pseudo ou club)</label>
+      <input id="atm-search" type="text" placeholder="Tape un pseudo..." style="width:100%">
+    </div>
+    <div id="atm-results" style="max-height:340px;overflow-y:auto;display:flex;flex-direction:column;gap:6px">
+      <div style="color:var(--gray-600);font-size:13px;padding:8px;text-align:center">Tape au moins 2 caractères pour chercher.</div>
+    </div>
+    `
+  )
+
+  setTimeout(() => {
+    const searchInput = document.getElementById('atm-search')
+    const resultsEl = document.getElementById('atm-results')
+    let searchTimer = null
+
+    async function runSearch(q) {
+      if (q.length < 2) {
+        resultsEl.innerHTML = `<div style="color:var(--gray-600);font-size:13px;padding:8px;text-align:center">Tape au moins 2 caractères pour chercher.</div>`
+        return
+      }
+      resultsEl.innerHTML = `<div style="color:var(--gray-600);font-size:13px;padding:8px;text-align:center">Recherche...</div>`
+      const { data, error } = await supabase
+        .from('users')
+        .select('id,pseudo,club_name,credits')
+        .or(`pseudo.ilike.%${q}%,club_name.ilike.%${q}%`)
+        .order('pseudo', { ascending: true })
+        .limit(20)
+
+      if (error) { resultsEl.innerHTML = `<div style="color:#bb2020;font-size:13px;padding:8px">${error.message}</div>`; return }
+      if (!data || !data.length) { resultsEl.innerHTML = `<div style="color:var(--gray-600);font-size:13px;padding:8px;text-align:center">Aucun manager trouvé.</div>`; return }
+
+      resultsEl.innerHTML = data.map(u => `
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 10px;border:1px solid var(--gray-200);border-radius:8px">
+          <div>
+            <div style="font-weight:700">${u.pseudo}</div>
+            <div style="font-size:11px;color:var(--gray-600)">${u.club_name || '—'} · ${(u.credits||0).toLocaleString('fr')} cr.</div>
+          </div>
+          <button class="btn btn-primary btn-sm atm-choose" data-uid="${u.id}" data-pseudo="${u.pseudo}">Ajouter</button>
+        </div>
+      `).join('')
+
+      resultsEl.querySelectorAll('.atm-choose').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          btn.disabled = true
+          btn.textContent = '...'
+          const { error: insertErr } = await supabase
+            .from('cards')
+            .insert({ owner_id: btn.dataset.uid, card_type: 'player', player_id: player.id, rarity: player.rarity || 'normal' })
+          if (insertErr) {
+            toast(`Erreur: ${insertErr.message}`, 'error')
+            btn.disabled = false
+            btn.textContent = 'Ajouter'
+          } else {
+            toast(`✅ Carte ajoutée à ${btn.dataset.pseudo}`, 'success')
+            btn.textContent = '✅ Ajouté'
+          }
+        })
+      })
+    }
+
+    searchInput?.addEventListener('input', e => {
+      clearTimeout(searchTimer)
+      const q = e.target.value.trim()
+      searchTimer = setTimeout(() => runSearch(q), 300)
+    })
+    searchInput?.focus()
   }, 50)
 }
 

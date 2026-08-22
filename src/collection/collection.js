@@ -55,10 +55,27 @@ function renderCard(card, countBadge = '', copies = 1) {
   if (!p) return ''
   const evo = card.evolution_bonus || 0
   const player = { ...p, _evolution_bonus: evo }
-  const badge = countBadge ? `<div style="position:absolute;top:6px;right:6px;z-index:10;background:#0a3d1e;color:#fff;border-radius:10px;font-size:10px;font-weight:700;padding:2px 7px">${countBadge}</div>` : ''
+  // NOTE : countBadge est déjà un <div> entièrement positionné construit par
+  // l'appelant (top/right propres) — ne JAMAIS le ré-envelopper dans un
+  // second conteneur absolu ici, sinon on obtient deux boîtes superposées
+  // légèrement décalées (le petit "bâtonnet" visible au-dessus du badge).
+  const badge = countBadge || ''
   // Bouton "Faire évoluer" : uniquement si des exemplaires en trop existent
   // (il faut au moins 2 cartes du joueur pour fusionner).
-  const evolveBtn = copies > 1 ? `
+  const hasEvolve = copies > 1
+  const evolveBtn = hasEvolve ? `
+    <button type="button" class="big-evolve-btn" data-evolve-card="${card.id}"
+      title="Fusionner les ${copies - 1} exemplaire(s) en trop">⬆️ Faire évoluer</button>` : ''
+  // Deux actions rapides : vente directe (⚡) et mise en vente marché (Ⓜ️).
+  // Positionnées de part et d'autre du bouton "Faire évoluer" quand il est
+  // visible ; sinon simplement dans les coins bas de la carte.
+  const quickSellBtn = `
+    <button type="button" class="big-quicksell-btn" data-quicksell-card="${card.id}"
+      title="Vente directe immédiate">⚡</button>`
+  const marketBtn = `
+    <button type="button" class="big-market-btn" data-market-card="${card.id}"
+      title="Mettre en vente sur le marché">Ⓜ️</button>`
+  return `<div style="position:relative;display:inline-block;cursor:pointer" data-card-id="${card.id}">
     <style>
       @keyframes bigEvolveGlow {
         0%,100% { box-shadow:0 0 6px rgba(212,160,23,0.7), 0 0 14px rgba(212,160,23,0.45) }
@@ -73,13 +90,25 @@ function renderCard(card, countBadge = '', copies = 1) {
         padding:4px 10px; animation:bigEvolveGlow 1.8s ease-in-out infinite;
       }
       .big-evolve-btn:hover { filter:brightness(1.08) }
+      .big-quicksell-btn, .big-market-btn {
+        position:absolute; bottom:2%; z-index:12; cursor:pointer;
+        width:26px; height:26px; border-radius:50%; padding:0;
+        display:flex; align-items:center; justify-content:center;
+        background:linear-gradient(135deg,#f6d365,#D4A017 45%,#f0c040);
+        border:1px solid #ffe9a8; color:#1a1a1a; font-size:13px;
+        box-shadow:0 2px 6px rgba(0,0,0,0.35);
+      }
+      .big-quicksell-btn:hover, .big-market-btn:hover { filter:brightness(1.08) }
+      /* Écarte les 2 boutons de chaque côté du bouton "Faire évoluer" quand
+         il existe ; sinon, simples coins bas-gauche/bas-droite de la carte. */
+      .big-market-btn    { ${hasEvolve ? 'right:calc(50% + 62px);' : 'left:6px;'} }
+      .big-quicksell-btn { ${hasEvolve ? 'left:calc(50% + 62px);'  : 'right:6px;'} }
     </style>
-    <button type="button" class="big-evolve-btn" data-evolve-card="${card.id}"
-      title="Fusionner les ${copies - 1} exemplaire(s) en trop">⬆️ Faire évoluer</button>` : ''
-  return `<div style="position:relative;display:inline-block;cursor:pointer" data-card-id="${card.id}">
     ${badge}
     ${renderPlayerCard(player, { width: 140, context: 'collection' })}
     ${evolveBtn}
+    ${marketBtn}
+    ${quickSellBtn}
   </div>`
 }
 // ── Rendu d'une carte joueur MANQUANTE (grisée, non possédée) ──
@@ -502,6 +531,20 @@ export async function renderCollection(container, ctx) {
       if (evoBtn) evoBtn.addEventListener('click', function(e) {
         e.stopPropagation()
         onBigClick(items[sel], { autoEvolve: true })
+      })
+      // Vente directe rapide (⚡) : ouvre un popup de confirmation avec le
+      // prix déjà calculé, sans passer par le détail complet de la carte.
+      var quickSellBtn = bigZone.querySelector('.big-quicksell-btn')
+      if (quickSellBtn) quickSellBtn.addEventListener('click', function(e) {
+        e.stopPropagation()
+        onBigClick(items[sel], { quickDirectSell: true })
+      })
+      // Mise en vente marché (Ⓜ️) : ouvre le détail directement sur le
+      // panneau "Mettre cette carte en vente".
+      var marketBtn = bigZone.querySelector('.big-market-btn')
+      if (marketBtn) marketBtn.addEventListener('click', function(e) {
+        e.stopPropagation()
+        onBigClick(items[sel], { openSellPanel: true })
       })
       // Auto-scale pour que la carte remplisse EXACTEMENT la zone 5 (déjà
       // fixée en px ci-dessus, donc pas de re-mesure hasardeuse nécessaire).
@@ -971,6 +1014,27 @@ async function openCardDetail(card, allPlayerCards, countByPlayer, ctx, opts = {
   const priceMin = priceConfigs?.[0]?.price_min ?? null
   const priceMax = priceConfigs?.[0]?.price_max ?? null
 
+  // ── Vente directe rapide (bouton ⚡ sur la carte, sans ouvrir le détail) ──
+  // Reprend exactement la même logique que #single-direct-sell-btn plus bas,
+  // en évitant volontairement le hack "masquer la modale + auto-clic" : la
+  // confirmation native (confirm()) est synchrone à l'intérieur d'une
+  // fonction async, ce qui rend peu fiable toute tentative de ré-afficher/
+  // fermer la modale APRÈS un clic programmatique sur son bouton.
+  if (opts.quickDirectSell) {
+    const sellPrice = priceMin ?? directPrice
+    if (confirm(`Vendre cette carte immédiatement pour ${sellPrice.toLocaleString('fr')} crédits ? Cette action est irréversible.`)) {
+      await supabase.from('market_listings').delete().eq('card_id', card.id)
+      await supabase.from('transfer_history').delete().eq('card_id', card.id)
+      const { error } = await supabase.from('cards').delete().eq('id', card.id)
+      if (error) { toast(error.message, 'error'); return }
+      await supabase.from('users').update({ credits: (state.profile.credits || 0) + sellPrice }).eq('id', state.profile.id)
+      await refreshProfile()
+      toast(`+${sellPrice.toLocaleString('fr')} crédits ! Carte vendue.`, 'success')
+      navigate('collection')
+    }
+    return
+  }
+
   // Règles revente marché : toutes raretés vendables (y compris Légende)
   const canMarket = true
 
@@ -1272,6 +1336,15 @@ async function openCardDetail(card, allPlayerCards, countByPlayer, ctx, opts = {
       updatePanel()
     })
   })
+
+  // Ouverture via le bouton Ⓜ️ sur la carte : amène directement le regard
+  // sur le panneau "Mettre cette carte en vente", sans rien pré-remplir de
+  // spécial (contrairement à autoEvolve qui pré-sélectionne des cases).
+  if (opts.openSellPanel) {
+    requestAnimationFrame(() => {
+      document.getElementById('single-sell-price')?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+    })
+  }
 
   // Ouverture via le bouton doré "Faire évoluer" : on coche d'office tous
   // les exemplaires EN TROP (jamais l'exemplaire principal, qui est celui

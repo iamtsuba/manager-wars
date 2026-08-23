@@ -637,7 +637,7 @@ export async function renderCollection(container, ctx) {
     // countByPlayer, ne jamais s'appuyer sur ce paramètre pour le badge.
     var cnt = card && !card._fake ? (countByPlayer[card.player && card.player.id] || 1) : 0
     var badge = cnt > 1
-      ? '<div style="position:absolute;top:6px;right:6px;background:#1A6B3C;color:#fff;border-radius:10px;font-size:11px;font-weight:900;padding:2px 7px;z-index:20;box-shadow:0 1px 4px rgba(0,0,0,0.4)">×' + cnt + '</div>'
+      ? '<div data-dup-badge="1" style="position:absolute;top:6px;right:6px;background:#1A6B3C;color:#fff;border-radius:10px;font-size:11px;font-weight:900;padding:2px 7px;z-index:20;box-shadow:0 1px 4px rgba(0,0,0,0.4)">×' + cnt + '</div>'
       : ''
     // zoom affecte le layout → wrapper s'adapte automatiquement à la vraie taille de la carte
     return '<div style="display:inline-block;position:relative;zoom:' + SCALE + ';pointer-events:none;line-height:0">' + badge + inner + '</div>'
@@ -727,7 +727,7 @@ export async function renderCollection(container, ctx) {
         deduped,
         (card) => {
           const count = countByPlayer[card.player.id] || 1
-          const badge = count > 1 ? `<div style="position:absolute;top:-10px;right:-10px;background:#1A6B3C;color:#fff;border-radius:12px;font-size:11px;font-weight:800;padding:3px 8px;z-index:20;box-shadow:0 2px 5px rgba(0,0,0,0.4);border:1.5px solid #fff">×${count}</div>` : ''
+          const badge = count > 1 ? `<div data-dup-badge="1" style="position:absolute;top:-10px;right:-10px;background:#1A6B3C;color:#fff;border-radius:12px;font-size:11px;font-weight:800;padding:3px 8px;z-index:20;box-shadow:0 2px 5px rgba(0,0,0,0.4);border:1.5px solid #fff">×${count}</div>` : ''
           const forSale = playerCards.filter(c => c.player.id === card.player.id && c.is_for_sale).length
           const saleBadge = forSale > 0 ? `<div style="position:absolute;top:4px;left:4px;background:#D4A017;color:#fff;border-radius:10px;font-size:9px;font-weight:700;padding:1px 5px;z-index:3">🏷️</div>` : ''
           return renderCard(card, badge + saleBadge, count, { showQuickActions: true })
@@ -773,7 +773,7 @@ export async function renderCollection(container, ctx) {
       ({type, gc, def, owned, card}) => {
         const displayName = def?.name || type
         const count  = owned ? gcCards.filter(c=>c.gc_type===type).length : 0
-        const badge  = count>1?`<div style="position:absolute;top:8px;right:8px;background:#3d0a7a;color:#fff;border-radius:10px;font-size:10px;font-weight:700;padding:2px 8px;z-index:3">×${count}</div>`:''
+        const badge  = count>1?`<div data-dup-badge="1" style="position:absolute;top:8px;right:8px;background:#3d0a7a;color:#fff;border-radius:10px;font-size:10px;font-weight:700;padding:2px 8px;z-index:3">×${count}</div>`:''
         const effect = def?.effect||gc.desc||''
         const imgUrl = def?.image_url ? `${import.meta.env.BASE_URL}icons/${def.image_url}` : (def?.club?.logo_url || (def?.country_code ? `https://flagsapi.com/${def.country_code.slice(0,2).toUpperCase()}/flat/64.png` : null))
         let html = renderGCCard(displayName, imgUrl, gc.icon, effect, { width: 160, onClick: owned })
@@ -818,7 +818,7 @@ export async function renderCollection(container, ctx) {
         const imgUrl = def?.image_url
         ? `${BASE2}icons/${def.image_url}`
         : (def?.club?.logo_url || (def?.country_code ? `https://flagsapi.com/${def.country_code.slice(0,2).toUpperCase()}/flat/64.png` : null))
-        const badge = count>1 ? `<div style="position:absolute;top:8px;right:8px;background:#333;color:#fff;border-radius:10px;font-size:10px;font-weight:700;padding:2px 8px;z-index:3">×${count}</div>` : ''
+        const badge = count>1 ? `<div data-dup-badge="1" style="position:absolute;top:8px;right:8px;background:#333;color:#fff;border-radius:10px;font-size:10px;font-weight:700;padding:2px 8px;z-index:3">×${count}</div>` : ''
         const desc = `${label}<br>+10 ⭐ joueurs alliés`
         return `<div style="position:relative">${badge}${renderStadiumCard(name, imgUrl, desc, { width: 160 })}</div>`
       },

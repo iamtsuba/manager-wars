@@ -630,7 +630,7 @@ export async function renderCollection(container, ctx) {
     repaint()
   }
 
-  function miniPlayerCard(card, count) {
+  function miniPlayerCard(card, isSel) {
     var SCALE = window.innerWidth >= 768 ? 0.76 : 0.54
     var inner
     if (!card || card._fake) {
@@ -640,9 +640,12 @@ export async function renderCollection(container, ctx) {
     } else {
       inner = renderCard(card, '')
     }
-    var cnt = count || (card && !card._fake ? countByPlayer[card.player && card.player.id] || 1 : 0)
-    var badge = cnt > 0
-      ? '<div style="position:absolute;top:6px;right:6px;background:#1A6B3C;color:#fff;border-radius:10px;font-size:11px;font-weight:900;padding:2px 7px;z-index:3;box-shadow:0 1px 4px rgba(0,0,0,0.4)">×' + cnt + '</div>'
+    // NOTE : le 2e argument (isSel) est un booléen "carte sélectionnée",
+    // PAS un nombre de doublons — toujours calculer le vrai compte via
+    // countByPlayer, ne jamais s'appuyer sur ce paramètre pour le badge.
+    var cnt = card && !card._fake ? (countByPlayer[card.player && card.player.id] || 1) : 0
+    var badge = cnt > 1
+      ? '<div style="position:absolute;top:6px;right:6px;background:#1A6B3C;color:#fff;border-radius:10px;font-size:11px;font-weight:900;padding:2px 7px;z-index:20;box-shadow:0 1px 4px rgba(0,0,0,0.4)">×' + cnt + '</div>'
       : ''
     // zoom affecte le layout → wrapper s'adapte automatiquement à la vraie taille de la carte
     return '<div style="display:inline-block;position:relative;zoom:' + SCALE + ';pointer-events:none;line-height:0">' + badge + inner + '</div>'
@@ -732,7 +735,7 @@ export async function renderCollection(container, ctx) {
         deduped,
         (card) => {
           const count = countByPlayer[card.player.id] || 1
-          const badge = count > 1 ? `<div style="position:absolute;top:-10px;right:-10px;background:#1A6B3C;color:#fff;border-radius:12px;font-size:11px;font-weight:800;padding:3px 8px;z-index:3;box-shadow:0 2px 5px rgba(0,0,0,0.4);border:1.5px solid #fff">×${count}</div>` : ''
+          const badge = count > 1 ? `<div style="position:absolute;top:-10px;right:-10px;background:#1A6B3C;color:#fff;border-radius:12px;font-size:11px;font-weight:800;padding:3px 8px;z-index:20;box-shadow:0 2px 5px rgba(0,0,0,0.4);border:1.5px solid #fff">×${count}</div>` : ''
           const forSale = playerCards.filter(c => c.player.id === card.player.id && c.is_for_sale).length
           const saleBadge = forSale > 0 ? `<div style="position:absolute;top:4px;left:4px;background:#D4A017;color:#fff;border-radius:10px;font-size:9px;font-weight:700;padding:1px 5px;z-index:3">🏷️</div>` : ''
           return renderCard(card, badge + saleBadge, count, { showQuickActions: true })
@@ -1048,16 +1051,27 @@ async function openCardDetail(card, allPlayerCards, countByPlayer, ctx, opts = {
   // fermer la modale APRÈS un clic programmatique sur son bouton.
   if (opts.quickDirectSell) {
     const sellPrice = priceMin ?? directPrice
-    if (confirm(`Vendre cette carte immédiatement pour ${sellPrice.toLocaleString('fr')} crédits ? Cette action est irréversible.`)) {
-      await supabase.from('market_listings').delete().eq('card_id', card.id)
-      await supabase.from('transfer_history').delete().eq('card_id', card.id)
-      const { error } = await supabase.from('cards').delete().eq('id', card.id)
-      if (error) { toast(error.message, 'error'); return }
-      await supabase.from('users').update({ credits: (state.profile.credits || 0) + sellPrice }).eq('id', state.profile.id)
-      await refreshProfile()
-      toast(`+${sellPrice.toLocaleString('fr')} crédits ! Carte vendue.`, 'success')
-      navigate('collection')
-    }
+    openModal(
+      '⚡ Vente directe',
+      `<p style="margin:0 0 8px 0">Voulez-vous vendre directement cette carte pour <strong>${sellPrice.toLocaleString('fr')} crédits</strong> ?</p>
+       <p style="margin:0;color:var(--gray-600);font-size:13px">Cette action est irréversible.</p>`,
+      `<button class="btn btn-ghost" id="qds-cancel">Annuler</button>
+       <button class="btn btn-primary" id="qds-confirm">✅ Confirmer la vente</button>`
+    )
+    setTimeout(() => {
+      document.getElementById('qds-cancel')?.addEventListener('click', closeModal)
+      document.getElementById('qds-confirm')?.addEventListener('click', async () => {
+        await supabase.from('market_listings').delete().eq('card_id', card.id)
+        await supabase.from('transfer_history').delete().eq('card_id', card.id)
+        const { error } = await supabase.from('cards').delete().eq('id', card.id)
+        if (error) { toast(error.message, 'error'); closeModal(); return }
+        await supabase.from('users').update({ credits: (state.profile.credits || 0) + sellPrice }).eq('id', state.profile.id)
+        await refreshProfile()
+        toast(`+${sellPrice.toLocaleString('fr')} crédits ! Carte vendue.`, 'success')
+        closeModal()
+        navigate('collection')
+      })
+    }, 30)
     return
   }
 

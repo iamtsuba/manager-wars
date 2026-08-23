@@ -95,7 +95,7 @@ export async function renderTutorialAdminV2(container, { toast, openModal, close
     const { data, error } = await supabase
       .from('tutorial_steps_v2')
       .select('*')
-      .order('created_at', { ascending: false })
+      .order('step_number', { ascending: false })
 
     if (error) {
       toast(`Erreur chargement: ${error.message}`, 'error')

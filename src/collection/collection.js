@@ -65,32 +65,23 @@ function ensureQuickActionStyles() {
       0%,100% { box-shadow:0 0 6px rgba(212,160,23,0.7), 0 0 14px rgba(212,160,23,0.45) }
       50%     { box-shadow:0 0 12px rgba(212,160,23,1),  0 0 26px rgba(212,160,23,0.75) }
     }
-    /* Les 3 boutons (marché / évoluer / vente directe) forment un groupe
-       flex centré en bas de la carte — ils collent naturellement les uns
-       aux autres quelle que soit la largeur variable de "Faire évoluer",
-       sans calcul de décalage fragile. */
+    /* Les 3 boutons (marché / évoluer / vente directe) empilés verticalement
+       à droite de la carte, hors de son cadre. */
     .big-action-row {
-      position:absolute; left:50%; bottom:2%; transform:translateX(-50%);
-      z-index:12; display:flex; align-items:center; gap:6px;
+      position:absolute; top:50%; right:-42px; transform:translateY(-50%);
+      z-index:12; display:flex; flex-direction:column; align-items:center; gap:8px;
     }
-    .big-evolve-btn {
-      white-space:nowrap; cursor:pointer;
-      background:linear-gradient(135deg,#f6d365,#D4A017 45%,#f0c040);
-      color:#1a1a1a; border:1px solid #ffe9a8; border-radius:999px;
-      font-weight:900; font-size:9px; letter-spacing:.3px;
-      padding:4px 10px; animation:bigEvolveGlow 1.8s ease-in-out infinite;
-    }
-    .big-evolve-btn:hover { filter:brightness(1.08) }
-    .big-quicksell-btn, .big-market-btn {
+    .big-evolve-btn, .big-quicksell-btn, .big-market-btn {
       cursor:pointer; flex-shrink:0;
-      width:28px; height:28px; border-radius:50%; padding:0;
+      width:32px; height:32px; border-radius:50%; padding:0;
       display:flex; align-items:center; justify-content:center;
       background:linear-gradient(135deg,#f6d365,#D4A017 45%,#f0c040);
       border:1px solid #ffe9a8; box-shadow:0 2px 6px rgba(0,0,0,0.35);
+      color:#1a1a1a; font-size:15px;
     }
-    .big-quicksell-btn { color:#1a1a1a; font-size:14px; }
-    .big-market-btn img { width:16px; height:16px; object-fit:contain; }
-    .big-quicksell-btn:hover, .big-market-btn:hover { filter:brightness(1.08) }
+    .big-evolve-btn { animation:bigEvolveGlow 1.8s ease-in-out infinite; }
+    .big-market-btn img { width:17px; height:17px; object-fit:contain; }
+    .big-evolve-btn:hover, .big-quicksell-btn:hover, .big-market-btn:hover { filter:brightness(1.08) }
   `
   document.head.appendChild(style)
 }
@@ -106,14 +97,14 @@ function renderCard(card, countBadge = '', copies = 1, opts = {}) {
   // légèrement décalées.
   const badge = countBadge || ''
   // Bouton "Faire évoluer" : uniquement si des exemplaires en trop existent
-  // (il faut au moins 2 cartes du joueur pour fusionner).
+  // (il faut au moins 2 cartes du joueur pour fusionner). Icône seule, sans
+  // texte, pour rester cohérent visuellement avec les 2 autres boutons.
   const evolveBtn = copies > 1 ? `
     <button type="button" class="big-evolve-btn" data-evolve-card="${card.id}"
-      title="Fusionner les ${copies - 1} exemplaire(s) en trop">⬆️ Faire évoluer</button>` : ''
+      title="Faire évoluer (fusionner les ${copies - 1} exemplaire(s) en trop)">⬆️</button>` : ''
   // Actions rapides : uniquement pour la grande carte mise en avant
   // (opts.showQuickActions) — jamais sur les mini-cartes du bandeau du bas.
-  // Groupées avec "Faire évoluer" dans une même rangée flex centrée, pour
-  // coller immédiatement à ses côtés (marché à gauche, vente directe à droite).
+  // Empilées verticalement à droite de la carte : marché, évoluer, vente directe.
   let actionRow = ''
   if (opts.showQuickActions) {
     ensureQuickActionStyles()
@@ -128,7 +119,8 @@ function renderCard(card, countBadge = '', copies = 1, opts = {}) {
       </div>`
   } else if (evolveBtn) {
     // Contexte sans actions rapides (mini-cartes) : "Faire évoluer" garde
-    // son ancien positionnement centré simple, sans les boutons additionnels.
+    // sa propre colonne, seul, à droite de la carte.
+    ensureQuickActionStyles()
     actionRow = `<div class="big-action-row">${evolveBtn}</div>`
   }
   return `<div style="position:relative;display:inline-block;cursor:pointer" data-card-id="${card.id}">

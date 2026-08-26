@@ -116,7 +116,7 @@ async function loadMarket(container, ctx) {
     @media (max-height: 500px) and (orientation: landscape) {
       #mkt-outer {
         display: grid !important;
-        grid-template-columns: 150px 1fr;
+        grid-template-columns: 170px 1fr;
         grid-template-rows: auto auto 1fr;
         height: 100% !important; overflow: hidden !important;
       }
@@ -137,9 +137,17 @@ async function loadMarket(container, ctx) {
         border-bottom: none !important; border-right: 1px solid var(--tile-border) !important;
         overflow-y: auto !important; padding: 8px !important;
       }
-      #mkt-filters input, #mkt-filters select { width: 100% !important; box-sizing: border-box !important; }
-      #mkt-filters > div { flex-direction: column !important; width: 100% !important; }
-      #mkt-filters .mkt-own-btn { width: 100% !important; }
+      #mkt-filters input, #mkt-filters select {
+        width: 100% !important; min-width: 0 !important; box-sizing: border-box !important;
+        font-size: 11px !important; padding: 5px 6px !important;
+      }
+      #mkt-filters > div { flex-direction: column !important; width: 100% !important; gap: 6px !important; }
+      #mkt-filters .mkt-own-btn {
+        width: 100% !important; min-width: 0 !important; box-sizing: border-box !important;
+        font-size: 10px !important; padding: 5px 4px !important; white-space: normal !important;
+        text-align: center !important; line-height: 1.2 !important;
+      }
+      #mkt-filters { gap: 6px !important; }
       #mkt-content {
         grid-column: 2 !important; grid-row: 3 !important;
         overflow-y: auto !important; padding: 8px 12px !important;

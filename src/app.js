@@ -429,6 +429,14 @@ async function init() {
   }
 
   launchApp()
+
+  // Plein écran automatique au lancement (mobile uniquement, si pas déjà en FS)
+  if (window.innerWidth < 1024 && !document.fullscreenElement) {
+    const el = document.documentElement
+    const req = el.requestFullscreen?.() || el.webkitRequestFullscreen?.()
+    if (req) req.catch?.(() => {})
+  }
+
   // Tutoriel première connexion (après rendu de la home), ou forcé si lancé
   // depuis le bouton "Voir le tutoriel" de la page publique (?tutorial=1)
   const wantsTutorial = new URLSearchParams(location.search).get('tutorial') === '1'
@@ -945,3 +953,4 @@ setTimeout(() => {
     showBootError("Le serveur met trop de temps à répondre.")
   }
 }, 12000)
+

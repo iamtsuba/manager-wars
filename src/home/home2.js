@@ -160,6 +160,69 @@ export function ensureV2Chrome(navigate, p, activeRouteKey, ICON, toast) {
         padding-top: 0 !important;
         padding-bottom: 0 !important;
       }
+
+      /* ══════════ PAYSAGE MOBILE (hauteur < 500px) ══════════
+         - Les deux barres (top + bottom) disparaissent
+         - Une barre latérale gauche verticale les remplace
+         - Le contenu prend tout l'espace restant                */
+      @media (max-height: 500px) and (orientation: landscape) {
+        .home2-mobile-top, .home2-mobile-bottom { display: none !important; }
+
+        body:has(#home2-chrome-marker) #page-content {
+          padding-top: 0 !important;
+          padding-bottom: 0 !important;
+          padding-left: 64px !important;
+        }
+
+        /* Barre latérale gauche */
+        #home2-landscape-sidebar {
+          display: flex !important;
+        }
+      }
+
+      /* Barre latérale paysage — masquée par défaut */
+      #home2-landscape-sidebar {
+        display: none;
+        position: fixed;
+        top: 0; left: 0; bottom: 0;
+        width: 64px;
+        z-index: 500;
+        flex-direction: column;
+        align-items: center;
+        justify-content: space-between;
+        background: #05080a;
+        border-right: 1px solid rgba(255,255,255,0.1);
+        padding: 8px 0 calc(8px + env(safe-area-inset-bottom, 0px));
+        box-sizing: border-box;
+        overflow: hidden;
+      }
+      #home2-landscape-sidebar .ls-logo img {
+        width: 44px; height: auto;
+      }
+      #home2-landscape-sidebar .ls-tabs {
+        display: flex; flex-direction: column; gap: 4px; align-items: center;
+      }
+      #home2-landscape-sidebar .ls-tab {
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+        width: 52px; padding: 6px 4px; border-radius: 12px; cursor: pointer;
+        font-size: 8px; font-weight: 700; color: rgba(255,255,255,0.55);
+        text-transform: uppercase; letter-spacing: 0.5px; gap: 3px;
+        text-decoration: none;
+      }
+      #home2-landscape-sidebar .ls-tab img { width: 24px; height: 24px; object-fit: contain; opacity: .7; }
+      #home2-landscape-sidebar .ls-tab.active { background: var(--green); color: #fff; }
+      #home2-landscape-sidebar .ls-tab.active img { opacity: 1; }
+      #home2-landscape-sidebar .ls-actions {
+        display: flex; flex-direction: column; align-items: center; gap: 6px;
+      }
+      #home2-landscape-sidebar .ls-pill {
+        display: flex; align-items: center; justify-content: center;
+        width: 38px; height: 38px; border-radius: 50%;
+        background: rgba(255,255,255,0.06); border: 1px solid var(--tile-border);
+        font-size: 15px; cursor: pointer; color: #f2c94c; font-weight: 800;
+      }
+      #home2-landscape-sidebar .ls-pill:hover { background: rgba(255,255,255,0.12); }
+      #home2-landscape-sidebar .ls-pill.ls-credits { font-size: 11px; }
     `
     document.head.appendChild(style)
   }
@@ -238,6 +301,44 @@ export function ensureV2Chrome(navigate, p, activeRouteKey, ICON, toast) {
     document.body.appendChild(bottomBar)
   }
 
+  // ── Barre latérale paysage mobile ──
+  if (!document.getElementById('home2-landscape-sidebar')) {
+    const sidebar = document.createElement('div')
+    sidebar.id = 'home2-landscape-sidebar'
+    sidebar.innerHTML = `
+      <div class="ls-logo"><img src="${ICON}logo.png" alt="MW"></div>
+      <div class="ls-tabs">
+        ${V2_TABS.filter(t => t.key !== 'game').map(t => `
+          <a class="ls-tab home2-chrome-tab" data-route="${t.route}" data-key="${t.key}">
+            ${t.icon ? `<img src="${ICON}${t.icon}">` : `<span style="font-size:20px">${t.emoji}</span>`}
+            ${t.label}
+          </a>`).join('')}
+      </div>
+      <div class="ls-actions">
+        <div class="ls-pill ls-credits" id="home2-ls-credits">💰</div>
+        <div class="ls-pill" id="home2-ls-settings" title="Paramètres">⚙️</div>
+        <div class="ls-pill" id="home2-ls-fs" title="Plein écran">⛶</div>
+      </div>
+    `
+    document.body.appendChild(sidebar)
+    sidebar.querySelector('#home2-ls-settings').addEventListener('click', () => navigate('settings'))
+    sidebar.querySelector('#home2-ls-credits').addEventListener('click', () => openCreditsAdOffer(p, toast))
+    sidebar.querySelector('#home2-ls-fs').addEventListener('click', () => {
+      const el = document.documentElement
+      if (!document.fullscreenElement) {
+        const req = el.requestFullscreen?.() || el.webkitRequestFullscreen?.()
+        if (req) req.catch?.(() => {})
+      } else {
+        const exit = document.exitFullscreen?.() || document.webkitExitFullscreen?.()
+        if (exit) exit.catch?.(() => {})
+      }
+    })
+    document.addEventListener('fullscreenchange', () => {
+      const btn = document.getElementById('home2-ls-fs')
+      if (btn) btn.textContent = document.fullscreenElement ? '✕' : '⛶'
+    })
+  }
+
   // Un seul gestionnaire de clic pour tous les onglets (PC + mobile)
   document.querySelectorAll('.home2-chrome-tab').forEach(tab => {
     if (tab._v2Bound) return
@@ -254,6 +355,7 @@ export function ensureV2Chrome(navigate, p, activeRouteKey, ICON, toast) {
   const credAmount = `💰 ${(p.credits||0).toLocaleString('fr')}`
   document.getElementById('home2-chrome-credits') && (document.getElementById('home2-chrome-credits').textContent = credAmount)
   document.getElementById('home2-mobtop-credits') && (document.getElementById('home2-mobtop-credits').textContent = credAmount)
+  document.getElementById('home2-ls-credits') && (document.getElementById('home2-ls-credits').textContent = credAmount)
 
   // Réaffiche le bandeau (annule un éventuel hideV2ChromeNow() laissé par une navigation précédente vers un match)
   document.body.classList.remove('v2-match-flow')
@@ -506,8 +608,10 @@ export function syncV2Credits(amount) {
   const label = `💰 ${(amount||0).toLocaleString('fr')}`
   const el1 = document.getElementById('home2-chrome-credits')
   const el2 = document.getElementById('home2-mobtop-credits')
+  const el3 = document.getElementById('home2-ls-credits')
   if (el1) el1.textContent = label
   if (el2) el2.textContent = label
+  if (el3) el3.textContent = label
 }
 
 export function hideV2ChromeNow() {

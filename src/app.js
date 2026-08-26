@@ -102,6 +102,7 @@ function applyTheme(theme) {
 export function navigate(page, params = {}) {
   state.page   = page
   state.params = params
+  document.body.dataset.currentPage = page
   renderPage()
 }
 

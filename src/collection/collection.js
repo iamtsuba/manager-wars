@@ -531,7 +531,7 @@ export async function renderCollection(container, ctx) {
       }
       // Retour au mode normal : masquer la grille paysage, réafficher big+strip
       if (lgGrid) lgGrid.style.display = 'none'
-      bigZone.style.display = ''
+      bigZone.style.display = 'flex'
       const gapElShow = document.getElementById('col-gap')
       if (gapElShow) gapElShow.style.display = ''
       const wrapShow = document.getElementById('col-grid-wrap')

@@ -6,6 +6,12 @@ import { renderGCCard, renderStadiumCard, renderFormationCard as renderFormation
 import { getPortrait } from '../lib/portrait.js'
 import { ensureV2Chrome } from '../home/home2.js'
 
+// Paysage mobile : hauteur d'écran réduite + orientation paysage.
+// Utilisé pour basculer la Collection en grille 3 lignes swipeable.
+function isLandscapeMobile() {
+  return window.matchMedia('(max-height: 500px) and (orientation: landscape)').matches
+}
+
 // ── Constantes ─────────────────────────────────────────────
 const RAR_COLORS  = { normal:'#ccc', pepite:'#D4A017', papyte:'#909090', legende:'#7a28b8' }
 const JOB_COLORS  = { GK:'#111111', DEF:'#bb2020', MIL:'#D4A017', ATT:'#1A6B3C' }
@@ -50,83 +56,36 @@ function getNote(p, job) {
 }
 
 // ── Rendu d'une carte joueur ──────────────────────────────
-// Styles des actions rapides (⚡ vente directe, marché) injectés UNE SEULE
-// FOIS, jamais répétés dans le HTML de chaque carte — répéter un <style>
-// identique par instance de carte causait des conflits de cascade CSS
-// (le dernier bloc injecté dans le DOM écrasait le positionnement de TOUS
-// les autres, y compris sur les mini-cartes du bandeau où ces boutons ne
-// doivent même pas apparaître).
-function ensureQuickActionStyles() {
-  if (document.getElementById('col-quickaction-styles')) return
-  const style = document.createElement('style')
-  style.id = 'col-quickaction-styles'
-  style.textContent = `
-    @keyframes bigEvolveGlow {
-      0%,100% { box-shadow:0 0 6px rgba(212,160,23,0.7), 0 0 14px rgba(212,160,23,0.45) }
-      50%     { box-shadow:0 0 12px rgba(212,160,23,1),  0 0 26px rgba(212,160,23,0.75) }
-    }
-    /* Les 3 boutons (marché / évoluer / vente directe) empilés verticalement
-       à droite de la carte, hors de son cadre. */
-    .big-action-row {
-      position:absolute; top:50%; right:-42px; transform:translateY(-50%);
-      z-index:12; display:flex; flex-direction:column; align-items:center; gap:8px;
-    }
-    .big-evolve-btn, .big-quicksell-btn, .big-market-btn {
-      cursor:pointer; flex-shrink:0;
-      width:32px; height:32px; border-radius:50%; padding:0;
-      display:flex; align-items:center; justify-content:center;
-      background:linear-gradient(135deg,#f6d365,#D4A017 45%,#f0c040);
-      border:1px solid #ffe9a8; box-shadow:0 2px 6px rgba(0,0,0,0.35);
-      color:#1a1a1a; font-size:15px;
-    }
-    .big-evolve-btn { animation:bigEvolveGlow 1.8s ease-in-out infinite; }
-    .big-market-btn img { width:17px; height:17px; object-fit:contain; }
-    .big-evolve-btn:hover, .big-quicksell-btn:hover, .big-market-btn:hover { filter:brightness(1.08) }
-  `
-  document.head.appendChild(style)
-}
-
-function renderCard(card, countBadge = '', copies = 1, opts = {}) {
+function renderCard(card, countBadge = '', copies = 1) {
   const p = card.player
   if (!p) return ''
   const evo = card.evolution_bonus || 0
   const player = { ...p, _evolution_bonus: evo }
-  // NOTE : countBadge est déjà un <div> entièrement positionné construit par
-  // l'appelant (top/right propres) — ne JAMAIS le ré-envelopper dans un
-  // second conteneur absolu ici, sinon on obtient deux boîtes superposées
-  // légèrement décalées.
-  const badge = countBadge || ''
+  const badge = countBadge ? `<div style="position:absolute;top:6px;right:6px;z-index:10;background:#0a3d1e;color:#fff;border-radius:10px;font-size:10px;font-weight:700;padding:2px 7px">${countBadge}</div>` : ''
   // Bouton "Faire évoluer" : uniquement si des exemplaires en trop existent
-  // (il faut au moins 2 cartes du joueur pour fusionner). Icône seule, sans
-  // texte, pour rester cohérent visuellement avec les 2 autres boutons.
+  // (il faut au moins 2 cartes du joueur pour fusionner).
   const evolveBtn = copies > 1 ? `
+    <style>
+      @keyframes bigEvolveGlow {
+        0%,100% { box-shadow:0 0 6px rgba(212,160,23,0.7), 0 0 14px rgba(212,160,23,0.45) }
+        50%     { box-shadow:0 0 12px rgba(212,160,23,1),  0 0 26px rgba(212,160,23,0.75) }
+      }
+      .big-evolve-btn {
+        position:absolute; left:50%; bottom:2%; transform:translateX(-50%);
+        z-index:12; white-space:nowrap; cursor:pointer;
+        background:linear-gradient(135deg,#f6d365,#D4A017 45%,#f0c040);
+        color:#1a1a1a; border:1px solid #ffe9a8; border-radius:999px;
+        font-weight:900; font-size:9px; letter-spacing:.3px;
+        padding:4px 10px; animation:bigEvolveGlow 1.8s ease-in-out infinite;
+      }
+      .big-evolve-btn:hover { filter:brightness(1.08) }
+    </style>
     <button type="button" class="big-evolve-btn" data-evolve-card="${card.id}"
-      title="Faire évoluer (fusionner les ${copies - 1} exemplaire(s) en trop)">⬆️</button>` : ''
-  // Actions rapides : uniquement pour la grande carte mise en avant
-  // (opts.showQuickActions) — jamais sur les mini-cartes du bandeau du bas.
-  // Empilées verticalement à droite de la carte : marché, évoluer, vente directe.
-  let actionRow = ''
-  if (opts.showQuickActions) {
-    ensureQuickActionStyles()
-    const marketIcon = `${import.meta.env.BASE_URL}icons/nav-market.png`
-    actionRow = `
-      <div class="big-action-row">
-        <button type="button" class="big-market-btn" data-market-card="${card.id}"
-          title="Mettre en vente sur le marché"><img src="${marketIcon}" alt="Marché"></button>
-        ${evolveBtn}
-        <button type="button" class="big-quicksell-btn" data-quicksell-card="${card.id}"
-          title="Vente directe immédiate">⚡</button>
-      </div>`
-  } else if (evolveBtn) {
-    // Contexte sans actions rapides (mini-cartes) : "Faire évoluer" garde
-    // sa propre colonne, seul, à droite de la carte.
-    ensureQuickActionStyles()
-    actionRow = `<div class="big-action-row">${evolveBtn}</div>`
-  }
+      title="Fusionner les ${copies - 1} exemplaire(s) en trop">⬆️ Faire évoluer</button>` : ''
   return `<div style="position:relative;display:inline-block;cursor:pointer" data-card-id="${card.id}">
     ${badge}
     ${renderPlayerCard(player, { width: 140, context: 'collection' })}
-    ${actionRow}
+    ${evolveBtn}
   </div>`
 }
 // ── Rendu d'une carte joueur MANQUANTE (grisée, non possédée) ──
@@ -246,9 +205,40 @@ export async function renderCollection(container, ctx) {
   }
 
   container.innerHTML = `
-  <div class="page" style="display:flex;flex-direction:column;height:100%;overflow:hidden">
+  <style>
+    /* ══ Paysage mobile : tabs+filtres en sidebar gauche fixe, grille 3 lignes à droite ══ */
+    @media (max-height: 500px) and (orientation: landscape) {
+      #col-page { flex-direction: row !important; overflow: hidden !important; }
+      #col-tabs {
+        flex-direction: column !important; border-bottom: none !important;
+        border-right: 1px solid var(--tile-border) !important;
+        width: 64px !important; flex-shrink: 0 !important; overflow-y: auto !important;
+      }
+      #col-tabs .col-tab-btn {
+        flex: none !important; width: 64px !important; padding: 8px 2px !important;
+        border-bottom: none !important; border-right: 3px solid transparent !important; font-size: 9px !important;
+      }
+      #col-filters {
+        width: 130px !important; flex-shrink: 0 !important; flex-direction: column !important;
+        border-bottom: none !important; border-right: 1px solid var(--tile-border) !important;
+        overflow-y: auto !important; padding: 8px !important;
+      }
+      #col-filters input { width: 100% !important; box-sizing: border-box !important; }
+      #col-filters > div { flex-direction: column !important; overflow-x: visible !important; align-items: stretch !important; }
+      #col-filters .filter-btn, #col-filters button { width: 100% !important; margin-left: 0 !important; }
+      #col-big, #col-gap, #col-grid-wrap { display: none !important; }
+      #col-landscape-grid {
+        display: grid !important; flex: 1; min-width: 0;
+        grid-template-rows: repeat(3, 1fr); grid-auto-flow: column; grid-auto-columns: max-content;
+        gap: 6px; padding: 8px; overflow-x: auto; overflow-y: hidden;
+        align-items: center; scrollbar-width: none;
+      }
+      #col-landscape-grid::-webkit-scrollbar { display: none; }
+    }
+  </style>
+  <div class="page" id="col-page" style="display:flex;flex-direction:column;height:100%;overflow:hidden">
     <!-- Onglets avec compteurs -->
-    <div style="display:flex;border-bottom:2px solid var(--tile-border);background:var(--tile-bg)">
+    <div id="col-tabs" style="display:flex;border-bottom:2px solid var(--tile-border);background:var(--tile-bg)">
       <button class="col-tab-btn" data-tab="player" style="flex:1;padding:10px 4px;border:none;background:none;cursor:pointer;
         border-bottom:3px solid ${activeTab==='player'?'var(--green)':'transparent'};
         color:${activeTab==='player'?'var(--green)':'var(--tile-fg-dim)'}">
@@ -281,9 +271,10 @@ export async function renderCollection(container, ctx) {
     <!-- Grande carte + strip -->
     <div id="col-big" style="display:flex;justify-content:center;align-items:center;padding:0 16px;overflow:visible"></div>
     <div id="col-gap" style="flex-shrink:0;height:0"></div>
-    <div style="flex-shrink:0;padding:0">
+    <div id="col-grid-wrap" style="flex-shrink:0;padding:0">
       <div id="col-grid" style="display:flex;overflow-x:auto;gap:8px;padding:0 16px;-webkit-overflow-scrolling:touch;scrollbar-width:none;align-items:center"></div>
     </div>
+    <div id="col-landscape-grid" style="display:none"></div>
   </div>`
 
   // Sur PC (souris sans molette horizontale/tactile) il n'y a sinon aucun
@@ -491,10 +482,48 @@ export async function renderCollection(container, ctx) {
     borderColor = borderColor || '#7a28b8'
     const grid    = document.getElementById('col-grid')
     const bigZone = document.getElementById('col-big')
+    const lgGrid  = document.getElementById('col-landscape-grid')
     if (!grid || !bigZone) return
     var sel = 0
 
+    // ── Paysage mobile : grille 3 lignes swipeable, aucune "grande carte".
+    // Chemin totalement séparé du calcul de pixels ci-dessous — ne touche
+    // à aucune mesure ni style du mode portrait/PC.
+    function repaintLandscape() {
+      if (lgGrid) lgGrid.style.display = 'grid'
+      if (!items.length) {
+        if (lgGrid) lgGrid.innerHTML = '<div style="color:var(--tile-fg-dim);padding:20px;white-space:nowrap">Aucune carte.</div>'
+        return
+      }
+      lgGrid.innerHTML = items.map(function(item, i) {
+        return '<div class="col-lg-item" data-idx="' + i + '" style="cursor:pointer;line-height:0">' + renderMiniFn(item, false) + '</div>'
+      }).join('')
+      lgGrid.querySelectorAll('.col-lg-item').forEach(function(el) {
+        el.addEventListener('click', function() {
+          onBigClick(items[Number(el.dataset.idx)])
+        })
+      })
+    }
+
     function repaint() {
+      if (isLandscapeMobile()) {
+        // Masque tout le mode big+strip, affiche uniquement la grille paysage
+        bigZone.style.display = 'none'
+        const gapElHide = document.getElementById('col-gap')
+        if (gapElHide) gapElHide.style.display = 'none'
+        const wrapHide = document.getElementById('col-grid-wrap')
+        if (wrapHide) wrapHide.style.display = 'none'
+        repaintLandscape()
+        return
+      }
+      // Retour au mode normal : masquer la grille paysage, réafficher big+strip
+      if (lgGrid) lgGrid.style.display = 'none'
+      bigZone.style.display = ''
+      const gapElShow = document.getElementById('col-gap')
+      if (gapElShow) gapElShow.style.display = ''
+      const wrapShow = document.getElementById('col-grid-wrap')
+      if (wrapShow) wrapShow.style.display = ''
+
       // Ratios exacts demandés (sans espace vide entre les zones) :
       //  Mobile : carte 19%→55% (ratio 36/63) / bande 55%→82% (ratio 27/63)
       //  PC     : carte 16%→66% (ratio 50/71) / bande 66%→87% (ratio 21/71)
@@ -549,20 +578,6 @@ export async function renderCollection(container, ctx) {
       if (evoBtn) evoBtn.addEventListener('click', function(e) {
         e.stopPropagation()
         onBigClick(items[sel], { autoEvolve: true })
-      })
-      // Vente directe rapide (⚡) : ouvre un popup de confirmation avec le
-      // prix déjà calculé, sans passer par le détail complet de la carte.
-      var quickSellBtn = bigZone.querySelector('.big-quicksell-btn')
-      if (quickSellBtn) quickSellBtn.addEventListener('click', function(e) {
-        e.stopPropagation()
-        onBigClick(items[sel], { quickDirectSell: true })
-      })
-      // Mise en vente marché (Ⓜ️) : ouvre le détail directement sur le
-      // panneau "Mettre cette carte en vente".
-      var marketBtn = bigZone.querySelector('.big-market-btn')
-      if (marketBtn) marketBtn.addEventListener('click', function(e) {
-        e.stopPropagation()
-        onBigClick(items[sel], { openSellPanel: true })
       })
       // Auto-scale pour que la carte remplisse EXACTEMENT la zone 5 (déjà
       // fixée en px ci-dessus, donc pas de re-mesure hasardeuse nécessaire).
@@ -622,7 +637,7 @@ export async function renderCollection(container, ctx) {
     repaint()
   }
 
-  function miniPlayerCard(card, isSel) {
+  function miniPlayerCard(card, count) {
     var SCALE = window.innerWidth >= 768 ? 0.76 : 0.54
     var inner
     if (!card || card._fake) {
@@ -632,12 +647,9 @@ export async function renderCollection(container, ctx) {
     } else {
       inner = renderCard(card, '')
     }
-    // NOTE : le 2e argument (isSel) est un booléen "carte sélectionnée",
-    // PAS un nombre de doublons — toujours calculer le vrai compte via
-    // countByPlayer, ne jamais s'appuyer sur ce paramètre pour le badge.
-    var cnt = card && !card._fake ? (countByPlayer[card.player && card.player.id] || 1) : 0
-    var badge = cnt > 1
-      ? '<div data-dup-badge="1" style="position:absolute;top:6px;right:6px;background:#1A6B3C;color:#fff;border-radius:10px;font-size:11px;font-weight:900;padding:2px 7px;z-index:20;box-shadow:0 1px 4px rgba(0,0,0,0.4)">×' + cnt + '</div>'
+    var cnt = count || (card && !card._fake ? countByPlayer[card.player && card.player.id] || 1 : 0)
+    var badge = cnt > 0
+      ? '<div style="position:absolute;top:6px;right:6px;background:#1A6B3C;color:#fff;border-radius:10px;font-size:11px;font-weight:900;padding:2px 7px;z-index:3;box-shadow:0 1px 4px rgba(0,0,0,0.4)">×' + cnt + '</div>'
       : ''
     // zoom affecte le layout → wrapper s'adapte automatiquement à la vraie taille de la carte
     return '<div style="display:inline-block;position:relative;zoom:' + SCALE + ';pointer-events:none;line-height:0">' + badge + inner + '</div>'
@@ -727,10 +739,10 @@ export async function renderCollection(container, ctx) {
         deduped,
         (card) => {
           const count = countByPlayer[card.player.id] || 1
-          const badge = count > 1 ? `<div data-dup-badge="1" style="position:absolute;top:-10px;right:-10px;background:#1A6B3C;color:#fff;border-radius:12px;font-size:11px;font-weight:800;padding:3px 8px;z-index:20;box-shadow:0 2px 5px rgba(0,0,0,0.4);border:1.5px solid #fff">×${count}</div>` : ''
+          const badge = count > 1 ? `<div style="position:absolute;top:4px;right:4px;background:#1A6B3C;color:#fff;border-radius:10px;font-size:9px;font-weight:700;padding:1px 6px;z-index:3">×${count}</div>` : ''
           const forSale = playerCards.filter(c => c.player.id === card.player.id && c.is_for_sale).length
           const saleBadge = forSale > 0 ? `<div style="position:absolute;top:4px;left:4px;background:#D4A017;color:#fff;border-radius:10px;font-size:9px;font-weight:700;padding:1px 5px;z-index:3">🏷️</div>` : ''
-          return renderCard(card, badge + saleBadge, count, { showQuickActions: true })
+          return renderCard(card, badge + saleBadge, count)
         },
         (card) => miniPlayerCard(card),
         (card, opts) => openCardDetail(card, playerCards, countByPlayer, ctx, opts),
@@ -773,7 +785,7 @@ export async function renderCollection(container, ctx) {
       ({type, gc, def, owned, card}) => {
         const displayName = def?.name || type
         const count  = owned ? gcCards.filter(c=>c.gc_type===type).length : 0
-        const badge  = count>1?`<div data-dup-badge="1" style="position:absolute;top:8px;right:8px;background:#3d0a7a;color:#fff;border-radius:10px;font-size:10px;font-weight:700;padding:2px 8px;z-index:3">×${count}</div>`:''
+        const badge  = count>1?`<div style="position:absolute;top:8px;right:8px;background:#3d0a7a;color:#fff;border-radius:10px;font-size:10px;font-weight:700;padding:2px 8px;z-index:3">×${count}</div>`:''
         const effect = def?.effect||gc.desc||''
         const imgUrl = def?.image_url ? `${import.meta.env.BASE_URL}icons/${def.image_url}` : (def?.club?.logo_url || (def?.country_code ? `https://flagsapi.com/${def.country_code.slice(0,2).toUpperCase()}/flat/64.png` : null))
         let html = renderGCCard(displayName, imgUrl, gc.icon, effect, { width: 160, onClick: owned })
@@ -818,7 +830,7 @@ export async function renderCollection(container, ctx) {
         const imgUrl = def?.image_url
         ? `${BASE2}icons/${def.image_url}`
         : (def?.club?.logo_url || (def?.country_code ? `https://flagsapi.com/${def.country_code.slice(0,2).toUpperCase()}/flat/64.png` : null))
-        const badge = count>1 ? `<div data-dup-badge="1" style="position:absolute;top:8px;right:8px;background:#333;color:#fff;border-radius:10px;font-size:10px;font-weight:700;padding:2px 8px;z-index:3">×${count}</div>` : ''
+        const badge = count>1 ? `<div style="position:absolute;top:8px;right:8px;background:#333;color:#fff;border-radius:10px;font-size:10px;font-weight:700;padding:2px 8px;z-index:3">×${count}</div>` : ''
         const desc = `${label}<br>+10 ⭐ joueurs alliés`
         return `<div style="position:relative">${badge}${renderStadiumCard(name, imgUrl, desc, { width: 160 })}</div>`
       },
@@ -857,6 +869,19 @@ export async function renderCollection(container, ctx) {
 
   renderFilters()
   renderCards()
+
+  // Re-rendre au basculement paysage/portrait (listener remplacé à chaque
+  // navigation vers Collection pour éviter l'accumulation).
+  if (window._colOrientationHandler) window.removeEventListener('resize', window._colOrientationHandler)
+  let _colWasLandscape = isLandscapeMobile()
+  window._colOrientationHandler = () => {
+    const nowLandscape = isLandscapeMobile()
+    if (nowLandscape !== _colWasLandscape) {
+      _colWasLandscape = nowLandscape
+      renderCards()
+    }
+  }
+  window.addEventListener('resize', window._colOrientationHandler)
 
   // Flèches scroll
 
@@ -1034,38 +1059,6 @@ async function openCardDetail(card, allPlayerCards, countByPlayer, ctx, opts = {
   const directPrice = priceConfigs?.[0]?.price ?? DIRECT_SELL_PRICE[rarity] ?? 1000
   const priceMin = priceConfigs?.[0]?.price_min ?? null
   const priceMax = priceConfigs?.[0]?.price_max ?? null
-
-  // ── Vente directe rapide (bouton ⚡ sur la carte, sans ouvrir le détail) ──
-  // Reprend exactement la même logique que #single-direct-sell-btn plus bas,
-  // en évitant volontairement le hack "masquer la modale + auto-clic" : la
-  // confirmation native (confirm()) est synchrone à l'intérieur d'une
-  // fonction async, ce qui rend peu fiable toute tentative de ré-afficher/
-  // fermer la modale APRÈS un clic programmatique sur son bouton.
-  if (opts.quickDirectSell) {
-    const sellPrice = priceMin ?? directPrice
-    openModal(
-      '⚡ Vente directe',
-      `<p style="margin:0 0 8px 0">Voulez-vous vendre directement cette carte pour <strong>${sellPrice.toLocaleString('fr')} crédits</strong> ?</p>
-       <p style="margin:0;color:var(--gray-600);font-size:13px">Cette action est irréversible.</p>`,
-      `<button class="btn btn-ghost" id="qds-cancel">Annuler</button>
-       <button class="btn btn-primary" id="qds-confirm">✅ Confirmer la vente</button>`
-    )
-    setTimeout(() => {
-      document.getElementById('qds-cancel')?.addEventListener('click', closeModal)
-      document.getElementById('qds-confirm')?.addEventListener('click', async () => {
-        await supabase.from('market_listings').delete().eq('card_id', card.id)
-        await supabase.from('transfer_history').delete().eq('card_id', card.id)
-        const { error } = await supabase.from('cards').delete().eq('id', card.id)
-        if (error) { toast(error.message, 'error'); closeModal(); return }
-        await supabase.from('users').update({ credits: (state.profile.credits || 0) + sellPrice }).eq('id', state.profile.id)
-        await refreshProfile()
-        toast(`+${sellPrice.toLocaleString('fr')} crédits ! Carte vendue.`, 'success')
-        closeModal()
-        navigate('collection')
-      })
-    }, 30)
-    return
-  }
 
   // Règles revente marché : toutes raretés vendables (y compris Légende)
   const canMarket = true
@@ -1369,15 +1362,6 @@ async function openCardDetail(card, allPlayerCards, countByPlayer, ctx, opts = {
     })
   })
 
-  // Ouverture via le bouton Ⓜ️ sur la carte : amène directement le regard
-  // sur le panneau "Mettre cette carte en vente", sans rien pré-remplir de
-  // spécial (contrairement à autoEvolve qui pré-sélectionne des cases).
-  if (opts.openSellPanel) {
-    requestAnimationFrame(() => {
-      document.getElementById('single-sell-price')?.scrollIntoView({ block: 'center', behavior: 'smooth' })
-    })
-  }
-
   // Ouverture via le bouton doré "Faire évoluer" : on coche d'office tous
   // les exemplaires EN TROP (jamais l'exemplaire principal, qui est celui
   // que l'on fait évoluer) et on affiche directement le panneau.
@@ -1651,3 +1635,4 @@ async function openCardDetail(card, allPlayerCards, countByPlayer, ctx, opts = {
     navigate('collection')
   })
 }
+

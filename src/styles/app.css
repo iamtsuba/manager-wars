@@ -520,19 +520,11 @@ label { font-size: 12px; font-weight: 500; color: var(--gray-600);
 .market-listing .m-buy { margin-left: auto; text-align: right; }
 
 
+
 /* ═══════════════════════════════════════════════════════════════
-   PAYSAGE MOBILE — max-height:500px + orientation:landscape
-   Couvre : boosters (2), collection (3+4), decks (5)
+   PAYSAGE MOBILE — Boosters uniquement (pur CSS, sans dépendance JS)
    ═══════════════════════════════════════════════════════════════ */
 @media (max-height: 500px) and (orientation: landscape) {
-
-  /* ── Page générale ── */
-  .page { padding-bottom: 0 !important; overflow: hidden !important; }
-  .page-header { padding: 6px 12px !important; min-height: 0 !important; }
-  .page-header h2 { font-size: 15px !important; margin: 0 !important; }
-  .page-body { padding: 8px 10px !important; }
-
-  /* ══ 2. BOOSTERS : rangée horizontale swipeable ══════════════ */
   .booster-grid {
     display: flex !important;
     flex-direction: row !important;
@@ -544,7 +536,6 @@ label { font-size: 12px; font-weight: 500; color: var(--gray-600);
     scrollbar-width: none !important;
     -webkit-overflow-scrolling: touch !important;
     scroll-snap-type: x mandatory !important;
-    align-items: stretch !important;
   }
   .booster-grid::-webkit-scrollbar { display: none; }
   .booster-card {
@@ -558,78 +549,4 @@ label { font-size: 12px; font-weight: 500; color: var(--gray-600);
   .booster-card .name { font-size: 12px !important; margin-bottom: 2px !important; }
   .booster-card .desc { font-size: 10px !important; margin-bottom: 4px !important; }
   .booster-card .cost { font-size: 11px !important; }
-
-  /* ══ 3+4. COLLECTION : filtres gauche | contenu droit ════════ */
-  /* Le conteneur .page est flex-column — on le switche en row */
-  .page:has(#col-filters) {
-    flex-direction: row !important;
-    overflow: hidden !important;
-  }
-  /* Onglets (tabs) : colonnes verticales à gauche */
-  .page:has(#col-filters) > div:first-child {
-    flex-direction: column !important;
-    border-bottom: none !important;
-    border-right: 1px solid var(--tile-border) !important;
-    width: 72px !important;
-    flex-shrink: 0 !important;
-    overflow-y: auto !important;
-  }
-  .page:has(#col-filters) .col-tab-btn {
-    flex: none !important;
-    width: 72px !important;
-    padding: 8px 2px !important;
-    border-bottom: none !important;
-    border-right: 3px solid transparent !important;
-    font-size: 9px !important;
-  }
-
-  /* Filtres : panneau fixe sous les onglets verticaux (fait partie du même div) */
-  #col-filters {
-    width: 120px !important;
-    flex-shrink: 0 !important;
-    border-bottom: none !important;
-    border-right: 1px solid var(--tile-border) !important;
-    overflow-y: auto !important;
-    padding: 8px !important;
-    flex-direction: column !important;
-    background: var(--tile-bg) !important;
-    scrollbar-width: none !important;
-    max-height: 100% !important;
-  }
-  #col-filters::-webkit-scrollbar { display: none; }
-
-  /* Zone contenu (grande carte + strip) prend le reste */
-  #col-big {
-    flex: 1 !important;
-    min-width: 0 !important;
-    overflow: hidden !important;
-    padding: 4px 8px !important;
-  }
-  #col-grid {
-    padding: 0 8px !important;
-  }
-
-  /* ══ 5. DECKS : layout paysage ══════════════════════════════ */
-  /* Liste des decks : 2 colonnes */
-  .page:has(#deck-list-container) .page-body > div {
-    display: grid !important;
-    grid-template-columns: 1fr 1fr !important;
-    gap: 8px !important;
-  }
-
-  /* Builder : PC layout activé en paysage mobile aussi */
-  .deck-mobile-layout { display: none !important; }
-  .deck-pc-layout {
-    display: block !important;
-    height: calc(100vh - 80px) !important;
-    overflow: hidden !important;
-  }
-  .deck-pc-layout > div {
-    min-height: 0 !important;
-    height: 100% !important;
-  }
-  /* Pitch : proportionnel à la hauteur dispo */
-  .deck-pc-layout [style*="height:700px"] {
-    height: calc(100vh - 120px) !important;
-  }
 }

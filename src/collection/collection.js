@@ -206,30 +206,43 @@ export async function renderCollection(container, ctx) {
 
   container.innerHTML = `
   <style>
-    /* ══ Paysage mobile : tabs+filtres en sidebar gauche fixe, grille 3 lignes à droite ══ */
+    /* ══ Paysage mobile : onglets en haut (pleine largeur), filtres en
+       sidebar gauche fixe, grille 2 lignes swipeable à droite. Utilise
+       CSS Grid sur #col-page pour placer librement chaque enfant
+       (col-tabs, col-filters, col-landscape-grid) sans restructurer le DOM. ══ */
     @media (max-height: 500px) and (orientation: landscape) {
-      #col-page { flex-direction: row !important; overflow: hidden !important; }
+      #col-page {
+        display: grid !important;
+        grid-template-columns: 130px 1fr;
+        grid-template-rows: auto 1fr;
+        overflow: hidden !important;
+      }
       #col-tabs {
-        flex-direction: column !important; border-bottom: none !important;
-        border-right: 1px solid var(--tile-border) !important;
-        width: 64px !important; flex-shrink: 0 !important; overflow-y: auto !important;
+        grid-column: 1 / 3 !important; grid-row: 1 !important;
+        display: flex !important; flex-direction: row !important;
+        border-bottom: 2px solid var(--tile-border) !important; border-right: none !important;
+        width: auto !important; height: auto !important; flex-shrink: 0 !important; overflow: visible !important;
       }
       #col-tabs .col-tab-btn {
-        flex: none !important; width: 64px !important; padding: 8px 2px !important;
-        border-bottom: none !important; border-right: 3px solid transparent !important; font-size: 9px !important;
+        flex: 1 !important; width: auto !important; padding: 6px 2px !important;
+        border-right: none !important; font-size: 10px !important;
       }
+      #col-tabs .col-tab-btn > div:first-child { font-size: 10px !important; }
+      #col-tabs .col-tab-btn > div:last-child { font-size: 9px !important; }
       #col-filters {
-        width: 130px !important; flex-shrink: 0 !important; flex-direction: column !important;
+        grid-column: 1 !important; grid-row: 2 !important;
+        width: auto !important; flex-shrink: 0 !important; flex-direction: column !important;
         border-bottom: none !important; border-right: 1px solid var(--tile-border) !important;
-        overflow-y: auto !important; padding: 8px !important;
+        overflow-y: auto !important; padding: 8px !important; box-sizing: border-box !important;
       }
       #col-filters input { width: 100% !important; box-sizing: border-box !important; }
       #col-filters > div { flex-direction: column !important; overflow-x: visible !important; align-items: stretch !important; }
       #col-filters .filter-btn, #col-filters button { width: 100% !important; margin-left: 0 !important; }
       #col-big, #col-gap, #col-grid-wrap { display: none !important; }
       #col-landscape-grid {
-        display: grid !important; flex: 1; min-width: 0;
-        grid-template-rows: repeat(3, 1fr); grid-auto-flow: column; grid-auto-columns: max-content;
+        grid-column: 2 !important; grid-row: 2 !important;
+        display: grid !important; min-width: 0; min-height: 0;
+        grid-template-rows: repeat(2, 1fr); grid-auto-flow: column; grid-auto-columns: max-content;
         gap: 6px; padding: 8px; overflow-x: auto; overflow-y: hidden;
         align-items: center; scrollbar-width: none;
       }

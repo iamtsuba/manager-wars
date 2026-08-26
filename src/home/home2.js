@@ -316,11 +316,31 @@ export function ensureV2Chrome(navigate, p, activeRouteKey, ICON, toast) {
       <div class="ls-logo"><img src="${ICON}logo.png" alt="MW"></div>
       <div class="ls-actions">
         <div class="ls-pill" id="home2-ls-credits" title="Crédits" style="font-size:18px">💰</div>
+        <div class="ls-pill" id="home2-ls-news" title="Actualités" style="font-size:18px">📰</div>
         <div class="ls-pill" id="home2-ls-settings" title="Paramètres">⚙️</div>
         <div class="ls-pill" id="home2-ls-fs" title="Plein écran">⛶</div>
       </div>
     `
     document.body.appendChild(lsLeft)
+    lsLeft.querySelector('#home2-ls-news').addEventListener('click', () => {
+      // Popup actualités en paysage mobile
+      const existing = document.getElementById('home2-ls-news-popup')
+      if (existing) { existing.remove(); return }
+      const newsEls = document.querySelectorAll('.news-item')
+      const newsHTML = newsEls.length
+        ? Array.from(newsEls).map(n => n.outerHTML).join('')
+        : '<div style="color:rgba(255,255,255,0.4);font-size:13px;padding:12px 0">Aucune actualité</div>'
+      const popup = document.createElement('div')
+      popup.id = 'home2-ls-news-popup'
+      popup.style.cssText = 'position:fixed;left:64px;top:0;bottom:0;width:260px;z-index:600;background:#0d1a0f;border-right:1px solid rgba(255,255,255,0.12);padding:14px 12px;overflow-y:auto;box-sizing:border-box'
+      popup.innerHTML = '<div style="font-size:13px;font-weight:900;color:#fff;letter-spacing:1px;margin-bottom:10px">📰 ACTUALITÉS</div>' + newsHTML
+      document.body.appendChild(popup)
+      // Fermer en cliquant ailleurs
+      setTimeout(() => {
+        const close = (e) => { if (!popup.contains(e.target) && e.target.id !== 'home2-ls-news') { popup.remove(); document.removeEventListener('click', close) } }
+        document.addEventListener('click', close)
+      }, 0)
+    })
     lsLeft.querySelector('#home2-ls-settings').addEventListener('click', () => navigate('settings'))
     lsLeft.querySelector('#home2-ls-credits').addEventListener('click', () => openCreditsAdOffer(p, toast))
     lsLeft.querySelector('#home2-ls-fs').addEventListener('click', () => {
@@ -369,7 +389,7 @@ export function ensureV2Chrome(navigate, p, activeRouteKey, ICON, toast) {
   const credAmount = `💰 ${(p.credits||0).toLocaleString('fr')}`
   document.getElementById('home2-chrome-credits') && (document.getElementById('home2-chrome-credits').textContent = credAmount)
   document.getElementById('home2-mobtop-credits') && (document.getElementById('home2-mobtop-credits').textContent = credAmount)
-  document.getElementById('home2-ls-credits') && (document.getElementById('home2-ls-credits').textContent = credAmount)
+  // home2-ls-credits (paysage) : icône seule, pas de texte — on ne touche pas
 
   // Réaffiche le bandeau (annule un éventuel hideV2ChromeNow() laissé par une navigation précédente vers un match)
   document.body.classList.remove('v2-match-flow')
@@ -641,10 +661,8 @@ export function syncV2Credits(amount) {
   const label = `💰 ${(amount||0).toLocaleString('fr')}`
   const el1 = document.getElementById('home2-chrome-credits')
   const el2 = document.getElementById('home2-mobtop-credits')
-  const el3 = document.getElementById('home2-ls-credits')
   if (el1) el1.textContent = label
   if (el2) el2.textContent = label
-  if (el3) el3.textContent = label
 }
 
 export function hideV2ChromeNow() {
@@ -1235,6 +1253,14 @@ export async function renderHome2(container, { state, navigate, toast, openModal
       .news-title { font-size: 11px !important; }
       .news-desc { font-size: 10px !important; -webkit-line-clamp: 1 !important; }
       .news-time { font-size: 9px !important; margin-top: 1px !important; }
+
+      /* Colonne droite actus : masquée (remplacée par icône 📰) */
+      .home2-col-right { display: none !important; }
+
+      /* Grid : 2 colonnes seulement (ranked | modes) */
+      .home2-dash {
+        grid-template-columns: 200px 1fr !important;
+      }
 
       /* Footer : masqué */
       .home-footer { display: none !important; }

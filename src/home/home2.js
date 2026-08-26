@@ -90,6 +90,13 @@ export function ensureV2Chrome(navigate, p, activeRouteKey, ICON, toast) {
         font-size: 17px; cursor: pointer; flex-shrink: 0;
       }
       .home2-chrome-settings-pill:hover { background: rgba(255,255,255,0.12); }
+      .home2-chrome-fs-pill {
+        display: flex; align-items: center; justify-content: center;
+        width: 34px; height: 34px; border-radius: 50%;
+        background: rgba(255,255,255,0.06); border: 1px solid var(--tile-border);
+        font-size: 16px; cursor: pointer; flex-shrink: 0;
+      }
+      .home2-chrome-fs-pill:hover { background: rgba(255,255,255,0.12); }
 
       /* ══════════ Mobile (<1024px) : DEUX bandeaux séparés, haut + bas ══════════ */
       .home2-mobile-top, .home2-mobile-bottom { display: none; }
@@ -193,11 +200,32 @@ export function ensureV2Chrome(navigate, p, activeRouteKey, ICON, toast) {
       <div class="home2-chrome-right">
         <div class="home2-chrome-credits" id="home2-mobtop-credits">💰 ${(p.credits||0).toLocaleString('fr')}</div>
         <button class="home2-chrome-settings-pill" id="home2-mobtop-settings-btn"><span>⚙️</span><span class="pill-label">Paramètres</span></button>
+        <button class="home2-chrome-fs-pill" id="home2-mobtop-fs-btn" title="Plein écran">⛶</button>
       </div>
     `
     document.body.appendChild(topBar)
     topBar.querySelector('#home2-mobtop-settings-btn').addEventListener('click', () => navigate('settings'))
     topBar.querySelector('#home2-mobtop-credits').addEventListener('click', () => openCreditsAdOffer(p, toast))
+    topBar.querySelector('#home2-mobtop-fs-btn').addEventListener('click', () => {
+      const el = document.documentElement
+      if (!document.fullscreenElement) {
+        const req = el.requestFullscreen?.() || el.webkitRequestFullscreen?.()
+        if (req) req.catch?.(() => {})
+        document.getElementById('home2-mobtop-fs-btn').textContent = '✕'
+      } else {
+        const exit = document.exitFullscreen?.() || document.webkitExitFullscreen?.()
+        if (exit) exit.catch?.(() => {})
+        document.getElementById('home2-mobtop-fs-btn').textContent = '⛶'
+      }
+    })
+    document.addEventListener('fullscreenchange', () => {
+      const btn = document.getElementById('home2-mobtop-fs-btn')
+      if (btn) btn.textContent = document.fullscreenElement ? '✕' : '⛶'
+    })
+    document.addEventListener('webkitfullscreenchange', () => {
+      const btn = document.getElementById('home2-mobtop-fs-btn')
+      if (btn) btn.textContent = document.fullscreenElement ? '✕' : '⛶'
+    })
   }
 
   // ── Bandeau mobile du bas : onglets ──
@@ -1426,4 +1454,5 @@ export async function showSoloLevelPicker(navigate, state) {
     })
   })
 }
+
 

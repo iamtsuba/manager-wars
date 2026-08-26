@@ -32,7 +32,10 @@ function formatCreditsCompact(n) {
   return n.toLocaleString('fr')
 }
 
+let _lastNonSettingsRoute = 'home2'
+
 export function ensureV2Chrome(navigate, p, activeRouteKey, ICON, toast) {
+  if (activeRouteKey && activeRouteKey !== 'settings') _lastNonSettingsRoute = activeRouteKey === 'home2' ? 'home2' : (V2_TABS.find(t => t.key === activeRouteKey)?.route || activeRouteKey)
   if (!document.getElementById('home2-chrome-style')) {
     const style = document.createElement('style')
     style.id = 'home2-chrome-style'
@@ -254,7 +257,7 @@ export function ensureV2Chrome(navigate, p, activeRouteKey, ICON, toast) {
       </div>
     `
     document.body.appendChild(header)
-    header.querySelector('#home2-chrome-settings-btn').addEventListener('click', () => navigate(activeRouteKey === 'settings' ? 'home2' : 'settings'))
+    header.querySelector('#home2-chrome-settings-btn').addEventListener('click', () => navigate(document.body.dataset.currentPage === 'settings' ? _lastNonSettingsRoute : 'settings'))
     header.querySelector('#home2-chrome-credits').addEventListener('click', () => openCreditsAdOffer(p, toast))
   }
 
@@ -273,7 +276,7 @@ export function ensureV2Chrome(navigate, p, activeRouteKey, ICON, toast) {
       </div>
     `
     document.body.appendChild(topBar)
-    topBar.querySelector('#home2-mobtop-settings-btn').addEventListener('click', () => navigate(activeRouteKey === 'settings' ? 'home2' : 'settings'))
+    topBar.querySelector('#home2-mobtop-settings-btn').addEventListener('click', () => navigate(document.body.dataset.currentPage === 'settings' ? _lastNonSettingsRoute : 'settings'))
     topBar.querySelector('#home2-mobtop-credits').addEventListener('click', () => openCreditsAdOffer(p, toast))
     topBar.querySelector('#home2-mobtop-fs-btn').addEventListener('click', () => {
       const el = document.documentElement
@@ -341,7 +344,7 @@ export function ensureV2Chrome(navigate, p, activeRouteKey, ICON, toast) {
         document.addEventListener('click', close)
       }, 0)
     })
-    lsLeft.querySelector('#home2-ls-settings').addEventListener('click', () => navigate(activeRouteKey === 'settings' ? 'home2' : 'settings'))
+    lsLeft.querySelector('#home2-ls-settings').addEventListener('click', () => navigate(document.body.dataset.currentPage === 'settings' ? _lastNonSettingsRoute : 'settings'))
     lsLeft.querySelector('#home2-ls-credits').addEventListener('click', () => openCreditsAdOffer(p, toast))
     lsLeft.querySelector('#home2-ls-fs').addEventListener('click', () => {
       const el = document.documentElement

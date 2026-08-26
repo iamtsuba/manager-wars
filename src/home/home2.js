@@ -1147,6 +1147,102 @@ export async function renderHome2(container, { state, navigate, toast, openModal
       .play-tile-big img.tile-icon { height: 108px; }
       .home-footer { flex-direction: row; justify-content: space-between; width: 100%; padding: 14px 4px; }
     }
+
+    /* ══════════ PAYSAGE MOBILE (hauteur < 500px) ══════════ */
+    @media (max-height: 500px) and (orientation: landscape) {
+      /* Conteneur : pas de padding vertical, scroll horizontal désactivé */
+      .home-dark {
+        padding: 6px 8px 6px !important;
+        overflow-y: hidden !important;
+        justify-content: flex-start !important;
+        align-items: stretch !important;
+      }
+      .home-inner { max-width: 100% !important; height: 100%; }
+
+      /* Bannières : masquées pour gagner de l'espace */
+      #friend-requests-banner, #match-invite-banner, #ongoing-match-banner { display: none !important; }
+
+      /* Grid 3 colonnes compactes */
+      .home2-dash {
+        display: grid !important;
+        grid-template-columns: 200px 1fr 180px !important;
+        gap: 8px !important;
+        align-items: stretch !important;
+        height: 100%;
+      }
+      .home2-col-left, .home2-col-center, .home2-col-right {
+        display: flex !important; flex-direction: column !important;
+        gap: 6px !important; overflow-y: auto !important;
+        scrollbar-width: none !important; height: 100%;
+      }
+      .home2-col-left::-webkit-scrollbar,
+      .home2-col-center::-webkit-scrollbar,
+      .home2-col-right::-webkit-scrollbar { display: none; }
+
+      /* Colonne gauche : rank card compacte */
+      .rank-card { padding: 10px 12px !important; gap: 6px !important; border-radius: 12px !important; }
+      .rank-tier-block .rank-label { font-size: 10px !important; }
+      .rank-tier-block .rank-tier-value { font-size: 20px !important; margin-top: 1px !important; }
+      .rank-rp-label { font-size: 11px !important; }
+      .rank-progress-track { height: 7px !important; }
+      .rank-inline-link { display: flex !important; font-size: 11px !important; padding: 4px 8px !important; }
+      .ranking-widget {
+        display: flex !important; padding: 10px 12px !important;
+        gap: 4px !important; border-radius: 12px !important; flex: 1;
+      }
+      .ranking-widget-header h4 { font-size: 11px !important; }
+      .ranking-widget-header a { font-size: 10px !important; }
+      .rk-row { padding: 4px 0 !important; gap: 6px !important; }
+      .rk-pos { width: 22px !important; height: 22px !important; font-size: 10px !important; }
+      .rk-name { font-size: 11px !important; }
+      .rk-rp-tier { font-size: 9px !important; }
+      .rk-rp { font-size: 9px !important; }
+      .ranking-widget-cta { padding: 7px !important; font-size: 11px !important; margin-top: 2px !important; }
+      .profile-view-btn { display: none !important; }
+
+      /* Colonne centrale : profil compact + grille modes réduite */
+      .profile-row { gap: 8px !important; }
+      .profile-badge { width: 42px !important; height: 42px !important; border-radius: 10px !important; font-size: 18px !important; }
+      .profile-info h3 { font-size: 14px !important; }
+      .profile-info .club { font-size: 10px !important; margin-top: 1px !important; }
+      .profile-settings-btn { width: 30px !important; height: 30px !important; font-size: 14px !important; }
+      .play-section-header { margin: 0 !important; }
+      .play-section-header h4 { font-size: 12px !important; letter-spacing: 2px !important; }
+      .play-grid { gap: 6px !important; }
+      .play-tile {
+        padding: 8px 6px !important; border-radius: 10px !important;
+        min-height: 0 !important; gap: 2px !important;
+      }
+      .play-tile img.tile-icon { height: 36px !important; }
+      .play-tile .tile-label { font-size: 9px !important; margin-top: 1px !important; }
+      .play-tile-big { padding: 10px 6px !important; }
+      .play-tile-big img.tile-icon { height: 44px !important; }
+      .play-tile-big .tile-label { font-size: 10px !important; }
+      #pending-rewards-banner { display: none !important; }
+
+      /* Colonne droite : promo booster + actus compactes */
+      .promo-banner {
+        padding: 10px 10px !important; gap: 10px !important;
+        border-radius: 12px !important; min-height: 0 !important;
+      }
+      .promo-icon-wrap { width: 46px !important; height: 46px !important; border-radius: 8px !important; }
+      .promo-kicker { font-size: 9px !important; }
+      .promo-title { font-size: 13px !important; margin-top: 1px !important; }
+      .promo-desc { font-size: 10px !important; margin-top: 2px !important; }
+      .promo-cta { padding: 7px 10px !important; font-size: 11px !important; border-radius: 8px !important; }
+      .news-widget { padding: 10px 12px !important; gap: 5px !important; border-radius: 12px !important; flex: 1; }
+      .news-widget-header h4 { font-size: 11px !important; }
+      .news-widget-header a { font-size: 10px !important; }
+      .news-item { padding: 6px 0 !important; gap: 8px !important; }
+      .news-thumb { width: 38px !important; height: 38px !important; border-radius: 6px !important; }
+      .news-thumb-fallback { font-size: 16px !important; }
+      .news-title { font-size: 11px !important; }
+      .news-desc { font-size: 10px !important; -webkit-line-clamp: 1 !important; }
+      .news-time { font-size: 9px !important; margin-top: 1px !important; }
+
+      /* Footer : masqué */
+      .home-footer { display: none !important; }
+    }
   </style>
 
   <div class="home-dark" id="home-dark">

@@ -254,7 +254,7 @@ export function ensureV2Chrome(navigate, p, activeRouteKey, ICON, toast) {
       </div>
     `
     document.body.appendChild(header)
-    header.querySelector('#home2-chrome-settings-btn').addEventListener('click', () => navigate('settings'))
+    header.querySelector('#home2-chrome-settings-btn').addEventListener('click', () => navigate(activeRouteKey === 'settings' ? 'home2' : 'settings'))
     header.querySelector('#home2-chrome-credits').addEventListener('click', () => openCreditsAdOffer(p, toast))
   }
 
@@ -273,7 +273,7 @@ export function ensureV2Chrome(navigate, p, activeRouteKey, ICON, toast) {
       </div>
     `
     document.body.appendChild(topBar)
-    topBar.querySelector('#home2-mobtop-settings-btn').addEventListener('click', () => navigate('settings'))
+    topBar.querySelector('#home2-mobtop-settings-btn').addEventListener('click', () => navigate(activeRouteKey === 'settings' ? 'home2' : 'settings'))
     topBar.querySelector('#home2-mobtop-credits').addEventListener('click', () => openCreditsAdOffer(p, toast))
     topBar.querySelector('#home2-mobtop-fs-btn').addEventListener('click', () => {
       const el = document.documentElement
@@ -341,7 +341,7 @@ export function ensureV2Chrome(navigate, p, activeRouteKey, ICON, toast) {
         document.addEventListener('click', close)
       }, 0)
     })
-    lsLeft.querySelector('#home2-ls-settings').addEventListener('click', () => navigate('settings'))
+    lsLeft.querySelector('#home2-ls-settings').addEventListener('click', () => navigate(activeRouteKey === 'settings' ? 'home2' : 'settings'))
     lsLeft.querySelector('#home2-ls-credits').addEventListener('click', () => openCreditsAdOffer(p, toast))
     lsLeft.querySelector('#home2-ls-fs').addEventListener('click', () => {
       const el = document.documentElement

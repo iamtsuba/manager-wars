@@ -1348,15 +1348,6 @@ export async function renderHome2(container, { state, navigate, toast, openModal
               <div class="tile-desc">Affrontez un ami</div>
             </div>
           </div>
-
-          ${promoBoosters.length ? `
-          <div class="promo-banner" id="promo-banner">
-            <div id="promo-slide-content" style="display:flex;align-items:center;gap:14px;flex:1;min-width:0">
-              ${promoSlideHTML(promoBoosters[0])}
-            </div>
-            <button class="promo-cta" id="promo-cta-btn">✅ Ouvrir des boosters</button>
-            ${promoBoosters.length > 1 ? `<div class="promo-dots">${promoBoosters.map((_,i)=>`<div class="promo-dot ${i===0?'active':''}" data-dot="${i}"></div>`).join('')}</div>` : ''}
-          </div>` : ''}
         </div>
 
         <!-- Colonne droite : Actualités -->

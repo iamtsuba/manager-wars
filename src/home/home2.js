@@ -25,6 +25,13 @@ const V2_TABS = [
 // à navigate() qui ne remplace que #page-content. Masque le top-nav/bottom-nav
 // globaux tant qu'il est présent, et se retire uniquement via "Revenir à v1"
 // ou déconnexion. Ne touche jamais aux fichiers des autres pages.
+// Affichage compact des crédits (paysage mobile)
+function formatCreditsCompact(n) {
+  if (n >= 1000000) return (n / 1000000).toFixed(n % 1000000 === 0 ? 0 : 1).replace('.', ',') + 'M'
+  if (n >= 1000)    return (n / 1000).toFixed(n % 1000 === 0 ? 0 : 1).replace('.', ',') + 'K'
+  return n.toLocaleString('fr')
+}
+
 export function ensureV2Chrome(navigate, p, activeRouteKey, ICON, toast) {
   if (!document.getElementById('home2-chrome-style')) {
     const style = document.createElement('style')
@@ -308,7 +315,7 @@ export function ensureV2Chrome(navigate, p, activeRouteKey, ICON, toast) {
     lsLeft.innerHTML = `
       <div class="ls-logo"><img src="${ICON}logo.png" alt="MW"></div>
       <div class="ls-actions">
-        <div class="ls-pill" id="home2-ls-credits" title="Crédits">💰</div>
+        <div class="ls-pill" id="home2-ls-credits" title="Crédits" style="font-size:10px;font-weight:900;color:#f2c94c;flex-direction:column;gap:1px">💰<span id="home2-ls-credits-val">${formatCreditsCompact(p.credits||0)}</span></div>
         <div class="ls-pill" id="home2-ls-settings" title="Paramètres">⚙️</div>
         <div class="ls-pill" id="home2-ls-fs" title="Plein écran">⛶</div>
       </div>
@@ -363,6 +370,8 @@ export function ensureV2Chrome(navigate, p, activeRouteKey, ICON, toast) {
   document.getElementById('home2-chrome-credits') && (document.getElementById('home2-chrome-credits').textContent = credAmount)
   document.getElementById('home2-mobtop-credits') && (document.getElementById('home2-mobtop-credits').textContent = credAmount)
   document.getElementById('home2-ls-credits') && (document.getElementById('home2-ls-credits').textContent = credAmount)
+  const lsCredVal = document.getElementById('home2-ls-credits-val')
+  if (lsCredVal) lsCredVal.textContent = formatCreditsCompact(p.credits||0)
 
   // Réaffiche le bandeau (annule un éventuel hideV2ChromeNow() laissé par une navigation précédente vers un match)
   document.body.classList.remove('v2-match-flow')
@@ -404,7 +413,26 @@ const CREDITS_AD_OFFERS = [
 ]
 
 export async function openCreditsAdOffer(profile, toast) {
-  if (!(await isFeatureEnabled('pub_mode'))) { showFeatureDisabledPopup(); return }
+  if (!(await isFeatureEnabled('pub_mode'))) {
+    const credits = (profile?.credits || 0).toLocaleString('fr')
+    const ov = document.createElement('div')
+    ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.85);display:flex;align-items:center;justify-content:center;z-index:9999;padding:16px'
+    ov.innerHTML = `
+      <div style="background:#111a12;border:1px solid rgba(255,255,255,0.1);border-radius:16px;padding:28px 24px;max-width:360px;width:100%;color:#fff;text-align:center">
+        <div style="font-size:36px;margin-bottom:12px">🚧</div>
+        <div style="font-size:17px;font-weight:900;margin-bottom:8px">Module en cours de développement</div>
+        <div style="font-size:13px;color:rgba(255,255,255,0.55);margin-bottom:20px">Cette fonctionnalité sera disponible prochainement.</div>
+        <div style="background:rgba(212,160,23,0.1);border:1.5px solid rgba(212,160,23,0.35);border-radius:12px;padding:14px;margin-bottom:20px">
+          <div style="font-size:11px;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Ton solde actuel</div>
+          <div style="font-size:26px;font-weight:900;color:#D4A017">💰 ${credits} cr.</div>
+        </div>
+        <button id="cred-dev-close" style="width:100%;padding:11px;border-radius:10px;border:1px solid rgba(255,255,255,0.2);background:none;color:rgba(255,255,255,0.7);cursor:pointer;font-family:inherit;font-size:14px">Fermer</button>
+      </div>`
+    document.body.appendChild(ov)
+    ov.querySelector('#cred-dev-close').addEventListener('click', () => ov.remove())
+    ov.addEventListener('click', e => { if (e.target === ov) ov.remove() })
+    return
+  }
 
   const overlay = document.createElement('div')
   overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.85);display:flex;align-items:center;justify-content:center;z-index:9999;padding:16px'
@@ -619,6 +647,8 @@ export function syncV2Credits(amount) {
   if (el1) el1.textContent = label
   if (el2) el2.textContent = label
   if (el3) el3.textContent = label
+  const el3val = document.getElementById('home2-ls-credits-val')
+  if (el3val) el3val.textContent = formatCreditsCompact(amount||0)
 }
 
 export function hideV2ChromeNow() {

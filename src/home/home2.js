@@ -315,7 +315,7 @@ export function ensureV2Chrome(navigate, p, activeRouteKey, ICON, toast) {
     lsLeft.innerHTML = `
       <div class="ls-logo"><img src="${ICON}logo.png" alt="MW"></div>
       <div class="ls-actions">
-        <div class="ls-pill" id="home2-ls-credits" title="Crédits" style="font-size:10px;font-weight:900;color:#f2c94c;flex-direction:column;gap:1px">💰<span id="home2-ls-credits-val">${formatCreditsCompact(p.credits||0)}</span></div>
+        <div class="ls-pill" id="home2-ls-credits" title="Crédits" style="font-size:18px">💰</div>
         <div class="ls-pill" id="home2-ls-settings" title="Paramètres">⚙️</div>
         <div class="ls-pill" id="home2-ls-fs" title="Plein écran">⛶</div>
       </div>
@@ -370,8 +370,6 @@ export function ensureV2Chrome(navigate, p, activeRouteKey, ICON, toast) {
   document.getElementById('home2-chrome-credits') && (document.getElementById('home2-chrome-credits').textContent = credAmount)
   document.getElementById('home2-mobtop-credits') && (document.getElementById('home2-mobtop-credits').textContent = credAmount)
   document.getElementById('home2-ls-credits') && (document.getElementById('home2-ls-credits').textContent = credAmount)
-  const lsCredVal = document.getElementById('home2-ls-credits-val')
-  if (lsCredVal) lsCredVal.textContent = formatCreditsCompact(p.credits||0)
 
   // Réaffiche le bandeau (annule un éventuel hideV2ChromeNow() laissé par une navigation précédente vers un match)
   document.body.classList.remove('v2-match-flow')
@@ -647,8 +645,6 @@ export function syncV2Credits(amount) {
   if (el1) el1.textContent = label
   if (el2) el2.textContent = label
   if (el3) el3.textContent = label
-  const el3val = document.getElementById('home2-ls-credits-val')
-  if (el3val) el3val.textContent = formatCreditsCompact(amount||0)
 }
 
 export function hideV2ChromeNow() {

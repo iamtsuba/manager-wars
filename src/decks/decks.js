@@ -348,36 +348,67 @@ function renderBuilder(container, builder, ctx, isInitialRender = false) {
   <style>
     .no-scrollbar::-webkit-scrollbar{display:none}
 
-    /* ══ Paysage mobile : terrain à gauche, remplaçants/formation/stade en sidebar droite ══ */
+    /* ══ Paysage mobile : remplaçants à gauche, terrain au milieu,
+       formation + stade + boutons empilés à droite. On utilise
+       "display:contents" en cascade pour faire remonter les sections
+       imbriquées (remplaçants/formation/stade) comme enfants directs
+       de la grille de #deck-builder-outer, sans toucher au DOM ni au
+       calcul JS du terrain. ══ */
     @media (max-height: 500px) and (orientation: landscape) {
-      #deck-builder-outer { display:flex !important; flex-direction:column !important; height:100% !important; overflow:hidden !important; }
-      #deck-builder-outer .page-header { flex-shrink:0 !important; }
-      .deck-mobile-layout {
-        display:flex !important; flex-direction:row !important;
-        flex:1 !important; min-height:0 !important; overflow:hidden !important;
+      #deck-builder-outer {
+        display: grid !important;
+        grid-template-columns: 90px 1fr 90px;
+        grid-template-rows: auto 1fr 1fr auto;
+        height: 100% !important; overflow: hidden !important;
       }
+      #deck-builder-outer > .page-header { grid-column: 1 / 4 !important; grid-row: 1 !important; }
+
+      /* Remonte : deck-mobile-layout → bottom-bar wrapper → row flex */
+      .deck-mobile-layout { display: contents !important; }
+      .deck-mobile-layout > div:nth-child(2) { display: contents !important; }
+      .deck-mobile-layout > div:nth-child(2) > div { display: contents !important; }
+
+      /* Terrain (1er enfant de deck-mobile-layout) : colonne du milieu, pleine hauteur */
       .deck-mobile-layout > div:first-child {
-        flex:1 !important; min-width:0 !important; height:100% !important;
-        display:flex !important; align-items:center !important; justify-content:center !important;
+        grid-column: 2 !important; grid-row: 2 / 5 !important;
+        display: flex !important; align-items: center !important; justify-content: center !important;
+        height: 100% !important; min-height: 0 !important;
       }
-      .deck-mobile-layout > div:first-child #deck-field-mobile { margin-top:0 !important; }
-      .deck-mobile-layout > div:nth-child(2) {
-        width:150px !important; flex-shrink:0 !important; height:100% !important;
-        overflow-y:auto !important; overflow-x:hidden !important;
-        border-top:none !important; border-left:1px solid rgba(255,255,255,0.1) !important;
-        scrollbar-width:none !important; box-sizing:border-box !important;
+      .deck-mobile-layout > div:first-child #deck-field-mobile { margin-top: 0 !important; }
+
+      /* Remplaçants (1re section promue) : colonne gauche, pleine hauteur, scroll vertical */
+      .deck-mobile-layout > div:nth-child(2) > div > div:nth-child(1) {
+        grid-column: 1 !important; grid-row: 2 / 5 !important;
+        height: 100% !important; overflow-y: auto !important; overflow-x: hidden !important;
+        box-sizing: border-box !important; padding: 4px !important; scrollbar-width: none !important;
       }
-      .deck-mobile-layout > div:nth-child(2)::-webkit-scrollbar { display:none; }
-      .deck-mobile-layout > div:nth-child(2) > div {
-        flex-direction:column !important; align-items:stretch !important; gap:8px !important;
+      .deck-mobile-layout > div:nth-child(2) > div > div:nth-child(1)::-webkit-scrollbar { display: none; }
+      .deck-mobile-layout > div:nth-child(2) > div > div:nth-child(1) #subs-list {
+        flex-direction: column !important; overflow-x: hidden !important; overflow-y: visible !important;
+        align-items: center !important; gap: 8px !important;
       }
-      #deck-builder-outer .page-body {
-        flex-shrink:0 !important; padding:6px 10px !important;
-        display:flex !important; flex-direction:row !important; gap:6px !important; align-items:center !important;
+
+      /* Formation (2e section promue) : colonne droite, ligne 2 */
+      .deck-mobile-layout > div:nth-child(2) > div > div:nth-child(2) {
+        grid-column: 3 !important; grid-row: 2 !important;
       }
-      #deck-builder-outer .page-body .auto-deck-btn { flex:1 !important; margin:0 !important; font-size:11px !important; padding:6px !important; }
-      #deck-builder-outer .page-body #save-deck { flex:1 !important; font-size:11px !important; padding:6px !important; margin:0 !important; }
-      #deck-builder-outer .page-body .autosave-indicator { display:none !important; }
+
+      /* Stade (3e section promue) : colonne droite, ligne 3 */
+      .deck-mobile-layout > div:nth-child(2) > div > div:nth-child(3) {
+        grid-column: 3 !important; grid-row: 3 !important;
+      }
+
+      /* Boutons (Auto Deck + Enregistrer) : colonne droite, ligne 4, empilés */
+      #deck-builder-outer > .page-body {
+        grid-column: 3 !important; grid-row: 4 !important;
+        display: flex !important; flex-direction: column !important; gap: 4px !important;
+        padding: 4px !important; box-sizing: border-box !important;
+      }
+      #deck-builder-outer > .page-body .auto-deck-btn,
+      #deck-builder-outer > .page-body #save-deck {
+        font-size: 9px !important; padding: 5px 2px !important; margin: 0 !important; width: 100% !important;
+      }
+      #deck-builder-outer > .page-body .autosave-indicator { display: none !important; }
     }
   </style>
   <div id="deck-builder-outer" style="height:100%;overflow-y:auto;background:var(--page-bg)">

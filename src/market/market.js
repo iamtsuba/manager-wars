@@ -109,16 +109,53 @@ async function loadMarket(container, ctx) {
     .mkt-buy-tile .mkt-price { font-size:16px; font-weight:900; color:#D4A017; }
     .mkt-buy-tile .mkt-seller { font-size:10px; color:var(--tile-fg-dim); margin-top:-4px; }
     .mkt-buy-tile button { width:100%; }
+
+    /* ══ Paysage mobile : onglets en haut (pleine largeur), filtres en
+       sidebar gauche fixe, cartes en vente à droite. CSS Grid sur
+       #mkt-outer pour placer librement chaque zone sans toucher au DOM. ══ */
+    @media (max-height: 500px) and (orientation: landscape) {
+      #mkt-outer {
+        display: grid !important;
+        grid-template-columns: 150px 1fr;
+        grid-template-rows: auto auto 1fr;
+        height: 100% !important; overflow: hidden !important;
+      }
+      #mkt-header {
+        grid-column: 1 / 3 !important; grid-row: 1 !important;
+        padding: 6px 12px !important;
+      }
+      #mkt-header > div:first-child { font-size: 13px !important; }
+      #mkt-header > div:last-child { font-size: 10px !important; margin-top: 0 !important; }
+      #mkt-tabs {
+        grid-column: 1 / 3 !important; grid-row: 2 !important;
+        padding: 5px 12px !important;
+      }
+      #mkt-tabs .mkt-tab { padding: 4px 12px !important; font-size: 11px !important; }
+      #mkt-filters {
+        grid-column: 1 !important; grid-row: 3 !important;
+        flex-direction: column !important; width: auto !important; box-sizing: border-box !important;
+        border-bottom: none !important; border-right: 1px solid var(--tile-border) !important;
+        overflow-y: auto !important; padding: 8px !important;
+      }
+      #mkt-filters input, #mkt-filters select { width: 100% !important; box-sizing: border-box !important; }
+      #mkt-filters > div { flex-direction: column !important; width: 100% !important; }
+      #mkt-filters .mkt-own-btn { width: 100% !important; }
+      #mkt-content {
+        grid-column: 2 !important; grid-row: 3 !important;
+        overflow-y: auto !important; padding: 8px 12px !important;
+      }
+      .mkt-buy-grid { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)) !important; gap: 10px !important; }
+    }
   </style>
-  <div style="height:100%;overflow-y:auto;background:var(--page-bg)">
+  <div id="mkt-outer" style="height:100%;overflow-y:auto;background:var(--page-bg)">
     <!-- Header -->
-    <div style="padding:12px 16px;background:var(--tile-bg);border-bottom:1px solid var(--tile-border)">
+    <div id="mkt-header" style="padding:12px 16px;background:var(--tile-bg);border-bottom:1px solid var(--tile-border)">
       <div style="font-size:18px;font-weight:900">🛒 Marché des transferts</div>
       <div style="font-size:12px;color:var(--tile-fg-dim);margin-top:2px">${others.length} carte(s) en vente · ${(state.profile.credits||0).toLocaleString('fr')} cr.</div>
     </div>
 
     <!-- Onglets -->
-    <div style="padding:8px 16px;background:var(--tile-bg);border-bottom:1px solid var(--tile-border);display:flex;gap:6px">
+    <div id="mkt-tabs" style="padding:8px 16px;background:var(--tile-bg);border-bottom:1px solid var(--tile-border);display:flex;gap:6px">
       <button class="mkt-tab" data-tab="buy" style="padding:6px 16px;border-radius:20px;border:1.5px solid var(--green);background:var(--green);color:#fff;font-size:13px;font-weight:700;cursor:pointer">Acheter</button>
       <button class="mkt-tab" data-tab="mine" style="padding:6px 16px;border-radius:20px;border:1.5px solid var(--tile-border);background:var(--tile-bg);color:var(--tile-fg-dim);font-size:13px;font-weight:700;cursor:pointer">Mes ventes (${myListings.length})</button>
     </div>
@@ -465,3 +502,4 @@ async function cancelListing(listingId, container, ctx) {
   toast('Annonce retirée', 'success')
   loadMarket(container, ctx)
 }
+

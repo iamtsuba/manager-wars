@@ -343,6 +343,7 @@ function renderBuilder(container, builder, ctx, isInitialRender = false) {
     builder.subs = subPlayers.map(c => c.id)
   }
   const allUsed    = [...Object.values(builder.slots), ...builder.subs]
+  const isLandscapeTpl = window.innerWidth < 900 && isLandscapeMobile()
 
   container.innerHTML = `
   <style>
@@ -357,7 +358,7 @@ function renderBuilder(container, builder, ctx, isInitialRender = false) {
     @media (max-height: 500px) and (orientation: landscape) {
       #deck-builder-outer {
         display: grid !important;
-        grid-template-columns: 90px 1fr 90px;
+        grid-template-columns: 110px 1fr 90px;
         grid-template-rows: auto 1fr 1fr auto;
         height: 100% !important; overflow: hidden !important;
       }
@@ -384,8 +385,9 @@ function renderBuilder(container, builder, ctx, isInitialRender = false) {
       }
       .deck-mobile-layout > div:nth-child(2) > div > div:nth-child(1)::-webkit-scrollbar { display: none; }
       .deck-mobile-layout > div:nth-child(2) > div > div:nth-child(1) #subs-list {
-        flex-direction: column !important; overflow-x: hidden !important; overflow-y: visible !important;
-        align-items: center !important; gap: 8px !important;
+        display: grid !important; grid-template-columns: repeat(2, 1fr) !important;
+        overflow-x: hidden !important; overflow-y: visible !important;
+        justify-items: center !important; gap: 6px !important;
       }
 
       /* Formation (2e section promue) : colonne droite, ligne 2 */
@@ -526,23 +528,28 @@ function renderBuilder(container, builder, ctx, isInitialRender = false) {
           </div>
           <!-- Formation mobile -->
           <div style="flex-shrink:0;text-align:center">
-            <div style="font-size:10px;font-weight:700;margin-bottom:6px;color:rgba(255,255,255,0.6);letter-spacing:1px;text-transform:uppercase">⚽</div>
-            <div id="formation-mobile-btn" style="cursor:pointer;width:44px;height:57px;border-radius:6px;background:#1A6B3C;border:2px solid #2ecc71;display:flex;align-items:center;justify-content:center">
-              <span style="font-size:8px;font-weight:900;color:#fff;text-align:center;line-height:1.1">${builder.formation}</span>
+            ${!isLandscapeTpl ? `<div style="font-size:10px;font-weight:700;margin-bottom:6px;color:rgba(255,255,255,0.6);letter-spacing:1px;text-transform:uppercase">⚽</div>` : ''}
+            <div id="formation-mobile-btn" style="cursor:pointer;${isLandscapeTpl ? 'margin:0 auto;width:fit-content' : 'width:44px;height:57px;border-radius:6px;background:#1A6B3C;border:2px solid #2ecc71;display:flex;align-items:center;justify-content:center'}">
+              ${isLandscapeTpl
+                ? renderFormationCard(builder.formation, FORMATION_POSITIONS[builder.formation], { width: 70 })
+                : `<span style="font-size:8px;font-weight:900;color:#fff;text-align:center;line-height:1.1">${builder.formation}</span>`}
             </div>
           </div>
           <!-- Stade mobile : à droite -->
           <div style="flex-shrink:0;text-align:center">
-            <div style="font-size:10px;font-weight:700;margin-bottom:6px;color:rgba(255,255,255,0.6);letter-spacing:1px;text-transform:uppercase">🏟️</div>
-            <div id="add-stad-btn" style="cursor:pointer">
-              ${_selStadCard ? (() => {
-                const def = builder.stadDefMap[_selStadCard.stadium_id]
-                const logo = def?.club?.logo_url || def?.image_url || (def?.country_code ? `https://flagsapi.com/${def.country_code.slice(0,2).toUpperCase()}/flat/64.png` : null)
-                return renderStadiumCard(def?.name || 'Stade', logo, '+10⭐', { width: 44 })
-              })() : `<div style="width:44px;height:57px;border:2px dashed rgba(79,195,247,0.5);border-radius:6px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px">
-                <span style="font-size:13px">🏟️</span>
-                <span style="font-size:7px;color:rgba(255,255,255,0.4)">+</span>
-              </div>`}
+            ${!isLandscapeTpl ? `<div style="font-size:10px;font-weight:700;margin-bottom:6px;color:rgba(255,255,255,0.6);letter-spacing:1px;text-transform:uppercase">🏟️</div>` : ''}
+            <div id="add-stad-btn" style="cursor:pointer;${isLandscapeTpl ? 'margin:0 auto;width:fit-content' : ''}">
+              ${(() => {
+                const stadW = isLandscapeTpl ? 70 : 44
+                return _selStadCard ? (() => {
+                  const def = builder.stadDefMap[_selStadCard.stadium_id]
+                  const logo = def?.club?.logo_url || def?.image_url || (def?.country_code ? `https://flagsapi.com/${def.country_code.slice(0,2).toUpperCase()}/flat/64.png` : null)
+                  return renderStadiumCard(def?.name || 'Stade', logo, '+10⭐', { width: stadW })
+                })() : `<div style="width:${stadW}px;height:${Math.round(stadW*1.3)}px;border:2px dashed rgba(79,195,247,0.5);border-radius:6px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px">
+                  <span style="font-size:13px">🏟️</span>
+                  <span style="font-size:7px;color:rgba(255,255,255,0.4)">+</span>
+                </div>`
+              })()}
             </div>
           </div>
         </div>
@@ -551,9 +558,11 @@ function renderBuilder(container, builder, ctx, isInitialRender = false) {
 
     <!-- Sauvegarder -->
     <div class="page-body" style="padding:12px 16px calc(80px + env(safe-area-inset-bottom, 0px))">
-      <button class="auto-deck-btn" id="auto-deck-mobile" style="margin-bottom:8px;margin-top:0">✨ Deck Automatique</button>
-      <button class="btn btn-primary" id="save-deck" style="width:100%" ${filled < 11 ? 'disabled' : ''}>
-        ${filled < 11 ? `Placez encore ${11-filled} joueur(s)` : '💾 Enregistrer le deck'}
+      <button class="auto-deck-btn" id="auto-deck-mobile" style="margin-bottom:8px;margin-top:0" title="Deck Automatique">${isLandscapeTpl ? '✨' : '✨ Deck Automatique'}</button>
+      <button class="btn btn-primary" id="save-deck" style="width:100%" title="Enregistrer le deck" ${filled < 11 ? 'disabled' : ''}>
+        ${isLandscapeTpl
+          ? (filled < 11 ? `${11-filled}` : '💾')
+          : (filled < 11 ? `Placez encore ${11-filled} joueur(s)` : '💾 Enregistrer le deck')}
       </button>
       <div class="autosave-indicator" style="text-align:center;font-size:11px;color:var(--tile-fg-dim);margin-top:6px;opacity:0;transition:opacity .3s"></div>
     </div>

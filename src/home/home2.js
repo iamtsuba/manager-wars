@@ -162,9 +162,9 @@ export function ensureV2Chrome(navigate, p, activeRouteKey, ICON, toast) {
       }
 
       /* ══════════ PAYSAGE MOBILE (hauteur < 500px) ══════════
-         - Les deux barres (top + bottom) disparaissent
-         - Une barre latérale gauche verticale les remplace
-         - Le contenu prend tout l'espace restant                */
+         Bandeau gauche  : logo + settings + fullscreen
+         Bandeau droit   : onglets de navigation
+         Contenu central : tout l'espace entre les deux     */
       @media (max-height: 500px) and (orientation: landscape) {
         .home2-mobile-top, .home2-mobile-bottom { display: none !important; }
 
@@ -172,57 +172,56 @@ export function ensureV2Chrome(navigate, p, activeRouteKey, ICON, toast) {
           padding-top: 0 !important;
           padding-bottom: 0 !important;
           padding-left: 64px !important;
+          padding-right: 72px !important;
         }
 
-        /* Barre latérale gauche */
-        #home2-landscape-sidebar {
-          display: flex !important;
-        }
+        #home2-ls-left  { display: flex !important; }
+        #home2-ls-right { display: flex !important; }
       }
 
-      /* Barre latérale paysage — masquée par défaut */
-      #home2-landscape-sidebar {
+      /* ── Bandeau gauche : logo + actions ── */
+      #home2-ls-left {
         display: none;
-        position: fixed;
-        top: 0; left: 0; bottom: 0;
-        width: 64px;
-        z-index: 500;
-        flex-direction: column;
-        align-items: center;
+        position: fixed; top: 0; left: 0; bottom: 0; width: 64px;
+        z-index: 500; flex-direction: column; align-items: center;
         justify-content: space-between;
         background: #05080a;
         border-right: 1px solid rgba(255,255,255,0.1);
-        padding: 8px 0 calc(8px + env(safe-area-inset-bottom, 0px));
-        box-sizing: border-box;
-        overflow: hidden;
+        padding: 10px 0 10px; box-sizing: border-box;
       }
-      #home2-landscape-sidebar .ls-logo img {
-        width: 44px; height: auto;
+      #home2-ls-left .ls-logo img { width: 42px; height: auto; }
+      #home2-ls-left .ls-actions {
+        display: flex; flex-direction: column; align-items: center; gap: 8px;
       }
-      #home2-landscape-sidebar .ls-tabs {
-        display: flex; flex-direction: column; gap: 4px; align-items: center;
+      #home2-ls-left .ls-pill {
+        display: flex; align-items: center; justify-content: center;
+        width: 40px; height: 40px; border-radius: 50%;
+        background: rgba(255,255,255,0.06); border: 1px solid var(--tile-border);
+        font-size: 16px; cursor: pointer;
       }
-      #home2-landscape-sidebar .ls-tab {
+      #home2-ls-left .ls-pill:hover { background: rgba(255,255,255,0.13); }
+
+      /* ── Bandeau droit : onglets ── */
+      #home2-ls-right {
+        display: none;
+        position: fixed; top: 0; right: 0; bottom: 0; width: 72px;
+        z-index: 500; flex-direction: column; align-items: center;
+        justify-content: center; gap: 4px;
+        background: #05080a;
+        border-left: 1px solid rgba(255,255,255,0.1);
+        padding: 8px 0; box-sizing: border-box;
+      }
+      #home2-ls-right .ls-tab {
         display: flex; flex-direction: column; align-items: center; justify-content: center;
-        width: 52px; padding: 6px 4px; border-radius: 12px; cursor: pointer;
-        font-size: 8px; font-weight: 700; color: rgba(255,255,255,0.55);
-        text-transform: uppercase; letter-spacing: 0.5px; gap: 3px;
+        width: 60px; padding: 7px 4px; border-radius: 12px; cursor: pointer;
+        font-size: 8px; font-weight: 700; color: rgba(255,255,255,0.5);
+        text-transform: uppercase; letter-spacing: 0.4px; gap: 3px;
         text-decoration: none;
       }
-      #home2-landscape-sidebar .ls-tab img { width: 24px; height: 24px; object-fit: contain; opacity: .7; }
-      #home2-landscape-sidebar .ls-tab.active { background: var(--green); color: #fff; }
-      #home2-landscape-sidebar .ls-tab.active img { opacity: 1; }
-      #home2-landscape-sidebar .ls-actions {
-        display: flex; flex-direction: column; align-items: center; gap: 6px;
-      }
-      #home2-landscape-sidebar .ls-pill {
-        display: flex; align-items: center; justify-content: center;
-        width: 38px; height: 38px; border-radius: 50%;
-        background: rgba(255,255,255,0.06); border: 1px solid var(--tile-border);
-        font-size: 15px; cursor: pointer; color: #f2c94c; font-weight: 800;
-      }
-      #home2-landscape-sidebar .ls-pill:hover { background: rgba(255,255,255,0.12); }
-      #home2-landscape-sidebar .ls-pill.ls-credits { font-size: 11px; }
+      #home2-ls-right .ls-tab img { width: 26px; height: 26px; object-fit: contain; opacity: .65; }
+      #home2-ls-right .ls-tab.active { background: var(--green); color: #fff; }
+      #home2-ls-right .ls-tab.active img { opacity: 1; }
+      #home2-ls-right .ls-tab:not(.active):hover { background: rgba(255,255,255,0.08); }
     `
     document.head.appendChild(style)
   }
@@ -301,29 +300,23 @@ export function ensureV2Chrome(navigate, p, activeRouteKey, ICON, toast) {
     document.body.appendChild(bottomBar)
   }
 
-  // ── Barre latérale paysage mobile ──
-  if (!document.getElementById('home2-landscape-sidebar')) {
-    const sidebar = document.createElement('div')
-    sidebar.id = 'home2-landscape-sidebar'
-    sidebar.innerHTML = `
+  // ── Bandeaux paysage mobile (gauche + droit) ──
+  if (!document.getElementById('home2-ls-left')) {
+    // Bandeau gauche : logo + crédits + settings + fullscreen
+    const lsLeft = document.createElement('div')
+    lsLeft.id = 'home2-ls-left'
+    lsLeft.innerHTML = `
       <div class="ls-logo"><img src="${ICON}logo.png" alt="MW"></div>
-      <div class="ls-tabs">
-        ${V2_TABS.filter(t => t.key !== 'game').map(t => `
-          <a class="ls-tab home2-chrome-tab" data-route="${t.route}" data-key="${t.key}">
-            ${t.icon ? `<img src="${ICON}${t.icon}">` : `<span style="font-size:20px">${t.emoji}</span>`}
-            ${t.label}
-          </a>`).join('')}
-      </div>
       <div class="ls-actions">
-        <div class="ls-pill ls-credits" id="home2-ls-credits">💰</div>
+        <div class="ls-pill" id="home2-ls-credits" title="Crédits">💰</div>
         <div class="ls-pill" id="home2-ls-settings" title="Paramètres">⚙️</div>
         <div class="ls-pill" id="home2-ls-fs" title="Plein écran">⛶</div>
       </div>
     `
-    document.body.appendChild(sidebar)
-    sidebar.querySelector('#home2-ls-settings').addEventListener('click', () => navigate('settings'))
-    sidebar.querySelector('#home2-ls-credits').addEventListener('click', () => openCreditsAdOffer(p, toast))
-    sidebar.querySelector('#home2-ls-fs').addEventListener('click', () => {
+    document.body.appendChild(lsLeft)
+    lsLeft.querySelector('#home2-ls-settings').addEventListener('click', () => navigate('settings'))
+    lsLeft.querySelector('#home2-ls-credits').addEventListener('click', () => openCreditsAdOffer(p, toast))
+    lsLeft.querySelector('#home2-ls-fs').addEventListener('click', () => {
       const el = document.documentElement
       if (!document.fullscreenElement) {
         const req = el.requestFullscreen?.() || el.webkitRequestFullscreen?.()
@@ -337,6 +330,20 @@ export function ensureV2Chrome(navigate, p, activeRouteKey, ICON, toast) {
       const btn = document.getElementById('home2-ls-fs')
       if (btn) btn.textContent = document.fullscreenElement ? '✕' : '⛶'
     })
+    document.addEventListener('webkitfullscreenchange', () => {
+      const btn = document.getElementById('home2-ls-fs')
+      if (btn) btn.textContent = document.fullscreenElement ? '✕' : '⛶'
+    })
+
+    // Bandeau droit : onglets de navigation
+    const lsRight = document.createElement('div')
+    lsRight.id = 'home2-ls-right'
+    lsRight.innerHTML = V2_TABS.map(t => `
+      <a class="ls-tab home2-chrome-tab" data-route="${t.route}" data-key="${t.key}">
+        ${t.icon ? `<img src="${ICON}${t.icon}">` : `<span style="font-size:22px">${t.emoji}</span>`}
+        ${t.label}
+      </a>`).join('')
+    document.body.appendChild(lsRight)
   }
 
   // Un seul gestionnaire de clic pour tous les onglets (PC + mobile)

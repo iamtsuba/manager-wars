@@ -124,6 +124,10 @@ function renderMiniCardHTML(p, w=44, h=58) {
   </div>`
 }
 
+function isLandscapeMobile() {
+  return window.matchMedia('(max-height: 500px) and (orientation: landscape)').matches
+}
+
 export async function renderDecks(container, ctx) {
   const { state, navigate, toast } = ctx
   ensureV2Chrome(navigate, state.profile, 'decks', import.meta.env.BASE_URL + 'icons/', toast)
@@ -341,8 +345,42 @@ function renderBuilder(container, builder, ctx, isInitialRender = false) {
   const allUsed    = [...Object.values(builder.slots), ...builder.subs]
 
   container.innerHTML = `
-  <style>.no-scrollbar::-webkit-scrollbar{display:none}</style>
-  <div style="height:100%;overflow-y:auto;background:var(--page-bg)">
+  <style>
+    .no-scrollbar::-webkit-scrollbar{display:none}
+
+    /* ══ Paysage mobile : terrain à gauche, remplaçants/formation/stade en sidebar droite ══ */
+    @media (max-height: 500px) and (orientation: landscape) {
+      #deck-builder-outer { display:flex !important; flex-direction:column !important; height:100% !important; overflow:hidden !important; }
+      #deck-builder-outer .page-header { flex-shrink:0 !important; }
+      .deck-mobile-layout {
+        display:flex !important; flex-direction:row !important;
+        flex:1 !important; min-height:0 !important; overflow:hidden !important;
+      }
+      .deck-mobile-layout > div:first-child {
+        flex:1 !important; min-width:0 !important; height:100% !important;
+        display:flex !important; align-items:center !important; justify-content:center !important;
+      }
+      .deck-mobile-layout > div:first-child #deck-field-mobile { margin-top:0 !important; }
+      .deck-mobile-layout > div:nth-child(2) {
+        width:150px !important; flex-shrink:0 !important; height:100% !important;
+        overflow-y:auto !important; overflow-x:hidden !important;
+        border-top:none !important; border-left:1px solid rgba(255,255,255,0.1) !important;
+        scrollbar-width:none !important; box-sizing:border-box !important;
+      }
+      .deck-mobile-layout > div:nth-child(2)::-webkit-scrollbar { display:none; }
+      .deck-mobile-layout > div:nth-child(2) > div {
+        flex-direction:column !important; align-items:stretch !important; gap:8px !important;
+      }
+      #deck-builder-outer .page-body {
+        flex-shrink:0 !important; padding:6px 10px !important;
+        display:flex !important; flex-direction:row !important; gap:6px !important; align-items:center !important;
+      }
+      #deck-builder-outer .page-body .auto-deck-btn { flex:1 !important; margin:0 !important; font-size:11px !important; padding:6px !important; }
+      #deck-builder-outer .page-body #save-deck { flex:1 !important; font-size:11px !important; padding:6px !important; margin:0 !important; }
+      #deck-builder-outer .page-body .autosave-indicator { display:none !important; }
+    }
+  </style>
+  <div id="deck-builder-outer" style="height:100%;overflow-y:auto;background:var(--page-bg)">
     <div class="page-header" style="display:flex;align-items:center;gap:8px;padding:6px 12px;min-height:0">
       <button class="btn-icon" id="builder-back" style="font-size:16px">←</button>
       <div style="flex:1">
@@ -497,9 +535,22 @@ function renderBuilder(container, builder, ctx, isInitialRender = false) {
   if (pcLayout)     pcLayout.style.display     = isDesktop ? 'block' : 'none'
   if (mobileLayout) mobileLayout.style.display = isDesktop ? 'none'  : 'block'
   // Le bouton "Enregistrer" partagé (en bas) fait doublon sur PC avec celui de la barre latérale
-  container.querySelectorAll('#save-deck').forEach(el => { el.closest('.page-body').style.display = isDesktop ? 'none' : 'block' })
+  container.querySelectorAll('#save-deck').forEach(el => { const pb = el.closest('.page-body'); if (pb) pb.style.display = isDesktop ? 'none' : 'block' })
 
   renderDeckField(container, builder, positions, ctx)
+
+  // Re-render complet au basculement paysage/portrait (mesures de terrain
+  // différentes). Listener remplacé à chaque appel pour éviter l'accumulation.
+  if (window._deckOrientationHandler) window.removeEventListener('resize', window._deckOrientationHandler)
+  let _deckWasLandscape = isLandscapeMobile()
+  window._deckOrientationHandler = () => {
+    const nowLandscape = isLandscapeMobile()
+    if (nowLandscape !== _deckWasLandscape) {
+      _deckWasLandscape = nowLandscape
+      renderBuilder(container, builder, ctx, true)
+    }
+  }
+  window.addEventListener('resize', window._deckOrientationHandler)
 
   container.querySelectorAll('#builder-back').forEach(el => el.addEventListener('click', () => navigate('decks')))
 
@@ -642,10 +693,29 @@ function renderDeckField(container, builder, positions, ctx) {
   // Terrain HTML : cartes positionnées en absolu sur un terrain de 320x320
   // Taille responsive
   const isDesktopRDF = window.innerWidth >= 900
-  // PC : terrain dans la colonne droite (largeur - 140px stade)
-  const availW = isDesktopRDF ? window.innerWidth - 280 : window.innerWidth - 20
-  const W      = isDesktopRDF ? Math.min(availW, 860) : availW
-  const H      = isDesktopRDF ? Math.round(W * 0.82)  : Math.round(W * 0.85)
+  const landscapeRDF = !isDesktopRDF && isLandscapeMobile()
+
+  let W, H
+  if (isDesktopRDF) {
+    // PC : terrain dans la colonne droite (largeur - 140px stade)
+    const availW = window.innerWidth - 280
+    W = Math.min(availW, 860)
+    H = Math.round(W * 0.82)
+  } else if (landscapeRDF) {
+    // Paysage mobile : le terrain occupe une boîte (CSS flex-row lui donne
+    // une vraie largeur ET hauteur) — on mesure le réel espace disponible
+    // au lieu de supposer une largeur plein écran (qui donnerait une
+    // hauteur H = W*0.85 bien plus grande que l'écran, d'où le débordement).
+    const box   = field.parentElement
+    const boxW  = box?.clientWidth  || (window.innerWidth - 170)
+    const boxH  = box?.clientHeight || 260
+    W = boxW
+    H = Math.round(W * 0.85)
+    if (H > boxH) { H = boxH; W = Math.round(H / 0.85) }
+  } else {
+    W = window.innerWidth - 20
+    H = Math.round(W * 0.85)
+  }
   const CARD_W = isDesktopRDF ? 84 : computeSafeCardWidth(builder.formation, W, H)
   // 84 en PC ; en mobile : la plus grande taille possible SANS chevauchement
   // pour la formation active (49-64px selon la densité, contre 49px fixe
@@ -1123,3 +1193,4 @@ function buildPositions(formation) {
   for (let i = 1; i <= struct.ATT; i++) positions.push(`ATT${i}`)
   return positions
 }
+

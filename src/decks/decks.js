@@ -375,7 +375,6 @@ function renderBuilder(container, builder, ctx, isInitialRender = false) {
         display: flex !important; align-items: center !important; justify-content: center !important;
         height: 100% !important; min-height: 0 !important;
       }
-      .deck-mobile-layout > div:first-child #deck-field-mobile { margin-top: 0 !important; }
 
       /* Remplaçants (1re section promue) : colonne gauche, pleine hauteur, scroll vertical */
       .deck-mobile-layout > div:nth-child(2) > div > div:nth-child(1) {
@@ -400,15 +399,17 @@ function renderBuilder(container, builder, ctx, isInitialRender = false) {
         grid-column: 3 !important; grid-row: 3 !important;
       }
 
-      /* Boutons (Auto Deck + Enregistrer) : colonne droite, ligne 4, empilés */
+      /* Boutons (Auto Deck + Enregistrer) : colonne droite, ligne 4, empilés,
+         même largeur que la carte Stade (70px, cf. stadW plus haut) */
       #deck-builder-outer > .page-body {
         grid-column: 3 !important; grid-row: 4 !important;
-        display: flex !important; flex-direction: column !important; gap: 4px !important;
+        display: flex !important; flex-direction: column !important; align-items: center !important; gap: 5px !important;
         padding: 4px !important; box-sizing: border-box !important;
       }
       #deck-builder-outer > .page-body .auto-deck-btn,
       #deck-builder-outer > .page-body #save-deck {
-        font-size: 9px !important; padding: 5px 2px !important; margin: 0 !important; width: 100% !important;
+        font-size: 9px !important; padding: 6px 2px !important; margin: 0 !important;
+        width: 70px !important; max-width: 70px !important; box-sizing: border-box !important;
       }
       #deck-builder-outer > .page-body .autosave-indicator { display: none !important; }
     }
@@ -746,9 +747,13 @@ function renderDeckField(container, builder, positions, ctx) {
     // une vraie largeur ET hauteur) — on mesure le réel espace disponible
     // au lieu de supposer une largeur plein écran (qui donnerait une
     // hauteur H = W*0.85 bien plus grande que l'écran, d'où le débordement).
-    const box   = field.parentElement
-    const boxW  = box?.clientWidth  || (window.innerWidth - 170)
-    const boxH  = box?.clientHeight || 260
+    // On réserve aussi les 30px de margin-top du terrain (#deck-field-mobile)
+    // pour que marge + H ne dépasse jamais la boîte réelle (sinon la ligne
+    // du bas — ou du haut si la marge est retirée — se fait tronquer).
+    const FIELD_MARGIN_TOP = 30
+    const box    = field.parentElement
+    const boxW   = box?.clientWidth  || (window.innerWidth - 170)
+    const boxH   = Math.max(80, (box?.clientHeight || 260) - FIELD_MARGIN_TOP)
     W = boxW
     H = Math.round(W * 0.85)
     if (H > boxH) { H = boxH; W = Math.round(H / 0.85) }

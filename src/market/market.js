@@ -7,6 +7,10 @@ const JOB_COLORS  = { GK:'#111111', DEF:'#bb2020', MIL:'#D4A017', ATT:'#1A6B3C' 
 const RARITY_COLORS = { normal:'#ccc', pepite:'#D4A017', papyte:'#909090', legende:'#7a28b8' }
 const BASE = import.meta.env.BASE_URL
 
+function isLandscapeMobile() {
+  return window.matchMedia('(max-height: 500px) and (orientation: landscape)').matches
+}
+
 function getNote(p, job, evo=0) {
   if (!job) return 0
   const base = Number(job==='GK'?p.note_g:job==='DEF'?p.note_d:job==='MIL'?p.note_m:p.note_a) || 0
@@ -111,18 +115,20 @@ async function loadMarket(container, ctx) {
     .mkt-buy-tile button { width:100%; }
 
     /* ══ Paysage mobile : onglets en haut (pleine largeur), filtres en
-       sidebar gauche fixe, cartes en vente à droite. CSS Grid sur
-       #mkt-outer pour placer librement chaque zone sans toucher au DOM. ══ */
+       sidebar gauche fixe (une seule colonne), cartes en vente à droite
+       sur 2 lignes swipeables horizontalement (même logique que
+       Collection > Joueurs). CSS Grid sur #mkt-outer pour placer
+       librement chaque zone sans toucher au DOM. ══ */
     @media (max-height: 500px) and (orientation: landscape) {
       #mkt-outer {
         display: grid !important;
-        grid-template-columns: 170px 1fr;
+        grid-template-columns: 160px 1fr;
         grid-template-rows: auto auto 1fr;
         height: 100% !important; overflow: hidden !important;
       }
       #mkt-header {
         grid-column: 1 / 3 !important; grid-row: 1 !important;
-        padding: 6px 12px !important;
+        padding: 5px 12px !important;
       }
       #mkt-header > div:first-child { font-size: 13px !important; }
       #mkt-header > div:last-child { font-size: 10px !important; margin-top: 0 !important; }
@@ -131,28 +137,51 @@ async function loadMarket(container, ctx) {
         padding: 5px 12px !important;
       }
       #mkt-tabs .mkt-tab { padding: 4px 12px !important; font-size: 11px !important; }
+
+      /* Filtres : une seule colonne verticale, propre, sans débordement */
       #mkt-filters {
         grid-column: 1 !important; grid-row: 3 !important;
-        flex-direction: column !important; width: auto !important; box-sizing: border-box !important;
+        display: flex !important; flex-direction: column !important;
+        width: auto !important; box-sizing: border-box !important;
         border-bottom: none !important; border-right: 1px solid var(--tile-border) !important;
-        overflow-y: auto !important; padding: 8px !important;
+        overflow-y: auto !important; overflow-x: hidden !important;
+        padding: 8px !important; gap: 6px !important; scrollbar-width: none !important;
       }
+      #mkt-filters::-webkit-scrollbar { display: none; }
+      /* Les 3 inputs du haut + les 2 divs (selects, boutons) : tout en colonne */
+      #mkt-filters > input, #mkt-filters > div {
+        width: 100% !important; max-width: 100% !important; flex: none !important;
+      }
+      #mkt-filters > div { display: flex !important; flex-direction: column !important; gap: 6px !important; }
       #mkt-filters input, #mkt-filters select {
-        width: 100% !important; min-width: 0 !important; box-sizing: border-box !important;
-        font-size: 11px !important; padding: 5px 6px !important;
+        width: 100% !important; min-width: 0 !important; max-width: 100% !important;
+        box-sizing: border-box !important; font-size: 11px !important; padding: 6px 8px !important;
       }
-      #mkt-filters > div { flex-direction: column !important; width: 100% !important; gap: 6px !important; }
       #mkt-filters .mkt-own-btn {
         width: 100% !important; min-width: 0 !important; box-sizing: border-box !important;
-        font-size: 10px !important; padding: 5px 4px !important; white-space: normal !important;
+        font-size: 10px !important; padding: 6px 4px !important; white-space: normal !important;
         text-align: center !important; line-height: 1.2 !important;
       }
-      #mkt-filters { gap: 6px !important; }
+
+      /* Cartes en vente : grille 2 lignes, swipe horizontal (comme Collection) */
       #mkt-content {
         grid-column: 2 !important; grid-row: 3 !important;
-        overflow-y: auto !important; padding: 8px 12px !important;
+        overflow: hidden !important; padding: 6px !important; box-sizing: border-box !important;
+        height: 100% !important;
       }
-      .mkt-buy-grid { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)) !important; gap: 10px !important; }
+      .mkt-buy-grid {
+        display: grid !important;
+        grid-template-rows: repeat(2, 1fr) !important; grid-auto-flow: column !important;
+        grid-auto-columns: 100px !important; grid-template-columns: none !important;
+        gap: 10px !important; height: 100% !important;
+        overflow-x: auto !important; overflow-y: hidden !important;
+        align-items: center !important; scrollbar-width: none !important;
+      }
+      .mkt-buy-grid::-webkit-scrollbar { display: none; }
+      .mkt-buy-tile { min-width: 0 !important; gap: 3px !important; justify-content: center !important; }
+      .mkt-buy-tile .mkt-price { font-size: 11px !important; }
+      .mkt-buy-tile .mkt-seller { display: none !important; }
+      .mkt-buy-tile button { font-size: 9px !important; padding: 4px 6px !important; }
     }
   </style>
   <div id="mkt-outer" style="height:100%;overflow-y:auto;background:var(--page-bg)">
@@ -282,7 +311,8 @@ async function loadMarket(container, ctx) {
     const canAfford  = (state.profile.credits||0) >= l.price
     const owned      = ownedPlayerIds.has(p.id)
     const inDeck     = inDeckPlayerIds.has(p.id)
-    const cardHtml   = renderPlayerCard({ ...p, _evolution_bonus: evo }, { width: 140, context: 'mercato' })
+    const cardW       = (window.innerWidth < 900 && isLandscapeMobile()) ? 90 : 140
+    const cardHtml   = renderPlayerCard({ ...p, _evolution_bonus: evo }, { width: cardW, context: 'mercato' })
     // Bouton doré quand le joueur est DÉJÀ dans la collection : repère visuel
     // immédiat pour éviter d'acheter un doublon sans le vouloir.
     const btnStyle = owned

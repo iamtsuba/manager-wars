@@ -8,7 +8,7 @@ const RARITY_COLORS = { normal:'#ccc', pepite:'#D4A017', papyte:'#909090', legen
 const BASE = import.meta.env.BASE_URL
 
 function isLandscapeMobile() {
-  return window.matchMedia('(max-height: 500px) and (orientation: landscape)').matches
+  return window.matchMedia('(max-width: 1023px) and (max-height: 500px) and (orientation: landscape)').matches
 }
 
 function getNote(p, job, evo=0) {
@@ -119,7 +119,7 @@ async function loadMarket(container, ctx) {
        à la place, un bouton "🔍 Filtres" ouvre les filtres dans un popup
        plein-hauteur. Le contenu (cartes) prend toute la largeur, en
        grille 2 lignes swipeable horizontalement. ══ */
-    @media (max-height: 500px) and (orientation: landscape) {
+    @media (max-width: 1023px) and (max-height: 500px) and (orientation: landscape) {
       #mkt-outer {
         display: grid !important;
         grid-template-columns: 1fr;

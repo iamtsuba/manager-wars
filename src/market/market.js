@@ -114,58 +114,57 @@ async function loadMarket(container, ctx) {
     .mkt-buy-tile .mkt-seller { font-size:10px; color:var(--tile-fg-dim); margin-top:-4px; }
     .mkt-buy-tile button { width:100%; }
 
-    /* ══ Paysage mobile : onglets en haut (pleine largeur), filtres en
-       sidebar gauche fixe (une seule colonne), cartes en vente à droite
-       sur 2 lignes swipeables horizontalement (même logique que
-       Collection > Joueurs). CSS Grid sur #mkt-outer pour placer
-       librement chaque zone sans toucher au DOM. ══ */
+    /* ══ Paysage mobile : onglets en haut (pleine largeur), pas de sidebar
+       filtres (source de bugs selon la densité/résolution de l'écran) —
+       à la place, un bouton "🔍 Filtres" ouvre les filtres dans un popup
+       plein-hauteur. Le contenu (cartes) prend toute la largeur, en
+       grille 2 lignes swipeable horizontalement. ══ */
     @media (max-height: 500px) and (orientation: landscape) {
       #mkt-outer {
         display: grid !important;
-        grid-template-columns: 160px 1fr;
+        grid-template-columns: 1fr;
         grid-template-rows: auto auto 1fr;
         height: 100% !important; overflow: hidden !important;
       }
-      #mkt-header {
-        grid-column: 1 / 3 !important; grid-row: 1 !important;
-        padding: 5px 12px !important;
-      }
+      #mkt-header { padding: 5px 12px !important; }
       #mkt-header > div:first-child { font-size: 13px !important; }
       #mkt-header > div:last-child { font-size: 10px !important; margin-top: 0 !important; }
-      #mkt-tabs {
-        grid-column: 1 / 3 !important; grid-row: 2 !important;
-        padding: 5px 12px !important;
-      }
+      #mkt-tabs { padding: 5px 12px !important; align-items: center !important; }
       #mkt-tabs .mkt-tab { padding: 4px 12px !important; font-size: 11px !important; }
+      #mkt-filter-toggle { display: inline-flex !important; }
 
-      /* Filtres : une seule colonne verticale, propre, sans débordement */
+      /* Filtres : popup plein-hauteur depuis la gauche, caché par défaut.
+         !important nécessaire pour primer sur le style inline posé par
+         renderTab() (filters.style.display = 'flex'/'none' selon l'onglet). */
       #mkt-filters {
-        grid-column: 1 !important; grid-row: 3 !important;
-        display: flex !important; flex-direction: column !important;
-        width: auto !important; box-sizing: border-box !important;
-        border-bottom: none !important; border-right: 1px solid var(--tile-border) !important;
+        display: none !important;
+        position: fixed !important; top: 0 !important; left: 0 !important; bottom: 0 !important;
+        width: 260px !important; max-width: 80vw !important; z-index: 700 !important;
+        background: var(--tile-dark-bg) !important; border-right: 1px solid var(--tile-border) !important;
+        border-bottom: none !important; flex-direction: column !important;
         overflow-y: auto !important; overflow-x: hidden !important;
-        padding: 8px !important; gap: 6px !important; scrollbar-width: none !important;
+        padding: 14px !important; gap: 8px !important; box-sizing: border-box !important;
+        box-shadow: 4px 0 24px rgba(0,0,0,0.4) !important;
       }
-      #mkt-filters::-webkit-scrollbar { display: none; }
-      /* Les 3 inputs du haut + les 2 divs (selects, boutons) : tout en colonne */
-      #mkt-filters > input, #mkt-filters > div {
-        width: 100% !important; max-width: 100% !important; flex: none !important;
-      }
-      #mkt-filters > div { display: flex !important; flex-direction: column !important; gap: 6px !important; }
+      #mkt-filters.mkt-filters-open { display: flex !important; }
+      #mkt-filters > input, #mkt-filters > div { width: 100% !important; max-width: 100% !important; flex: none !important; }
+      #mkt-filters > div { display: flex !important; flex-direction: column !important; gap: 8px !important; }
       #mkt-filters input, #mkt-filters select {
         width: 100% !important; min-width: 0 !important; max-width: 100% !important;
-        box-sizing: border-box !important; font-size: 11px !important; padding: 6px 8px !important;
+        box-sizing: border-box !important; font-size: 12px !important; padding: 7px 9px !important;
       }
       #mkt-filters .mkt-own-btn {
         width: 100% !important; min-width: 0 !important; box-sizing: border-box !important;
-        font-size: 10px !important; padding: 6px 4px !important; white-space: normal !important;
+        font-size: 11px !important; padding: 7px 4px !important; white-space: normal !important;
         text-align: center !important; line-height: 1.2 !important;
       }
+      #mkt-filters-backdrop.mkt-filters-open {
+        display: block !important; position: fixed !important; inset: 0 !important;
+        background: rgba(0,0,0,0.5) !important; z-index: 699 !important;
+      }
 
-      /* Cartes en vente : grille 2 lignes, swipe horizontal (comme Collection) */
+      /* Cartes en vente : pleine largeur, grille 2 lignes, swipe horizontal */
       #mkt-content {
-        grid-column: 2 !important; grid-row: 3 !important;
         overflow: hidden !important; padding: 6px !important; box-sizing: border-box !important;
         height: 100% !important;
       }
@@ -184,6 +183,7 @@ async function loadMarket(container, ctx) {
       .mkt-buy-tile button { font-size: 9px !important; padding: 4px 6px !important; }
     }
   </style>
+  <div id="mkt-filters-backdrop" style="display:none"></div>
   <div id="mkt-outer" style="height:100%;overflow-y:auto;background:var(--page-bg)">
     <!-- Header -->
     <div id="mkt-header" style="padding:12px 16px;background:var(--tile-bg);border-bottom:1px solid var(--tile-border)">
@@ -195,6 +195,7 @@ async function loadMarket(container, ctx) {
     <div id="mkt-tabs" style="padding:8px 16px;background:var(--tile-bg);border-bottom:1px solid var(--tile-border);display:flex;gap:6px">
       <button class="mkt-tab" data-tab="buy" style="padding:6px 16px;border-radius:20px;border:1.5px solid var(--green);background:var(--green);color:#fff;font-size:13px;font-weight:700;cursor:pointer">Acheter</button>
       <button class="mkt-tab" data-tab="mine" style="padding:6px 16px;border-radius:20px;border:1.5px solid var(--tile-border);background:var(--tile-bg);color:var(--tile-fg-dim);font-size:13px;font-weight:700;cursor:pointer">Mes ventes (${myListings.length})</button>
+      <button id="mkt-filter-toggle" style="display:none;margin-left:auto;padding:6px 14px;border-radius:20px;border:1.5px solid var(--tile-border);background:var(--tile-bg);color:var(--tile-fg-dim);font-size:12px;font-weight:700;cursor:pointer;align-items:center;gap:4px">🔍 Filtres</button>
     </div>
 
     <!-- Filtres (onglet Acheter seulement) -->
@@ -439,6 +440,18 @@ async function loadMarket(container, ctx) {
       container.querySelectorAll('.mkt-own-btn').forEach(b => b.classList.toggle('active', b === btn))
       renderTab()
     })
+  })
+
+  // Popup filtres (paysage mobile) : ouverture/fermeture
+  const filtersEl  = document.getElementById('mkt-filters')
+  const backdropEl = document.getElementById('mkt-filters-backdrop')
+  document.getElementById('mkt-filter-toggle')?.addEventListener('click', () => {
+    filtersEl?.classList.toggle('mkt-filters-open')
+    backdropEl?.classList.toggle('mkt-filters-open')
+  })
+  backdropEl?.addEventListener('click', () => {
+    filtersEl?.classList.remove('mkt-filters-open')
+    backdropEl?.classList.remove('mkt-filters-open')
   })
 
   renderTab()

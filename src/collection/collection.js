@@ -9,7 +9,7 @@ import { ensureV2Chrome } from '../home/home2.js'
 // Paysage mobile : hauteur d'écran réduite + orientation paysage.
 // Utilisé pour basculer la Collection en grille 3 lignes swipeable.
 function isLandscapeMobile() {
-  return window.matchMedia('(max-height: 500px) and (orientation: landscape)').matches
+  return window.matchMedia('(max-width: 1023px) and (max-height: 500px) and (orientation: landscape)').matches
 }
 
 // ── Constantes ─────────────────────────────────────────────
@@ -210,7 +210,7 @@ export async function renderCollection(container, ctx) {
        sidebar gauche fixe, grille 2 lignes swipeable à droite. Utilise
        CSS Grid sur #col-page pour placer librement chaque enfant
        (col-tabs, col-filters, col-landscape-grid) sans restructurer le DOM. ══ */
-    @media (max-height: 500px) and (orientation: landscape) {
+    @media (max-width: 1023px) and (max-height: 500px) and (orientation: landscape) {
       #col-page {
         display: grid !important;
         grid-template-columns: 130px 1fr;

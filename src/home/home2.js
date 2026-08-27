@@ -175,7 +175,7 @@ export function ensureV2Chrome(navigate, p, activeRouteKey, ICON, toast) {
          Bandeau gauche  : logo + settings + fullscreen
          Bandeau droit   : onglets de navigation
          Contenu central : tout l'espace entre les deux     */
-      @media (max-height: 500px) and (orientation: landscape) {
+      @media (max-width: 1023px) and (max-height: 500px) and (orientation: landscape) {
         .home2-mobile-top, .home2-mobile-bottom { display: none !important; }
 
         body:has(#home2-chrome-marker) #page-content {
@@ -1166,7 +1166,7 @@ export async function renderHome2(container, { state, navigate, toast, openModal
     }
 
     /* ══════════ PAYSAGE MOBILE (hauteur < 500px) ══════════ */
-    @media (max-height: 500px) and (orientation: landscape) {
+    @media (max-width: 1023px) and (max-height: 500px) and (orientation: landscape) {
       /* Conteneur : pas de padding vertical, scroll horizontal désactivé */
       .home-dark {
         padding: 6px 8px 6px !important;

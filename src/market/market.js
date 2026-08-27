@@ -133,22 +133,31 @@ async function loadMarket(container, ctx) {
       #mkt-tabs .mkt-tab { padding: 4px 12px !important; font-size: 11px !important; }
       #mkt-filter-toggle { display: inline-flex !important; }
 
-      /* Filtres : popup plein-hauteur depuis la gauche, caché par défaut.
+      /* Filtres : popup CENTRÉ (comme les autres popups de l'app), caché
+         par défaut. Les 2 divs internes (select-row, boutons-row) sont
+         promues en display:contents pour que TOUS les champs deviennent
+         des cellules directes d'une même grille 3 colonnes — tout tient
+         sur un seul écran sans avoir à scroller.
          !important nécessaire pour primer sur le style inline posé par
          renderTab() (filters.style.display = 'flex'/'none' selon l'onglet). */
       #mkt-filters {
         display: none !important;
-        position: fixed !important; top: 0 !important; left: 0 !important; bottom: 0 !important;
-        width: 260px !important; max-width: 80vw !important; z-index: 700 !important;
-        background: var(--tile-dark-bg) !important; border-right: 1px solid var(--tile-border) !important;
-        border-bottom: none !important; flex-direction: column !important;
-        overflow-y: auto !important; overflow-x: hidden !important;
-        padding: 14px !important; gap: 8px !important; box-sizing: border-box !important;
-        box-shadow: 4px 0 24px rgba(0,0,0,0.4) !important;
       }
-      #mkt-filters.mkt-filters-open { display: flex !important; }
-      #mkt-filters > input, #mkt-filters > div { width: 100% !important; max-width: 100% !important; flex: none !important; }
-      #mkt-filters > div { display: flex !important; flex-direction: column !important; gap: 8px !important; }
+      #mkt-filters.mkt-filters-open {
+        display: grid !important;
+        grid-template-columns: repeat(3, minmax(120px, 1fr)) !important;
+        gap: 10px !important;
+        position: fixed !important; top: 50% !important; left: 50% !important;
+        transform: translate(-50%, -50%) !important;
+        width: 92vw !important; max-width: 640px !important; max-height: 88vh !important;
+        z-index: 700 !important;
+        background: var(--tile-dark-bg) !important; border: 1px solid var(--tile-border) !important;
+        border-radius: 14px !important;
+        overflow-y: auto !important; overflow-x: hidden !important;
+        padding: 16px !important; box-sizing: border-box !important;
+        box-shadow: 0 12px 48px rgba(0,0,0,0.5) !important;
+      }
+      #mkt-filters.mkt-filters-open > div { display: contents !important; }
       #mkt-filters input, #mkt-filters select {
         width: 100% !important; min-width: 0 !important; max-width: 100% !important;
         box-sizing: border-box !important; font-size: 12px !important; padding: 7px 9px !important;
@@ -158,26 +167,37 @@ async function loadMarket(container, ctx) {
         font-size: 11px !important; padding: 7px 4px !important; white-space: normal !important;
         text-align: center !important; line-height: 1.2 !important;
       }
+      #mkt-filters-close { display: none; }
+      #mkt-filters.mkt-filters-open #mkt-filters-close {
+        display: flex !important; grid-column: 1 / 4 !important;
+        justify-content: flex-end !important; align-items: center !important;
+        background: none !important; border: none !important; color: var(--tile-fg-dim) !important;
+        font-size: 18px !important; cursor: pointer !important; padding: 0 0 4px 0 !important;
+      }
       #mkt-filters-backdrop.mkt-filters-open {
         display: block !important; position: fixed !important; inset: 0 !important;
-        background: rgba(0,0,0,0.5) !important; z-index: 699 !important;
+        background: rgba(0,0,0,0.6) !important; z-index: 699 !important;
       }
 
-      /* Cartes en vente : pleine largeur, grille 2 lignes, swipe horizontal */
+      /* Cartes en vente : pleine largeur, ligne unique (utilise toute la
+         hauteur dispo, pas de risque de troncature liée à une division
+         en 2 rangées), swipe horizontal natif via overflow-x. */
       #mkt-content {
         overflow: hidden !important; padding: 6px !important; box-sizing: border-box !important;
         height: 100% !important;
       }
       .mkt-buy-grid {
-        display: grid !important;
-        grid-template-rows: repeat(2, 1fr) !important; grid-auto-flow: column !important;
-        grid-auto-columns: 100px !important; grid-template-columns: none !important;
-        gap: 10px !important; height: 100% !important;
+        display: flex !important; flex-direction: row !important;
+        gap: 12px !important; height: 100% !important;
         overflow-x: auto !important; overflow-y: hidden !important;
         align-items: center !important; scrollbar-width: none !important;
+        -webkit-overflow-scrolling: touch !important;
       }
       .mkt-buy-grid::-webkit-scrollbar { display: none; }
-      .mkt-buy-tile { min-width: 0 !important; gap: 3px !important; justify-content: center !important; }
+      .mkt-buy-tile {
+        flex: 0 0 auto !important; min-width: 0 !important; gap: 3px !important;
+        justify-content: center !important; height: 100% !important;
+      }
       .mkt-buy-tile .mkt-price { font-size: 11px !important; }
       .mkt-buy-tile .mkt-seller { display: none !important; }
       .mkt-buy-tile button { font-size: 9px !important; padding: 4px 6px !important; }
@@ -213,6 +233,7 @@ async function loadMarket(container, ctx) {
         .mkt-own-btn { padding:6px 12px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;border:1.5px solid #ddd;background:#fff;color:#555 }
         .mkt-own-btn.active { background:var(--green);border-color:var(--green);color:#fff }
       </style>
+      <button id="mkt-filters-close" type="button">✕</button>
       <input id="flt-name"    placeholder="🔍 Nom"         style="flex:1;min-width:110px;padding:6px 10px;border:1.5px solid #ddd;border-radius:8px;font-size:12px">
       <input id="flt-club"    placeholder="🏟️ Club"        style="flex:1;min-width:90px;padding:6px 10px;border:1.5px solid #ddd;border-radius:8px;font-size:12px">
       <input id="flt-country" placeholder="🌍 Pays"        style="flex:1;min-width:80px;padding:6px 10px;border:1.5px solid #ddd;border-radius:8px;font-size:12px">
@@ -450,6 +471,10 @@ async function loadMarket(container, ctx) {
     backdropEl?.classList.toggle('mkt-filters-open')
   })
   backdropEl?.addEventListener('click', () => {
+    filtersEl?.classList.remove('mkt-filters-open')
+    backdropEl?.classList.remove('mkt-filters-open')
+  })
+  document.getElementById('mkt-filters-close')?.addEventListener('click', () => {
     filtersEl?.classList.remove('mkt-filters-open')
     backdropEl?.classList.remove('mkt-filters-open')
   })

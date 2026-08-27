@@ -125,7 +125,7 @@ function renderMiniCardHTML(p, w=44, h=58) {
 }
 
 function isLandscapeMobile() {
-  return window.matchMedia('(max-height: 500px) and (orientation: landscape)').matches
+  return window.matchMedia('(max-width: 1023px) and (max-height: 500px) and (orientation: landscape)').matches
 }
 
 export async function renderDecks(container, ctx) {
@@ -355,7 +355,7 @@ function renderBuilder(container, builder, ctx, isInitialRender = false) {
        imbriquées (remplaçants/formation/stade) comme enfants directs
        de la grille de #deck-builder-outer, sans toucher au DOM ni au
        calcul JS du terrain. ══ */
-    @media (max-height: 500px) and (orientation: landscape) {
+    @media (max-width: 1023px) and (max-height: 500px) and (orientation: landscape) {
       #deck-builder-outer {
         display: grid !important;
         grid-template-columns: 110px 1fr 90px;

@@ -183,7 +183,7 @@ export function renderPlayerCard(p, opts = {}) {
   const nameC = cmp('name')
   const namePadding = ax(mode === 'mobile' ? 10 : 18)
   const nameAvailW = width - namePadding * 2
-  const nameMaxSize = ax(mode === 'mobile' ? 20 : 46) * nameC.scale
+  const nameMaxSize = ax(mode === 'mobile' ? 20 : 46) * nameC.scale * (opts.nameScale || 1)
   const nameMinSize = ax(9)
   const nameFontSize = autoFitNameSize(displayName, nameAvailW, nameMaxSize, nameMinSize)
   const nameBaseH = ax(cardHRef === 372 ? 372*0.155 : 574*0.155)
@@ -273,3 +273,4 @@ export function createPlayerCardEl(p, opts = {}) {
   if (onClick) div.addEventListener('click', () => onClick(p))
   return div
 }
+

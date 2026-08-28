@@ -439,7 +439,7 @@ function renderBuilder(container, builder, ctx, isInitialRender = false) {
             ${subPlayers.map(card => {
               const p = { ...card.player, _evolution_bonus: card.evolution_bonus || 0 }
               return `<div style="position:relative;flex-shrink:0;overflow:visible;padding-bottom:24px">
-                ${renderPlayerCard({ ...p, _evolution_bonus: p._evolution_bonus||0 }, { width: 90, showStad: true, stadDef: _stadDef, context: 'formation' })}
+                ${renderPlayerCard({ ...p, _evolution_bonus: p._evolution_bonus||0 }, { width: 90, showStad: true, stadDef: _stadDef, compactSquare: typeof window!=='undefined' && window.innerWidth<900, context: 'formation' })}
                 <button data-remove-sub="${card.id}"
                   style="position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:20px;height:20px;background:#c0392b;border:none;border-radius:50%;color:#fff;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;padding:0;z-index:10">✕</button>
               </div>`
@@ -519,7 +519,7 @@ function renderBuilder(container, builder, ctx, isInitialRender = false) {
               ${subPlayers.map(card => {
                 const p = { ...card.player, _evolution_bonus: card.evolution_bonus || 0 }
                 return `<div style="position:relative;flex-shrink:0;overflow:visible;padding-bottom:20px">
-                  ${renderPlayerCard({ ...p, _evolution_bonus: p._evolution_bonus||0 }, { width: 44, showStad: true, stadDef: _stadDef, context: 'formation' })}
+                  ${renderPlayerCard({ ...p, _evolution_bonus: p._evolution_bonus||0 }, { width: 44, showStad: true, stadDef: _stadDef, compactSquare: typeof window!=='undefined' && window.innerWidth<900, context: 'formation' })}
                   <button data-remove-sub="${card.id}"
                     style="position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:16px;height:16px;background:#c0392b;border:none;border-radius:50%;color:#fff;font-size:9px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;padding:0;z-index:10">✕</button>
                 </div>`
@@ -529,11 +529,8 @@ function renderBuilder(container, builder, ctx, isInitialRender = false) {
           </div>
           <!-- Formation mobile -->
           <div style="flex-shrink:0;text-align:center">
-            ${!isLandscapeTpl ? `<div style="font-size:10px;font-weight:700;margin-bottom:6px;color:rgba(255,255,255,0.6);letter-spacing:1px;text-transform:uppercase">⚽</div>` : ''}
-            <div id="formation-mobile-btn" style="cursor:pointer;${isLandscapeTpl ? 'margin:0 auto;width:fit-content' : 'width:44px;height:57px;border-radius:6px;background:#1A6B3C;border:2px solid #2ecc71;display:flex;align-items:center;justify-content:center'}">
-              ${isLandscapeTpl
-                ? renderFormationCard(builder.formation, FORMATION_POSITIONS[builder.formation], { width: 70 })
-                : `<span style="font-size:8px;font-weight:900;color:#fff;text-align:center;line-height:1.1">${builder.formation}</span>`}
+            <div id="formation-mobile-btn" style="cursor:pointer;margin:0 auto;width:fit-content">
+              ${renderFormationCard(builder.formation, FORMATION_POSITIONS[builder.formation], { width: isLandscapeTpl ? 70 : 44 })}
             </div>
           </div>
           <!-- Stade mobile : à droite -->

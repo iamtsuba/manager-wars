@@ -439,7 +439,7 @@ function renderBuilder(container, builder, ctx, isInitialRender = false) {
             ${subPlayers.map(card => {
               const p = { ...card.player, _evolution_bonus: card.evolution_bonus || 0 }
               return `<div style="position:relative;flex-shrink:0;overflow:visible;padding-bottom:24px">
-                ${renderPlayerCard({ ...p, _evolution_bonus: p._evolution_bonus||0 }, { width: 90, showStad: true, stadDef: _stadDef, compactSquare: typeof window!=='undefined' && window.innerWidth<900, context: 'formation' })}
+                ${renderPlayerCard({ ...p, _evolution_bonus: p._evolution_bonus||0 }, { width: 90, showStad: true, stadDef: _stadDef, compactSquare: typeof window!=='undefined' && window.innerWidth<900, nameScale: 1.3, context: 'formation' })}
                 <button data-remove-sub="${card.id}"
                   style="position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:20px;height:20px;background:#c0392b;border:none;border-radius:50%;color:#fff;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;padding:0;z-index:10">✕</button>
               </div>`
@@ -519,7 +519,7 @@ function renderBuilder(container, builder, ctx, isInitialRender = false) {
               ${subPlayers.map(card => {
                 const p = { ...card.player, _evolution_bonus: card.evolution_bonus || 0 }
                 return `<div style="position:relative;flex-shrink:0;overflow:visible;padding-bottom:20px">
-                  ${renderPlayerCard({ ...p, _evolution_bonus: p._evolution_bonus||0 }, { width: 44, showStad: true, stadDef: _stadDef, compactSquare: typeof window!=='undefined' && window.innerWidth<900, context: 'formation' })}
+                  ${renderPlayerCard({ ...p, _evolution_bonus: p._evolution_bonus||0 }, { width: 44, showStad: true, stadDef: _stadDef, compactSquare: typeof window!=='undefined' && window.innerWidth<900, nameScale: 1.3, context: 'formation' })}
                   <button data-remove-sub="${card.id}"
                     style="position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:16px;height:16px;background:#c0392b;border:none;border-radius:50%;color:#fff;font-size:9px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;padding:0;z-index:10">✕</button>
                 </div>`
@@ -578,15 +578,22 @@ function renderBuilder(container, builder, ctx, isInitialRender = false) {
   renderDeckField(container, builder, positions, ctx)
 
   // Re-render complet au basculement paysage/portrait (mesures de terrain
-  // différentes). Listener remplacé à chaque appel pour éviter l'accumulation.
+  // différentes). Debounce 250ms car "resize" peut se déclencher plusieurs
+  // fois avec des valeurs transitoires pendant l'animation de rotation —
+  // on attend que ça se stabilise avant de re-mesurer/redessiner.
+  // Listener remplacé à chaque appel pour éviter l'accumulation.
   if (window._deckOrientationHandler) window.removeEventListener('resize', window._deckOrientationHandler)
+  if (window._deckOrientationTimer) clearTimeout(window._deckOrientationTimer)
   let _deckWasLandscape = isLandscapeMobile()
   window._deckOrientationHandler = () => {
-    const nowLandscape = isLandscapeMobile()
-    if (nowLandscape !== _deckWasLandscape) {
-      _deckWasLandscape = nowLandscape
-      renderBuilder(container, builder, ctx, true)
-    }
+    clearTimeout(window._deckOrientationTimer)
+    window._deckOrientationTimer = setTimeout(() => {
+      const nowLandscape = isLandscapeMobile()
+      if (nowLandscape !== _deckWasLandscape) {
+        _deckWasLandscape = nowLandscape
+        renderBuilder(container, builder, ctx, true)
+      }
+    }, 250)
   }
   window.addEventListener('resize', window._deckOrientationHandler)
 
@@ -801,7 +808,7 @@ function renderDeckField(container, builder, positions, ctx) {
       )
       const cardHtml = renderPlayerCard(
         { ...p, _evolution_bonus: p._evolution_bonus||0 },
-        { width: CARD_W, showStad: true, stadDef, role, compactSquare: !isDesktopRDF, context: 'formation' }
+        { width: CARD_W, showStad: true, stadDef, role, compactSquare: !isDesktopRDF, nameScale: !isDesktopRDF ? 1.3 : 1, context: 'formation' }
       )
       const stadLogo = hasStad ? (stadDef.club?.logo_url || stadDef.image_url || null) : null
       const badgeSize = Math.round(CARD_W * (isDesktopRDF ? 0.578 : 0.34)) // PC : +70% (demande explicite)

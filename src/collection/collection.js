@@ -883,16 +883,21 @@ export async function renderCollection(container, ctx) {
   renderFilters()
   renderCards()
 
-  // Re-rendre au basculement paysage/portrait (listener remplacé à chaque
-  // navigation vers Collection pour éviter l'accumulation).
+  // Re-rendre au basculement paysage/portrait (debounce 250ms pour éviter
+  // les valeurs transitoires pendant l'animation de rotation ; listener
+  // remplacé à chaque navigation vers Collection pour éviter l'accumulation).
   if (window._colOrientationHandler) window.removeEventListener('resize', window._colOrientationHandler)
+  if (window._colOrientationTimer) clearTimeout(window._colOrientationTimer)
   let _colWasLandscape = isLandscapeMobile()
   window._colOrientationHandler = () => {
-    const nowLandscape = isLandscapeMobile()
-    if (nowLandscape !== _colWasLandscape) {
-      _colWasLandscape = nowLandscape
-      renderCards()
-    }
+    clearTimeout(window._colOrientationTimer)
+    window._colOrientationTimer = setTimeout(() => {
+      const nowLandscape = isLandscapeMobile()
+      if (nowLandscape !== _colWasLandscape) {
+        _colWasLandscape = nowLandscape
+        renderCards()
+      }
+    }, 250)
   }
   window.addEventListener('resize', window._colOrientationHandler)
 
